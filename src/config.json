@@ -1,43 +1,43 @@
 {
-  "data_dir": "../data/",
-  "data_proc_dir": "../data_proc/",
-  "model_dir": "../models/",
-  "dataset": {
-    "bentham": {
-      "dls": {},
-      "htr": {
-        "input_dir": "../data/bentham/Images/Lines/",
-        "input_gt_dir": "../data/bentham/Transcriptions/",
-        "partition_dir": "../data/bentham/Partitions/"
-      },
-      "nlp": {}
-    },
-    "iam": {
-      "dls": {},
-      "htr": {
-        "input_dir": "../data/iam/lines/",
-        "input_gt_dir": "../data/iam/xml/",
-        "partition_dir": ""
-      },
-      "nlp": {}
-    },
-    "rimes": {
-      "dls": {},
-      "htr": {
-        "input_dir": "../data/rimes/training_2011/",
-        "input_gt_dir": "../data/rimes/xml/",
-        "partition_dir": "../data/rimes/eval_2011/"
-      },
-      "nlp": {}
-    },
-    "saintgall": {
-      "dls": {},
-      "htr": {
-        "input_dir": "../data/saintgalldb-v1.0/data/line_images_normalized/",
-        "input_gt_dir": "../data/saintgalldb-v1.0/ground_truth/",
-        "partition_dir": "../data/saintgalldb-v1.0/sets/"
-      },
-      "nlp": {}
+    "data_dir": "../data/",
+    "data_proc_dir": "../data_proc/",
+    "model_dir": "../models/",
+    "dataset": {
+        "bentham": {
+            "dls": {},
+            "htr": {
+                "input_dir": "../data/bentham/Images/Lines/",
+                "input_gt_dir": "../data/bentham/Transcriptions/",
+                "partition_dir": "../data/bentham/Partitions/"
+            },
+            "nlp": {}
+        },
+        "iam": {
+            "dls": {},
+            "htr": {
+                "input_dir": "../data/iam/lines/",
+                "input_gt_dir": "../data/iam/xml/",
+                "partition_dir": "../data/iam/partitions/"
+            },
+            "nlp": {}
+        },
+        "rimes": {
+            "dls": {},
+            "htr": {
+                "input_dir": "../data/rimes/training_2011/",
+                "input_gt_dir": "../data/rimes/xml/",
+                "partition_dir": "../data/rimes/eval_2011/"
+            },
+            "nlp": {}
+        },
+        "saintgall": {
+            "dls": {},
+            "htr": {
+                "input_dir": "../data/saintgalldb-v1.0/data/line_images_normalized/",
+                "input_gt_dir": "../data/saintgalldb-v1.0/ground_truth/",
+                "partition_dir": "../data/saintgalldb-v1.0/sets/"
+            },
+            "nlp": {}
+        }
     }
-  }
-} 
+}
