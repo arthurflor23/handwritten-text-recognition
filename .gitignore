@@ -1,5 +1,6 @@
 # Datasets
-/data
+/data/bentham/
+/data/iam/
 
 # Hidden files
 .vscode
