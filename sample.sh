@@ -1,7 +1,10 @@
 #!/bin/bash
 
 INPUT_DIR="./data/"
-DATASET="iam"
+# DATASET="bentham"
+# DATASET="iam"
+# DATASET="saintgall"
+DATASET="rimes"
 
 python ./src/normalize/$DATASET.py --input_dir $INPUT_DIR
 
