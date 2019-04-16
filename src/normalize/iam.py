@@ -73,10 +73,10 @@ def norm_lines(origin, target):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", type=str, required=True)
+    parser.add_argument("--data_dir", type=str, required=True)
     args = parser.parse_args()
 
-    src = os.path.join(args.input_dir, os.path.basename(__file__)[:-3])
+    src = args.data_dir
     src_backup = f"{src}_backup"
 
     if not os.path.exists(src_backup):
