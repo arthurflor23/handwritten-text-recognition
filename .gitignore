@@ -1,5 +1,5 @@
 # Datasets
-/data/
+/data/**/
 
 # Hidden files
 .vscode
