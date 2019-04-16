@@ -1,0 +1,10 @@
+{
+    "GT_DIR": "gt",
+    "DATA_DIR": "lines",
+    "PREPROC_DIR": "lines_preproc",
+    "PARTITIONS_DIR": "partitions",
+
+    "TRAIN_FILE": "train.txt",
+    "VALIDATION_FILE": "validation.txt",
+    "TEST_FILE": "test.txt"
+}

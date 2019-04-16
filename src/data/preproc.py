@@ -21,8 +21,8 @@ def main():
     args = parser.parse_args()
 
     data = Loader(args.input_dir)
-    # data.imread_partitions()
-    preprocess(data)
+    data.imread_partitions()
+    # preprocess(data)
 
 
 if __name__ == '__main__':
