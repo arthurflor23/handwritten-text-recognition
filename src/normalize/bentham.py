@@ -1,10 +1,14 @@
+"""Normalize Bentham dataset."""
+
 from glob import glob
 import argparse
-import shutil
 import os
+import shutil
 
 
 def norm_partitions(origin, target):
+    """Normalize and create 'partitions' folder."""
+
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
     target_dir = os.path.join(target, "partitions")
 
@@ -26,6 +30,8 @@ def norm_partitions(origin, target):
 
 
 def norm_gt(origin, target):
+    """Normalize and create 'gt' folder (Ground Truth)."""
+
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
     target_dir = os.path.join(target, "gt")
 
@@ -36,11 +42,13 @@ def norm_gt(origin, target):
     glob_filter = os.path.join(origin_dir, "Transcriptions", "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
-    for f in files:
-        shutil.copy(f, target_dir)
+    for file in files:
+        shutil.copy(file, target_dir)
 
 
 def norm_lines(origin, target):
+    """Normalize and create 'lines' folder."""
+
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
     target_dir = os.path.join(target, "lines")
 
@@ -51,11 +59,13 @@ def norm_lines(origin, target):
     glob_filter = os.path.join(origin_dir, "Images", "Lines", "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
-    for f in files:
-        shutil.copy(f, target_dir)
+    for file in files:
+        shutil.copy(file, target_dir)
 
 
 def main():
+    """Get the input parameter and call normalization methods."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, required=True)
     args = parser.parse_args()

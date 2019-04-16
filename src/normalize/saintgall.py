@@ -1,3 +1,5 @@
+"""Normalize Saint Gall dataset."""
+
 from glob import glob
 import argparse
 import shutil
@@ -5,6 +7,8 @@ import os
 
 
 def norm_partitions(origin, target):
+    """Normalize and create 'partitions' folder."""
+
     origin_dir = os.path.join(origin, "sets")
     target_dir = os.path.join(target, "partitions")
 
@@ -13,9 +17,10 @@ def norm_partitions(origin, target):
     os.makedirs(target_dir)
 
     def complete_partition_file(set_file, new_set_file):
-        with open(set_file) as f:
+
+        with open(set_file) as file:
             with open(new_set_file, "w+") as new_file:
-                content = [x.strip() for x in f.readlines()]
+                content = [x.strip() for x in file.readlines()]
                 lines = os.path.join(origin, "data", "line_images_normalized")
 
                 for item in content:
@@ -42,6 +47,8 @@ def norm_partitions(origin, target):
 
 
 def norm_gt(origin, target):
+    """Normalize and create 'gt' folder (Ground Truth)."""
+
     origin_dir = os.path.join(origin, "ground_truth")
     target_dir = os.path.join(target, "gt")
 
@@ -51,8 +58,8 @@ def norm_gt(origin, target):
 
     set_file = os.path.join(origin_dir, "transcription.txt")
 
-    with open(set_file) as f:
-        content = [x.strip() for x in f.readlines()]
+    with open(set_file) as file:
+        content = [x.strip() for x in file.readlines()]
 
         for line in content:
             if (not line or line[0] == "#"):
@@ -66,12 +73,14 @@ def norm_gt(origin, target):
 
             new_set_file = os.path.join(target_dir, f"{file_name}.txt")
 
-            with open(new_set_file, "w+") as f:
-                f.write(file_text.strip())
-                f.close()
+            with open(new_set_file, "w+") as new_file:
+                new_file.write(file_text.strip())
+                new_file.close()
 
 
 def norm_lines(origin, target):
+    """Normalize and create 'lines' folder."""
+
     origin_dir = os.path.join(origin, "data")
     target_dir = os.path.join(target, "lines")
 
@@ -82,11 +91,13 @@ def norm_lines(origin, target):
     glob_filter = os.path.join(origin_dir, "line_images_normalized", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
-    for f in files:
-        shutil.copy(f, target_dir)
+    for file in files:
+        shutil.copy(file, target_dir)
 
 
 def main():
+    """Get the input parameter and call normalization methods."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, required=True)
     args = parser.parse_args()

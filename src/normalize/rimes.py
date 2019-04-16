@@ -1,11 +1,14 @@
-import xml.etree.ElementTree as ET
+"""Normalize Rimes dataset."""
+
 import argparse
-import shutil
-import cv2
 import os
+import shutil
+import xml.etree.ElementTree as ET
+import cv2
 
 
 def norm_partitions(origin, target):
+    """Normalize and create 'partitions' folder."""
 
     def generate(set_file, new_set_file):
         root = ET.parse(set_file).getroot()
@@ -15,7 +18,7 @@ def norm_partitions(origin, target):
                 basename = os.path.basename(page_tag.attrib["FileName"])
                 basename = basename.split(".")[0]
 
-                for i, line_tag in enumerate(page_tag.iter("Line")):
+                for i in range(len(page_tag.iter("Line"))):
                     f.write(f"{basename}-{i}\n")
             f.close()
 
@@ -35,6 +38,7 @@ def norm_partitions(origin, target):
 
 
 def norm_gt(origin, target):
+    """Normalize and create 'gt' folder (Ground Truth)."""
 
     def generate(set_file):
         root = ET.parse(set_file).getroot()
@@ -46,9 +50,9 @@ def norm_gt(origin, target):
             for i, line_tag in enumerate(page_tag.iter("Line")):
                 new_set_file = os.path.join(target_dir, f"{basename}-{i}.txt")
 
-                with open(new_set_file, "w+") as f:
-                    f.write(line_tag.attrib["Value"].strip())
-                    f.close()
+                with open(new_set_file, "w+") as file:
+                    file.write(line_tag.attrib["Value"].strip())
+                    file.close()
 
     target_dir = os.path.join(target, "gt")
 
@@ -64,6 +68,7 @@ def norm_gt(origin, target):
 
 
 def norm_lines(origin, target):
+    """Normalize and create 'lines' folder."""
 
     def generate(origin_dir, set_file):
         root = ET.parse(set_file).getroot()
@@ -99,6 +104,8 @@ def norm_lines(origin, target):
 
 
 def main():
+    """Get the input parameter and call normalization methods."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, required=True)
     args = parser.parse_args()
