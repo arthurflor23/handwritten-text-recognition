@@ -1,10 +1,10 @@
-"""Data class to load the variables environment."""
+"""Load the environment variables."""
 
 import os
 
 
-class Data():
-    """Data class."""
+class Loader():
+    """Loader class."""
 
     def __init__(self, input_dir):
         self.dataset = os.path.basename(input_dir)
@@ -17,12 +17,12 @@ class Data():
 
     def imread_partitions(self):
         """Load all partitions."""
-    
+
+        self.imread_train()
+        # self.imread_test()
 
     def imread_train(self):
         """Load the train and validation (if exists) partitions."""
-        
 
     def imread_test(self):
         """Load the test partition."""
-
