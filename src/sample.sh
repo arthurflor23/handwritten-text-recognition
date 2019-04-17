@@ -27,7 +27,7 @@ python preproc/preprocess.py --dataset_dir $DATASET_DIR
 ### ----------- ###
 ### train model ###
 ### ----------- ###
-# python train.py --input_dir $DATASET_DIR \
+# python train.py --dataset_dir $DATASET_DIR \
 #                 --output_dir $OUTPUT_DIR
 #                 --train_steps 500 \
 #                 --eval_steps 30 \
@@ -37,5 +37,5 @@ python preproc/preprocess.py --dataset_dir $DATASET_DIR
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python test.py --input_dir $DATASET_DIR \
+# python test.py --dataset_dir $DATASET_DIR \
 #                --output_dir $OUTPUT_DIR

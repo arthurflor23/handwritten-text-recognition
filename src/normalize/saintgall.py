@@ -36,8 +36,6 @@ def norm_partitions(origin, env):
                         basename = os.path.basename(path).split(".")[0]
                         new_file.write(f"{basename.strip()}\n")
 
-                new_file.close()
-
     set_file = os.path.join(origin_dir, "train.txt")
     complete_partition_file(set_file, env.train_file)
 
@@ -75,7 +73,6 @@ def norm_gt(origin, env):
 
             with open(new_set_file, "w+") as new_file:
                 new_file.write(file_text.strip())
-                new_file.close()
 
 
 def norm_data(origin, env):

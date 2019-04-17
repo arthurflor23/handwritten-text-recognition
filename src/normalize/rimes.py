@@ -31,7 +31,6 @@ def norm_partitions(origin, env):
 
                 for i, _ in enumerate(page_tag.iter("Line")):
                     file.write(f"{basename}-{i}\n")
-            file.close()
 
     set_file = os.path.join(origin, "training_2011.xml")
     generate(set_file, env.train_file)
@@ -59,7 +58,6 @@ def norm_gt(origin, env):
 
                 with open(new_set_file, "w+") as file:
                     file.write(line_tag.attrib["Value"].strip())
-                    file.close()
 
     generate(os.path.join(origin, "training_2011.xml"))
     generate(os.path.join(origin, "eval_2011_annotated.xml"))

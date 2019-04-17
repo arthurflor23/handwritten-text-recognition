@@ -26,8 +26,15 @@ def norm_partitions(origin, env):
     set_file = os.path.join(origin_dir, "trainset.txt")
     shutil.copy(set_file, env.train_file)
 
-    set_file = os.path.join(origin_dir, "validationset1.txt")
-    shutil.copy(set_file, env.validation_file)
+    set_file1 = os.path.join(origin_dir, "validationset1.txt")
+    set_file2 = os.path.join(origin_dir, "validationset2.txt")
+
+    with open(env.validation_file, 'w') as outfile:
+        with open(set_file1) as infile:
+            outfile.write(infile.read())
+
+        with open(set_file2) as infile:
+            outfile.write(infile.read())
 
     set_file = os.path.join(origin_dir, "testset.txt")
     shutil.copy(set_file, env.test_file)
@@ -60,7 +67,6 @@ def norm_gt(origin, env):
 
             with open(new_set_file, "w+") as new_file:
                 new_file.write(file_text.strip())
-                new_file.close()
 
 
 def norm_data(origin, env):
