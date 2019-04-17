@@ -2,23 +2,27 @@
 
 from glob import glob
 import argparse
-import json
+import sys
 import os
 import shutil
 
+try:
+    from settings.environment import Environment
+except ImportError:
+    sys.path[0] = os.path.join(sys.path[0], "..")
+    from settings.environment import Environment
 
-def norm_partitions(origin, target, args):
+
+def norm_partitions(origin, env):
     """Normalize and create 'partitions' folder."""
 
-    origin_dir = os.path.join(origin, "sets")
-    target_dir = os.path.join(target, args["PARTITIONS_DIR"])
+    if os.path.exists(env.partitions_dir):
+        shutil.rmtree(env.partitions_dir)
+    os.makedirs(env.partitions_dir)
 
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
+    origin_dir = os.path.join(origin, "sets")
 
     def complete_partition_file(set_file, new_set_file):
-
         with open(set_file) as file:
             with open(new_set_file, "w+") as new_file:
                 content = [x.strip() for x in file.readlines()]
@@ -35,28 +39,23 @@ def norm_partitions(origin, target, args):
                 new_file.close()
 
     set_file = os.path.join(origin_dir, "train.txt")
-    new_set_file = os.path.join(target_dir, args["TRAIN_FILE"])
-    complete_partition_file(set_file, new_set_file)
+    complete_partition_file(set_file, env.train_file)
 
     set_file = os.path.join(origin_dir, "valid.txt")
-    new_set_file = os.path.join(target_dir, args["VALIDATION_FILE"])
-    complete_partition_file(set_file, new_set_file)
+    complete_partition_file(set_file, env.validation_file)
 
     set_file = os.path.join(origin_dir, "test.txt")
-    new_set_file = os.path.join(target_dir, args["TEST_FILE"])
-    complete_partition_file(set_file, new_set_file)
+    complete_partition_file(set_file, env.test_file)
 
 
-def norm_gt(origin, target, args):
+def norm_gt(origin, env):
     """Normalize and create 'gt' folder (Ground Truth)."""
 
+    if os.path.exists(env.gt_dir):
+        shutil.rmtree(env.gt_dir)
+    os.makedirs(env.gt_dir)
+
     origin_dir = os.path.join(origin, "ground_truth")
-    target_dir = os.path.join(target, args["GT_DIR"])
-
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
-
     set_file = os.path.join(origin_dir, "transcription.txt")
 
     with open(set_file) as file:
@@ -72,52 +71,47 @@ def norm_gt(origin, target, args):
             file_name = splited[0]
             file_text = splited[1].replace("-", "").replace("|", " ")
 
-            new_set_file = os.path.join(target_dir, f"{file_name}.txt")
+            new_set_file = os.path.join(env.gt_dir, f"{file_name}.txt")
 
             with open(new_set_file, "w+") as new_file:
                 new_file.write(file_text.strip())
                 new_file.close()
 
 
-def norm_lines(origin, target, args):
+def norm_data(origin, env):
     """Normalize and create 'lines' folder."""
 
-    origin_dir = os.path.join(origin, "data")
-    target_dir = os.path.join(target, args["DATA_DIR"])
+    if os.path.exists(env.data_dir):
+        shutil.rmtree(env.data_dir)
+    os.makedirs(env.data_dir)
 
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
+    origin_dir = os.path.join(origin, "data")
 
     glob_filter = os.path.join(origin_dir, "line_images_normalized", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
     for file in files:
-        shutil.copy(file, target_dir)
+        name = os.path.basename(file).split(".")[0]
+        new_file = os.path.join(env.data_dir, f"{name}.{env.extension}")
+        shutil.copy(file, new_file)
 
 
 def main():
     """Get the input parameter and call normalization methods."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, required=True)
+    parser.add_argument("--dataset_dir", type=str, required=True)
     args = parser.parse_args()
 
-    src = args.data_dir
-    src_backup = f"{src}_backup"
+    env = Environment(args.dataset_dir)
+    src_backup = f"{args.dataset_dir}_backup"
 
     if not os.path.exists(src_backup):
-        os.rename(src, src_backup)
+        os.rename(args.dataset_dir, src_backup)
 
-    dirname = os.path.dirname(__file__)
-    config = os.path.join(dirname, "..", "config.json")
-
-    with open(config, "r") as file:
-        env = json.load(file)
-
-    norm_partitions(src_backup, src, env)
-    norm_gt(src_backup, src, env)
-    norm_lines(src_backup, src, env)
+    norm_partitions(src_backup, env)
+    norm_gt(src_backup, env)
+    norm_data(src_backup, env)
 
 
 if __name__ == '__main__':

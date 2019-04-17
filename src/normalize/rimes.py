@@ -1,15 +1,25 @@
 """Normalize Rimes dataset."""
 
 import argparse
-import json
+import sys
 import os
 import shutil
 import xml.etree.ElementTree as ET
 import cv2
 
+try:
+    from settings.environment import Environment
+except ImportError:
+    sys.path[0] = os.path.join(sys.path[0], "..")
+    from settings.environment import Environment
 
-def norm_partitions(origin, target, args):
+
+def norm_partitions(origin, env):
     """Normalize and create 'partitions' folder."""
+
+    if os.path.exists(env.partitions_dir):
+        shutil.rmtree(env.partitions_dir)
+    os.makedirs(env.partitions_dir)
 
     def generate(set_file, new_set_file):
         root = ET.parse(set_file).getroot()
@@ -19,27 +29,23 @@ def norm_partitions(origin, target, args):
                 basename = os.path.basename(page_tag.attrib["FileName"])
                 basename = basename.split(".")[0]
 
-                for i in range(len(page_tag.iter("Line"))):
+                for i, _ in enumerate(page_tag.iter("Line")):
                     file.write(f"{basename}-{i}\n")
             file.close()
 
-    target_dir = os.path.join(target, args["PARTITIONS_DIR"])
-
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
-
     set_file = os.path.join(origin, "training_2011.xml")
-    new_set_file = os.path.join(target_dir, args["TRAIN_FILE"])
-    generate(set_file, new_set_file)
+    generate(set_file, env.train_file)
 
     set_file = os.path.join(origin, "eval_2011_annotated.xml")
-    new_set_file = os.path.join(target_dir, args["TEST_FILE"])
-    generate(set_file, new_set_file)
+    generate(set_file, env.test_file)
 
 
-def norm_gt(origin, target, args):
+def norm_gt(origin, env):
     """Normalize and create 'gt' folder (Ground Truth)."""
+
+    if os.path.exists(env.gt_dir):
+        shutil.rmtree(env.gt_dir)
+    os.makedirs(env.gt_dir)
 
     def generate(set_file):
         root = ET.parse(set_file).getroot()
@@ -49,35 +55,28 @@ def norm_gt(origin, target, args):
             basename = basename.split(".")[0]
 
             for i, line_tag in enumerate(page_tag.iter("Line")):
-                new_set_file = os.path.join(target_dir, f"{basename}-{i}.txt")
+                new_set_file = os.path.join(env.gt_dir, f"{basename}-{i}.txt")
 
                 with open(new_set_file, "w+") as file:
                     file.write(line_tag.attrib["Value"].strip())
                     file.close()
 
-    target_dir = os.path.join(target, args["GT_DIR"])
-
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
-
-    set_file = os.path.join(origin, "training_2011.xml")
-    generate(set_file)
-
-    set_file = os.path.join(origin, "eval_2011_annotated.xml")
-    generate(set_file)
+    generate(os.path.join(origin, "training_2011.xml"))
+    generate(os.path.join(origin, "eval_2011_annotated.xml"))
 
 
-def norm_lines(origin, target, args):
+def norm_data(origin, env):
     """Normalize and create 'lines' folder."""
 
-    def generate(origin_dir, set_file):
-        root = ET.parse(set_file).getroot()
+    if os.path.exists(env.data_dir):
+        shutil.rmtree(env.data_dir)
+    os.makedirs(env.data_dir)
 
+    def generate(origin_dir, root):
         for page_tag in root:
             basename = os.path.basename(page_tag.attrib["FileName"])
+            pagename = basename.split(".")[0]
             page = cv2.imread(os.path.join(origin_dir, basename))
-            basename = basename.split(".")[0]
 
             for i, line_tag in enumerate(page_tag.iter("Line")):
                 bottom = abs(int(line_tag.attrib["Bottom"]))
@@ -86,46 +85,38 @@ def norm_lines(origin, target, args):
                 top = abs(int(line_tag.attrib["Top"]))
 
                 line = page[top:bottom, left:right]
-                new_set_file = os.path.join(target_dir, f"{basename}-{i}.png")
-                cv2.imwrite(new_set_file, line)
+                line_dir = os.path.join(
+                    env.data_dir, f"{pagename}-{i}.{env.extension}")
 
-    target_dir = os.path.join(target, args["DATA_DIR"])
-
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
+                cv2.imwrite(line_dir, line)
 
     origin_dir = os.path.join(origin, "training_2011", "images")
     set_file = os.path.join(origin, "training_2011.xml")
-    generate(origin_dir, set_file)
+    root = ET.parse(set_file).getroot()
+    generate(origin_dir, root)
 
     origin_dir = os.path.join(origin, "eval_2011", "images")
     set_file = os.path.join(origin, "eval_2011_annotated.xml")
-    generate(origin_dir, set_file)
+    root = ET.parse(set_file).getroot()
+    generate(origin_dir, root)
 
 
 def main():
     """Get the input parameter and call normalization methods."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, required=True)
+    parser.add_argument("--dataset_dir", type=str, required=True)
     args = parser.parse_args()
 
-    src = args.data_dir
-    src_backup = f"{src}_backup"
+    env = Environment(args.dataset_dir)
+    src_backup = f"{args.dataset_dir}_backup"
 
     if not os.path.exists(src_backup):
-        os.rename(src, src_backup)
+        os.rename(args.dataset_dir, src_backup)
 
-    dirname = os.path.dirname(__file__)
-    config = os.path.join(dirname, "..", "config.json")
-
-    with open(config, "r") as file:
-        env = json.load(file)
-
-    norm_partitions(src_backup, src, env)
-    norm_gt(src_backup, src, env)
-    norm_lines(src_backup, src, env)
+    norm_partitions(src_backup, env)
+    norm_gt(src_backup, env)
+    norm_data(src_backup, env)
 
 
 if __name__ == '__main__':
