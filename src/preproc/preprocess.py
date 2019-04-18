@@ -36,8 +36,6 @@ def preprocess(filename, env):
     """Read, preprocess and save new image."""
 
     img_path = os.path.join(env.data_dir, f"{filename}.{env.extension}")
-    new_img_path = os.path.join(env.preproc_dir, filename)
-
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     if img is None:
@@ -66,7 +64,7 @@ def preprocess(filename, env):
 
     # cv2.imshow("img", img)
     # cv2.waitKey(0)
-    np.save(new_img_path, img)
+    np.save(os.path.join(env.preproc_dir, filename), img)
 
 
 def main():

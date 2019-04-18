@@ -38,6 +38,4 @@ def remove_cursive_style(img):
         results.append([np.sum(sum_alpha), size, transform])
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
-    deslant_img = cv2.warpAffine(img, result[2], result[1], borderValue=255)
-
-    return deslant_img
+    return cv2.warpAffine(img, result[2], result[1], borderValue=255)
