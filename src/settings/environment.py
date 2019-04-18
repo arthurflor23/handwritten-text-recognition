@@ -6,6 +6,7 @@ GT_DIR = "gt"
 DA_DIR = "lines"
 PR_DIR = "lines_preproc"
 PA_DIR = "partitions"
+LG_DIR = "log"
 
 TR_FILE = "train.txt"
 VA_FILE = "validation.txt"
@@ -18,8 +19,11 @@ IMG_SIZE = (800, 64)
 class Environment():
     """Environment class."""
 
-    def __init__(self, origin):
-        self.origin = origin
+    def __init__(self, origin, target=None):
+        self.dataset_dir = os.path.basename(origin)
+        self.output_dir = os.path.join(target, origin) if target else ""
+        self.output_log_dir = os.path.join(self.output_dir, LG_DIR)
+
         self.gt_dir = os.path.join(origin, GT_DIR)
         self.data_dir = os.path.join(origin, DA_DIR)
         self.preproc_dir = os.path.join(origin, PR_DIR)

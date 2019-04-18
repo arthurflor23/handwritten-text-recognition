@@ -2,38 +2,38 @@
 
 Project summary...
 
-## Structure Project
+## 1 Project structure
 
 Structure summary...
 
-## How to Run
+## 2 How to run
 
 Summary...
 
-### 1 Prepare Environment
+### 2.1 Prepare the environment
 
-Environment and requeriments install...
+Install dependencies ...
 
-### 2 Getting Datasets
+### 2.2 Obtain datasets
 
-Scrips `here`...
+Details `here`...
 
-### 3 Normalize Dataset
-
-Scrips `here`...
-
-### 4 Preprocess
+### 2.3 Normalize dataset
 
 Scrips `here`...
 
-### 5 Train Model
+### 2.4 Preprocess data
 
 Scrips `here`...
 
-### 6 Test Model
+### 2.5 Train Model
 
 Scrips `here`...
 
-## References
+### 2.6 Test Model
+
+Scrips `here`...
+
+## 3 References
 
 [1] References...

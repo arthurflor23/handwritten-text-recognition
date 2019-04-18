@@ -21,19 +21,31 @@ def norm_partitions(origin, env):
         shutil.rmtree(env.partitions_dir)
     os.makedirs(env.partitions_dir)
 
-    def generate(set_file, new_set_file):
+    def generate(set_file, train_file, validation_file=None):
         root = ET.parse(set_file).getroot()
+        lines = []
 
-        with open(new_set_file, "w+") as file:
+        with open(train_file, "w") as train_f:
             for page_tag in root:
                 basename = os.path.basename(page_tag.attrib["FileName"])
                 basename = basename.split(".")[0]
 
                 for i, _ in enumerate(page_tag.iter("Line")):
-                    file.write(f"{basename}-{i}\n")
+                    lines.append(f"{basename}-{i}\n")
+
+            if validation_file:
+                index = int(len(lines) * 0.9)
+                train = lines[:index]
+                validation = lines[index:]
+
+                with open(validation_file, "w") as validation_f:
+                    train_f.write(''.join(train))
+                    validation_f.write(''.join(validation))
+            else:
+                train_f.write(''.join(lines))
 
     set_file = os.path.join(origin, "training_2011.xml")
-    generate(set_file, env.train_file)
+    generate(set_file, env.train_file, env.validation_file)
 
     set_file = os.path.join(origin, "eval_2011_annotated.xml")
     generate(set_file, env.test_file)

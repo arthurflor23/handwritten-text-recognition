@@ -22,10 +22,8 @@ def imread(env):
     """Load image list names from partitions texts"""
 
     def imread_partition(txt):
-        if os.path.exists(txt):
-            with open(txt, "r") as file:
-                return [x.strip() for x in file.readlines()]
-        return []
+        with open(txt, "r") as file:
+            return [x.strip() for x in file.readlines()]
 
     data_list = []
     data_list += imread_partition(env.train_file)
@@ -41,6 +39,9 @@ def preprocess(filename, env):
     new_img_path = os.path.join(env.preproc_dir, filename)
 
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+    if img is None:
+        img = np.zeros(env.img_size[::-1], dtype=np.uint8)
 
     env_w, env_h = env.img_size
     img_h, img_w = img.shape
