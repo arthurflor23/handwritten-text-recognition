@@ -12,10 +12,10 @@ import deslant
 import binarization
 
 try:
-    from settings.environment import Environment
+    from settings import Environment
 except ImportError:
     sys.path[0] = os.path.join(sys.path[0], "..")
-    from settings.environment import Environment
+    from settings import Environment
 
 
 def imread(env):
@@ -67,12 +67,8 @@ def preprocess(filename, env):
     np.save(os.path.join(env.preproc_dir, filename), img)
 
 
-def main():
+def preproc(args):
     """Preprocess data folder of the dataset."""
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    args = parser.parse_args()
 
     env = Environment(args.dataset_dir)
     data_list = imread(env)
@@ -87,4 +83,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_dir", type=str, required=True)
+    args = parser.parse_args()
+    preproc(args)

@@ -1,4 +1,4 @@
-"""Normalize Saint Gall dataset."""
+"""Normalize IAM dataset."""
 
 from glob import glob
 import argparse
@@ -7,10 +7,10 @@ import os
 import shutil
 
 try:
-    from settings.environment import Environment
+    from settings import Environment
 except ImportError:
     sys.path[0] = os.path.join(sys.path[0], "..")
-    from settings.environment import Environment
+    from settings import Environment
 
 
 def norm_partitions(origin, env):
@@ -20,30 +20,24 @@ def norm_partitions(origin, env):
         shutil.rmtree(env.partitions_dir)
     os.makedirs(env.partitions_dir)
 
-    origin_dir = os.path.join(origin, "sets")
+    origin_dir = os.path.join(
+        origin, "largeWriterIndependentTextLineRecognitionTask")
 
-    def complete_partition_file(set_file, new_set_file):
-        with open(set_file) as file:
-            with open(new_set_file, "w+") as new_file:
-                content = [x.strip() for x in file.readlines()]
-                lines = os.path.join(origin, "data", "line_images_normalized")
+    set_file = os.path.join(origin_dir, "trainset.txt")
+    shutil.copy(set_file, env.train_file)
 
-                for item in content:
-                    glob_filter = os.path.join(lines, f"{item}*")
-                    paths = [x for x in glob(glob_filter, recursive=True)]
+    set_file1 = os.path.join(origin_dir, "validationset1.txt")
+    set_file2 = os.path.join(origin_dir, "validationset2.txt")
 
-                    for path in paths:
-                        basename = os.path.basename(path).split(".")[0]
-                        new_file.write(f"{basename.strip()}\n")
+    with open(env.validation_file, 'w') as outfile:
+        with open(set_file1) as infile:
+            outfile.write(infile.read())
 
-    set_file = os.path.join(origin_dir, "train.txt")
-    complete_partition_file(set_file, env.train_file)
+        with open(set_file2) as infile:
+            outfile.write(infile.read())
 
-    set_file = os.path.join(origin_dir, "valid.txt")
-    complete_partition_file(set_file, env.validation_file)
-
-    set_file = os.path.join(origin_dir, "test.txt")
-    complete_partition_file(set_file, env.test_file)
+    set_file = os.path.join(origin_dir, "testset.txt")
+    shutil.copy(set_file, env.test_file)
 
 
 def norm_gt(origin, env):
@@ -53,8 +47,8 @@ def norm_gt(origin, env):
         shutil.rmtree(env.gt_dir)
     os.makedirs(env.gt_dir)
 
-    origin_dir = os.path.join(origin, "ground_truth")
-    set_file = os.path.join(origin_dir, "transcription.txt")
+    origin_dir = os.path.join(origin, "ascii")
+    set_file = os.path.join(origin_dir, "lines.txt")
 
     with open(set_file) as file:
         content = [x.strip() for x in file.readlines()]
@@ -64,10 +58,10 @@ def norm_gt(origin, env):
                 continue
 
             splited = line.strip().split(' ')
-            assert len(splited) >= 3
+            assert len(splited) >= 9
 
             file_name = splited[0]
-            file_text = splited[1].replace("-", "").replace("|", " ")
+            file_text = splited[len(splited)-1].replace("|", " ")
 
             new_set_file = os.path.join(env.gt_dir, f"{file_name}.txt")
 
@@ -82,9 +76,9 @@ def norm_data(origin, env):
         shutil.rmtree(env.data_dir)
     os.makedirs(env.data_dir)
 
-    origin_dir = os.path.join(origin, "data")
+    origin_dir = os.path.join(origin, "lines")
 
-    glob_filter = os.path.join(origin_dir, "line_images_normalized", "*.*")
+    glob_filter = os.path.join(origin_dir, "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
     for file in files:
@@ -93,12 +87,8 @@ def norm_data(origin, env):
         shutil.copy(file, new_file)
 
 
-def main():
+def norm(args):
     """Get the input parameter and call normalization methods."""
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    args = parser.parse_args()
 
     env = Environment(args.dataset_dir)
     src_backup = f"{args.dataset_dir}_backup"
@@ -112,4 +102,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_dir", type=str, required=True)
+    args = parser.parse_args()
+    norm(args)

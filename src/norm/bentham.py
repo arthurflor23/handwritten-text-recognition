@@ -7,10 +7,10 @@ import os
 import shutil
 
 try:
-    from settings.environment import Environment
+    from settings import Environment
 except ImportError:
     sys.path[0] = os.path.join(sys.path[0], "..")
-    from settings.environment import Environment
+    from settings import Environment
 
 
 def norm_partitions(origin, env):
@@ -66,12 +66,8 @@ def norm_data(origin, env):
         shutil.copy(file, new_file)
 
 
-def main():
+def norm(args):
     """Get the input parameter and call normalization methods."""
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    args = parser.parse_args()
 
     env = Environment(args.dataset_dir)
     src_backup = f"{args.dataset_dir}_backup"
@@ -85,4 +81,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_dir", type=str, required=True)
+    args = parser.parse_args()
+    norm(args)
