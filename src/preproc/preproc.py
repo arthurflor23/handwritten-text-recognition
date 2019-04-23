@@ -39,9 +39,9 @@ def preprocess(filename, env):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     if img is None:
-        img = np.zeros(env.img_size[::-1], dtype=np.uint8)
+        img = np.zeros(env.img_size[1::-1], dtype=np.uint8)
 
-    env_w, env_h = env.img_size
+    env_w, env_h = env.img_size[:2]
     img_h, img_w = img.shape
     fac = max((img_w/env_w), (img_h/env_h))
 

@@ -21,17 +21,16 @@ OUTPUT_DIR="../output"
 ### ---------------------- ###
 ### preprocess the dataset ###
 ### ---------------------- ###
-# python preproc/task.py --dataset_dir $DATASET_DIR
+# python preproc/preproc.py --dataset_dir $DATASET_DIR
 
 
 ### ----------- ###
 ### train model ###
 ### ----------- ###
 python network/train.py --dataset_dir $DATASET_DIR \
-                        --output_dir $OUTPUT_DIR
-                        --train_steps 500 \
-                        --eval_steps 30 \
-                        --learning_rate 0.01
+                        --output_dir $OUTPUT_DIR \
+                        # --train_steps 500 \
+                        # --learning_rate 0.01
 
 
 ### ---------- ###

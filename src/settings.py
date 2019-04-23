@@ -13,7 +13,7 @@ VA_FILE = "validation.txt"
 TE_FILE = "test.txt"
 
 EXTENSION = "png"
-IMG_SIZE = (800, 64)
+IMG_SIZE = (800, 64, 1)
 
 
 class Environment():
