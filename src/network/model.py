@@ -5,32 +5,12 @@ import tensorflow as tf
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-# inputs = tf.keras.backend.placeholder(dtype=tf.float32, shape=(50, 800, 64))
-# inputs = tf.expand_dims(input=inputs, axis=3)
-# # print(inputs)
 
-# kernel = tf.Variable(tf.random.truncated_normal([5, 5, 1, 64], stddev=0.1))
-# conv = tf.nn.conv2d(input=inputs, filters=kernel, padding='SAME', strides=(1, 1, 1, 1))
-# print(conv)
+def setup_cnn(inputs):
+    """CNN model to HTR"""
 
-# relu = tf.nn.relu(conv)
-# print(relu)
-
-# pool = tf.nn.max_pool2d(input=relu, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1), padding='VALID')
-# print(pool)
-### Tensor("ExpandDims:0", shape=(50, 800, 64, 1), dtype=float32)
-### Tensor("Conv2D:0", shape=(50, 800, 64, 64), dtype=float32)
-### Tensor("Relu:0", shape=(50, 800, 64, 64), dtype=float32)
-### Tensor("MaxPool2d:0", shape=(50, 400, 32, 64), dtype=float32)
-
-
-def HTR(input_shape):
-    """HTR structure: CNN, RNN and CTC"""
-
-    ### Begin CNN ###
     # first layer: Conv (5x5) + Pool (2x2) - Output size: 400 x 32 x 64
-    cnnIn3d = tf.keras.Input(shape=input_shape)
-    conv1 = tf.keras.layers.Conv2D(filters=64, kernel_size=5, strides=(1, 1), padding="same", activation="relu", kernel_initializer="he_normal")(cnnIn3d)
+    conv1 = tf.keras.layers.Conv2D(filters=64, kernel_size=5, strides=(1, 1), padding="same", activation="relu", kernel_initializer="he_normal")(inputs)
     pool1 = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv1)
 
     # second layer: Conv (5x5) - Output size: 400 x 32 x 128
@@ -54,34 +34,62 @@ def HTR(input_shape):
 
     # seventh layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
     conv7 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, strides=(1, 1), padding="same", activation="relu", kernel_initializer="he_normal")(pool3)
-    cnnOut3d = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv7)
+    cnn_out = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv7)
+
+    return cnn_out
 
 
-    ### Begin RNN ###
-    rnnIn3d = tf.squeeze(tf.slice(cnnOut3d, [0, 0, 0, 0], [0, 100, 1, 512]))
+def setup_rnn(inputs):
+    """RNN model to HTR"""
+
+    rnnIn3d = tf.squeeze(tf.slice(inputs, [0, 0, 0, 0], [0, 100, 1, 512]))
 
     bilstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True))(rnnIn3d)
     concat = tf.expand_dims(bilstm, 2)
 
-    rnnOut3d = tf.squeeze(tf.keras.layers.Conv2D(filters=22, kernel_size=1, dilation_rate=1, padding="same")(concat))
-
-
-    ### Begin CTC ###
-    ctcIn3d = tf.transpose(rnnOut3d, [1, 0, 2])
-
-    # softmax = tf.keras.layers.Softmax(axis=2)(ctcIn3d)
-    # ctc_decoder = tf.keras.backend.ctc_decode(softmax, tf.size(softmax))
+    rnn_out = tf.squeeze(tf.keras.layers.Conv2D(filters=22, kernel_size=1, dilation_rate=1, padding="same")(concat))
     
+    return rnn_out
+
+
+def setup_ctc(inputs):
+    """CTC model to HTR"""
+
+    # ctc_out = tf.keras.layers.Softmax(22, activation='softmax', kernel_initializer='he_normal')(inputs)
+
+    ctcIn3d = tf.transpose(inputs, [1, 0, 2])
+
+    softmax = tf.keras.layers.Softmax(axis=2)(ctcIn3d)
+    # ctcOut = tf.keras.backend.ctc_decode(ctcIn3d, input_length=tf.size(softmax))
+    
+    # decoder = tf.keras.backend.ctc_decode()
+    # decoder = tf.nn.ctc_greedy_decoder(inputs=ctcIn3d, sequence_length=tf.keras.backend.placeholder(tf.int32, [None]))
+
     # print("\n\Decoder:\n", ctc_decoder, "\n\n")
+    return softmax
 
 
-    model = tf.keras.Model(name="HTR", inputs=cnnIn3d, outputs=ctcIn3d)
-    # model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-4), loss=ctc_loss, metrics=["accuracy"])
-
-    return model
+def ctc_decode(inputs):
+    return tf.keras.backend.ctc_decode(y_pred=inputs, input_length=tf.size(inputs))
 
 
 def ctc_loss(y_true, y_pred):
+    """Create the loss function with CTC"""
+
     # y_pred = y_pred[:, 2:, :]
     loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, tf.size(y_true), tf.size(y_pred))
     return tf.reduce_mean(loss)
+
+
+def HTR(input_shape):
+    """HTR setup structure: CNN, RNN and CTC"""
+
+    inputs = tf.keras.Input(shape=input_shape)
+    cnn_out = setup_cnn(inputs)
+    rnn_out = setup_rnn(cnn_out)
+    ctc_out = setup_ctc(rnn_out)
+
+    model = tf.keras.Model(name="HTR", inputs=inputs, outputs=ctc_out)
+    model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-4), loss=ctc_loss, metrics=["accuracy"])
+
+    return model
