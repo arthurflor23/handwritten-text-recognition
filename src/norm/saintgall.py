@@ -5,12 +5,12 @@ import shutil
 import os
 
 
-def partitions(origin, env):
+def partitions(origin, path):
     """Normalize and create 'partitions' folder."""
 
-    if os.path.exists(env.partitions_dir):
-        shutil.rmtree(env.partitions_dir)
-    os.makedirs(env.partitions_dir)
+    if os.path.exists(path.partitions):
+        shutil.rmtree(path.partitions)
+    os.makedirs(path.partitions)
 
     origin_dir = os.path.join(origin, "sets")
 
@@ -29,21 +29,21 @@ def partitions(origin, env):
                         new_file.write(f"{basename.strip()}\n")
 
     set_file = os.path.join(origin_dir, "train.txt")
-    complete_partition_file(set_file, env.train_file)
+    complete_partition_file(set_file, path.train_file)
 
     set_file = os.path.join(origin_dir, "valid.txt")
-    complete_partition_file(set_file, env.validation_file)
+    complete_partition_file(set_file, path.validation_file)
 
     set_file = os.path.join(origin_dir, "test.txt")
-    complete_partition_file(set_file, env.test_file)
+    complete_partition_file(set_file, path.test_file)
 
 
-def ground_truth(origin, env):
+def ground_truth(origin, path):
     """Normalize and create 'ground_truth' folder (Ground Truth)."""
 
-    if os.path.exists(env.gt_dir):
-        shutil.rmtree(env.gt_dir)
-    os.makedirs(env.gt_dir)
+    if os.path.exists(path.ground_truth):
+        shutil.rmtree(path.ground_truth)
+    os.makedirs(path.ground_truth)
 
     origin_dir = os.path.join(origin, "ground_truth")
     set_file = os.path.join(origin_dir, "transcription.txt")
@@ -61,18 +61,18 @@ def ground_truth(origin, env):
             file_name = splited[0]
             file_text = splited[1].replace("-", "").replace("|", " ")
 
-            new_set_file = os.path.join(env.gt_dir, f"{file_name}.txt")
+            new_set_file = os.path.join(path.ground_truth, f"{file_name}.txt")
 
             with open(new_set_file, "w+") as new_file:
                 new_file.write(file_text.strip())
 
 
-def data(origin, env):
+def data(origin, path):
     """Normalize and create 'lines' folder."""
 
-    if os.path.exists(env.data_dir):
-        shutil.rmtree(env.data_dir)
-    os.makedirs(env.data_dir)
+    if os.path.exists(path.data):
+        shutil.rmtree(path.data)
+    os.makedirs(path.data)
 
     origin_dir = os.path.join(origin, "data")
 
@@ -81,5 +81,5 @@ def data(origin, env):
 
     for file in files:
         name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(env.data_dir, f"{name}.{env.extension}")
+        new_file = os.path.join(path.data, f"{name}.png")
         shutil.copy(file, new_file)

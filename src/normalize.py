@@ -1,10 +1,10 @@
 """Dataset normalizer"""
 
-from settings import Environment
-
 import argparse
 import importlib
 import os
+
+from settings import environment as env
 
 
 def main():
@@ -17,15 +17,15 @@ def main():
     package = f"norm.{os.path.basename(args.dataset_dir)}"
     normalize = importlib.import_module(package)
 
-    env = Environment(args.dataset_dir)
+    path = env.Path(args.dataset_dir)
     src_backup = f"{args.dataset_dir}_backup"
 
     if not os.path.exists(src_backup):
         os.rename(args.dataset_dir, src_backup)
 
-    normalize.partitions(src_backup, env)
-    normalize.ground_truth(src_backup, env)
-    normalize.data(src_backup, env)
+    normalize.partitions(src_backup, path)
+    normalize.ground_truth(src_backup, path)
+    normalize.data(src_backup, path)
 
 
 if __name__ == '__main__':

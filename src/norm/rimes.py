@@ -6,12 +6,12 @@ import xml.etree.ElementTree as ET
 import cv2
 
 
-def partitions(origin, env):
+def partitions(origin, path):
     """Normalize and create 'partitions' folder."""
 
-    if os.path.exists(env.partitions_dir):
-        shutil.rmtree(env.partitions_dir)
-    os.makedirs(env.partitions_dir)
+    if os.path.exists(path.partitions):
+        shutil.rmtree(path.partitions)
+    os.makedirs(path.partitions)
 
     def generate(set_file, train_file, validation_file=None):
         root = ET.parse(set_file).getroot()
@@ -37,18 +37,18 @@ def partitions(origin, env):
                 train_f.write(''.join(lines))
 
     set_file = os.path.join(origin, "training_2011.xml")
-    generate(set_file, env.train_file, env.validation_file)
+    generate(set_file, path.train_file, path.validation_file)
 
     set_file = os.path.join(origin, "eval_2011_annotated.xml")
-    generate(set_file, env.test_file)
+    generate(set_file, path.test_file)
 
 
-def ground_truth(origin, env):
+def ground_truth(origin, path):
     """Normalize and create 'gt' folder (Ground Truth)."""
 
-    if os.path.exists(env.gt_dir):
-        shutil.rmtree(env.gt_dir)
-    os.makedirs(env.gt_dir)
+    if os.path.exists(path.ground_truth):
+        shutil.rmtree(path.ground_truth)
+    os.makedirs(path.ground_truth)
 
     def generate(set_file):
         root = ET.parse(set_file).getroot()
@@ -58,7 +58,7 @@ def ground_truth(origin, env):
             basename = basename.split(".")[0]
 
             for i, line_tag in enumerate(page_tag.iter("Line")):
-                new_set_file = os.path.join(env.gt_dir, f"{basename}-{i}.txt")
+                new_set_file = os.path.join(path.ground_truth, f"{basename}-{i}.txt")
 
                 with open(new_set_file, "w+") as file:
                     file.write(line_tag.attrib["Value"].strip())
@@ -67,12 +67,12 @@ def ground_truth(origin, env):
     generate(os.path.join(origin, "eval_2011_annotated.xml"))
 
 
-def data(origin, env):
+def data(origin, path):
     """Normalize and create 'lines' folder."""
 
-    if os.path.exists(env.data_dir):
-        shutil.rmtree(env.data_dir)
-    os.makedirs(env.data_dir)
+    if os.path.exists(path.data):
+        shutil.rmtree(path.data)
+    os.makedirs(path.data)
 
     def generate(origin_dir, root):
         for page_tag in root:
@@ -88,7 +88,7 @@ def data(origin, env):
 
                 line = page[top:bottom, left:right]
                 line_dir = os.path.join(
-                    env.data_dir, f"{pagename}-{i}.{env.extension}")
+                    path.data, f"{pagename}-{i}.png")
 
                 cv2.imwrite(line_dir, line)
 

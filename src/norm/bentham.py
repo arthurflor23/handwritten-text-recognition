@@ -5,31 +5,31 @@ import os
 import shutil
 
 
-def partitions(origin, env):
+def partitions(origin, path):
     """Normalize and create 'partitions' folder."""
 
-    if os.path.exists(env.partitions_dir):
-        shutil.rmtree(env.partitions_dir)
-    os.makedirs(env.partitions_dir)
+    if os.path.exists(path.partitions):
+        shutil.rmtree(path.partitions)
+    os.makedirs(path.partitions)
 
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
 
     set_file = os.path.join(origin_dir, "Partitions", "TrainLines.lst")
-    shutil.copy(set_file, env.train_file)
+    shutil.copy(set_file, path.train_file)
 
     set_file = os.path.join(origin_dir, "Partitions", "ValidationLines.lst")
-    shutil.copy(set_file, env.validation_file)
+    shutil.copy(set_file, path.validation_file)
 
     set_file = os.path.join(origin_dir, "Partitions", "TestLines.lst")
-    shutil.copy(set_file, env.test_file)
+    shutil.copy(set_file, path.test_file)
 
 
-def ground_truth(origin, env):
+def ground_truth(origin, path):
     """Normalize and create 'gt' folder (Ground Truth)."""
 
-    if os.path.exists(env.gt_dir):
-        shutil.rmtree(env.gt_dir)
-    os.makedirs(env.gt_dir)
+    if os.path.exists(path.ground_truth):
+        shutil.rmtree(path.ground_truth)
+    os.makedirs(path.ground_truth)
 
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
 
@@ -37,15 +37,15 @@ def ground_truth(origin, env):
     files = [x for x in glob(glob_filter, recursive=True)]
 
     for file in files:
-        shutil.copy(file, env.gt_dir)
+        shutil.copy(file, path.ground_truth)
 
 
-def data(origin, env):
+def data(origin, path):
     """Normalize and create 'lines' folder."""
 
-    if os.path.exists(env.data_dir):
-        shutil.rmtree(env.data_dir)
-    os.makedirs(env.data_dir)
+    if os.path.exists(path.data):
+        shutil.rmtree(path.data)
+    os.makedirs(path.data)
 
     origin_dir = os.path.join(origin, "BenthamDatasetR0-GT")
 
@@ -54,5 +54,5 @@ def data(origin, env):
 
     for file in files:
         name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(env.data_dir, f"{name}.{env.extension}")
+        new_file = os.path.join(path.data, f"{name}.png")
         shutil.copy(file, new_file)

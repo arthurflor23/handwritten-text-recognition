@@ -12,7 +12,7 @@ def remove_cursive_style(img):
         h_alpha = len(indices)
 
         if h_alpha > 0:
-            delta_y_alpha = indices[h_alpha-1] - indices[0] + 1
+            delta_y_alpha = indices[h_alpha - 1] - indices[0] + 1
 
             if h_alpha == delta_y_alpha:
                 return h_alpha * h_alpha
