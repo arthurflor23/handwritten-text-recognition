@@ -1,19 +1,11 @@
 """Normalize IAM dataset."""
 
 from glob import glob
-import argparse
-import sys
 import os
 import shutil
 
-try:
-    from settings import Environment
-except ImportError:
-    sys.path[0] = os.path.join(sys.path[0], "..")
-    from settings import Environment
 
-
-def norm_partitions(origin, env):
+def partitions(origin, env):
     """Normalize and create 'partitions' folder."""
 
     if os.path.exists(env.partitions_dir):
@@ -40,7 +32,7 @@ def norm_partitions(origin, env):
     shutil.copy(set_file, env.test_file)
 
 
-def norm_gt(origin, env):
+def ground_truth(origin, env):
     """Normalize and create 'gt' folder (Ground Truth)."""
 
     if os.path.exists(env.gt_dir):
@@ -69,7 +61,7 @@ def norm_gt(origin, env):
                 new_file.write(file_text.strip())
 
 
-def norm_data(origin, env):
+def data(origin, env):
     """Normalize and create 'lines' folder."""
 
     if os.path.exists(env.data_dir):
@@ -85,24 +77,3 @@ def norm_data(origin, env):
         name = os.path.basename(file).split(".")[0]
         new_file = os.path.join(env.data_dir, f"{name}.{env.extension}")
         shutil.copy(file, new_file)
-
-
-def norm(args):
-    """Get the input parameter and call normalization methods."""
-
-    env = Environment(args.dataset_dir)
-    src_backup = f"{args.dataset_dir}_backup"
-
-    if not os.path.exists(src_backup):
-        os.rename(args.dataset_dir, src_backup)
-
-    norm_partitions(src_backup, env)
-    norm_gt(src_backup, env)
-    norm_data(src_backup, env)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    args = parser.parse_args()
-    norm(args)

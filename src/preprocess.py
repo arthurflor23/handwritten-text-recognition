@@ -2,20 +2,14 @@
 
 from multiprocessing import Pool
 from functools import partial
-import argparse
-import sys
-import os
-import shutil
-import cv2
-import numpy as np
-import deslant
-import binarization
+from preproc import deslant, binarization
+from settings import Environment, INPUT_SIZE
 
-try:
-    from settings import Environment
-except ImportError:
-    sys.path[0] = os.path.join(sys.path[0], "..")
-    from settings import Environment
+import argparse
+import shutil
+import numpy as np
+import cv2
+import os
 
 
 def imread(env):
@@ -39,9 +33,9 @@ def preprocess(filename, env):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     if img is None:
-        img = np.zeros(env.img_size[1::-1], dtype=np.uint8)
+        img = np.zeros(INPUT_SIZE[1::-1], dtype=np.uint8)
 
-    env_w, env_h = env.img_size[:2]
+    env_w, env_h = INPUT_SIZE[:2]
     img_h, img_w = img.shape
     fac = max((img_w/env_w), (img_h/env_h))
 
@@ -67,8 +61,12 @@ def preprocess(filename, env):
     np.save(os.path.join(env.preproc_dir, filename), img)
 
 
-def preproc(args):
+def main():
     """Preprocess data folder of the dataset."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_dir", type=str, required=True)
+    args = parser.parse_args()
 
     env = Environment(args.dataset_dir)
     data_list = imread(env)
@@ -83,7 +81,4 @@ def preproc(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    args = parser.parse_args()
-    preproc(args)
+    main()

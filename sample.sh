@@ -8,31 +8,29 @@
 DATASET="saintgall"
 # DATASET="rimes"
 
-DATASET_DIR="../data/$DATASET"
-OUTPUT_DIR="../output"
+DATASET_DIR="./data/$DATASET"
+OUTPUT_DIR="./output"
 
 
 ### ----------------------------------------------- ###
 ### structure the raw dataset to the design pattern ###
 ### ----------------------------------------------- ###
-# python norm/$DATASET.py --dataset_dir $DATASET_DIR
+# python src/normalize.py --dataset_dir $DATASET_DIR
 
 
 ### ---------------------- ###
 ### preprocess the dataset ###
 ### ---------------------- ###
-# python preproc/preproc.py --dataset_dir $DATASET_DIR
+# python src/preprocess.py --dataset_dir $DATASET_DIR
 
 
 ### ----------- ###
 ### train model ###
 ### ----------- ###
-python network/train.py --dataset_dir $DATASET_DIR \
-                        --output_dir $OUTPUT_DIR
+python src/train.py --dataset_dir $DATASET_DIR --output_dir $OUTPUT_DIR
 
 
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python network/test.py --dataset_dir $DATASET_DIR \
-#                        --output_dir $OUTPUT_DIR
+# python src/test.py --dataset_dir $DATASET_DIR --output_dir $OUTPUT_DIR
