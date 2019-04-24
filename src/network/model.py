@@ -6,27 +6,33 @@ import tensorflow as tf
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 INPUT_SIZE = (800, 64, 1)
 BATCH_SIZE = 50
+MAX_TEXT_LEN = 100
 
 
 class HTR():
 
     def __init__(self):
-        labels = tf.keras.Input(name='the_label', shape=(None,), dtype='int32')
-        label_length = tf.keras.Input(name='label_length', shape=[1], dtype='int32')
+        input_data = tf.keras.Input(name='the_inputs', shape=INPUT_SIZE, dtype='float32')
+        labels = tf.keras.Input(name='the_labels', shape=[MAX_TEXT_LEN], dtype='float32')
 
-        input_data = tf.keras.Input(name='the_input', shape=INPUT_SIZE, dtype='float32')
-        input_length = tf.keras.Input(name='input_length', shape=[1], dtype='int32')
+        input_length = tf.keras.Input(name='input_length', shape=[1], dtype='int64')
+        label_length = tf.keras.Input(name='label_length', shape=[1], dtype='int64')
 
-        self.__setup_cnn(input_data)
-        self.__setup_rnn(self.cnn_out)
-        self.__setup_ctc([self.rnn_out, labels, input_length, label_length])
+        cnn_out = self.setup_cnn(input_data)
+        rnn_out = self.setup_rnn(cnn_out)
 
-        self.model = tf.keras.Model(name="HTR", inputs=[input_data, labels, input_length, label_length], outputs=self.ctc_out)
-        
+        args = [rnn_out, labels, input_length, label_length]
+        loss_out = tf.keras.layers.Lambda(name='ctc', function=self.ctc_lambda_func, output_shape=(1,))(args)
+
+        args[0] = input_data
+        self.model = tf.keras.Model(name="HTR", inputs=args, outputs=loss_out)
+
         # dummy loss-function for compiling model, actual CTC loss-function defined as a lambda layer
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss={'ctc': lambda y_true, y_pred: y_pred})
+        opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
+        self.model.compile(optimizer=opt, loss={'ctc': lambda y_true, y_pred: y_pred})
 
-    def __setup_cnn(self, inputs):
+
+    def setup_cnn(self, inputs):
         """CNN model"""
 
         # first layer: Conv (5x5) + Pool (2x2) - Output size: 400 x 32 x 64
@@ -55,9 +61,10 @@ class HTR():
 
         # seventh layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
         conv7 = tf.keras.layers.Conv2D(name="cnn_conv7", filters=512, kernel_size=3, strides=(1, 1), padding="same", activation="relu", kernel_initializer=init)(pool3)
-        self.cnn_out = tf.keras.layers.MaxPooling2D(name="cnn_max_pooling4", pool_size=(1, 2), strides=(1, 2), padding='valid')(conv7)
 
-    def __setup_rnn(self, inputs):
+        return tf.keras.layers.MaxPooling2D(name="cnn_max_pooling4", pool_size=(1, 2), strides=(1, 2), padding='valid')(conv7)
+
+    def setup_rnn(self, inputs):
         """RNN model"""
 
         # rnn layer: BiLSTM
@@ -71,14 +78,22 @@ class HTR():
         # atrous dilation
         init = tf.random_normal_initializer(stddev=0.1)
         atrous = tf.keras.layers.Conv2D(name="rnn_atrous_conv", filters=22, kernel_size=1, padding="same", dilation_rate=1, activation='softmax', kernel_initializer=init)(bilstm)
-        self.rnn_out = tf.squeeze(name="rnn_squeeze2", input=atrous, axis=[2])
+        squeezed = tf.squeeze(name="rnn_squeeze2", input=atrous, axis=[2])
 
-    def __setup_ctc(self, args):
-        """CTC model"""
+        return tf.keras.layers.Activation(name="softmax", activation="softmax")(squeezed)
 
-        # calculate loss function
-        def ctc_lambda_func(args):
-            y_pred, labels, input_length, label_length = args
-            return tf.keras.backend.ctc_batch_cost(labels, y_pred, input_length, label_length)
+    def ctc_lambda_func(self, args):
+        """CTC loss"""
 
-        self.ctc_out = tf.keras.layers.Lambda(name='ctc', function=ctc_lambda_func, output_shape=(1,))(args)
+        y_pred, labels, input_length, label_length = args
+        return tf.keras.backend.ctc_batch_cost(labels, y_pred, input_length, label_length)
+
+    # def __setup_ctc(self, args):
+    #     """CTC model"""
+
+    #     # calculate loss function
+    #     def ctc_lambda_func(args):
+    #         y_pred, labels, input_length, label_length = args
+    #         return tf.keras.backend.ctc_batch_cost(labels, y_pred, input_length, label_length)
+
+    #     self.ctc_out = tf.keras.layers.Lambda(name='ctc', function=ctc_lambda_func, output_shape=(1,))(args)

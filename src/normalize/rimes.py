@@ -6,12 +6,12 @@ import xml.etree.ElementTree as ET
 import cv2
 
 
-def partitions(origin, path):
+def partitions(args):
     """Normalize and create 'partitions' folder"""
 
-    if os.path.exists(path.partitions):
-        shutil.rmtree(path.partitions)
-    os.makedirs(path.partitions)
+    if os.path.exists(args.PARTITIONS):
+        shutil.rmtree(args.PARTITIONS)
+    os.makedirs(args.PARTITIONS)
 
     def generate(set_file, train_file, validation_file=None):
         root = ET.parse(set_file).getroot()
@@ -36,19 +36,19 @@ def partitions(origin, path):
             else:
                 train_f.write(''.join(lines))
 
-    set_file = os.path.join(origin, "training_2011.xml")
-    generate(set_file, path.train_file, path.validation_file)
+    set_file = os.path.join(args.SOURCE_BACKUP, "training_2011.xml")
+    generate(set_file, args.TRAIN_FILE, args.VALIDATION_FILE)
 
-    set_file = os.path.join(origin, "eval_2011_annotated.xml")
-    generate(set_file, path.test_file)
+    set_file = os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml")
+    generate(set_file, args.TEST_FILE)
 
 
-def ground_truth(origin, path):
+def ground_truth(args):
     """Normalize and create 'gt' folder (Ground Truth)"""
 
-    if os.path.exists(path.ground_truth):
-        shutil.rmtree(path.ground_truth)
-    os.makedirs(path.ground_truth)
+    if os.path.exists(args.GROUND_TRUTH):
+        shutil.rmtree(args.GROUND_TRUTH)
+    os.makedirs(args.GROUND_TRUTH)
 
     def generate(set_file):
         root = ET.parse(set_file).getroot()
@@ -58,21 +58,22 @@ def ground_truth(origin, path):
             basename = basename.split(".")[0]
 
             for i, line_tag in enumerate(page_tag.iter("Line")):
-                new_set_file = os.path.join(path.ground_truth, f"{basename}-{i}.txt")
+                new_set_file = os.path.join(
+                    args.GROUND_TRUTH, f"{basename}-{i}.txt")
 
                 with open(new_set_file, "w+") as file:
                     file.write(line_tag.attrib["Value"].strip())
 
-    generate(os.path.join(origin, "training_2011.xml"))
-    generate(os.path.join(origin, "eval_2011_annotated.xml"))
+    generate(os.path.join(args.SOURCE_BACKUP, "training_2011.xml"))
+    generate(os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml"))
 
 
-def data(origin, path):
+def data(args):
     """Normalize and create 'lines' folder"""
 
-    if os.path.exists(path.data):
-        shutil.rmtree(path.data)
-    os.makedirs(path.data)
+    if os.path.exists(args.DATA):
+        shutil.rmtree(args.DATA)
+    os.makedirs(args.DATA)
 
     def generate(origin_dir, root):
         for page_tag in root:
@@ -88,16 +89,16 @@ def data(origin, path):
 
                 line = page[top:bottom, left:right]
                 line_dir = os.path.join(
-                    path.data, f"{pagename}-{i}.png")
+                    args.DATA, f"{pagename}-{i}.png")
 
                 cv2.imwrite(line_dir, line)
 
-    origin_dir = os.path.join(origin, "training_2011", "images")
-    set_file = os.path.join(origin, "training_2011.xml")
+    origin_dir = os.path.join(args.SOURCE_BACKUP, "training_2011", "images")
+    set_file = os.path.join(args.SOURCE_BACKUP, "training_2011.xml")
     root = ET.parse(set_file).getroot()
     generate(origin_dir, root)
 
-    origin_dir = os.path.join(origin, "eval_2011", "images")
-    set_file = os.path.join(origin, "eval_2011_annotated.xml")
+    origin_dir = os.path.join(args.SOURCE_BACKUP, "eval_2011", "images")
+    set_file = os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml")
     root = ET.parse(set_file).getroot()
     generate(origin_dir, root)

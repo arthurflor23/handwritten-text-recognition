@@ -5,20 +5,21 @@ import shutil
 import os
 
 
-def partitions(origin, path):
+def partitions(args):
     """Normalize and create 'partitions' folder"""
 
-    if os.path.exists(path.partitions):
-        shutil.rmtree(path.partitions)
-    os.makedirs(path.partitions)
+    if os.path.exists(args.PARTITIONS):
+        shutil.rmtree(args.PARTITIONS)
+    os.makedirs(args.PARTITIONS)
 
-    origin_dir = os.path.join(origin, "sets")
+    origin_dir = os.path.join(args.SOURCE_BACKUP, "sets")
 
     def complete_partition_file(set_file, new_set_file):
+        lines = os.path.join(args.SOURCE, "data", "line_images_normalized")
+
         with open(set_file) as file:
             with open(new_set_file, "w+") as new_file:
                 content = [x.strip() for x in file.readlines()]
-                lines = os.path.join(origin, "data", "line_images_normalized")
 
                 for item in content:
                     glob_filter = os.path.join(lines, f"{item}*")
@@ -29,23 +30,23 @@ def partitions(origin, path):
                         new_file.write(f"{basename.strip()}\n")
 
     set_file = os.path.join(origin_dir, "train.txt")
-    complete_partition_file(set_file, path.train_file)
+    complete_partition_file(set_file, args.TRAIN_FILE)
 
     set_file = os.path.join(origin_dir, "valid.txt")
-    complete_partition_file(set_file, path.validation_file)
+    complete_partition_file(set_file, args.VALIDATION_FILE)
 
     set_file = os.path.join(origin_dir, "test.txt")
-    complete_partition_file(set_file, path.test_file)
+    complete_partition_file(set_file, args.TEST_FILE)
 
 
-def ground_truth(origin, path):
+def ground_truth(args):
     """Normalize and create 'ground_truth' folder (Ground Truth)"""
 
-    if os.path.exists(path.ground_truth):
-        shutil.rmtree(path.ground_truth)
-    os.makedirs(path.ground_truth)
+    if os.path.exists(args.GROUND_TRUTH):
+        shutil.rmtree(args.GROUND_TRUTH)
+    os.makedirs(args.GROUND_TRUTH)
 
-    origin_dir = os.path.join(origin, "ground_truth")
+    origin_dir = os.path.join(args.SOURCE_BACKUP, "ground_truth")
     set_file = os.path.join(origin_dir, "transcription.txt")
 
     with open(set_file) as file:
@@ -60,26 +61,24 @@ def ground_truth(origin, path):
 
             file_name = splited[0]
             file_text = splited[1].replace("-", "").replace("|", " ")
-
-            new_set_file = os.path.join(path.ground_truth, f"{file_name}.txt")
+            new_set_file = os.path.join(args.GROUND_TRUTH, f"{file_name}.txt")
 
             with open(new_set_file, "w+") as new_file:
                 new_file.write(file_text.strip())
 
 
-def data(origin, path):
+def data(args):
     """Normalize and create 'lines' folder"""
 
-    if os.path.exists(path.data):
-        shutil.rmtree(path.data)
-    os.makedirs(path.data)
+    if os.path.exists(args.DATA):
+        shutil.rmtree(args.DATA)
+    os.makedirs(args.DATA)
 
-    origin_dir = os.path.join(origin, "data")
-
+    origin_dir = os.path.join(args.SOURCE_BACKUP, "data")
     glob_filter = os.path.join(origin_dir, "line_images_normalized", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
 
     for file in files:
         name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(path.data, f"{name}.png")
+        new_file = os.path.join(args.DATA, f"{name}.png")
         shutil.copy(file, new_file)
