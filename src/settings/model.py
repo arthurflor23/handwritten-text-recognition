@@ -14,7 +14,7 @@ class HTR():
         labels = tf.keras.Input(name='the_label', shape=(None,), dtype='int32')
         label_length = tf.keras.Input(name='label_length', shape=[1], dtype='int32')
 
-        input_data = tf.keras.Input(name='the_input', batch_size=1, shape=INPUT_SIZE, dtype='float32')
+        input_data = tf.keras.Input(name='the_input', shape=INPUT_SIZE, dtype='float32')
         input_length = tf.keras.Input(name='input_length', shape=[1], dtype='int32')
 
         self.__setup_cnn(input_data)
@@ -22,6 +22,8 @@ class HTR():
         self.__setup_ctc([self.rnn_out, labels, input_length, label_length])
 
         self.model = tf.keras.Model(name="HTR", inputs=[input_data, labels, input_length, label_length], outputs=self.ctc_out)
+        
+        # dummy loss-function for compiling model, actual CTC loss-function defined as a lambda layer
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss={'ctc': lambda y_true, y_pred: y_pred})
 
     def __setup_cnn(self, inputs):

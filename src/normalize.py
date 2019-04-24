@@ -8,7 +8,7 @@ from settings import environment as env
 
 
 def main():
-    """Get the input parameter and call normalization method."""
+    """Get the input parameter and call normalization method"""
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_dir", type=str, required=True)

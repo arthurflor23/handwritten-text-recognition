@@ -1,4 +1,4 @@
-"""Preprocessor 'lines' folder of the dataset."""
+"""Preprocessor 'lines' folder of the dataset"""
 
 from multiprocessing import Pool
 from functools import partial
@@ -27,7 +27,7 @@ def imread(train_file, validation_file, test_file):
 
 
 def preprocess(filename, data_dir, preproc_dir):
-    """Read, preprocess and save new image."""
+    """Read, preprocess and save new image"""
 
     img_path = os.path.join(data_dir, f"{filename}.png")
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
@@ -61,7 +61,7 @@ def preprocess(filename, data_dir, preproc_dir):
 
 
 def main():
-    """Preprocess data folder of the dataset."""
+    """Preprocess data folder of the dataset"""
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_dir", type=str, required=True)

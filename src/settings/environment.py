@@ -1,4 +1,4 @@
-"""Load the environment variables."""
+"""Load the environment variables"""
 
 import os
 
@@ -6,7 +6,7 @@ CHAR_LIST = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
 
 
 class Path():
-    """Environment class."""
+    """Path class"""
 
     def __init__(self, origin, target="./output"):
         self.output = os.path.join(target, origin)
