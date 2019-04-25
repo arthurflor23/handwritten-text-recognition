@@ -17,8 +17,6 @@ except ImportError as exc:
 
 
 def main():
-    """Preprocess data folder of the dataset"""
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, default="../output")

@@ -13,8 +13,6 @@ except ImportError as exc:
 
 
 def main():
-    """Get the input parameter and call normalization methods"""
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
