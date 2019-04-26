@@ -3,27 +3,26 @@
 ### ---------------------------------------- ###
 ### define dataset name and data environment ###
 ### ---------------------------------------- ###
+OUTPUT="output"
+
 # DATASET="bentham"
 # DATASET="iam"
 # DATASET="saintgall"
 # DATASET="rimes"
 DATASET="temp"
 
-DATASET_PATH="../data/$DATASET"
-OUTPUT_PATH="../output"
-
 
 ### ----------------------------------------------- ###
 ### structure the raw dataset to the design pattern ###
 ### ----------------------------------------------- ###
-# python tasks/dt_transform.py --data_source $DATASET_PATH
+# python tasks/dt_transform.py --dataset $DATASET_PATH
 
 
 ### ----------- ###
 ### train model ###
 ### ----------- ###
-python tasks/train.py --data_source $DATASET_PATH \
-                      --data_output $OUTPUT_PATH \
+python tasks/train.py --dataset $DATASET \
+                      --output $OUTPUT \
                       --epochs 1 \
                       --batch 32
 
@@ -31,4 +30,4 @@ python tasks/train.py --data_source $DATASET_PATH \
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python tasks/test.py --data_source $DATASET_PATH --data_output $OUTPUT_DIR
+# python tasks/test.py --dataset $DATASET_PATH --output $OUTPUT_DIR

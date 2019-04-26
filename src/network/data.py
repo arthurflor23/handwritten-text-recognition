@@ -15,10 +15,15 @@ class Generator(tf.keras.callbacks.Callback):
     """Generator class to support data streaming"""
 
     def __init__(self, args, input_shape, batch_size=0):
+        self.output = args.OUTPUT
+        self.model_output_size = len(char_list) + 1
+
+        self.batch_size = 20 if batch_size == 0 else batch_size
+        self.downsample_factor = 4
+
         # (w, h)
         self.input_shape = input_shape
-        self.batch_size = 20 if batch_size == 0 else batch_size
-        self.output_size = len(char_list) + 1
+        self.max_line_length = 120
 
         self.data_path = args.DATA
         self.ground_truth_path = args.GROUND_TRUTH
@@ -30,9 +35,6 @@ class Generator(tf.keras.callbacks.Callback):
         self.cur_train_index = 0
         self.cur_val_index = 0
         self.cur_test_index = 0
-
-        self.max_line_length = 0
-        self.downsample_factor = 4
 
         self.build_line_lists()
 
@@ -51,11 +53,11 @@ class Generator(tf.keras.callbacks.Callback):
             for item in partition:
                 txt = open(join(self.ground_truth_path, f"{item}.txt")).read()
                 txt = txt.strip()
-                self.max_line_length = max(len(txt), self.max_line_length)
+                # self.max_line_length = max(len(txt), self.max_line_length)
                 lines.append(txt)
                 lengths.append(float(len(txt)))
 
-            self.max_line_length = int(np.ceil(self.max_line_length / 10)) * 10
+            # self.max_line_length = int(np.ceil(self.max_line_length / 10)) * 10
             labels = create_labels(lines)
             lengths = np.expand_dims(np.array(lengths), 1)
             return lines, labels, lengths

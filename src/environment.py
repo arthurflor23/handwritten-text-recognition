@@ -6,11 +6,10 @@ from os.path import join
 def setup_path(args):
     """Set paths to the args"""
 
-    setattr(args, "SOURCE", args.data_source)
-    setattr(args, "RAW_SOURCE", f"raw_{args.SOURCE}")
-    setattr(args, "OUTPUT", join(args.data_output, args.SOURCE))
+    setattr(args, "SOURCE", join("..", "data", args.dataset))
+    setattr(args, "RAW_SOURCE", join("..", "data", f"raw_{args.dataset}"))
+    setattr(args, "OUTPUT", join("..", args.output, args.dataset))
 
-    setattr(args, "LOG", join(args.OUTPUT, "log"))
     setattr(args, "DATA", join(args.SOURCE, "lines"))
     setattr(args, "GROUND_TRUTH", join(args.SOURCE, "ground_truth"))
     setattr(args, "PARTITIONS", join(args.SOURCE, "partitions"))

@@ -1,13 +1,14 @@
 """Create the HTR deep learning model using tf.keras"""
 
+import os
 import tensorflow as tf
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
 from tensorflow.keras.backend import ctc_batch_cost
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint, TensorBoard
 
-# import os
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 INPUT_SIZE = (800, 64, 1)
@@ -17,14 +18,19 @@ class HTR():
 
     def __init__(self, data_gen):
         self.max_line_length = data_gen.max_line_length
-        self.rnn_output = data_gen.output_size
+        self.rnn_output = data_gen.model_output_size
+
+        self.output = data_gen.output
+        self.checkpoint = os.path.join(self.output, "checkpoint_weights.hdf5")
+        self.logger = os.path.join(self.output, "logger.log")
 
         self.__build_model()
         data_gen.downsample_factor = self.downsample_factor
 
     def __build_model(self):
-        input_data = Input(name="the_inputs", shape=INPUT_SIZE, dtype="float32")
+        """Init setup model and load variables"""
 
+        input_data = Input(name="the_inputs", shape=INPUT_SIZE, dtype="float32")
         cnn_out = self.__setup_cnn(input_data)
         rnn_out = self.__setup_rnn(cnn_out)
 
@@ -37,9 +43,13 @@ class HTR():
 
         args[0] = input_data
         self.model = Model(name="HTR", inputs=args, outputs=loss_out)
+        # self.model.summary()
 
         opt = RMSprop(learning_rate=1e-4)
         self.model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=opt)
+
+        if os.path.isfile(self.checkpoint):
+            self.model.load_weights(filepath=self.checkpoint, by_name=True)
 
     def __setup_cnn(self, input_data):
         """CNN model"""
@@ -75,6 +85,41 @@ class HTR():
         bilstm = Activation(name="softmax", activation="softmax")(bilstm)
 
         return bilstm
+
+    def get_callbacks(self):
+        os.makedirs(self.output, exist_ok=True)
+
+        logger = CSVLogger(
+            filename=self.logger,
+            append=True
+        )
+
+        tensorboard = TensorBoard(
+            log_dir=self.output,
+            histogram_freq=1,
+            write_graph=True,
+            write_images=True,
+            update_freq='epoch'
+        )
+
+        earlystopping = EarlyStopping(
+            monitor='val_loss',
+            min_delta=1e-5,
+            patience=2,
+            restore_best_weights=True,
+            verbose=1
+        )
+
+        checkpoint = ModelCheckpoint(
+            filepath=self.checkpoint,
+            period=1,
+            monitor='val_loss',
+            save_best_only=True,
+            save_weights_only=False,
+            verbose=1
+        )
+
+        return [logger, tensorboard, earlystopping, checkpoint]
 
 
 def ctc_lambda_func(args):

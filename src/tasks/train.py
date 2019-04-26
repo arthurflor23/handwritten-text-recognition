@@ -3,7 +3,6 @@
 import sys
 import os
 import argparse
-import datetime as time
 
 try:
     sys.path[0] = os.path.join(sys.path[0], "..")
@@ -15,25 +14,23 @@ except ImportError as exc:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_source", type=str, required=True)
-    parser.add_argument("--data_output", type=str, required=True)
+    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch", type=int, default=20)
     args = parser.parse_args()
 
     args = setup_path(args)
-    # run_name = time.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     data_gen = data.Generator(args, model.INPUT_SIZE, args.batch)
     htr = model.HTR(data_gen)
-    htr.model.summary()
 
     htr.model.fit_generator(
         generator=data_gen.next_train(),
         steps_per_epoch=data_gen.train_steps,
         epochs=args.epochs,
         verbose=1,
-        callbacks=None,
+        callbacks=htr.get_callbacks(),
         validation_data=data_gen.next_val(),
         validation_steps=data_gen.val_steps,
         use_multiprocessing=True
