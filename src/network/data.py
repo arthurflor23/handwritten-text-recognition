@@ -14,10 +14,9 @@ class Generator(tf.keras.callbacks.Callback):
     """Generator class to support data streaming"""
 
     def __init__(self, args, input_shape, batch_size):
-        self.batch_size = batch_size
+        # (w,h)
         self.input_shape = input_shape
-
-        # verify this
+        self.batch_size = batch_size
         self.output_size = len(char_list) + 1
 
         self.data_path = args.DATA
@@ -28,9 +27,7 @@ class Generator(tf.keras.callbacks.Callback):
         self.test_list = np.array(open(args.TEST_FILE).read().splitlines())
 
         self.max_line_length = 0
-
-    def on_train_begin(self, logs={}):
-        """Callback method under condition `on_train_begin`"""
+        self.downsample_factor = 4
         self.build_line_lists()
 
     def build_line_lists(self):
@@ -44,6 +41,7 @@ class Generator(tf.keras.callbacks.Callback):
                 lines.append(txt)
                 lengths.append(float(len(txt)))
 
+            self.max_line_length = int(np.ceil(self.max_line_length / 10)) * 10
             labels = create_labels(lines)
             lengths = np.expand_dims(np.array(lengths), 1)
             return lines, labels, lengths
@@ -54,14 +52,18 @@ class Generator(tf.keras.callbacks.Callback):
                 labels[i, 0:len(line)] = [char_list.find(c) for c in line]
             return labels
 
+        self.cur_train_index, self.cur_val_index, self.cur_test_index = 0, 0, 0
+
         self.train_lines, self.train_labels, self.train_label_length = create(self.train_list)
         self.val_lines, self.val_labels, self.val_label_length = create(self.val_list)
         self.test_lines, self.test_labels, self.test_label_length = create(self.test_list)
 
-        self.input_length = np.ones([self.batch_size, 1]) * ((self.input_shape[1] // 2) - 2)
+        self.input_length = np.ones([self.batch_size, 1])
+        self.input_length *= ((self.input_shape[0] // self.downsample_factor) - 2)
 
-        self.max_line_length = int(np.ceil(self.max_line_length / 10)) * 10
-        self.cur_train_index, self.cur_val_index, self.cur_test_index = 0, 0, 0
+        self.train_steps = len(self.train_lines) // self.batch_size
+        self.val_steps = len(self.val_lines) // self.batch_size
+        self.test_steps = len(self.test_lines) // self.batch_size
 
     def next_train(self):
         """Get the next batch from train partition (yield)"""
@@ -141,7 +143,7 @@ class Generator(tf.keras.callbacks.Callback):
         """Create `input and output` format to the model"""
 
         inputs = {
-            'the_input': args[0],
+            'the_inputs': args[0],
             'the_labels': args[1],
             'input_length': args[2],
             'label_length': args[3],

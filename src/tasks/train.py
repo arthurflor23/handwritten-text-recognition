@@ -22,7 +22,7 @@ def main():
     args = setup_path(args)
     run_name = time.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    batch_size = 50
+    batch_size = 32
     data_gen = data.Generator(
         args=args,
         input_shape=model.INPUT_SIZE,
@@ -31,8 +31,17 @@ def main():
 
     # callbacks = callbacks(data)
 
-    # model = model(data, callbacks)
-    # model.summary()
+    htr = model.HTR(data_gen)
+    htr.model.summary()
+
+    htr.model.fit_generator(
+        generator=data_gen.next_train(),
+        steps_per_epoch=data_gen.train_steps,
+        epochs=1,
+        verbose=1,
+        use_multiprocessing=True,
+        shuffle=True,
+    )
 
     # model.fit_generator(
     #     generator=data_generator(path.train_file, path.preproc, path.ground_truth),
