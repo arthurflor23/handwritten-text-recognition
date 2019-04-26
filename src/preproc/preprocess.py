@@ -17,12 +17,14 @@ def preprocess(img, input_shape):
     img = deslant.remove_cursive_style(img)
     img = cv2.resize(img, new_size)
 
-    target = np.ones([model_h, model_w]) * 255
-    target[0:img.shape[0], 0:img.shape[1]] = img
+    target = np.ones([model_h, model_w], dtype=np.float)
+    target[0:img.shape[0], 0:img.shape[1]] = (img / 255)
     img = cv2.transpose(target)
+
+    # cv2.imshow("img", img)
+    # cv2.waitKey(0)
 
     mean, stddev = cv2.meanStdDev(img)
     img = (img - mean[0][0])
     img = (img / stddev[0][0]) if stddev[0][0] > 0 else img
-
     return img

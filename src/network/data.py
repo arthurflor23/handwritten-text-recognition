@@ -146,8 +146,6 @@ class Generator(tf.keras.callbacks.Callback):
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             img = pp.preprocess(img, self.input_shape[1::-1])
             inputs[i] = np.reshape(img, img.shape + (1,))
-            # cv2.imshow("img", img)
-            # cv2.waitKey(0)
         return inputs
 
     def create_input_output(self, args):
