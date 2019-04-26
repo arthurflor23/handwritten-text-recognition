@@ -13,7 +13,6 @@ def setup_path(args):
     setattr(args, "LOG", join(args.OUTPUT, "log"))
     setattr(args, "DATA", join(args.SOURCE, "lines"))
     setattr(args, "GROUND_TRUTH", join(args.SOURCE, "ground_truth"))
-    setattr(args, "PREPROC", join(args.SOURCE, "lines_preproc"))
     setattr(args, "PARTITIONS", join(args.SOURCE, "partitions"))
 
     setattr(args, "TRAIN_FILE", join(args.PARTITIONS, "train.txt"))

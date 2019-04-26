@@ -2,6 +2,7 @@
 
 import numpy as np
 import cv2
+from . import binarization
 
 
 def remove_cursive_style(img):
@@ -18,10 +19,10 @@ def remove_cursive_style(img):
                 return h_alpha * h_alpha
         return 0
 
-    _, binary_img = cv2.threshold(
-        img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    ret, otsu = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    bi_img = binarization.sauvola(img, [25, 25], 127, 0.02) if ret > 127 else otsu
 
-    rows, cols = binary_img.shape
+    rows, cols = bi_img.shape
     alpha_vals = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
     results = []
 
@@ -30,8 +31,7 @@ def remove_cursive_style(img):
         size = (cols + int(np.ceil(abs(alpha * rows))), rows)
         transform = np.array([[1, alpha, shift_x], [0, 1, 0]], dtype=np.float)
 
-        shear_img = cv2.warpAffine(
-            binary_img, transform, size, cv2.INTER_NEAREST)
+        shear_img = cv2.warpAffine(bi_img, transform, size, cv2.INTER_NEAREST)
 
         sum_alpha = 0
         sum_alpha += np.apply_along_axis(calc_y_alpha, 0, shear_img)

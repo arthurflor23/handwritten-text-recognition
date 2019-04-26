@@ -3,6 +3,7 @@
 import sys
 import os
 import argparse
+import datetime as time
 
 try:
     sys.path[0] = os.path.join(sys.path[0], "..")
@@ -19,26 +20,28 @@ def main():
     args = parser.parse_args()
 
     args = setup_path(args)
+    run_name = time.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # train_data, target_data, validation_data = imread_train(env)
-    # htr = model.HTR()
-    # htr.model.summary()
+    batch_size = 50
+    data_gen = data.Generator(
+        args=args,
+        input_shape=model.INPUT_SIZE,
+        batch_size=batch_size,
+    )
 
-    # htr.model.fit_generator(
+    # callbacks = callbacks(data)
+
+    # model = model(data, callbacks)
+    # model.summary()
+
+    # model.fit_generator(
     #     generator=data_generator(path.train_file, path.preproc, path.ground_truth),
     #     steps_per_epoch=1,
     #     epochs=1,
     #     verbose=1,
-    #     use_multiprocessing=True)
-
-    # htr.model.fit_generator(
-    #     generator=img_gen.next_train(),
-    #     steps_per_epoch=(words_per_epoch - val_words) // minibatch_size,
-    #     epochs=stop_epoch,
-    #     validation_data=img_gen.next_val(),
-    #     validation_steps=val_words // minibatch_size,
-    #     callbacks=[viz_cb, img_gen],
-    #     initial_epoch=start_epoch)
+    #     use_multiprocessing=True,
+    #     shuffle=True,
+    # )
 
 
 if __name__ == '__main__':

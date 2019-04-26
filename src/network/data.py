@@ -1,63 +1,152 @@
-# def to_sparse(texts):
-#     """Put ground truth texts into sparse tensor for ctc_loss"""
+"""Uses generator functions to supply train/test with data.
+Image renderings and text are created on the fly each time"""
 
-#     shape = [len(texts), 0]
-#     indices, values = [], []
+from os.path import join
+import tensorflow as tf
+import numpy as np
+import cv2
+import preproc.preprocess as pp
 
-#     for (batch_element, text) in enumerate(texts):
-#         label_str = [env.CHAR_LIST.index(c) for c in text]
-
-#         if len(label_str) > shape[1]:
-#             shape[1] = len(label_str)
-
-#         for (i, label) in enumerate(label_str):
-#             indices.append([batch_element, i])
-#             values.append(label)
-
-#     return np.array((indices, values, shape))
+char_list = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 
-# def to_text(ctc_output):
-#     """Extract texts from output of CTC decoder"""
+class Generator(tf.keras.callbacks.Callback):
+    """Generator class to support data streaming"""
 
-#     encoded_label_strs = [[] for i in range(model.BATCH_SIZE)]
-#     decoded = ctc_output[0][0]
+    def __init__(self, args, input_shape, batch_size):
+        self.batch_size = batch_size
+        self.input_shape = input_shape
 
-#     for (idx, idx2d) in enumerate(decoded.indices):
-#         label = decoded.values[idx]
-#         batch_element = idx2d[0]
-#         encoded_label_strs[batch_element].append(label)
+        # verify this
+        self.output_size = len(char_list) + 1
 
-#     return [str().join([env.CHAR_LIST[c] for c in label_str]) for label_str in encoded_label_strs]
+        self.data_path = args.DATA
+        self.ground_truth_path = args.GROUND_TRUTH
 
+        self.train_list = np.array(open(args.TRAIN_FILE).read().splitlines())
+        self.val_list = np.array(open(args.VALIDATION_FILE).read().splitlines())
+        self.test_list = np.array(open(args.TEST_FILE).read().splitlines())
 
-# def data_generator(partition, preproc, ground_truth):
+        self.max_line_length = 0
 
-#     with open(partition, "r") as file:
-#         data_list = [x.strip() for x in file.readlines()]
+    def on_train_begin(self, logs={}):
+        """Callback method under condition `on_train_begin`"""
+        self.build_line_lists()
 
-#     for item in data_list:
-#         data = np.load(os.path.join(preproc, f"{item}.npy"))
-#         data = np.reshape(data, data.shape + (1,))
-#         data = np.reshape(data, (1,) + data.shape)
+    def build_line_lists(self):
+        """Read and build the lists from txt files of the dataset"""
 
-#         with open(os.path.join(ground_truth, f"{item}.txt"), "r") as file:
-#             lines = [x.strip() for x in file.readlines()]
-#             target_data = np.array([' '.join(lines)])
+        def create(partition, lines=[], labels=[], lengths=[]):
+            for item in partition:
+                txt = open(join(self.ground_truth_path, f"{item}.txt")).read()
+                txt = txt.strip()
+                self.max_line_length = max(len(txt), self.max_line_length)
+                lines.append(txt)
+                lengths.append(float(len(txt)))
 
-#             # target_data = np.reshape(target_data, target_data.shape + (1,))
+            labels = create_labels(lines)
+            lengths = np.expand_dims(np.array(lengths), 1)
+            return lines, labels, lengths
 
-#             # print("\n\n", target_data, "\n\n")
-#             # target_data = to_sparse(target_data)
-#             # print(temp, "\n\n")
+        def create_labels(lines):
+            labels = np.ones([len(lines), self.max_line_length]) * -1
+            for i, line in enumerate(lines):
+                labels[i, 0:len(line)] = [char_list.find(c) for c in line]
+            return labels
 
-#             target_data = np.reshape(target_data, (1,) + target_data.shape)
-#             print(target_data.shape)
+        self.train_lines, self.train_labels, self.train_label_length = create(self.train_list)
+        self.val_lines, self.val_labels, self.val_label_length = create(self.val_list)
+        self.test_lines, self.test_labels, self.test_label_length = create(self.test_list)
 
-#             # target_data = np.reshape(target_data, target_data.shape + (1,))
+        self.input_length = np.ones([self.batch_size, 1]) * ((self.input_shape[1] // 2) - 2)
 
-#         yield ({"the_inputs": data,
-#                 "the_labels": target_data,
-#                 "input_length": np.array([len(data[0][0]) * len(data[0][1])]),
-#                 "label_length": np.array([[1]])
-#                 }, {'ctc': target_data})
+        self.max_line_length = int(np.ceil(self.max_line_length / 10)) * 10
+        self.cur_train_index, self.cur_val_index, self.cur_test_index = 0, 0, 0
+
+    def next_train(self):
+        """Get the next batch from train partition (yield)"""
+
+        def get_batch(index, size):
+            args = [self.get_img(self.train_list[index:index + size]),
+                    self.train_labels[index:index + size],
+                    self.input_length,
+                    self.train_label_length[index:index + size],
+                    self.train_lines[index:index + size]]
+            return self.create_input_output(args)
+
+        while True:
+            ret = get_batch(self.cur_train_index, self.batch_size)
+            self.cur_train_index += self.batch_size
+
+            if self.cur_train_index >= len(self.train_lines):
+                np.random.shuffle(self.train_list)
+                self.build_line_lists()
+            yield ret
+
+    def next_val(self):
+        """Get the next batch from validation partition (yield)"""
+
+        def get_batch(index, size):
+            args = [self.get_img(self.val_list[index:index + size]),
+                    self.val_labels[index:index + size],
+                    self.input_length,
+                    self.val_label_length[index:index + size],
+                    self.val_lines[index:index + size]]
+            return self.create_input_output(args)
+
+        while True:
+            ret = get_batch(self.cur_val_index, self.batch_size)
+            self.cur_val_index += self.batch_size
+
+            if self.cur_val_index >= len(self.val_lines):
+                np.random.shuffle(self.val_list)
+                self.build_line_lists()
+            yield ret
+
+    def next_test(self):
+        """Get the next batch from test partition (yield)"""
+
+        def get_batch(index, size):
+            args = [self.get_img(self.test_list[index:index + size]),
+                    self.test_labels[index:index + size],
+                    self.input_length,
+                    self.test_label_length[index:index + size],
+                    self.test_lines[index:index + size]]
+            return self.create_input_output(args)
+
+        while True:
+            ret = get_batch(self.cur_test_index, self.batch_size)
+            self.cur_test_index += self.batch_size
+
+            if self.cur_test_index >= len(self.test_lines):
+                np.random.shuffle(self.test_list)
+                self.build_line_lists()
+            yield ret
+
+    def get_img(self, partition):
+        """Load image and apply preprocess"""
+
+        inputs = np.zeros((self.batch_size,) + self.input_shape)
+
+        for i, filename in enumerate(partition):
+            img_path = join(self.data_path, f"{filename}.png")
+            img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            img = pp.preprocess(img, self.input_shape[1::-1])
+            inputs[i] = np.reshape(img, img.shape + (1,))
+            # cv2.imshow("img", img)
+            # cv2.waitKey(0)
+        return inputs
+
+    def create_input_output(self, args):
+        """Create `input and output` format to the model"""
+
+        inputs = {
+            'the_input': args[0],
+            'the_labels': args[1],
+            'input_length': args[2],
+            'label_length': args[3],
+            'source_str': args[4]  # used for visualization only
+        }
+        # dummy data for dummy loss function
+        outputs = {'ctc': np.zeros([self.batch_size])}
+        return (inputs, outputs)

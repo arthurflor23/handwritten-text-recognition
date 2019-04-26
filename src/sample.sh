@@ -18,12 +18,6 @@ OUTPUT_DIR="../output"
 # python tasks/normalize.py --dataset_dir $DATASET_DIR
 
 
-### ---------------------- ###
-### preprocess the dataset ###
-### ---------------------- ###
-# python tasks/preproc.py --dataset_dir $DATASET_DIR
-
-
 ### ----------- ###
 ### train model ###
 ### ----------- ###
