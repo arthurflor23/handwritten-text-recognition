@@ -20,15 +20,15 @@ def main():
 
     args = setup_path(args)
 
-    package = f"normalize.{os.path.basename(args.SOURCE)}"
-    normalize = importlib.import_module(package)
+    package = f"dt_transform.{os.path.basename(args.SOURCE)}"
+    transform = importlib.import_module(package)
 
     if not os.path.exists(args.SOURCE_BACKUP):
         os.rename(args.SOURCE, args.SOURCE_BACKUP)
 
-    normalize.partitions(args)
-    normalize.ground_truth(args)
-    normalize.data(args)
+    transform.partitions(args)
+    transform.ground_truth(args)
+    transform.data(args)
 
 
 if __name__ == '__main__':

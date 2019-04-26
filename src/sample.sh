@@ -16,7 +16,7 @@ OUTPUT_PATH="../output"
 ### ----------------------------------------------- ###
 ### structure the raw dataset to the design pattern ###
 ### ----------------------------------------------- ###
-# python tasks/normalize.py --data_source $DATASET_PATH
+# python tasks/dt_transform.py --data_source $DATASET_PATH
 
 
 ### ----------- ###

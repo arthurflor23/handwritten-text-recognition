@@ -1,4 +1,4 @@
-"""Normalize Rimes dataset"""
+"""Transform Rimes dataset"""
 
 import os
 import shutil
@@ -7,7 +7,7 @@ import cv2
 
 
 def partitions(args):
-    """Normalize and create 'partitions' folder"""
+    """Transform and create 'partitions' folder"""
 
     if os.path.exists(args.PARTITIONS):
         shutil.rmtree(args.PARTITIONS)
@@ -44,7 +44,7 @@ def partitions(args):
 
 
 def ground_truth(args):
-    """Normalize and create 'gt' folder (Ground Truth)"""
+    """Transform and create 'gt' folder (Ground Truth)"""
 
     if os.path.exists(args.GROUND_TRUTH):
         shutil.rmtree(args.GROUND_TRUTH)
@@ -69,7 +69,7 @@ def ground_truth(args):
 
 
 def data(args):
-    """Normalize and create 'lines' folder"""
+    """Transform and create 'lines' folder"""
 
     if os.path.exists(args.DATA):
         shutil.rmtree(args.DATA)
