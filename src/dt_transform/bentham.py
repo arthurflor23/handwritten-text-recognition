@@ -12,7 +12,7 @@ def partitions(args):
         shutil.rmtree(args.PARTITIONS)
     os.makedirs(args.PARTITIONS)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "BenthamDatasetR0-GT")
+    origin_dir = os.path.join(args.RAW_SOURCE, "BenthamDatasetR0-GT")
 
     set_file = os.path.join(origin_dir, "Partitions", "TrainLines.lst")
     shutil.copy(set_file, args.TRAIN_FILE)
@@ -31,7 +31,7 @@ def ground_truth(args):
         shutil.rmtree(args.GROUND_TRUTH)
     os.makedirs(args.GROUND_TRUTH)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "BenthamDatasetR0-GT")
+    origin_dir = os.path.join(args.RAW_SOURCE, "BenthamDatasetR0-GT")
 
     glob_filter = os.path.join(origin_dir, "Transcriptions", "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
@@ -47,7 +47,7 @@ def data(args):
         shutil.rmtree(args.DATA)
     os.makedirs(args.DATA)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "BenthamDatasetR0-GT")
+    origin_dir = os.path.join(args.RAW_SOURCE, "BenthamDatasetR0-GT")
 
     glob_filter = os.path.join(origin_dir, "Images", "Lines", "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]

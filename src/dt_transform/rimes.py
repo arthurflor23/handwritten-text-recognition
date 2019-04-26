@@ -36,10 +36,10 @@ def partitions(args):
             else:
                 train_f.write(''.join(lines))
 
-    set_file = os.path.join(args.SOURCE_BACKUP, "training_2011.xml")
+    set_file = os.path.join(args.RAW_SOURCE, "training_2011.xml")
     generate(set_file, args.TRAIN_FILE, args.VALIDATION_FILE)
 
-    set_file = os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml")
+    set_file = os.path.join(args.RAW_SOURCE, "eval_2011_annotated.xml")
     generate(set_file, args.TEST_FILE)
 
 
@@ -64,8 +64,8 @@ def ground_truth(args):
                 with open(new_set_file, "w+") as file:
                     file.write(line_tag.attrib["Value"].strip())
 
-    generate(os.path.join(args.SOURCE_BACKUP, "training_2011.xml"))
-    generate(os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml"))
+    generate(os.path.join(args.RAW_SOURCE, "training_2011.xml"))
+    generate(os.path.join(args.RAW_SOURCE, "eval_2011_annotated.xml"))
 
 
 def data(args):
@@ -93,12 +93,12 @@ def data(args):
 
                 cv2.imwrite(line_dir, line)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "training_2011", "images")
-    set_file = os.path.join(args.SOURCE_BACKUP, "training_2011.xml")
+    origin_dir = os.path.join(args.RAW_SOURCE, "training_2011", "images")
+    set_file = os.path.join(args.RAW_SOURCE, "training_2011.xml")
     root = ET.parse(set_file).getroot()
     generate(origin_dir, root)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "eval_2011", "images")
-    set_file = os.path.join(args.SOURCE_BACKUP, "eval_2011_annotated.xml")
+    origin_dir = os.path.join(args.RAW_SOURCE, "eval_2011", "images")
+    set_file = os.path.join(args.RAW_SOURCE, "eval_2011_annotated.xml")
     root = ET.parse(set_file).getroot()
     generate(origin_dir, root)

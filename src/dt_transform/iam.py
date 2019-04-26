@@ -12,7 +12,7 @@ def partitions(args):
         shutil.rmtree(args.PARTITIONS)
     os.makedirs(args.PARTITIONS)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "largeWriterIndependentTextLineRecognitionTask")
+    origin_dir = os.path.join(args.RAW_SOURCE, "largeWriterIndependentTextLineRecognitionTask")
     set_file = os.path.join(origin_dir, "trainset.txt")
     shutil.copy(set_file, args.TRAIN_FILE)
 
@@ -37,7 +37,7 @@ def ground_truth(args):
         shutil.rmtree(args.GROUND_TRUTH)
     os.makedirs(args.GROUND_TRUTH)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "ascii")
+    origin_dir = os.path.join(args.RAW_SOURCE, "ascii")
     set_file = os.path.join(origin_dir, "lines.txt")
 
     with open(set_file) as file:
@@ -66,7 +66,7 @@ def data(args):
         shutil.rmtree(args.DATA)
     os.makedirs(args.DATA)
 
-    origin_dir = os.path.join(args.SOURCE_BACKUP, "lines")
+    origin_dir = os.path.join(args.RAW_SOURCE, "lines")
 
     glob_filter = os.path.join(origin_dir, "**", "*.*")
     files = [x for x in glob(glob_filter, recursive=True)]
