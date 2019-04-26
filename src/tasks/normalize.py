@@ -14,8 +14,8 @@ except ImportError as exc:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, default="../output")
+    parser.add_argument("--data_source", type=str, required=True)
+    parser.add_argument("--data_output", type=str, default="../output")
     args = parser.parse_args()
 
     args = setup_path(args)

@@ -5,26 +5,30 @@
 ### ---------------------------------------- ###
 # DATASET="bentham"
 # DATASET="iam"
-DATASET="saintgall"
+# DATASET="saintgall"
 # DATASET="rimes"
+DATASET="temp"
 
-DATASET_DIR="../data/$DATASET"
-OUTPUT_DIR="../output"
+DATASET_PATH="../data/$DATASET"
+OUTPUT_PATH="../output"
 
 
 ### ----------------------------------------------- ###
 ### structure the raw dataset to the design pattern ###
 ### ----------------------------------------------- ###
-# python tasks/normalize.py --dataset_dir $DATASET_DIR
+# python tasks/normalize.py --data_source $DATASET_PATH
 
 
 ### ----------- ###
 ### train model ###
 ### ----------- ###
-python tasks/train.py --dataset_dir $DATASET_DIR --output_dir $OUTPUT_DIR
+python tasks/train.py --data_source $DATASET_PATH \
+                      --data_output $OUTPUT_PATH \
+                      --epochs 1 \
+                      --batch 32
 
 
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python tasks/test.py --dataset_dir $DATASET_DIR --output_dir $OUTPUT_DIR
+# python tasks/test.py --data_source $DATASET_PATH --data_output $OUTPUT_DIR

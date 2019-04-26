@@ -6,9 +6,9 @@ from os.path import join
 def setup_path(args):
     """Set paths to the args"""
 
-    setattr(args, "SOURCE", args.dataset_dir)
+    setattr(args, "SOURCE", args.data_source)
     setattr(args, "SOURCE_BACKUP", f"{args.SOURCE}_backup")
-    setattr(args, "OUTPUT", join(args.output_dir, args.SOURCE))
+    setattr(args, "OUTPUT", join(args.data_output, args.SOURCE))
 
     setattr(args, "LOG", join(args.OUTPUT, "log"))
     setattr(args, "DATA", join(args.SOURCE, "lines"))

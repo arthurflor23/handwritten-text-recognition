@@ -5,6 +5,7 @@ from os.path import join
 import tensorflow as tf
 import numpy as np
 import cv2
+import random
 import preproc.preprocess as pp
 
 char_list = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -13,22 +14,35 @@ char_list = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
 class Generator(tf.keras.callbacks.Callback):
     """Generator class to support data streaming"""
 
-    def __init__(self, args, input_shape, batch_size):
-        # (w,h)
+    def __init__(self, args, input_shape, batch_size=0):
+        # (w, h)
         self.input_shape = input_shape
-        self.batch_size = batch_size
+        self.batch_size = 20 if batch_size == 0 else batch_size
         self.output_size = len(char_list) + 1
 
         self.data_path = args.DATA
         self.ground_truth_path = args.GROUND_TRUTH
 
-        self.train_list = np.array(open(args.TRAIN_FILE).read().splitlines())
-        self.val_list = np.array(open(args.VALIDATION_FILE).read().splitlines())
-        self.test_list = np.array(open(args.TEST_FILE).read().splitlines())
+        self.train_list = self.read_and_fill(args.TRAIN_FILE)
+        self.val_list = self.read_and_fill(args.VALIDATION_FILE)
+        self.test_list = self.read_and_fill(args.TEST_FILE)
+
+        self.cur_train_index = 0
+        self.cur_val_index = 0
+        self.cur_test_index = 0
 
         self.max_line_length = 0
         self.downsample_factor = 4
+
         self.build_line_lists()
+
+    def read_and_fill(self, txt_file):
+        arr = open(txt_file).read().splitlines()
+        np.random.shuffle(arr)
+
+        while (len(arr) % self.batch_size) > 0:
+            arr.append(random.choice(arr))
+        return arr
 
     def build_line_lists(self):
         """Read and build the lists from txt files of the dataset"""
@@ -51,8 +65,6 @@ class Generator(tf.keras.callbacks.Callback):
             for i, line in enumerate(lines):
                 labels[i, 0:len(line)] = [char_list.find(c) for c in line]
             return labels
-
-        self.cur_train_index, self.cur_val_index, self.cur_test_index = 0, 0, 0
 
         self.train_lines, self.train_labels, self.train_label_length = create(self.train_list)
         self.val_lines, self.val_labels, self.val_label_length = create(self.val_list)
@@ -80,9 +92,8 @@ class Generator(tf.keras.callbacks.Callback):
             ret = get_batch(self.cur_train_index, self.batch_size)
             self.cur_train_index += self.batch_size
 
-            if self.cur_train_index >= len(self.train_lines):
-                np.random.shuffle(self.train_list)
-                self.build_line_lists()
+            if self.cur_train_index >= len(self.train_list):
+                self.cur_train_index = 0
             yield ret
 
     def next_val(self):
@@ -100,9 +111,8 @@ class Generator(tf.keras.callbacks.Callback):
             ret = get_batch(self.cur_val_index, self.batch_size)
             self.cur_val_index += self.batch_size
 
-            if self.cur_val_index >= len(self.val_lines):
-                np.random.shuffle(self.val_list)
-                self.build_line_lists()
+            if self.cur_val_index >= len(self.val_list):
+                self.cur_val_index = 0
             yield ret
 
     def next_test(self):
@@ -120,9 +130,8 @@ class Generator(tf.keras.callbacks.Callback):
             ret = get_batch(self.cur_test_index, self.batch_size)
             self.cur_test_index += self.batch_size
 
-            if self.cur_test_index >= len(self.test_lines):
-                np.random.shuffle(self.test_list)
-                self.build_line_lists()
+            if self.cur_test_index >= len(self.test_list):
+                self.cur_test_index = 0
             yield ret
 
     def get_img(self, partition):

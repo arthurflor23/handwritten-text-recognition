@@ -6,9 +6,10 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
 from tensorflow.keras.backend import ctc_batch_cost
 from tensorflow.keras.optimizers import RMSprop
-# import os
 
+# import os
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 INPUT_SIZE = (800, 64, 1)
 
 
