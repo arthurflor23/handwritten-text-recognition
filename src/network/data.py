@@ -14,7 +14,7 @@ char_list = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
 class Generator(tf.keras.callbacks.Callback):
     """Generator class to support data streaming"""
 
-    def __init__(self, args, input_shape, batch_size=0):
+    def __init__(self, args, model_input_shape, batch_size=0):
         self.output = args.OUTPUT
         self.model_output_size = len(char_list) + 1
 
@@ -22,8 +22,8 @@ class Generator(tf.keras.callbacks.Callback):
         self.downsample_factor = 4
 
         # (w, h)
-        self.input_shape = input_shape
-        self.max_line_length = 120
+        self.model_input_shape = model_input_shape
+        self.max_line_length = 140
 
         self.data_path = args.DATA
         self.ground_truth_path = args.GROUND_TRUTH
@@ -73,7 +73,7 @@ class Generator(tf.keras.callbacks.Callback):
         self.test_lines, self.test_labels, self.test_label_length = create(self.test_list)
 
         self.input_length = np.ones([self.batch_size, 1])
-        self.input_length *= ((self.input_shape[0] // self.downsample_factor) - 2)
+        self.input_length *= ((self.model_input_shape[0] // self.downsample_factor) - 2)
 
         self.train_steps = len(self.train_lines) // self.batch_size
         self.val_steps = len(self.val_lines) // self.batch_size
@@ -139,12 +139,12 @@ class Generator(tf.keras.callbacks.Callback):
     def get_img(self, partition):
         """Load image and apply preprocess"""
 
-        inputs = np.zeros((self.batch_size,) + self.input_shape)
+        inputs = np.zeros((self.batch_size,) + self.model_input_shape)
 
         for i, filename in enumerate(partition):
             img_path = join(self.data_path, f"{filename}.png")
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            img = pp.preprocess(img, self.input_shape[1::-1])
+            img = pp.preprocess(img, self.model_input_shape[1::-1])
             inputs[i] = np.reshape(img, img.shape + (1,))
         return inputs
 

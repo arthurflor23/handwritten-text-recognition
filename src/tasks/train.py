@@ -22,7 +22,7 @@ def main():
 
     args = setup_path(args)
 
-    data_gen = data.Generator(args, model.INPUT_SIZE, args.batch)
+    data_gen = data.Generator(args, model.INPUT_SHAPE, args.batch)
     htr = model.HTR(data_gen)
 
     htr.model.fit_generator(

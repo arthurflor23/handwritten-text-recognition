@@ -5,13 +5,14 @@ import tensorflow as tf
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
+from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.backend import ctc_batch_cost
 from tensorflow.keras.optimizers import Adamax
 from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint, TensorBoard
 
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-INPUT_SIZE = (800, 64, 1)
+INPUT_SHAPE = (800, 64, 1)
 
 
 class HTR():
@@ -30,7 +31,7 @@ class HTR():
     def __build_model(self):
         """Init setup model and load variables"""
 
-        input_data = Input(name="the_inputs", shape=INPUT_SIZE, dtype="float32")
+        input_data = Input(name="the_inputs", shape=INPUT_SHAPE, dtype="float32")
         cnn_out = self.__setup_cnn(input_data)
         rnn_out = self.__setup_rnn(cnn_out)
 
@@ -74,14 +75,13 @@ class HTR():
     def __setup_rnn(self, input_data):
         """RNN model"""
 
-        conv_to_rnn_dims = (INPUT_SIZE[:2][0] // self.downsample_factor,
-                            (INPUT_SIZE[:2][1] // self.downsample_factor) * self.filters[0])
+        conv_to_rnn_dims = (INPUT_SHAPE[:2][0] // self.downsample_factor,
+                            (INPUT_SHAPE[:2][1] // self.downsample_factor) * self.filters[0])
         inner = Reshape(target_shape=conv_to_rnn_dims)(input_data)
 
         num_units = self.filters[-1]
-        lstm = tf.keras.layers.LSTM(units=num_units, return_sequences=True,
-                                    kernel_initializer="he_normal")
-        bilstm = tf.keras.layers.Bidirectional(layer=lstm)(inner)
+        lstm = LSTM(units=num_units, return_sequences=True, kernel_initializer="he_normal")
+        bilstm = Bidirectional(layer=lstm)(inner)
 
         bilstm = Dense(units=self.rnn_output, kernel_initializer="he_normal")(bilstm)
         bilstm = Activation(name="softmax", activation="softmax")(bilstm)
@@ -97,7 +97,7 @@ class HTR():
                                   write_graph=True, write_images=True, update_freq='epoch')
 
         earlystopping = EarlyStopping(monitor='val_loss', min_delta=1e-5,
-                                      patience=2, restore_best_weights=True, verbose=1)
+                                      patience=6, restore_best_weights=True, verbose=1)
 
         checkpoint = ModelCheckpoint(filepath=self.checkpoint, period=1, monitor='val_loss',
                                      save_best_only=True, save_weights_only=False, verbose=1)
