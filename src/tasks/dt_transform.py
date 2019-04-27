@@ -20,11 +20,11 @@ def main():
 
     args = setup_path(args)
 
-    package = f"dt_transform.{os.path.basename(args.SOURCE)}"
+    package = f"dt_transform.{os.path.basename(args.source)}"
     transform = importlib.import_module(package)
 
-    if not os.path.exists(args.RAW_SOURCE):
-        os.rename(args.SOURCE, args.RAW_SOURCE)
+    if not os.path.exists(args.raw_source):
+        os.rename(args.source, args.raw_source)
 
     transform.partitions(args)
     transform.ground_truth(args)

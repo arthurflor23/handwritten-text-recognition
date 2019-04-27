@@ -12,27 +12,28 @@ from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-INPUT_SHAPE = (800, 64, 1)
-
 
 class HTR():
 
-    def __init__(self, data_gen, training=False):
-        self.training = training
-        self.max_line_length = data_gen.max_line_length
-        self.rnn_output = data_gen.model_output_size
+    def __init__(self, args, training=False):
+        self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        self.max_line_length = 140
+        self.input_shape = (800, 64, 1)
 
-        self.output = data_gen.output
+        self.batch_size = args.batch
+        self.training = training
+
+        self.output = args.output
         self.checkpoint = os.path.join(self.output, "checkpoint_weights.hdf5")
         self.logger = os.path.join(self.output, "logger.log")
 
         self.__build_model()
-        data_gen.downsample_factor = self.downsample_factor
 
     def __build_model(self):
         """Init setup model and load variables"""
 
-        input_data = Input(name="the_inputs", shape=INPUT_SHAPE, dtype="float32")
+        input_data = Input(name="the_inputs", batch_size=self.batch_size,
+                           shape=self.input_shape, dtype="float32")
 
         cnn_out = self.__setup_cnn(input_data)
         rnn_out = self.__setup_rnn(cnn_out)
@@ -77,15 +78,15 @@ class HTR():
     def __setup_rnn(self, input_data):
         """RNN model"""
 
-        conv_to_rnn_dims = (INPUT_SHAPE[:2][0] // self.downsample_factor,
-                            (INPUT_SHAPE[:2][1] // self.downsample_factor) * self.filters[0])
+        conv_to_rnn_dims = (self.input_shape[:2][0] // self.downsample_factor,
+                            (self.input_shape[:2][1] // self.downsample_factor) * self.filters[0])
         inner = Reshape(target_shape=conv_to_rnn_dims)(input_data)
 
         num_units = self.filters[-1]
         lstm = LSTM(units=num_units, return_sequences=True, kernel_initializer="he_normal")
         bilstm = Bidirectional(layer=lstm)(inner)
 
-        bilstm = Dense(units=self.rnn_output, kernel_initializer="he_normal")(bilstm)
+        bilstm = Dense(units=(len(self.dictionary) + 1), kernel_initializer="he_normal")(bilstm)
         bilstm = Activation(name="softmax", activation="softmax")(bilstm)
 
         return bilstm

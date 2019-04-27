@@ -6,16 +6,16 @@ from os.path import join
 def setup_path(args):
     """Set paths to the args"""
 
-    setattr(args, "SOURCE", join("..", "data", args.dataset))
-    setattr(args, "RAW_SOURCE", join("..", "data", f"raw_{args.dataset}"))
-    setattr(args, "OUTPUT", join("..", args.output, args.dataset))
+    setattr(args, "source", join("..", "data", args.dataset))
+    setattr(args, "raw_source", join("..", "data", f"raw_{args.dataset}"))
+    setattr(args, "output", join("..", args.output, args.dataset))
 
-    setattr(args, "DATA", join(args.SOURCE, "lines"))
-    setattr(args, "GROUND_TRUTH", join(args.SOURCE, "ground_truth"))
-    setattr(args, "PARTITIONS", join(args.SOURCE, "partitions"))
+    setattr(args, "data", join(args.source, "lines"))
+    setattr(args, "ground_truth", join(args.source, "ground_truth"))
+    setattr(args, "partitions", join(args.source, "partitions"))
 
-    setattr(args, "TRAIN_FILE", join(args.PARTITIONS, "train.txt"))
-    setattr(args, "VALIDATION_FILE", join(args.PARTITIONS, "validation.txt"))
-    setattr(args, "TEST_FILE", join(args.PARTITIONS, "test.txt"))
+    setattr(args, "train_file", join(args.partitions, "train.txt"))
+    setattr(args, "validation_file", join(args.partitions, "validation.txt"))
+    setattr(args, "test_file", join(args.partitions, "test.txt"))
 
     return args
