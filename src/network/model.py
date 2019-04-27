@@ -6,7 +6,7 @@ from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
 from tensorflow.keras.backend import ctc_batch_cost
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import Adamax
 from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint, TensorBoard
 
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -45,7 +45,7 @@ class HTR():
         self.model = Model(name="HTR", inputs=args, outputs=loss_out)
         # self.model.summary()
 
-        opt = RMSprop(learning_rate=1e-4)
+        opt = Adamax(learning_rate=1e-3)
         self.model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=opt)
 
         if os.path.isfile(self.checkpoint):
@@ -64,9 +64,10 @@ class HTR():
         init = tf.random_normal_initializer(stddev=0.1)
 
         for i in range(len(strides)):
-            conv = Conv2D(filters=self.filters[i], kernel_size=kernels[i], padding="same", activation="relu", kernel_initializer=init)(cnn)
-            batch_norm = BatchNormalization()(conv)
-            cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(batch_norm)
+            conv = Conv2D(filters=self.filters[i], kernel_size=kernels[i], padding="same",
+                          activation="relu", kernel_initializer=init)(cnn)
+            norm = BatchNormalization()(conv)
+            cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(norm)
 
         return cnn
 
@@ -78,7 +79,8 @@ class HTR():
         inner = Reshape(target_shape=conv_to_rnn_dims)(input_data)
 
         num_units = self.filters[-1]
-        lstm = tf.keras.layers.LSTM(units=num_units, return_sequences=True, kernel_initializer="he_normal")
+        lstm = tf.keras.layers.LSTM(units=num_units, return_sequences=True,
+                                    kernel_initializer="he_normal")
         bilstm = tf.keras.layers.Bidirectional(layer=lstm)(inner)
 
         bilstm = Dense(units=self.rnn_output, kernel_initializer="he_normal")(bilstm)
@@ -89,35 +91,16 @@ class HTR():
     def get_callbacks(self):
         os.makedirs(self.output, exist_ok=True)
 
-        logger = CSVLogger(
-            filename=self.logger,
-            append=True
-        )
+        logger = CSVLogger(filename=self.logger, append=True)
 
-        tensorboard = TensorBoard(
-            log_dir=self.output,
-            histogram_freq=1,
-            write_graph=True,
-            write_images=True,
-            update_freq='epoch'
-        )
+        tensorboard = TensorBoard(log_dir=self.output, histogram_freq=1,
+                                  write_graph=True, write_images=True, update_freq='epoch')
 
-        earlystopping = EarlyStopping(
-            monitor='val_loss',
-            min_delta=1e-5,
-            patience=2,
-            restore_best_weights=True,
-            verbose=1
-        )
+        earlystopping = EarlyStopping(monitor='val_loss', min_delta=1e-5,
+                                      patience=2, restore_best_weights=True, verbose=1)
 
-        checkpoint = ModelCheckpoint(
-            filepath=self.checkpoint,
-            period=1,
-            monitor='val_loss',
-            save_best_only=True,
-            save_weights_only=False,
-            verbose=1
-        )
+        checkpoint = ModelCheckpoint(filepath=self.checkpoint, period=1, monitor='val_loss',
+                                     save_best_only=True, save_weights_only=False, verbose=1)
 
         return [logger, tensorboard, earlystopping, checkpoint]
 
