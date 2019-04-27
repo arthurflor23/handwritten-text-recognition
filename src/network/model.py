@@ -17,7 +17,8 @@ INPUT_SHAPE = (800, 64, 1)
 
 class HTR():
 
-    def __init__(self, data_gen):
+    def __init__(self, data_gen, training=False):
+        self.training = training
         self.max_line_length = data_gen.max_line_length
         self.rnn_output = data_gen.model_output_size
 
@@ -32,6 +33,7 @@ class HTR():
         """Init setup model and load variables"""
 
         input_data = Input(name="the_inputs", shape=INPUT_SHAPE, dtype="float32")
+
         cnn_out = self.__setup_cnn(input_data)
         rnn_out = self.__setup_rnn(cnn_out)
 
@@ -42,7 +44,7 @@ class HTR():
         args = [rnn_out, labels, input_length, label_length]
         loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name='ctc')(args)
 
-        args[0] = input_data
+        args = [input_data, labels, input_length, label_length]
         self.model = Model(name="HTR", inputs=args, outputs=loss_out)
         # self.model.summary()
 
@@ -67,7 +69,7 @@ class HTR():
         for i in range(len(strides)):
             conv = Conv2D(filters=self.filters[i], kernel_size=kernels[i], padding="same",
                           activation="relu", kernel_initializer=init)(cnn)
-            norm = BatchNormalization()(conv)
+            norm = BatchNormalization(trainable=self.training)(conv)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(norm)
 
         return cnn
@@ -97,7 +99,7 @@ class HTR():
                                   write_graph=True, write_images=True, update_freq='epoch')
 
         earlystopping = EarlyStopping(monitor='val_loss', min_delta=1e-5,
-                                      patience=6, restore_best_weights=True, verbose=1)
+                                      patience=5, restore_best_weights=True, verbose=1)
 
         checkpoint = ModelCheckpoint(filepath=self.checkpoint, period=1, monitor='val_loss',
                                      save_best_only=True, save_weights_only=False, verbose=1)

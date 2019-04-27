@@ -23,8 +23,8 @@ DATASET="temp"
 ### ----------- ###
 python tasks/train.py --dataset $DATASET \
                       --output $OUTPUT \
-                      --epochs 1 \
-                      --batch 32
+                      --epochs 2 \
+                      --batch 20
 
 
 ### ---------- ###
