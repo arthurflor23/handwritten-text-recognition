@@ -131,7 +131,7 @@ class Generator():
             'source_str': args[4]  # used for visualization only
         }
         # dummy data for dummy loss function
-        outputs = {'ctc': np.zeros([self.batch_size])}
+        outputs = {'ctc_loss': np.zeros([self.batch_size])}
         return (inputs, outputs)
 
     def get_img(self, partition_list):

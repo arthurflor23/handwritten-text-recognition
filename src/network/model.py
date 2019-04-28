@@ -7,7 +7,6 @@ from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.backend import ctc_batch_cost
-from tensorflow.keras.optimizers import Adamax
 from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint, TensorBoard
 
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -17,8 +16,8 @@ class HTR():
 
     def __init__(self, args, training=False):
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        self.max_line_length = 140
         self.input_shape = (800, 64, 1)
+        self.max_line_length = 140
 
         self.batch_size = args.batch
         self.training = training
@@ -30,32 +29,30 @@ class HTR():
         self.__build_model()
 
     def __build_model(self):
-        """Init setup model and load variables"""
+        """Build all model structure"""
 
-        input_data = Input(name="the_inputs", batch_size=self.batch_size,
-                           shape=self.input_shape, dtype="float32")
+        input_data = Input(name="the_inputs", shape=self.input_shape, dtype="float32")
+        labels = Input(name="the_labels", shape=[self.max_line_length], dtype="float32")
+
+        input_length = Input(name="input_length", shape=[1], dtype="int32")
+        label_length = Input(name="label_length", shape=[1], dtype="int32")
 
         cnn_out = self.__setup_cnn(input_data)
         rnn_out = self.__setup_rnn(cnn_out)
 
-        labels = Input(name='the_labels', shape=[self.max_line_length], dtype='float32')
-        input_length = Input(name='input_length', shape=[1], dtype='int64')
-        label_length = Input(name='label_length', shape=[1], dtype='int64')
+        loss_args = [rnn_out, labels, input_length, label_length]
+        ctc_loss = Lambda(ctc_loss_func, output_shape=(1,), name="ctc_loss")(loss_args)
 
-        args = [rnn_out, labels, input_length, label_length]
-        loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name='ctc')(args)
+        input_args = [input_data, labels, input_length, label_length]
 
-        args = [input_data, labels, input_length, label_length]
-        self.model = Model(name="HTR", inputs=args, outputs=loss_out)
-
-        opt = Adamax(learning_rate=1e-3)
-        self.model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=opt)
+        self.model = Model(name="HTR", inputs=input_args, outputs=ctc_loss)
+        self.model.compile(loss={"ctc_loss": lambda y_true, y_pred: y_pred}, optimizer="adamax")
 
         if os.path.isfile(self.checkpoint):
             self.model.load_weights(filepath=self.checkpoint, by_name=True)
 
     def __setup_cnn(self, input_data):
-        """CNN model"""
+        """Build CNN"""
 
         kernels = [5, 5, 3, 3, 3]
         pool_sizes = strides = [(2,2), (2,2), (1,2), (1,2), (1,2)]
@@ -74,12 +71,12 @@ class HTR():
 
         return cnn
 
-    def __setup_rnn(self, input_data):
-        """RNN model"""
+    def __setup_rnn(self, cnn_out):
+        """Build RNN"""
 
         conv_to_rnn_dims = (self.input_shape[:2][0] // self.downsample_factor,
                             (self.input_shape[:2][1] // self.downsample_factor) * self.filters[0])
-        inner = Reshape(target_shape=conv_to_rnn_dims)(input_data)
+        inner = Reshape(target_shape=conv_to_rnn_dims)(cnn_out)
 
         num_units = self.filters[-1]
         lstm = LSTM(units=num_units, return_sequences=True, kernel_initializer="he_normal")
@@ -91,24 +88,41 @@ class HTR():
         return bilstm
 
     def get_callbacks(self):
-        os.makedirs(self.output, exist_ok=True)
+        """Build/Call callbacks to the model"""
 
+        os.makedirs(self.output, exist_ok=True)
         logger = CSVLogger(filename=self.logger, append=True)
 
-        tensorboard = TensorBoard(log_dir=self.output, histogram_freq=1,
-                                  write_graph=True, write_images=True, update_freq='epoch')
+        tensorboard = TensorBoard(
+            log_dir=self.output,
+            histogram_freq=1,
+            profile_batch=0,
+            write_graph=True,
+            write_images=True,
+            update_freq="epoch")
 
-        earlystopping = EarlyStopping(monitor='val_loss', min_delta=1e-5,
-                                      patience=5, restore_best_weights=True, verbose=1)
+        earlystopping = EarlyStopping(
+            monitor="val_loss",
+            min_delta=1e-5,
+            patience=5,
+            restore_best_weights=True,
+            verbose=1)
 
-        checkpoint = ModelCheckpoint(filepath=self.checkpoint, period=1, monitor='val_loss',
-                                     save_best_only=True, save_weights_only=False, verbose=1)
+        checkpoint = ModelCheckpoint(
+            filepath=self.checkpoint,
+            period=1,
+            monitor="val_loss",
+            save_best_only=True,
+            save_weights_only=False,
+            verbose=1)
 
         return [logger, tensorboard, earlystopping, checkpoint]
 
 
-def ctc_lambda_func(args):
-    y_pred, labels, input_length, label_length = args
+def ctc_loss_func(args):
+    """Calculate the CTC loss function"""
+
+    y_pred, y_true, input_length, label_length = args
     # the 2 is critical here since the first couple outputs of the RNN tend to be garbage:
     y_pred = y_pred[:, 2:, :]
-    return ctc_batch_cost(labels, y_pred, input_length, label_length)
+    return ctc_batch_cost(y_true, y_pred, input_length, label_length)
