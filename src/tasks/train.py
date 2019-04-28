@@ -22,6 +22,7 @@ def main():
 
     args = setup_path(args)
     htr = model.HTR(args, training=True)
+    # htr.model.summary()
     data_gen = data.Generator(args, htr)
 
     htr.model.fit_generator(

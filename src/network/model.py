@@ -3,8 +3,8 @@
 import os
 import tensorflow as tf
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import Activation, BatchNormalization, Reshape
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Lambda
 from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.backend import ctc_batch_cost
 from tensorflow.keras.optimizers import Adamax
@@ -47,7 +47,6 @@ class HTR():
 
         args = [input_data, labels, input_length, label_length]
         self.model = Model(name="HTR", inputs=args, outputs=loss_out)
-        # self.model.summary()
 
         opt = Adamax(learning_rate=1e-3)
         self.model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=opt)

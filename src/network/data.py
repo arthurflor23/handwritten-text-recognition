@@ -2,14 +2,13 @@
 Image renderings and text are created on the fly each time"""
 
 from os.path import join
-import tensorflow as tf
 import numpy as np
 import cv2
 import random
 import preproc.preprocess as pp
 
 
-class Generator(tf.keras.callbacks.Callback):
+class Generator():
     """Generator class with data streaming"""
 
     def __init__(self, args, htr):
