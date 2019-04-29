@@ -7,7 +7,7 @@ import argparse
 try:
     sys.path[0] = os.path.join(sys.path[0], "..")
     from environment import setup_path
-    from network import data, model
+    from network import data, model, callbacks
 except ImportError as exc:
     sys.exit(f"Import error in '{__file__}': {exc}")
 
@@ -21,20 +21,24 @@ def main():
     args = parser.parse_args()
 
     args = setup_path(args)
-    htr = model.HTR(args, training=True)
+
+    htr = model.HTRModel(batch_size=args.batch, training=True)
     htr.model.summary()
     data_gen = data.Generator(args, htr)
 
-    htr.model.fit_generator(
-        generator=data_gen.next_train(),
-        steps_per_epoch=data_gen.train_steps,
-        epochs=args.epochs,
-        verbose=1,
-        callbacks=htr.get_callbacks(),
-        validation_data=data_gen.next_val(),
-        validation_steps=data_gen.val_steps,
-        use_multiprocessing=True
-    )
+    callback = callbacks.HTRCallback(args, htr)
+    htr.load_weights(callback.checkpoint)
+
+    # htr.model.fit_generator(
+    #     generator=data_gen.next_train(),
+    #     steps_per_epoch=data_gen.train_steps,
+    #     epochs=args.epochs,
+    #     verbose=1,
+    #     callbacks=callback.get_train(data_gen.next_val()),
+    #     validation_data=data_gen.next_val(),
+    #     validation_steps=data_gen.val_steps,
+    #     use_multiprocessing=True
+    # )
 
 
 if __name__ == '__main__':

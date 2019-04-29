@@ -124,14 +124,14 @@ class Generator():
         """Create `input and output` format to the model"""
 
         inputs = {
-            'the_inputs': args[0],
-            'the_labels': args[1],
-            'input_length': args[2],
-            'label_length': args[3],
-            'source_str': args[4]  # used for visualization only
+            "the_inputs": args[0],
+            "the_labels": args[1],
+            "input_length": args[2],
+            "label_length": args[3],
+            "source_str": args[4]  # used for visualization only
         }
         # dummy data for dummy loss function
-        outputs = {'ctc_loss': np.zeros([self.batch_size])}
+        outputs = {"ctc_loss": np.zeros([self.batch_size])}
         return (inputs, outputs)
 
     def get_img(self, partition_list):
