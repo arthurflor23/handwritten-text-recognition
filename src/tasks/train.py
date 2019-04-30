@@ -7,39 +7,30 @@ import argparse
 try:
     sys.path[0] = os.path.join(sys.path[0], "..")
     from environment import setup_path
-    from network import data, model, callbacks
+    from data.generator import DataGenerator
+    from network.network import HTRNetwork
 except ImportError as exc:
     sys.exit(f"Import error in '{__file__}': {exc}")
 
 
-def main():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--output", type=str, required=True)
-    parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--batch", type=int, default=20)
+    parser.add_argument("--epochs", type=int, required=True)
+    parser.add_argument("--batch", type=int, required=True)
     args = parser.parse_args()
-
     args = setup_path(args)
 
-    htr = model.HTRModel(batch_size=args.batch, training=True)
+    dtgen = DataGenerator(args)
+    htr = HTRNetwork(dtgen)
     htr.model.summary()
-    data_gen = data.Generator(args, htr)
 
-    callback = callbacks.HTRCallback(args, htr)
-    htr.load_weights(callback.checkpoint)
-
-    # htr.model.fit_generator(
-    #     generator=data_gen.next_train(),
-    #     steps_per_epoch=data_gen.train_steps,
-    #     epochs=args.epochs,
-    #     verbose=1,
-    #     callbacks=callback.get_train(data_gen.next_val()),
-    #     validation_data=data_gen.next_val(),
-    #     validation_steps=data_gen.val_steps,
-    #     use_multiprocessing=True
-    # )
-
-
-if __name__ == '__main__':
-    main()
+    htr.model.fit_generator(
+        generator=dtgen.next_train(),
+        epochs=args.epochs,
+        steps_per_epoch=dtgen.train_steps,
+        validation_data=dtgen.next_val(),
+        validation_steps=dtgen.val_steps,
+        callbacks=htr.callbacks,
+        verbose=1
+    )

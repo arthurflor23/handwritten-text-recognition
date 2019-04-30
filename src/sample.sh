@@ -3,8 +3,6 @@
 ### ---------------------------------------- ###
 ### define dataset name and data environment ###
 ### ---------------------------------------- ###
-OUTPUT="output"
-
 # DATASET="bentham"
 # DATASET="iam"
 # DATASET="saintgall"
@@ -21,13 +19,10 @@ DATASET="temp"
 ### ----------- ###
 ### train model ###
 ### ----------- ###
-python tasks/train.py --dataset $DATASET \
-                      --output $OUTPUT \
-                      --epochs 20 \
-                      --batch 32
+python tasks/train.py --dataset $DATASET --epochs 1 --batch 1
 
 
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python tasks/test.py --dataset $DATASET_PATH --output $OUTPUT_DIR
+# python tasks/test.py --dataset $DATASET_PATH

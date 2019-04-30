@@ -8,7 +8,7 @@ def setup_path(args):
 
     setattr(args, "source", join("..", "data", args.dataset))
     setattr(args, "raw_source", join("..", "data", f"raw_{args.dataset}"))
-    setattr(args, "output", join("..", args.output, args.dataset))
+    setattr(args, "output", join("..", "output", args.dataset))
 
     setattr(args, "data", join(args.source, "lines"))
     setattr(args, "ground_truth", join(args.source, "ground_truth"))

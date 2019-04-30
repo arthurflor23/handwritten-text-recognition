@@ -1,4 +1,4 @@
-"""Dataset normalizer"""
+"""Transform dataset to the project standard"""
 
 import sys
 import os
@@ -12,12 +12,10 @@ except ImportError as exc:
     sys.exit(f"Import error in '{__file__}': {exc}")
 
 
-def main():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--output", type=str, default="../output")
     args = parser.parse_args()
-
     args = setup_path(args)
 
     package = f"dt_transform.{os.path.basename(args.source)}"
@@ -29,7 +27,3 @@ def main():
     transform.partitions(args)
     transform.ground_truth(args)
     transform.data(args)
-
-
-if __name__ == '__main__':
-    main()
