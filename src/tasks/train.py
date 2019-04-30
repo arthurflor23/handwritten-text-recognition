@@ -25,12 +25,12 @@ if __name__ == "__main__":
     htr = HTRNetwork(args.output, dtgen)
     htr.model.summary()
 
-    # htr.model.fit_generator(
-    #     generator=dtgen.next_train(),
-    #     epochs=args.epochs,
-    #     steps_per_epoch=dtgen.train_steps,
-    #     validation_data=dtgen.next_val(),
-    #     validation_steps=dtgen.val_steps,
-    #     # callbacks=htr.callbacks,
-    #     verbose=1
-    # )
+    htr.model.fit_generator(
+        generator=dtgen.next_train(),
+        epochs=args.epochs,
+        steps_per_epoch=dtgen.train_steps,
+        validation_data=dtgen.next_val(),
+        validation_steps=dtgen.val_steps,
+        callbacks=htr.callbacks,
+        verbose=1
+    )
