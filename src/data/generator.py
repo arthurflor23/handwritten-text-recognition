@@ -26,12 +26,14 @@ class DataGenerator():
             self.val_list = self.read_and_fill(args.validation_file)
             self.val_steps = len(self.val_list) // self.batch_size
 
+            self.training = True
             self.build_train()
 
         if test:
             self.test_list = self.read_and_fill(args.test_file)
             self.test_steps = len(self.test_list) // self.batch_size
 
+            self.training = False
             self.build_test()
 
     def read_and_fill(self, partition_file):

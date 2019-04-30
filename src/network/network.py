@@ -1,54 +1,69 @@
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Input, Bidirectional, LSTM, Masking, GaussianNoise
-from tensorflow.keras.optimizers import Adamax
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
+from tensorflow.keras.optimizers import Adamax
 from network.ctc_model import CTCModel
 import os
 
 
 class HTRNetwork:
 
-    def __init__(self, dtgen):
-        self.create_network(dtgen.nb_features, dtgen.dictionary, dtgen.padding_value)
-        # self.callbacks()
+    def __init__(self, output, dtgen):
+        self.models_path = os.path.join(output, "models")
+        self.checkpoint = os.path.join(output, "checkpoint_weights.hdf5")
+        self.logger = os.path.join(output, "logger.log")
 
-    def create_network(self, nb_features, nb_labels, padding_value):
+        self.opt = Adamax(learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
 
-        # Define the network architecture
+        self.build_network(dtgen.nb_features, dtgen.dictionary, dtgen.padding_value, dtgen.training)
+        self.build_callbacks(dtgen.training)
+
+        os.makedirs(self.models_path, exist_ok=True)
+        if os.path.isfile(os.path.join(self.models_path, "model_train.json")):
+            self.model.load_model(path_dir=self.models_path, optimizer=self.opt)
+
+    def build_network(self, nb_features, nb_labels, padding_value, training):
+
+        # build CNN
         input_data = Input(name="input", shape=(None, nb_features))
 
+
+
+
+        # build CNN
         masking = Masking(mask_value=padding_value)(input_data)
-        noise = GaussianNoise(0.01)(masking)
-        blstm = Bidirectional(LSTM(128, return_sequences=True, dropout=0.1))(noise)
-        blstm = Bidirectional(LSTM(128, return_sequences=True, dropout=0.1))(blstm)
-        blstm = Bidirectional(LSTM(128, return_sequences=True, dropout=0.1))(blstm)
+        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer="he_normal"))(masking)
 
-        dense = TimeDistributed(Dense(len(nb_labels) + 1, name="dense"))(blstm)
-        outrnn = Activation("softmax", name="softmax")(dense)
+        dense = TimeDistributed(Dense(units=len(nb_labels) + 1, kernel_initializer="he_normal"))(blstm)
+        outrnn = Activation(activation="softmax", name="softmax")(dense)
 
-        self.model = CTCModel(inputs=[input_data], outputs=[outrnn], greedy=False, beam_width=100, top_paths=1, charset=nb_labels)
-        self.model.compile(Adamax(lr=0.0001))
+        # create and compile
+        self.model = CTCModel(
+            inputs=[input_data],
+            outputs=[outrnn],
+            greedy=False,
+            beam_width=100,
+            top_paths=1,
+            charset=nb_labels
+        )
 
-    # def callbacks(self):
-    #     output = "../output/temp/"
+        self.model.compile(optimizer=self.opt)
 
-    #     # if os.path.exists(output + "models"):
-    #     #     self.model.load_model(path_dir=output + "models", optimizer=Adamax(lr=0.0001))
-    #     # else:
-    #     #     os.makedirs(output + "models")
+    def build_callbacks(self, training):
+        """Build/Call callbacks to the model"""
 
-    #     tensorboard = TensorBoard(
-    #         log_dir=output,
-    #         histogram_freq=1,
-    #         profile_batch=0,
-    #         write_graph=True,
-    #         write_images=True,
-    #         update_freq="epoch")
+        tensorboard = TensorBoard(
+            log_dir=os.path.dirname(self.models_path),
+            histogram_freq=1,
+            profile_batch=0,
+            write_graph=True,
+            write_images=True,
+            update_freq="epoch")
 
-    #     earlystopping = EarlyStopping(
-    #         monitor="val_loss",
-    #         min_delta=1e-5,
-    #         patience=5,
-    #         restore_best_weights=True,
-    #         verbose=1)
+        earlystopping = EarlyStopping(
+            monitor="val_loss",
+            min_delta=1e-5,
+            patience=5,
+            restore_best_weights=True,
+            verbose=1)
 
-    #     self.callbacks = [tensorboard, earlystopping]
+        self.callbacks = [tensorboard, earlystopping]

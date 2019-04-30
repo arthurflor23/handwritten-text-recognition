@@ -22,7 +22,7 @@ if __name__ == "__main__":
     args = setup_path(args)
 
     dtgen = DataGenerator(args, train=True)
-    htr = HTRNetwork(dtgen)
+    htr = HTRNetwork(args.output, dtgen)
     htr.model.summary()
 
     # htr.model.fit_generator(
