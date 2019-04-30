@@ -20,12 +20,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args = setup_path(args)
 
-    dtgen = DataGenerator(args)
+    dtgen = DataGenerator(args, test=True)
     htr = HTRNetwork(dtgen)
     htr.model.summary()
 
     # eval = htr.model.evaluate(
-    #     x=[dtgen.x_test, dtgen.y_test, dtgen.x_test_len, dtgen.y_test_len],
+    #     x=dtgen.next_eval(),
     #     batch_size=dtgen.batch_size,
     #     metrics=["loss", "ler", "ser"],
     #     verbose=1
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # print("\n", eval, "\n")
 
     # pred = htr.model.predict(
-    #     x=[dtgen.x_test, dtgen.x_test_len],
+    #     x=dtgen.next_pred(),
     #     batch_size=dtgen.batch_size,
     #     max_value=dtgen.padding_value,
     #     verbose=1

@@ -10,7 +10,7 @@ from . import preproc
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, args):
+    def __init__(self, args, train=False, test=False):
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         self.batch_size = np.maximum(args.batch, 1)
         self.padding_value = 255
@@ -19,15 +19,20 @@ class DataGenerator():
         self.data_path = args.data
         self.ground_truth_path = args.ground_truth
 
-        self.train_list = self.read_and_fill(args.train_file)
-        self.val_list = self.read_and_fill(args.validation_file)
-        self.test_list = self.read_and_fill(args.test_file)
+        if train:
+            self.train_list = self.read_and_fill(args.train_file)
+            self.train_steps = len(self.train_list) // self.batch_size
 
-        self.train_steps = len(self.train_list) // self.batch_size
-        self.val_steps = len(self.val_list) // self.batch_size
-        self.test_steps = len(self.test_list) // self.batch_size
+            self.val_list = self.read_and_fill(args.validation_file)
+            self.val_steps = len(self.val_list) // self.batch_size
 
-        self.build()
+            self.build_train()
+
+        if test:
+            self.test_list = self.read_and_fill(args.test_file)
+            self.test_steps = len(self.test_list) // self.batch_size
+
+            self.build_test()
 
     def read_and_fill(self, partition_file):
         """Read the partitions and random fill until batch divider"""
@@ -39,17 +44,20 @@ class DataGenerator():
             arr.append(random.choice(arr))
         return np.array(arr)
 
-    def build(self):
-        """Read and build the lists from txt files of the dataset"""
+    def build_train(self):
+        """Read and build the train and validation files of the dataset"""
 
-        self.train_index, self.val_index, self.test_index = 0, 0, 0
-
+        self.train_index, self.val_index = 0, 0
         # self.x_train, self.x_train_len = self.fetch_img_by_partition(self.train_list)
         self.y_train, self.y_train_len = self.fetch_txt_by_partition(self.train_list)
 
         # self.x_val, self.x_val_len = self.fetch_img_by_partition(self.val_list)
         self.y_val, self.y_val_len = self.fetch_txt_by_partition(self.val_list)
 
+    def build_test(self):
+        """Read and build the test files of the dataset"""
+
+        self.test_index = 0
         self.x_test, self.x_test_len = self.fetch_img_by_partition(self.test_list)
         self.y_test, self.y_test_len = self.fetch_txt_by_partition(self.test_list)
 
@@ -125,3 +133,9 @@ class DataGenerator():
             output = {"CTCloss": np.zeros(len(x_val))}
 
             yield (inputs, output)
+
+    def next_eval(self):
+        return [self.x_test, self.y_test, self.x_test_len, self.y_test_len]
+
+    def next_pred(self):
+        return [self.x_test, self.x_test_len]

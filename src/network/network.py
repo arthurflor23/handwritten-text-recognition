@@ -9,7 +9,7 @@ class HTRNetwork:
 
     def __init__(self, dtgen):
         self.create_network(dtgen.nb_features, dtgen.dictionary, dtgen.padding_value)
-        self.callbacks()
+        # self.callbacks()
 
     def create_network(self, nb_features, nb_labels, padding_value):
 

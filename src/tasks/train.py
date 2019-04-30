@@ -21,7 +21,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args = setup_path(args)
 
-    dtgen = DataGenerator(args)
+    dtgen = DataGenerator(args, train=True)
     htr = HTRNetwork(dtgen)
     htr.model.summary()
 
