@@ -807,7 +807,6 @@ class CTCModel:
             y_pred, labels, input_length, label_length
         :return: CTC loss
         """
-
         y_pred, labels, input_length, label_length = args
         return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
         # , ignore_longer_outputs_than_inputs=True)
@@ -831,7 +830,7 @@ class CTCModel:
 
         assert (K.backend() == "tensorflow")
 
-        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length), greedy=my_params["greedy"],
+        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length, axis=0), greedy=my_params["greedy"],
                       beam_width=my_params["beam_width"], top_paths=my_params["top_paths"])[0][0],
                       dtype="float32")
 
@@ -911,6 +910,15 @@ class CTCModel:
         p = pickle.Pickler(output)
         p.dump(param)
         output.close()
+
+    def load_checkpoint(self, checkpoint):
+        """ Load a model with checkpoint file
+        load model_train, model_pred and model_eval from hdf5
+        """
+
+        self.model_train.load_weights(checkpoint)
+        self.model_pred.set_weights(self.model_train.get_weights())
+        self.model_eval.set_weights(self.model_train.get_weights())
 
     def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
                    init_last_layer=False, add_layers=None, trainable=False, removed_layers=2):

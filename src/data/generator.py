@@ -44,6 +44,7 @@ class DataGenerator():
 
         while (len(arr) % self.batch_size) > 0:
             arr.append(random.choice(arr))
+
         return np.array(arr)
 
     def build_train(self):
@@ -52,7 +53,6 @@ class DataGenerator():
         self.train_index, self.val_index = 0, 0
         # self.x_train, self.x_train_len = self.fetch_img_by_partition(self.train_list)
         self.y_train, self.y_train_len = self.fetch_txt_by_partition(self.train_list)
-
         # self.x_val, self.x_val_len = self.fetch_img_by_partition(self.val_list)
         self.y_val, self.y_val_len = self.fetch_txt_by_partition(self.val_list)
 
@@ -71,7 +71,8 @@ class DataGenerator():
             img_path = os.path.join(self.data_path, f"{filename}.png")
             inputs.append(preproc.process_image(img_path, self.nb_features))
 
-        inputs_len = [len(inputs[i]) for i in range(len(inputs))]
+        # inputs_len = [len(inputs[i]) for i in range(len(inputs))]
+        inputs_len = [self.nb_features for i in range(len(inputs))]
         inputs_pad = preproc.padding_list(inputs, value=self.padding_value)
 
         return np.array(inputs_pad), np.array(inputs_len)

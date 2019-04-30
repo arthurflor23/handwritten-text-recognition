@@ -32,5 +32,4 @@ if __name__ == "__main__":
         validation_data=dtgen.next_val(),
         validation_steps=dtgen.val_steps,
         callbacks=htr.callbacks,
-        verbose=1
-    )
+        verbose=1)
