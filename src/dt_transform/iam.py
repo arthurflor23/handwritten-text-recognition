@@ -19,7 +19,7 @@ def partitions(args):
     set_file1 = os.path.join(origin_dir, "validationset1.txt")
     set_file2 = os.path.join(origin_dir, "validationset2.txt")
 
-    with open(args.validation_file, 'w') as outfile:
+    with open(args.validation_file, "w") as outfile:
         with open(set_file1) as infile:
             outfile.write(infile.read())
 
@@ -47,7 +47,7 @@ def ground_truth(args):
             if (not line or line[0] == "#"):
                 continue
 
-            splited = line.strip().split(' ')
+            splited = line.strip().split(" ")
             assert len(splited) >= 9
 
             file_name = splited[0]

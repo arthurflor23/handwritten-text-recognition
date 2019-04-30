@@ -31,10 +31,10 @@ def partitions(args):
                 validation = lines[index:]
 
                 with open(validation_file, "w") as validation_f:
-                    train_f.write(''.join(train))
-                    validation_f.write(''.join(validation))
+                    train_f.write("".join(train))
+                    validation_f.write("".join(validation))
             else:
-                train_f.write(''.join(lines))
+                train_f.write("".join(lines))
 
     set_file = os.path.join(args.raw_source, "training_2011.xml")
     generate(set_file, args.train_file, args.validation_file)

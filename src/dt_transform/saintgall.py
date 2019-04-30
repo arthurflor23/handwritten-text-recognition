@@ -56,7 +56,7 @@ def ground_truth(args):
             if (not line or line[0] == "#"):
                 continue
 
-            splited = line.strip().split(' ')
+            splited = line.strip().split(" ")
             assert len(splited) >= 3
 
             file_name = splited[0]

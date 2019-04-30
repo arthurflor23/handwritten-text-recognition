@@ -12,7 +12,7 @@ except ImportError as exc:
     sys.exit(f"Import error in '{__file__}': {exc}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
     args = parser.parse_args()

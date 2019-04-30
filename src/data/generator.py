@@ -44,15 +44,16 @@ class DataGenerator():
 
         self.train_index, self.val_index, self.test_index = 0, 0, 0
 
-        # self.x_train, self.x_train_len = self.fetch_partition_images(self.train_list)
-        self.y_train, self.y_train_len = self.fetch_partition_text(self.train_list)
-        # self.x_val, self.x_val_len = self.fetch_partition_images(self.val_list)
-        self.y_val, self.y_val_len = self.fetch_partition_text(self.val_list)
+        # self.x_train, self.x_train_len = self.fetch_img_by_partition(self.train_list)
+        self.y_train, self.y_train_len = self.fetch_txt_by_partition(self.train_list)
 
-        self.x_test, self.x_test_len = self.fetch_partition_images(self.test_list)
-        self.y_test, self.y_test_len = self.fetch_partition_text(self.test_list)
+        # self.x_val, self.x_val_len = self.fetch_img_by_partition(self.val_list)
+        self.y_val, self.y_val_len = self.fetch_txt_by_partition(self.val_list)
 
-    def fetch_partition_images(self, partition_list):
+        self.x_test, self.x_test_len = self.fetch_img_by_partition(self.test_list)
+        self.y_test, self.y_test_len = self.fetch_txt_by_partition(self.test_list)
+
+    def fetch_img_by_partition(self, partition_list):
         """Load image and apply preprocess"""
 
         inputs = []
@@ -65,7 +66,7 @@ class DataGenerator():
 
         return np.array(inputs_pad), np.array(inputs_len)
 
-    def fetch_partition_text(self, partition_list):
+    def fetch_txt_by_partition(self, partition_list):
         """Load text label and apply encode"""
 
         inputs = []
@@ -89,7 +90,7 @@ class DataGenerator():
             index = self.train_index
             until = self.train_index + self.batch_size
 
-            x_train, x_train_len = self.fetch_partition_images(self.train_list[index:until])
+            x_train, x_train_len = self.fetch_img_by_partition(self.train_list[index:until])
             self.train_index += self.batch_size
 
             inputs = {
@@ -112,7 +113,7 @@ class DataGenerator():
             index = self.val_index
             until = self.val_index + self.batch_size
 
-            x_val, x_val_len = self.fetch_partition_images(self.val_list[index:until])
+            x_val, x_val_len = self.fetch_img_by_partition(self.val_list[index:until])
             self.val_index += self.batch_size
 
             inputs = {

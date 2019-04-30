@@ -13,7 +13,7 @@ except ImportError as exc:
     sys.exit(f"Import error in '{__file__}': {exc}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--epochs", type=int, required=True)
@@ -25,12 +25,12 @@ if __name__ == '__main__':
     htr = HTRNetwork(dtgen)
     htr.model.summary()
 
-    htr.model.fit_generator(
-        generator=dtgen.next_train(),
-        epochs=args.epochs,
-        steps_per_epoch=dtgen.train_steps,
-        validation_data=dtgen.next_val(),
-        validation_steps=dtgen.val_steps,
-        callbacks=htr.callbacks,
-        verbose=1
-    )
+    # htr.model.fit_generator(
+    #     generator=dtgen.next_train(),
+    #     epochs=args.epochs,
+    #     steps_per_epoch=dtgen.train_steps,
+    #     validation_data=dtgen.next_val(),
+    #     validation_steps=dtgen.val_steps,
+    #     # callbacks=htr.callbacks,
+    #     verbose=1
+    # )
