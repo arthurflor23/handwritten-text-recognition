@@ -449,7 +449,7 @@ class CTCModel:
         return outmetrics
 
     def evaluate_generator(self, generator, steps=None, max_queue_size=10, workers=1,
-                           use_multiprocessing=False, verbose=0, metrics=["ler", "ser"]):
+                           use_multiprocessing=False, verbose=0, metrics=["loss", "ler", "ser"]):
         """ Evaluates the model on a data generator.
 
         :param: See keras.engine.Model.fit()

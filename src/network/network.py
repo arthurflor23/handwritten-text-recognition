@@ -1,6 +1,8 @@
+"""Handwritten text recognition network"""
+
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, PReLU, BatchNormalization
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
-from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
 from tensorflow.keras.optimizers import Adamax
 from network.ctc_model import CTCModel
 import tensorflow.keras.backend as K
@@ -60,6 +62,8 @@ class HTRNetwork:
     def build_callbacks(self, training):
         """Build/Call callbacks to the model"""
 
+        logger = CSVLogger(filename=self.logger, append=True)
+
         tensorboard = TensorBoard(
             log_dir=os.path.dirname(self.checkpoint),
             histogram_freq=1,
@@ -71,7 +75,7 @@ class HTRNetwork:
         earlystopping = EarlyStopping(
             monitor="val_loss",
             min_delta=1e-5,
-            patience=5,
+            patience=6,
             restore_best_weights=True,
             verbose=1)
 
@@ -83,10 +87,12 @@ class HTRNetwork:
             save_weights_only=True,
             verbose=1)
 
-        self.callbacks = [tensorboard, earlystopping, checkpoint]
+        self.callbacks = [logger, tensorboard, earlystopping, checkpoint]
 
 
 def pool_strides(nb_features, nb_layers):
+    """Generate pool sizes and strides values with features and layers numbers"""
+
     factores, pool, strides = [], [], []
 
     for i in range(2, nb_features + 1):
