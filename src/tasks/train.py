@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     dtgen = DataGenerator(args, train=True)
     htr = HTRNetwork(args.output, dtgen)
-    htr.model.summary()
+    htr.summary_to_file()
 
     htr.model.fit_generator(
         generator=dtgen.next_train(),

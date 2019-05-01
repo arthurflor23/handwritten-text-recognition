@@ -4,22 +4,31 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, PReLU, BatchNor
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
 from tensorflow.keras.optimizers import Adamax
+from tensorflow.keras import backend as K
 from network.ctc_model import CTCModel
-import tensorflow.keras.backend as K
+from contextlib import redirect_stdout
 import os
 
 
 class HTRNetwork:
 
     def __init__(self, output, dtgen):
-        self.checkpoint = os.path.join(output, "checkpoint_weights.hdf5")
-        self.logger = os.path.join(output, "logger.log")
+        os.makedirs(output, exist_ok=True)
+
+        self.summary_path = os.path.join(output, "summary.txt")
+        self.checkpoint_path = os.path.join(output, "checkpoint_weights.hdf5")
+        self.logger_path = os.path.join(output, "logger.log")
 
         self.build_network(dtgen.nb_features, dtgen.dictionary, dtgen.training)
         self.build_callbacks(dtgen.training)
 
-        if os.path.isfile(self.checkpoint):
-            self.model.load_checkpoint(self.checkpoint)
+        if os.path.isfile(self.checkpoint_path):
+            self.model.load_checkpoint(self.checkpoint_path)
+
+    def summary_to_file(self):
+        with open(self.summary_path, "w") as f:
+            with redirect_stdout(f):
+                self.model.summary()
 
     def build_network(self, nb_features, nb_labels, training):
         """Build the HTR network: CNN -> RNN -> CTC"""
@@ -62,10 +71,10 @@ class HTRNetwork:
     def build_callbacks(self, training):
         """Build/Call callbacks to the model"""
 
-        logger = CSVLogger(filename=self.logger, append=True)
+        logger = CSVLogger(filename=self.logger_path, append=True)
 
         tensorboard = TensorBoard(
-            log_dir=os.path.dirname(self.checkpoint),
+            log_dir=os.path.dirname(self.logger_path),
             histogram_freq=1,
             profile_batch=0,
             write_graph=True,
@@ -80,7 +89,7 @@ class HTRNetwork:
             verbose=1)
 
         checkpoint = ModelCheckpoint(
-            filepath=self.checkpoint,
+            filepath=self.checkpoint_path,
             period=1,
             monitor="val_loss",
             save_best_only=True,
