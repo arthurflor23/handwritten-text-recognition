@@ -12,9 +12,13 @@ class DataGenerator():
 
     def __init__(self, args, train=False, test=False):
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        self.batch_size = np.maximum(args.batch, 1)
-        self.padding_value = 255
-        self.nb_features = 64
+        self.batch_size = np.maximum(1, args.batch)
+
+        # will be replaced by the nearest square number
+        self.nb_features = np.maximum(20, 64)
+
+        while (np.sqrt(self.nb_features) % 4) > 0:
+            self.nb_features += 1
 
         self.data_path = args.data
         self.ground_truth_path = args.ground_truth
@@ -73,7 +77,7 @@ class DataGenerator():
 
         # inputs_len = [len(inputs[i]) for i in range(len(inputs))]
         inputs_len = [self.nb_features for i in range(len(inputs))]
-        inputs_pad = preproc.padding_list(inputs, value=self.padding_value)
+        inputs_pad = preproc.padding_list(inputs, value=255)
 
         return np.array(inputs_pad), np.array(inputs_len)
 
