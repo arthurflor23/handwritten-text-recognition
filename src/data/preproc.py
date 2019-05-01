@@ -25,7 +25,6 @@ def process_image(img_path, nb_features):
 
 def padding_list(inputs, value):
     """Fill lists with pad value"""
-
     return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")
 
 

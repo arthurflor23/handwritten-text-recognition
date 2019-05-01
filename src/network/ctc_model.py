@@ -178,10 +178,10 @@ class CTCModel:
 
             data = next(generator)
 
-            x = data[0][0]
-            x_len = data[0][2]
-            y = data[0][1]
-            y_len = data[0][3]
+            x = data[0]
+            x_len = data[2]
+            y = data[1]
+            y_len = data[3]
             batch_size = x.shape[0]
 
             no_lab = True if 0 in y_len else False
@@ -449,7 +449,7 @@ class CTCModel:
         return outmetrics
 
     def evaluate_generator(self, generator, steps=None, max_queue_size=10, workers=1,
-                           use_multiprocessing=False, verbose=0, metrics=["loss", "ler", "ser"]):
+                           verbose=0, metrics=["loss", "ler", "ser"]):
         """ Evaluates the model on a data generator.
 
         :param: See keras.engine.Model.fit()
@@ -478,12 +478,12 @@ class CTCModel:
             loss : the loss on the set
             ler : the label error rate for each data (a list)
             seq_error : the sequence error rate on the dataset
-                 """
+        """
 
         if "ler" in metrics or "ser" in metrics:
             ler_dataset = self.model_eval.predict_generator(generator, steps,
                                                             max_queue_size=max_queue_size, workers=workers,
-                                                            use_multiprocessing=use_multiprocessing, verbose=verbose)
+                                                            use_multiprocessing=False, verbose=verbose)
         if "ser" in metrics:
             seq_error = float(np.sum([1 for ler_data in ler_dataset if ler_data != 0])) \
                 / len(ler_dataset) if len(ler_dataset) > 0 else 1.
@@ -518,7 +518,6 @@ class CTCModel:
     def predict_generator(self, generator, steps,
                           max_queue_size=10,
                           workers=1,
-                          use_multiprocessing=False,
                           verbose=0,
                           decode_func=None):
         """Generates predictions for the input samples from a data generator.
@@ -542,13 +541,6 @@ class CTCModel:
             max_queue_size: Maximum size for the generator queue.
             workers: Maximum number of processes to spin up
                 when using process based threading
-            use_multiprocessing: If `True`, use process based threading.
-                Note that because
-                this implementation relies on multiprocessing,
-                you should not pass
-                non picklable arguments to the generator
-                as they can"t be passed
-                easily to children processes.
             verbose: verbosity mode, 0 or 1.
             decode_func: a function for decoding a list of predicted sequences (using self.charset)
 
@@ -568,20 +560,13 @@ class CTCModel:
         all_lab = []
 
         is_sequence = isinstance(generator, Sequence)
-
-        if not is_sequence and use_multiprocessing and workers > 1:
-            warnings.warn(
-                UserWarning("Using a generator with `use_multiprocessing=True`"
-                            " and multiple workers may duplicate your data."
-                            " Please consider using the`keras.utils.Sequence"
-                            " class."))
         enqueuer = None
 
         try:
             if is_sequence:
-                enqueuer = OrderedEnqueuer(generator, use_multiprocessing=use_multiprocessing)
+                enqueuer = OrderedEnqueuer(generator, use_multiprocessing=False)
             else:
-                enqueuer = GeneratorEnqueuer(generator, use_multiprocessing=use_multiprocessing)
+                enqueuer = GeneratorEnqueuer(generator, use_multiprocessing=False)
 
             enqueuer.start(workers=workers, max_queue_size=max_queue_size)
             output_generator = enqueuer.get()
@@ -655,7 +640,6 @@ class CTCModel:
         return self.model_train.summary()
 
     def predict(self, x, batch_size=None, verbose=0, steps=None, max_len=None, max_value=999):
-
         """
         The same function as in the Keras Model but with a different function predict_loop for dealing with variable length predictions
         Except that x = [x_features, x_len]
@@ -830,7 +814,7 @@ class CTCModel:
 
         assert (K.backend() == "tensorflow")
 
-        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length, axis=0), greedy=my_params["greedy"],
+        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length), greedy=my_params["greedy"],
                       beam_width=my_params["beam_width"], top_paths=my_params["top_paths"])[0][0],
                       dtype="float32")
 

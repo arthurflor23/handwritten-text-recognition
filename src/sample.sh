@@ -25,4 +25,4 @@ python tasks/train.py --dataset $DATASET --epochs 1 --batch 1
 ### ---------- ###
 ### test model ###
 ### ---------- ###
-# python tasks/test.py --dataset $DATASET
+# python tasks/test.py --dataset $DATASET --batch 1

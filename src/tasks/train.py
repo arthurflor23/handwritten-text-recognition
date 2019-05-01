@@ -26,10 +26,10 @@ if __name__ == "__main__":
     htr.summary_to_file()
 
     htr.model.fit_generator(
-        generator=dtgen.next_train(),
+        generator=dtgen.next_train_batch(),
         epochs=args.epochs,
         steps_per_epoch=dtgen.train_steps,
-        validation_data=dtgen.next_val(),
+        validation_data=dtgen.next_val_batch(),
         validation_steps=dtgen.val_steps,
         callbacks=htr.callbacks,
         verbose=1)

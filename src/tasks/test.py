@@ -21,31 +21,34 @@ if __name__ == "__main__":
     args = setup_path(args)
 
     dtgen = DataGenerator(args)
-    htr = HTRNetwork(dtgen)
-    htr.model.summary()
+    htr = HTRNetwork(args.output, dtgen)
 
-    # eval = htr.model.evaluate(
-    #     x=dtgen.next_eval(),
-    #     batch_size=dtgen.batch_size,
-    #     metrics=["loss", "ler", "ser"],
-    #     verbose=1
-    # )
+    eval = htr.model.evaluate_generator(
+        generator=dtgen.next_test_batch(),
+        steps=dtgen.test_steps,
+        metrics=["loss", "ler", "ser"],
+        verbose=1
+    )
 
-    # # Outputs: a list containing:
-    # #   loss (number)
-    # #   label error rate for esach data (list)
-    # #   sequence error rate on the dataset
-    # print("\n", eval, "\n")
+    eval_corpus = [
+        f"Number of images:     {len(dtgen.test_list)}",
+        f"Number of features:   {dtgen.nb_features}\n",
+        f"Test dataset loss:    {eval[0][0]:.2f}",
+        f"Label error rate:     {sum(eval[1])/len(eval[1]):.2f}",
+        f"Sequence error rate   {eval[2]:.2f}",
+    ]
 
-    # pred = htr.model.predict(
-    #     x=dtgen.next_pred(),
-    #     batch_size=dtgen.batch_size,
-    #     max_value=dtgen.padding_value,
-    #     verbose=1
-    # )
+    with open(os.path.join(args.output, "evaluate.txt"), "w") as ev:
+        ev.write("\n".join(eval_corpus))
 
-    # for i in range(len(pred)):
-    #     print("Prediction :", [j for j in pred[i] if j != -1], "-- Label :", dtgen.y_test[i])
+    pred = htr.model.predict_generator(
+        generator=dtgen.next_test_batch(),
+        steps=dtgen.test_steps,
+        verbose=1,
+        decode_func=dtgen.decode_ctc
+    )
 
-    # # # create call back to save model, evaluation and predicts ###
-    # # htr.model.save_model(path_dir=output + "models", charset=dtgen.dictionary)
+    pred_corpus = ["L || P"] + [f"{l} || {p}" for (p, l) in zip(pred[0], pred[1])]
+
+    with open(os.path.join(args.output, "predict.txt"), "w") as ev:
+        ev.write("\n".join(pred_corpus))

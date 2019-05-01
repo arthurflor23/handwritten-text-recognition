@@ -14,10 +14,12 @@ class DataGenerator():
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         self.batch_size = np.maximum(1, args.batch)
 
-        # will be replaced by the nearest square number
-        self.nb_features = np.maximum(20, 64)
+        # will be replaced by the nearest even square number
+        # i.e. 16, 64, 144, 256, 1024...
+        self.nb_features = np.maximum(1, 64)
+        self.nb_layers = 4
 
-        while (np.sqrt(self.nb_features) % 4) > 0:
+        while (np.sqrt(self.nb_features) % self.nb_layers) > 0:
             self.nb_features += 1
 
         self.data_path = args.data
@@ -54,16 +56,13 @@ class DataGenerator():
         """Read and build the train and validation files of the dataset"""
 
         self.train_index, self.val_index = 0, 0
-        # self.x_train, self.x_train_len = self.fetch_img_by_partition(self.train_list)
         self.y_train, self.y_train_len = self.fetch_txt_by_partition(self.train_list)
-        # self.x_val, self.x_val_len = self.fetch_img_by_partition(self.val_list)
         self.y_val, self.y_val_len = self.fetch_txt_by_partition(self.val_list)
 
     def __build_test_data(self):
         """Read and build the test files of the dataset"""
 
         self.test_index = 0
-        self.x_test, self.x_test_len = self.fetch_img_by_partition(self.test_list)
         self.y_test, self.y_test_len = self.fetch_txt_by_partition(self.test_list)
 
     def fetch_img_by_partition(self, partition_list):
@@ -86,15 +85,23 @@ class DataGenerator():
         inputs = []
         for i, filename in enumerate(partition_list):
             txt = open(os.path.join(self.ground_truth_path, f"{filename}.txt")).read().strip()
-            txt_encode = [float(self.dictionary.find(c)) for c in txt]
-            inputs.append(txt_encode)
+            inputs.append(txt)
 
+        inputs = self.encode_ctc(inputs, self.dictionary)
         inputs_len = [len(inputs[i]) for i in range(len(inputs))]
         inputs_pad = preproc.padding_list(inputs, value=len(self.dictionary))
 
         return np.array(inputs_pad), np.array(inputs_len)
 
-    def next_train(self):
+    def encode_ctc(self, txt, charset):
+        """Encode text batch to CTC input (sparse)"""
+        return [[float(charset.find(x)) for x in vec] for vec in txt]
+
+    def decode_ctc(self, arr, charset):
+        """Decode CTC output batch to text"""
+        return ["".join([charset[int(c)] for c in vec]) for vec in arr]
+
+    def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
 
         while True:
@@ -117,7 +124,7 @@ class DataGenerator():
 
             yield (inputs, output)
 
-    def next_val(self):
+    def next_val_batch(self):
         """Get the next batch from validation partition (yield)"""
 
         while True:
@@ -140,12 +147,17 @@ class DataGenerator():
 
             yield (inputs, output)
 
-    def next_eval(self):
+    def next_test_batch(self):
         """Return model evaluate parameters"""
 
-        return [self.x_test, self.y_test, self.x_test_len, self.y_test_len]
+        while True:
+            if self.test_index >= len(self.test_list):
+                self.test_index = 0
 
-    def next_pred(self):
-        """Return model test parameters"""
+            index = self.test_index
+            until = self.test_index + self.batch_size
 
-        return [self.x_test, self.x_test_len]
+            x_test, x_test_len = self.fetch_img_by_partition(self.test_list[index:until])
+            self.test_index += self.batch_size
+
+            yield [x_test, self.y_test[index:until], x_test_len, self.y_test_len[index:until]]
