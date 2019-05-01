@@ -1,6 +1,5 @@
 import os
 import pickle
-import warnings
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Input

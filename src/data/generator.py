@@ -12,7 +12,7 @@ class DataGenerator():
 
     def __init__(self, args, train=False):
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        self.batch_size = np.maximum(1, args.batch)
+        self.batch_size = np.maximum(2, args.batch)
 
         # will be replaced by the nearest even square number
         # i.e. 16, 64, 144, 256, 1024...
