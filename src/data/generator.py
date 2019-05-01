@@ -10,7 +10,7 @@ from . import preproc
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, args, train=False, test=False):
+    def __init__(self, args, train=False):
         self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         self.batch_size = np.maximum(1, args.batch)
 
@@ -30,15 +30,14 @@ class DataGenerator():
             self.val_list = self.read_and_fill(args.validation_file)
             self.val_steps = len(self.val_list) // self.batch_size
 
-            self.training = True
-            self.build_train()
-
-        if test:
+            self.training = train
+            self.__build_train_data()
+        else:
             self.test_list = self.read_and_fill(args.test_file)
             self.test_steps = len(self.test_list) // self.batch_size
 
-            self.training = False
-            self.build_test()
+            self.training = train
+            self.__build_test_data()
 
     def read_and_fill(self, partition_file):
         """Read the partitions and random fill until batch divider"""
@@ -51,7 +50,7 @@ class DataGenerator():
 
         return np.array(arr)
 
-    def build_train(self):
+    def __build_train_data(self):
         """Read and build the train and validation files of the dataset"""
 
         self.train_index, self.val_index = 0, 0
@@ -60,7 +59,7 @@ class DataGenerator():
         # self.x_val, self.x_val_len = self.fetch_img_by_partition(self.val_list)
         self.y_val, self.y_val_len = self.fetch_txt_by_partition(self.val_list)
 
-    def build_test(self):
+    def __build_test_data(self):
         """Read and build the test files of the dataset"""
 
         self.test_index = 0
@@ -142,7 +141,11 @@ class DataGenerator():
             yield (inputs, output)
 
     def next_eval(self):
+        """Return model evaluate parameters"""
+
         return [self.x_test, self.y_test, self.x_test_len, self.y_test_len]
 
     def next_pred(self):
+        """Return model test parameters"""
+
         return [self.x_test, self.x_test_len]
