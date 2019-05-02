@@ -1,21 +1,22 @@
-"""Add the environment paths to the args input"""
+"""Set paths and environment variables"""
 
 from os.path import join
 
 
-def setup_path(args):
-    """Set paths to the args"""
+class Path():
 
-    setattr(args, "source", join("..", "data", args.dataset))
-    setattr(args, "raw_source", join("..", "data", f"raw_{args.dataset}"))
-    setattr(args, "output", join("..", "output", args.dataset))
+    def __init__(self, dataset, epochs=None, batch=None):
+        self.source = join("..", "data", dataset)
+        self.raw_source = join("..", "data", f"raw_{dataset}")
+        self.output = join("..", "output", dataset)
 
-    setattr(args, "data", join(args.source, "lines"))
-    setattr(args, "ground_truth", join(args.source, "ground_truth"))
-    setattr(args, "partitions", join(args.source, "partitions"))
+        self.data = join(self.source, "lines")
+        self.ground_truth = join(self.source, "ground_truth")
+        self.partitions = join(self.source, "partitions")
 
-    setattr(args, "train_file", join(args.partitions, "train.txt"))
-    setattr(args, "validation_file", join(args.partitions, "validation.txt"))
-    setattr(args, "test_file", join(args.partitions, "test.txt"))
+        self.train_file = join(self.partitions, "train.txt")
+        self.validation_file = join(self.partitions, "validation.txt")
+        self.test_file = join(self.partitions, "test.txt")
 
-    return args
+        self.epochs = epochs
+        self.batch = batch

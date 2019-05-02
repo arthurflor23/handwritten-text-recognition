@@ -2,9 +2,9 @@
 Provides options via the command line to perform project tasks.
 """
 
+from environment import Path
 from network.network import HTRNetwork
 from data.generator import DataGenerator
-from environment import setup_path
 import importlib
 import argparse
 import os
@@ -20,33 +20,34 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--batch", type=int, default=2)
     args = parser.parse_args()
-    args = setup_path(args)
+
+    env = Path(args.dataset, args.epochs, args.batch)
 
     if args.transform:
         """Transform dataset to the project standard"""
 
         print(f"The {args.dataset} dataset will be transformed for the project...")
-        package = f"dt_transform.{os.path.basename(args.source)}"
+        package = f"dt_transform.{os.path.basename(env.source)}"
         transform = importlib.import_module(package)
 
-        if not os.path.exists(args.raw_source):
-            os.rename(args.source, args.raw_source)
+        if not os.path.exists(env.raw_source):
+            os.rename(env.source, env.raw_source)
 
-        transform.partitions(args)
-        transform.ground_truth(args)
-        transform.data(args)
+        transform.partitions(env)
+        transform.ground_truth(env)
+        transform.data(env)
         print(f"Transformation finished.")
 
     elif args.train:
         """Train model with dataset parameter name"""
 
-        dtgen = DataGenerator(args, train=True)
-        htr = HTRNetwork(args.output, dtgen)
+        dtgen = DataGenerator(env, train=True)
+        htr = HTRNetwork(env.output, dtgen)
         htr.summary_to_file()
 
         htr.model.fit_generator(
             generator=dtgen.next_train_batch(),
-            epochs=args.epochs,
+            epochs=env.epochs,
             steps_per_epoch=dtgen.train_steps,
             validation_data=dtgen.next_val_batch(),
             validation_steps=dtgen.val_steps,
@@ -56,8 +57,8 @@ if __name__ == "__main__":
     elif args.eval:
         """Evaluate model with dataset parameter name"""
 
-        dtgen = DataGenerator(args)
-        htr = HTRNetwork(args.output, dtgen)
+        dtgen = DataGenerator(env)
+        htr = HTRNetwork(env.output, dtgen)
 
         eval = htr.model.evaluate_generator(
             generator=dtgen.next_test_batch(),
@@ -74,14 +75,14 @@ if __name__ == "__main__":
             f"Sequence error rate   {eval[2]:.2f}",
         ]
 
-        with open(os.path.join(args.output, "evaluate.txt"), "w") as ev:
+        with open(os.path.join(env.output, "evaluate.txt"), "w") as ev:
             ev.write("\n".join(eval_corpus))
 
     elif args.test:
         """Test model with dataset parameter name"""
 
-        dtgen = DataGenerator(args)
-        htr = HTRNetwork(args.output, dtgen)
+        dtgen = DataGenerator(env)
+        htr = HTRNetwork(env.output, dtgen)
 
         pred = htr.model.predict_generator(
             generator=dtgen.next_test_batch(),
@@ -92,5 +93,5 @@ if __name__ == "__main__":
 
         pred_corpus = ["L || P"] + [f"{l} || {p}" for (p, l) in zip(pred[0], pred[1])]
 
-        with open(os.path.join(args.output, "predict.txt"), "w") as ev:
+        with open(os.path.join(env.output, "predict.txt"), "w") as ev:
             ev.write("\n".join(pred_corpus))
