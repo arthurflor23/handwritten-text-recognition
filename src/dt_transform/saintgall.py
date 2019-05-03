@@ -1,84 +1,60 @@
 """Transform Saint Gall dataset"""
 
+from multiprocessing import Pool
+from functools import partial
 from glob import glob
-import shutil
+import numpy as np
 import os
 
 
-def partitions(args):
-    """Transform and create 'partitions' folder"""
+def dataset(env, preproc_func):
+    """Load and save npz file of the ground truth and images (preprocessed)"""
 
-    if os.path.exists(args.partitions):
-        shutil.rmtree(args.partitions)
-    os.makedirs(args.partitions)
+    gt = os.path.join(env.raw_source, "ground_truth")
+    ground_truth = open(os.path.join(gt, "transcription.txt")).read().splitlines()
+    gt_dict = dict()
 
-    origin_dir = os.path.join(args.raw_source, "sets")
+    for line in ground_truth:
+        if (not line or line[0] == "#"):
+            continue
 
-    def complete_partition_file(set_file, new_set_file):
-        lines = os.path.join(args.source, "data", "line_images_normalized")
+        splited = line.strip().split(" ")
+        assert len(splited) >= 3
 
-        with open(set_file) as file:
-            with open(new_set_file, "w+") as new_file:
-                content = [x.strip() for x in file.readlines()]
+        name = splited[0].strip()
+        text = splited[1].replace("-", "").replace("|", " ").strip()
+        gt_dict[name] = text
 
-                for item in content:
-                    glob_filter = os.path.join(lines, f"{item}*")
-                    paths = [x for x in glob(glob_filter, recursive=True)]
+    dt, gt = build_data_from(env, "train.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.train, dt=dt, gt=gt)
 
-                    for path in paths:
-                        basename = os.path.basename(path).split(".")[0]
-                        new_file.write(f"{basename.strip()}\n")
+    dt, gt = build_data_from(env, "valid.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.valid, dt=dt, gt=gt)
 
-    set_file = os.path.join(origin_dir, "train.txt")
-    complete_partition_file(set_file, args.train_file)
-
-    set_file = os.path.join(origin_dir, "valid.txt")
-    complete_partition_file(set_file, args.validation_file)
-
-    set_file = os.path.join(origin_dir, "test.txt")
-    complete_partition_file(set_file, args.test_file)
+    dt, gt = build_data_from(env, "test.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.test, dt=dt, gt=gt)
 
 
-def ground_truth(args):
-    """Transform and create 'ground_truth' folder (Ground Truth)"""
+def build_data_from(env, partition, gt_dict, preproc_func):
+    """Preprocess images with pool function"""
 
-    if os.path.exists(args.ground_truth):
-        shutil.rmtree(args.ground_truth)
-    os.makedirs(args.ground_truth)
+    pt_path = os.path.join(env.raw_source, "sets")
+    lines = open(os.path.join(pt_path, partition)).read().splitlines()
+    data_path = os.path.join(env.raw_source, "data", "line_images_normalized")
+    dt, gt = [], []
 
-    origin_dir = os.path.join(args.raw_source, "ground_truth")
-    set_file = os.path.join(origin_dir, "transcription.txt")
+    for line in lines:
+        glob_filter = os.path.join(data_path, f"{line}*")
+        img_list = [x for x in glob(glob_filter, recursive=True)]
 
-    with open(set_file) as file:
-        content = [x.strip() for x in file.readlines()]
+        for path in img_list:
+            index = os.path.splitext(os.path.basename(path))[0]
+            gt.append(gt_dict[index])
+            dt.append(path)
 
-        for line in content:
-            if (not line or line[0] == "#"):
-                continue
+    pool = Pool()
+    dt = pool.map(partial(preproc_func, img_size=env.input_img_size, read_first=True), dt)
+    pool.close()
+    pool.join()
 
-            splited = line.strip().split(" ")
-            assert len(splited) >= 3
-
-            file_name = splited[0]
-            file_text = splited[1].replace("-", "").replace("|", " ")
-            new_set_file = os.path.join(args.ground_truth, f"{file_name}.txt")
-
-            with open(new_set_file, "w+") as new_file:
-                new_file.write(file_text.strip())
-
-
-def data(args):
-    """Transform and create 'lines' folder"""
-
-    if os.path.exists(args.data):
-        shutil.rmtree(args.data)
-    os.makedirs(args.data)
-
-    origin_dir = os.path.join(args.raw_source, "data")
-    glob_filter = os.path.join(origin_dir, "line_images_normalized", "*.*")
-    files = [x for x in glob(glob_filter, recursive=True)]
-
-    for file in files:
-        name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(args.data, f"{name}.png")
-        shutil.copy(file, new_file)
+    return dt, gt

@@ -1,58 +1,50 @@
 """Transform Bentham dataset"""
 
-from glob import glob
+from multiprocessing import Pool
+from functools import partial
+import numpy as np
 import os
-import shutil
 
 
-def partitions(args):
-    """Transform and create 'partitions' folder"""
+def dataset(env, preproc_func):
+    """Load and save npz file of the ground truth and images (preprocessed)"""
 
-    if os.path.exists(args.partitions):
-        shutil.rmtree(args.partitions)
-    os.makedirs(args.partitions)
+    env.raw_source = os.path.join(env.raw_source, "BenthamDatasetR0-GT")
+    path = os.path.join(env.raw_source, "Transcriptions")
 
-    origin_dir = os.path.join(args.raw_source, "BenthamDatasetR0-GT")
+    gt = os.listdir(path=path)
+    gt_dict = dict()
 
-    set_file = os.path.join(origin_dir, "Partitions", "TrainLines.lst")
-    shutil.copy(set_file, args.train_file)
+    for x in gt:
+        text = " ".join(open(os.path.join(path, x)).read().splitlines()).replace("_", "")
+        gt_dict[os.path.splitext(x)[0]] = text.strip()
 
-    set_file = os.path.join(origin_dir, "Partitions", "ValidationLines.lst")
-    shutil.copy(set_file, args.validation_file)
+    dt, gt = build_data_from(env, "TrainLines.lst", gt_dict, preproc_func)
+    np.savez_compressed(env.train, dt=dt, gt=gt)
 
-    set_file = os.path.join(origin_dir, "Partitions", "TestLines.lst")
-    shutil.copy(set_file, args.test_file)
+    dt, gt = build_data_from(env, "ValidationLines.lst", gt_dict, preproc_func)
+    np.savez_compressed(env.valid, dt=dt, gt=gt)
 
-
-def ground_truth(args):
-    """Transform and create 'gt' folder (Ground Truth)"""
-
-    if os.path.exists(args.ground_truth):
-        shutil.rmtree(args.ground_truth)
-    os.makedirs(args.ground_truth)
-
-    origin_dir = os.path.join(args.raw_source, "BenthamDatasetR0-GT")
-
-    glob_filter = os.path.join(origin_dir, "Transcriptions", "**", "*.*")
-    files = [x for x in glob(glob_filter, recursive=True)]
-
-    for file in files:
-        shutil.copy(file, args.ground_truth)
+    dt, gt = build_data_from(env, "TestLines.lst", gt_dict, preproc_func)
+    np.savez_compressed(env.test, dt=dt, gt=gt)
 
 
-def data(args):
-    """Transform and create 'lines' folder"""
+def build_data_from(env, partition, gt_dict, preproc_func):
+    """Preprocess images with pool function"""
 
-    if os.path.exists(args.data):
-        shutil.rmtree(args.data)
-    os.makedirs(args.data)
+    pt_path = os.path.join(env.raw_source, "Partitions")
+    lines = open(os.path.join(pt_path, partition)).read().splitlines()
+    data_path = os.path.join(env.raw_source, "Images", "Lines")
+    dt, gt = [], []
 
-    origin_dir = os.path.join(args.raw_source, "BenthamDatasetR0-GT")
+    for line in lines:
+        path = os.path.join(data_path, f"{line}.png")
+        gt.append(gt_dict[line])
+        dt.append(path)
 
-    glob_filter = os.path.join(origin_dir, "Images", "Lines", "**", "*.*")
-    files = [x for x in glob(glob_filter, recursive=True)]
+    pool = Pool()
+    dt = pool.map(partial(preproc_func, img_size=env.input_img_size, read_first=True), dt)
+    pool.close()
+    pool.join()
 
-    for file in files:
-        name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(args.data, f"{name}.png")
-        shutil.copy(file, new_file)
+    return dt, gt

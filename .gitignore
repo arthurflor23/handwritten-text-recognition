@@ -1,6 +1,7 @@
 # Datasets
 /data/**/
 /output/**/
+/raw/**/
 
 # Hidden files
 .vscode

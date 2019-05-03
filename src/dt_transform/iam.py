@@ -1,77 +1,58 @@
 """Transform IAM dataset"""
 
-from glob import glob
+from multiprocessing import Pool
+from functools import partial
+import numpy as np
 import os
-import shutil
 
 
-def partitions(args):
-    """Transform and create 'partitions' folder"""
+def dataset(env, preproc_func):
+    """Load and save npz file of the ground truth and images (preprocessed)"""
 
-    if os.path.exists(args.partitions):
-        shutil.rmtree(args.partitions)
-    os.makedirs(args.partitions)
+    gt = os.path.join(env.raw_source, "ascii")
+    ground_truth = open(os.path.join(gt, "lines.txt")).read().splitlines()
+    gt_dict = dict()
 
-    origin_dir = os.path.join(args.raw_source, "largeWriterIndependentTextLineRecognitionTask")
-    set_file = os.path.join(origin_dir, "trainset.txt")
-    shutil.copy(set_file, args.train_file)
+    for line in ground_truth:
+        if (not line or line[0] == "#"):
+            continue
 
-    set_file1 = os.path.join(origin_dir, "validationset1.txt")
-    set_file2 = os.path.join(origin_dir, "validationset2.txt")
+        splited = line.strip().split(" ")
+        assert len(splited) >= 9
 
-    with open(args.validation_file, "w") as outfile:
-        with open(set_file1) as infile:
-            outfile.write(infile.read())
+        name = splited[0].strip()
+        text = splited[len(splited) - 1].replace("|", " ").strip()
+        gt_dict[name] = text
 
-        with open(set_file2) as infile:
-            outfile.write(infile.read())
+    dt, gt = build_data_from(env, "trainset.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.train, dt=dt, gt=gt)
 
-    set_file = os.path.join(origin_dir, "testset.txt")
-    shutil.copy(set_file, args.test_file)
+    dt, gt = build_data_from(env, "validationset2.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.valid, dt=dt, gt=gt)
 
-
-def ground_truth(args):
-    """Transform and create 'gt' folder (Ground Truth)"""
-
-    if os.path.exists(args.ground_truth):
-        shutil.rmtree(args.ground_truth)
-    os.makedirs(args.ground_truth)
-
-    origin_dir = os.path.join(args.raw_source, "ascii")
-    set_file = os.path.join(origin_dir, "lines.txt")
-
-    with open(set_file) as file:
-        content = [x.strip() for x in file.readlines()]
-
-        for line in content:
-            if (not line or line[0] == "#"):
-                continue
-
-            splited = line.strip().split(" ")
-            assert len(splited) >= 9
-
-            file_name = splited[0]
-            file_text = splited[len(splited) - 1].replace("|", " ")
-
-            new_set_file = os.path.join(args.ground_truth, f"{file_name}.txt")
-
-            with open(new_set_file, "w+") as new_file:
-                new_file.write(file_text.strip())
+    dt, gt = build_data_from(env, "testset.txt", gt_dict, preproc_func)
+    np.savez_compressed(env.test, dt=dt, gt=gt)
 
 
-def data(args):
-    """Transform and create 'lines' folder"""
+def build_data_from(env, partition, gt_dict, preproc_func):
+    """Preprocess images with pool function"""
 
-    if os.path.exists(args.data):
-        shutil.rmtree(args.data)
-    os.makedirs(args.data)
+    pt_path = os.path.join(env.raw_source, "largeWriterIndependentTextLineRecognitionTask")
+    lines = open(os.path.join(pt_path, partition)).read().splitlines()
+    data_path = os.path.join(env.raw_source, "lines")
+    dt, gt = [], []
 
-    origin_dir = os.path.join(args.raw_source, "lines")
+    for line in lines:
+        split = line.split("-")
+        path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
+        path = os.path.join(data_path, path)
 
-    glob_filter = os.path.join(origin_dir, "**", "*.*")
-    files = [x for x in glob(glob_filter, recursive=True)]
+        gt.append(gt_dict[line])
+        dt.append(path)
 
-    for file in files:
-        name = os.path.basename(file).split(".")[0]
-        new_file = os.path.join(args.data, f"{name}.png")
-        shutil.copy(file, new_file)
+    pool = Pool()
+    dt = pool.map(partial(preproc_func, img_size=env.input_img_size, read_first=True), dt)
+    pool.close()
+    pool.join()
+
+    return dt, gt

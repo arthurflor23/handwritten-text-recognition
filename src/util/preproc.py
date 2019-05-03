@@ -1,31 +1,31 @@
 """Preprocess image to the HTR model"""
 
-import tensorflow.image as tf_image
-import tensorflow.keras.preprocessing.sequence as sequence
-import tensorflow.keras.preprocessing.image as keras_image
+import tensorflow.image as image
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.utils import normalize
 import numpy as np
 import cv2
 
 
-def process_image(img_path, nb_features):
-    """Make the process with the nb_features to the scale resize"""
+def preproc(img, img_size, read_first=False):
+    """Make the process with the `img_size` to the scale resize"""
 
-    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    if read_first:
+        img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+
     img = remove_cursive_style(img)
 
     img = np.reshape(img, img.shape + (1,))
-    img = tf_image.per_image_standardization(img)
-    img = tf_image.resize(img, size=(nb_features, 3500), preserve_aspect_ratio=True, antialias=True)
-    img = tf_image.rot90(img, k=3)[:,:,0]
+    img = image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True, antialias=False)
+    img = image.rot90(img, k=3)
 
-    # cv2.imshow("img", keras_image.img_to_array(img))
+    target = np.ones(img_size) * 255
+    target[0:img.shape[0], 0:img.shape[1], 0::] = img
+    img = normalize(target[:,:,0], order=4)
+
+    # cv2.imshow("img", img)
     # cv2.waitKey(0)
     return img
-
-
-def padding_list(inputs, value):
-    """Fill lists with pad value"""
-    return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")
 
 
 def remove_cursive_style(img):
@@ -59,3 +59,9 @@ def remove_cursive_style(img):
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
     return cv2.warpAffine(img, result[2], result[1], borderValue=255)
+
+
+def padding_list(inputs, value):
+    """Fill lists with pad value"""
+
+    return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")

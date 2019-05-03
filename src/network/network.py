@@ -1,10 +1,10 @@
 """Handwritten text recognition network"""
 
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, PReLU, BatchNormalization
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, PReLU
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
 from tensorflow.keras.optimizers import Adamax
-from tensorflow.keras import backend as K
+from tensorflow.keras import backend as k
 from network.ctc_model import CTCModel
 from contextlib import redirect_stdout
 import os
@@ -12,14 +12,14 @@ import os
 
 class HTRNetwork:
 
-    def __init__(self, output, dtgen):
-        os.makedirs(output, exist_ok=True)
+    def __init__(self, env, dtgen):
+        os.makedirs(env.output, exist_ok=True)
 
-        self.summary_path = os.path.join(output, "summary.txt")
-        self.checkpoint_path = os.path.join(output, "checkpoint_weights.hdf5")
-        self.logger_path = os.path.join(output, "logger.log")
+        self.summary_path = os.path.join(env.output, "summary.txt")
+        self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
+        self.logger_path = os.path.join(env.output, "logger.log")
 
-        self.__build_network(dtgen.nb_layers, dtgen.nb_features, dtgen.dictionary, dtgen.training)
+        self.__build_network(env.input_img_size, dtgen.dictionary, dtgen.training)
         self.__build_callbacks()
 
         if os.path.isfile(self.checkpoint_path):
@@ -32,30 +32,30 @@ class HTRNetwork:
             with redirect_stdout(f):
                 self.model.summary()
 
-    def __build_network(self, nb_layers, nb_features, nb_labels, training):
+    def __build_network(self, img_size, nb_labels, training):
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
-        input_data = Input(name="input", shape=(None, nb_features))
-        filters = [64, 128, 256, 512]
-        pool_sizes, strides = pool_strides(nb_features, len(filters))
+        input_data = Input(name="input", shape=(None, img_size[1]))
 
-        cnn = K.expand_dims(x=input_data, axis=3)
+        filters = [32, 64, 128, 128, 256]
+        kernels = [5, 5, 3, 3, 3]
+        pool_sizes = strides = [(2,4), (2,4), (1,2), (1,2), (1,2)]
+        nb_layers = len(strides)
+
+        cnn = k.expand_dims(input_data, axis=3)
 
         for i in range(nb_layers):
-            cnn = Conv2D(filters=filters[i], kernel_size=5, padding="same", kernel_initializer="he_normal")(cnn)
-            cnn = PReLU(shared_axes=[1, 2])(cnn)
+            # activation="relu" (?)
+            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", kernel_initializer="he_normal")(cnn)
             cnn = BatchNormalization(trainable=training)(cnn)
-
-            cnn = Conv2D(filters=filters[i], kernel_size=3, padding="same", kernel_initializer="he_normal")(cnn)
+            cnn = PReLU(shared_axes=[1,2])(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
-            cnn = PReLU(shared_axes=[1, 1])(cnn)
-            cnn = BatchNormalization(trainable=training)(cnn)
 
-        outcnn = K.squeeze(x=cnn, axis=2)
+        outcnn = k.squeeze(cnn, axis=2)
 
-        # build CNN
-        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
+        # build RNN
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
         dense = TimeDistributed(Dense(units=(len(nb_labels) + 1), kernel_initializer="he_normal"))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
@@ -68,7 +68,7 @@ class HTRNetwork:
             top_paths=1,
             charset=nb_labels)
 
-        self.model.compile(optimizer=Adamax(learning_rate=0.0001))
+        self.model.compile(optimizer=Adamax(learning_rate=0.001))
 
     def __build_callbacks(self):
         """Build/Call callbacks to the model"""
@@ -102,29 +102,3 @@ class HTRNetwork:
                 verbose=1
             )
         ]
-
-
-def pool_strides(nb_features, nb_layers):
-    """Generate pool sizes and strides values with features and layers numbers"""
-
-    factores, pool, strides = [], [], []
-
-    for i in range(2, nb_features + 1):
-        while nb_features % i == 0:
-            nb_features = nb_features / i
-            factores.append(i)
-
-    order = sorted(factores, reverse=True)
-    cand = order[:nb_layers]
-    order = order[nb_layers:]
-
-    for i in range(len(cand)):
-        if len(order) == 0:
-            break
-        cand[i] *= order.pop()
-
-    for i in range(nb_layers):
-        pool.append((int(cand[i] / 2), cand[i]))
-        strides.append((1, cand[i]))
-
-    return pool, strides
