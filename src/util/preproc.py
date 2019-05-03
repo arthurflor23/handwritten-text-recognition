@@ -1,8 +1,7 @@
 """Preprocess image to the HTR model"""
 
-import tensorflow.image as image
-from tensorflow.keras.preprocessing import sequence
-from tensorflow.keras.utils import normalize
+from tensorflow.keras.preprocessing import sequence, image
+import tensorflow as tf
 import numpy as np
 import cv2
 
@@ -16,12 +15,14 @@ def preproc(img, img_size, read_first=False):
     img = remove_cursive_style(img)
 
     img = np.reshape(img, img.shape + (1,))
-    img = image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True, antialias=False)
-    img = image.rot90(img, k=3)
+    img = tf.image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True, antialias=False)
+    img = tf.image.rot90(img, k=3)
 
-    target = np.ones(img_size) * 255
+    target = np.ones(img_size, dtype=np.float) * 255
     target[0:img.shape[0], 0:img.shape[1], 0::] = img
-    img = normalize(target[:,:,0], order=4)
+
+    img = tf.image.per_image_standardization(target)
+    img = image.img_to_array(img)[:,:,0]
 
     # cv2.imshow("img", img)
     # cv2.waitKey(0)
