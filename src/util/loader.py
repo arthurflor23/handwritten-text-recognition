@@ -50,7 +50,7 @@ class DataGenerator():
     def decode_ctc(self, arr, charset):
         """Decode CTC output batch to text"""
 
-        return ["".join([charset[int(c)] for c in vec if c < len(self.dictionary)]) for vec in arr]
+        return ["".join(charset[int(c)] for c in vec if c < len(charset)) for vec in arr]
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -77,9 +77,6 @@ class DataGenerator():
             # x_train_len (image rotate height) must be higher y_train_len (max char in line)
             x_train_len = np.ones(self.batch_size) * x_train.shape[2]
             y_train_len = np.ones(self.batch_size) * len(y_train[0])
-
-            # x_train_len = np.asarray([len(x_train[i][0]) for i in range(self.batch_size)])
-            # y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
             inputs = {
                 "input": x_train,

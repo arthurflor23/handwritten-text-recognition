@@ -73,10 +73,10 @@ if __name__ == "__main__":
         )
 
         eval_corpus = [
-            f"Number of images (shape): {len(dtgen.test.shape)}\n",
-            f"Test dataset loss:        {eval[0][0]:.2f}",
-            f"Label error rate:         {sum(eval[1])/len(eval[1]):.2f}",
-            f"Sequence error rate       {eval[2]:.2f}",
+            f"Test dataset shape:   {dtgen.test.shape}\n",
+            f"Test dataset loss:    {sum(eval[0][1])/len(eval[0][1]):.2f}",
+            f"Label error rate:     {sum(eval[1])/len(eval[1]):.2f}",
+            f"Sequence error rate:  {eval[2]:.2f}",
         ]
 
         with open(os.path.join(env.output, "evaluate.txt"), "w") as ev:
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             decode_func=dtgen.decode_ctc
         )
 
-        pred_corpus = ["L || P"] + [f"{l} || {p}" for (p, l) in zip(pred[0], pred[1])]
+        pred_corpus = ["Label | Predict"] + [f"{l} | {p}" for (p, l) in zip(pred[0], pred[1])]
 
         with open(os.path.join(env.output, "predict.txt"), "w") as ev:
             ev.write("\n".join(pred_corpus))

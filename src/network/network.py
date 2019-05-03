@@ -32,7 +32,7 @@ class HTRNetwork:
             with redirect_stdout(f):
                 self.model.summary()
 
-    def __build_network(self, img_size, nb_labels, training):
+    def __build_network(self, img_size, dictionary, training):
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
@@ -56,7 +56,7 @@ class HTRNetwork:
 
         # build RNN
         blstm = Bidirectional(LSTM(units=256, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(nb_labels) + 1), kernel_initializer="he_normal"))(blstm)
+        dense = TimeDistributed(Dense(units=(len(dictionary) + 1), kernel_initializer="he_normal"))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
         # create and compile CTC model
@@ -66,7 +66,7 @@ class HTRNetwork:
             greedy=False,
             beam_width=100,
             top_paths=1,
-            charset=nb_labels)
+            charset=dictionary)
 
         self.model.compile(optimizer=Adamax(learning_rate=0.001))
 
