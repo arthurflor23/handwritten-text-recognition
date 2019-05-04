@@ -19,7 +19,7 @@ class HTRNetwork:
         self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
         self.logger_path = os.path.join(env.output, "logger.log")
 
-        self.__build_network(env.input_img_size, dtgen.dictionary, dtgen.training)
+        self.__build_network(env.model_input_size, dtgen.charset, dtgen.training)
         self.__build_callbacks()
 
         if os.path.isfile(self.checkpoint_path):
@@ -32,16 +32,16 @@ class HTRNetwork:
             with redirect_stdout(f):
                 self.model.summary()
 
-    def __build_network(self, img_size, dictionary, training):
+    def __build_network(self, input_size, charset, training):
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
-        input_data = Input(name="input", shape=(None, img_size[1]))
+        input_data = Input(name="input", shape=(None, input_size[1]))
 
         filters = [32, 64, 128, 128, 256]
         kernels = [5, 5, 3, 3, 3]
-        pool_sizes = strides = [(2,4), (2,2), (1,2), (1,2), (1,2)]
-        nb_layers = len(strides)
+        nb_layers = len(kernels)
+        pool_sizes, strides = get_pool_strides(input_size[1], nb_layers)
 
         cnn = k.expand_dims(input_data, axis=3)
 
@@ -56,7 +56,7 @@ class HTRNetwork:
 
         # build RNN
         blstm = Bidirectional(LSTM(units=256, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(dictionary) + 1), kernel_initializer="he_normal"))(blstm)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer="he_normal"))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
         # create and compile CTC model
@@ -66,7 +66,7 @@ class HTRNetwork:
             greedy=False,
             beam_width=100,
             top_paths=1,
-            charset=dictionary)
+            charset=charset)
 
         self.model.compile(optimizer=Adamax(learning_rate=0.001))
 
@@ -102,3 +102,29 @@ class HTRNetwork:
                 verbose=1
             )
         ]
+
+
+def get_pool_strides(nb_features, nb_layers):
+    """Automatic generator of the pool and strides values"""
+
+    factores, pool, strides = [], [], []
+
+    for i in range(2, nb_features + 1):
+        while nb_features % i == 0:
+            nb_features = nb_features / i
+            factores.append(i)
+
+    order = sorted(factores, reverse=True)
+    cand = order[:nb_layers]
+    order = order[nb_layers:]
+
+    for i in range(len(cand)):
+        if len(order) == 0:
+            break
+        cand[i] *= order.pop()
+
+    for i in range(nb_layers):
+        pool.append((int(cand[i] / 2), cand[i]))
+        strides.append((int(cand[i] / 2), cand[i]))
+
+    return pool, strides

@@ -9,7 +9,7 @@ class DataGenerator():
     """Generator class with data streaming"""
 
     def __init__(self, env, train=False):
-        self.dictionary = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        self.charset = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         self.batch_size = np.maximum(2, env.batch_size)
         self.training = train
 
@@ -77,7 +77,7 @@ class DataGenerator():
             y_train_len = np.asarray([len(y_train[i][0]) for i in range(self.batch_size)])
 
             x_train = padding_list(x_train, value=255)
-            y_train = padding_list(self.encode_ctc(y_train, self.dictionary), value=len(self.dictionary))
+            y_train = padding_list(self.encode_ctc(y_train, self.charset), value=len(self.charset))
 
             inputs = {
                 "input": x_train,
@@ -108,7 +108,7 @@ class DataGenerator():
             y_valid_len = np.asarray([len(y_valid[i][0]) for i in range(self.batch_size)])
 
             x_valid = padding_list(x_valid, value=255)
-            y_valid = padding_list(self.encode_ctc(y_valid, self.dictionary), value=len(self.dictionary))
+            y_valid = padding_list(self.encode_ctc(y_valid, self.charset), value=len(self.charset))
 
             inputs = {
                 "input": x_valid,
@@ -139,6 +139,6 @@ class DataGenerator():
             y_test_len = np.asarray([len(y_test[i][0]) for i in range(self.batch_size)])
 
             x_test = padding_list(x_test, value=255)
-            y_test = padding_list(self.encode_ctc(y_test, self.dictionary), value=len(self.dictionary))
+            y_test = padding_list(self.encode_ctc(y_test, self.charset), value=len(self.charset))
 
             yield [x_test, y_test, x_test_len, y_test_len]

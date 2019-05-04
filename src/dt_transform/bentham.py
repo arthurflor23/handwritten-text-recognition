@@ -43,7 +43,7 @@ def build_data_from(env, partition, gt_dict, preproc_func):
         dt.append(path)
 
     pool = Pool()
-    dt = pool.map(partial(preproc_func, img_size=env.input_img_size, read_first=True), dt)
+    dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)
     pool.close()
     pool.join()
 
