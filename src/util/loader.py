@@ -9,7 +9,7 @@ class DataGenerator():
     """Generator class with data streaming"""
 
     def __init__(self, env, train=False):
-        self.charset = " !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        self.charset = "".join([chr(i) for i in range(32, 127)])
         self.batch_size = np.maximum(2, env.batch_size)
         self.training = train
 
@@ -51,7 +51,7 @@ class DataGenerator():
     def encode_ctc(self, txt, charset):
         """Encode text batch to CTC input (sparse)"""
 
-        return [[float(charset.find(x)) for x in vec] for vec in txt]
+        return [[np.abs(float(charset.find(x))) for x in vec] for vec in txt]
 
     def decode_ctc(self, arr, charset):
         """Decode CTC output batch to text"""

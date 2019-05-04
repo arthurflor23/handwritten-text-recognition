@@ -12,7 +12,7 @@ def dataset(env, preproc_func):
     """Load and save npz file of the ground truth and images (preprocessed)"""
 
     xml = os.path.join(env.raw_source, "training_2011.xml")
-    dt, gt = build_data_from(xml, "training_2011", env.train, env.valid)
+    dt, gt = build_data_from(env, xml, "training_2011", preproc_func)
 
     index = int(len(dt) * 0.9)
     np.savez_compressed(env.valid, dt=np.array(dt[index:]), gt=np.array(gt[index:]))

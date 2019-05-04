@@ -16,4 +16,4 @@ class Env():
 
         self.epochs = args.epochs
         self.batch_size = args.batch_size
-        self.model_input_size = (1024, 64, 1)
+        self.model_input_size = (640, 64, 1)

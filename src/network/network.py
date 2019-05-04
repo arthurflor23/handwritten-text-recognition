@@ -46,7 +46,6 @@ class HTRNetwork:
         cnn = k.expand_dims(input_data, axis=3)
 
         for i in range(nb_layers):
-            # activation="relu" (?)
             cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", kernel_initializer="he_normal")(cnn)
             cnn = BatchNormalization(trainable=training)(cnn)
             cnn = PReLU(shared_axes=[1,2])(cnn)
