@@ -38,9 +38,12 @@ def build_data_from(env, partition, gt_dict, preproc_func):
     dt, gt = [], []
 
     for line in lines:
-        path = os.path.join(data_path, f"{line}.png")
-        gt.append(gt_dict[line])
-        dt.append(path)
+        text_line = gt_dict[line].strip()
+
+        if len(text_line) > 0:
+            path = os.path.join(data_path, f"{line}.png")
+            gt.append(text_line)
+            dt.append(path)
 
     pool = Pool()
     dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)

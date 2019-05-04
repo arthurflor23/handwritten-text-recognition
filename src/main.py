@@ -73,7 +73,7 @@ if __name__ == "__main__":
         )
 
         eval_corpus = [
-            f"Test dataset shape:   {dtgen.test.shape}\n",
+            f"Test dataset images:  {dtgen.test.shape[0]}\n",
             f"Test dataset loss:    {sum(eval[0][1])/len(eval[0][1]):.2f}",
             f"Label error rate:     {sum(eval[1])/len(eval[1]):.2f}",
             f"Sequence error rate:  {eval[2]:.2f}",

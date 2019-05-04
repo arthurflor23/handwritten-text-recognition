@@ -41,8 +41,11 @@ def build_data_from(env, xml, partition, preproc_func):
             top = abs(int(line_tag.attrib["Top"]))
 
             line = page[top:bottom, left:right]
-            gt.append(line_tag.attrib["Value"].strip())
-            dt.append(line)
+            text_line = line_tag.attrib["Value"].strip()
+
+            if len(text_line) > 0:
+                gt.append(text_line)
+                dt.append(line)
 
     pool = Pool()
     dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=False), dt)

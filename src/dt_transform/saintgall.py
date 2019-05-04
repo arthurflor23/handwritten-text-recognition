@@ -49,8 +49,11 @@ def build_data_from(env, partition, gt_dict, preproc_func):
 
         for path in img_list:
             index = os.path.splitext(os.path.basename(path))[0]
-            gt.append(gt_dict[index])
-            dt.append(path)
+            text_line = gt_dict[index].strip()
+
+            if len(text_line) > 0:
+                gt.append(text_line)
+                dt.append(path)
 
     pool = Pool()
     dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)

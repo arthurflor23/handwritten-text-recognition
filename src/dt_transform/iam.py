@@ -43,12 +43,15 @@ def build_data_from(env, partition, gt_dict, preproc_func):
     dt, gt = [], []
 
     for line in lines:
-        split = line.split("-")
-        path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
-        path = os.path.join(data_path, path)
+        text_line = gt_dict[line].strip()
 
-        gt.append(gt_dict[line])
-        dt.append(path)
+        if len(text_line) > 0:
+            split = line.split("-")
+            path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
+            path = os.path.join(data_path, path)
+
+            gt.append(text_line)
+            dt.append(path)
 
     pool = Pool()
     dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)
