@@ -49,10 +49,11 @@ if __name__ == "__main__":
     elif args.train:
         dtgen = DataGenerator(env, train=True)
         htr = HTRNetwork(env, dtgen)
+
         htr.model.summary()
         htr.summary_to_file()
 
-        htr.model.fit_generator(
+        h = htr.model.fit_generator(
             generator=dtgen.next_train_batch(),
             epochs=env.epochs,
             steps_per_epoch=dtgen.train_steps,
@@ -60,6 +61,19 @@ if __name__ == "__main__":
             validation_steps=dtgen.val_steps,
             callbacks=htr.callbacks,
             verbose=1)
+
+        train_corpus = [
+            f"Epochs:                       {env.epochs}",
+            f"Batch:                        {env.batch_size}\n",
+            f"Train dataset images:         {dtgen.train.shape[0]}",
+            f"Validation dataset images:    {dtgen.valid.shape[0]}\n",
+            f"Train dataset loss:           {h.history['loss'][0]:.2f}",
+            f"Validation dataset loss:      {h.history['val_loss'][0]:.2f}"
+        ]
+
+        os.makedirs(env.output_tasks, exist_ok=True)
+        with open(os.path.join(env.output_tasks, "train.txt"), "w") as lg:
+            lg.write("\n".join(train_corpus))
 
     elif args.eval:
         dtgen = DataGenerator(env)
@@ -69,18 +83,18 @@ if __name__ == "__main__":
             generator=dtgen.next_test_batch(),
             steps=dtgen.test_steps,
             metrics=["loss", "ler", "ser"],
-            verbose=1
-        )
+            verbose=1)
 
         eval_corpus = [
             f"Test dataset images:  {dtgen.test.shape[0]}\n",
             f"Test dataset loss:    {sum(eval[0][1])/len(eval[0][1]):.2f}",
             f"Label error rate:     {sum(eval[1])/len(eval[1]):.2f}",
-            f"Sequence error rate:  {eval[2]:.2f}",
+            f"Sequence error rate:  {eval[2]:.2f}"
         ]
 
-        with open(os.path.join(env.output, "evaluate.txt"), "w") as ev:
-            ev.write("\n".join(eval_corpus))
+        os.makedirs(env.output_tasks, exist_ok=True)
+        with open(os.path.join(env.output_tasks, "evaluate.txt"), "w") as lg:
+            lg.write("\n".join(eval_corpus))
 
     elif args.test:
         dtgen = DataGenerator(env)
@@ -90,13 +104,13 @@ if __name__ == "__main__":
             generator=dtgen.next_test_batch(),
             steps=dtgen.test_steps,
             verbose=1,
-            decode_func=dtgen.decode_ctc
-        )
+            decode_func=dtgen.decode_ctc)
 
         pred_corpus = ["Label | Predict"] + [f"{l} | {p}" for (l, p) in zip(pred[0], pred[1])]
 
-        with open(os.path.join(env.output, "predict.txt"), "w") as ev:
-            ev.write("\n".join(pred_corpus))
+        os.makedirs(env.output_tasks, exist_ok=True)
+        with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
+            lg.write("\n".join(pred_corpus))
 
     elif args.cv2:
         sample = np.load(env.train, allow_pickle=True, mmap_mode="r")

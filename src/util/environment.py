@@ -9,6 +9,7 @@ class Env():
         self.raw_source = os.path.join("..", "raw", args.dataset)
         self.source = os.path.join("..", "data", args.dataset)
         self.output = os.path.join("..", "output", args.dataset)
+        self.output_tasks = os.path.join(self.output, "tasks")
 
         self.train = os.path.join(self.source, "train.npz")
         self.valid = os.path.join(self.source, "valid.npz")
