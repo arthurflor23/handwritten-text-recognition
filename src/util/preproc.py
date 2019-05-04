@@ -13,15 +13,13 @@ def preproc(img, img_size, read_first=False):
         img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
 
     img = remove_cursive_style(img)
-
     img = np.reshape(img, img.shape + (1,))
-    img = tf.image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True, antialias=False)
+
+    img = tf.image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True)
+    img = tf.image.resize(img, size=(img_size[1], img.shape[1]), preserve_aspect_ratio=False)
     img = tf.image.rot90(img, k=3)
 
-    target = np.ones(img_size, dtype=np.float) * 255
-    target[0:img.shape[0], 0:img.shape[1], 0::] = img
-
-    img = tf.image.per_image_standardization(target)
+    img = tf.image.per_image_standardization(img)
     img = image.img_to_array(img)[:,:,0]
 
     # cv2.imshow("img", img)

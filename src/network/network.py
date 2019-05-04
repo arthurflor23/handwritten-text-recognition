@@ -40,7 +40,7 @@ class HTRNetwork:
 
         filters = [32, 64, 128, 128, 256]
         kernels = [5, 5, 3, 3, 3]
-        pool_sizes = strides = [(2,4), (2,4), (1,2), (1,2), (1,2)]
+        pool_sizes = strides = [(2,4), (2,2), (1,2), (1,2), (1,2)]
         nb_layers = len(strides)
 
         cnn = k.expand_dims(input_data, axis=3)

@@ -3,7 +3,6 @@ Image renderings and text are created on the fly each time"""
 
 from util.preproc import padding_list
 import numpy as np
-import random
 
 
 class DataGenerator():
@@ -39,8 +38,15 @@ class DataGenerator():
         arr = np.load(npz, allow_pickle=True, mmap_mode="r")
         np.random.shuffle(arr["dt"])
         np.random.shuffle(arr["gt"])
+        nb = arr["dt"].shape[0]
 
-        return arr["dt"], arr["gt"]
+        arange = np.arange(nb - 1)
+        rp = np.ones(nb, dtype=np.uint8)
+
+        while (np.sum(rp) % self.batch_size) > 0:
+            rp[np.random.choice(arange, 1)[0]] += 1
+
+        return np.repeat(arr["dt"], rp, axis=0), np.repeat(arr["gt"], rp, axis=0)
 
     def encode_ctc(self, txt, charset):
         """Encode text batch to CTC input (sparse)"""
@@ -65,18 +71,13 @@ class DataGenerator():
 
             x_train = self.train[index:until]
             y_train = self.train_gt[index:until]
-            arange = np.arange(x_train.shape[0] - 1)
-
-            while (x_train.shape[0] % self.batch_size) > 0:
-                i = random.choice(arange)
-                x_train = np.append(x_train, [x_train[i]], axis=0)
-                y_train = np.append(y_train, [y_train[i]], axis=0)
-
-            y_train = padding_list(self.encode_ctc(y_train, self.dictionary), value=len(self.dictionary))
 
             # x_train_len (image rotate height) must be higher y_train_len (max char in line)
-            x_train_len = np.ones(self.batch_size) * x_train.shape[2]
-            y_train_len = np.ones(self.batch_size) * len(y_train[0])
+            x_train_len = np.asarray([len(x_train[i][0]) for i in range(self.batch_size)])
+            y_train_len = np.asarray([len(y_train[i][0]) for i in range(self.batch_size)])
+
+            x_train = padding_list(x_train, value=255)
+            y_train = padding_list(self.encode_ctc(y_train, self.dictionary), value=len(self.dictionary))
 
             inputs = {
                 "input": x_train,
@@ -101,18 +102,13 @@ class DataGenerator():
 
             x_valid = self.valid[index:until]
             y_valid = self.valid_gt[index:until]
-            arange = np.arange(x_valid.shape[0] - 1)
-
-            while (x_valid.shape[0] % self.batch_size) > 0:
-                i = random.choice(arange)
-                x_valid = np.append(x_valid, [x_valid[i]], axis=0)
-                y_valid = np.append(y_valid, [y_valid[i]], axis=0)
-
-            y_valid = padding_list(self.encode_ctc(y_valid, self.dictionary), value=len(self.dictionary))
 
             # x_valid_len (image rotate height) must be higher y_valid_len (max char in line)
-            x_valid_len = np.ones(self.batch_size) * x_valid.shape[2]
-            y_valid_len = np.ones(self.batch_size) * len(y_valid[0])
+            x_valid_len = np.asarray([len(x_valid[i][0]) for i in range(self.batch_size)])
+            y_valid_len = np.asarray([len(y_valid[i][0]) for i in range(self.batch_size)])
+
+            x_valid = padding_list(x_valid, value=255)
+            y_valid = padding_list(self.encode_ctc(y_valid, self.dictionary), value=len(self.dictionary))
 
             inputs = {
                 "input": x_valid,
@@ -137,17 +133,12 @@ class DataGenerator():
 
             x_test = self.test[index:until]
             y_test = self.test_gt[index:until]
-            arange = np.arange(x_test.shape[0] - 1)
-
-            while (x_test.shape[0] % self.batch_size) > 0:
-                i = random.choice(arange)
-                x_test = np.append(x_test, [x_test[i]], axis=0)
-                y_test = np.append(y_test, [y_test[i]], axis=0)
-
-            y_test = padding_list(self.encode_ctc(y_test, self.dictionary), value=len(self.dictionary))
 
             # x_test_len (image rotate height) must be higher y_test_len (max char in line)
-            x_test_len = np.ones(self.batch_size) * x_test.shape[2]
-            y_test_len = np.ones(self.batch_size) * len(y_test[0])
+            x_test_len = np.asarray([len(x_test[i][0]) for i in range(self.batch_size)])
+            y_test_len = np.asarray([len(y_test[i][0]) for i in range(self.batch_size)])
+
+            x_test = padding_list(x_test, value=255)
+            y_test = padding_list(self.encode_ctc(y_test, self.dictionary), value=len(self.dictionary))
 
             yield [x_test, y_test, x_test_len, y_test_len]

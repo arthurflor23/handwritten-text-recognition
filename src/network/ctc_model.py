@@ -448,7 +448,7 @@ class CTCModel:
         return outmetrics
 
     def evaluate_generator(self, generator, steps=None, max_queue_size=10, workers=1,
-                           verbose=0, metrics=["loss", "ler", "ser"]):
+                           verbose=False, metrics=["loss", "ler", "ser"]):
         """ Evaluates the model on a data generator.
 
         :param: See keras.engine.Model.fit()
@@ -512,6 +512,7 @@ class CTCModel:
 
         out = self.model_pred.predict_on_batch(x)
         output = [[pr for pr in pred if pr != -1] for pred in out]
+
         return output
 
     def predict_generator(self, generator, steps,
@@ -545,8 +546,8 @@ class CTCModel:
 
         # Returns
             A tuple containing:
-                A numpy array(s) of predictions.
                 A numpy array(s) of ground truth.
+                A numpy array(s) of predictions.
 
         # Raises
             ValueError: In case the generator yields
@@ -563,9 +564,9 @@ class CTCModel:
 
         try:
             if is_sequence:
-                enqueuer = OrderedEnqueuer(generator, use_multiprocessing=False)
+                enqueuer = OrderedEnqueuer(generator)
             else:
-                enqueuer = GeneratorEnqueuer(generator, use_multiprocessing=False)
+                enqueuer = GeneratorEnqueuer(generator)
 
             enqueuer.start(workers=workers, max_queue_size=max_queue_size)
             output_generator = enqueuer.get()
@@ -575,6 +576,7 @@ class CTCModel:
 
             while steps_done < steps:
                 generator_output = next(output_generator)
+
                 if isinstance(generator_output, tuple):
                     # Compatibility with the generators
                     # used for training.
@@ -630,10 +632,10 @@ class CTCModel:
             lab_out += [all_lab[b][i] for b in range(batch_size)]
 
         if decode_func is not None:  # convert model prediction (a label between 0 to nb_labels to an original label sequence)
-            pred_out = decode_func(pred_out, self.charset)
             lab_out = decode_func(lab_out, self.charset)
+            pred_out = decode_func(pred_out, self.charset)
 
-        return pred_out, lab_out
+        return lab_out, pred_out
 
     def summary(self):
         return self.model_train.summary()

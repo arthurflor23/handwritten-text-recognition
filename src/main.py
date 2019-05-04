@@ -49,8 +49,8 @@ if __name__ == "__main__":
     elif args.train:
         dtgen = DataGenerator(env, train=True)
         htr = HTRNetwork(env, dtgen)
-        htr.summary_to_file()
         htr.model.summary()
+        htr.summary_to_file()
 
         htr.model.fit_generator(
             generator=dtgen.next_train_batch(),
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             decode_func=dtgen.decode_ctc
         )
 
-        pred_corpus = ["Label | Predict"] + [f"{l} | {p}" for (p, l) in zip(pred[0], pred[1])]
+        pred_corpus = ["Label | Predict"] + [f"{l} | {p}" for (l, p) in zip(pred[0], pred[1])]
 
         with open(os.path.join(env.output, "predict.txt"), "w") as ev:
             ev.write("\n".join(pred_corpus))
