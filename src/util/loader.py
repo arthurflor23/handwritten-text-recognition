@@ -9,8 +9,9 @@ class DataGenerator():
     """Generator class with data streaming"""
 
     def __init__(self, env, train=False):
+        self.max_text_length = env.max_text_length
         self.charset = "".join([chr(i) for i in range(32, 127)])
-        self.batch_size = np.maximum(2, env.batch_size)
+        self.batch_size = max(2, env.batch_size)
         self.training = train
 
         self.train_npz = env.train
@@ -70,14 +71,13 @@ class DataGenerator():
             self.train_index += self.batch_size
 
             x_train = self.train[index:until]
-            y_train = self.train_gt[index:until]
+            y_train = self.encode_ctc(self.train_gt[index:until], self.charset)
 
-            # x_train_len (image rotate height) must be higher y_train_len (max char in line)
-            x_train_len = np.asarray([len(x_train[i][0]) for i in range(self.batch_size)])
-            y_train_len = np.asarray([len(y_train[i][0]) for i in range(self.batch_size)])
+            x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
             x_train = padding_list(x_train, value=255)
-            y_train = padding_list(self.encode_ctc(y_train, self.charset), value=len(self.charset))
+            y_train = padding_list(y_train, value=len(self.charset))
 
             inputs = {
                 "input": x_train,
@@ -85,7 +85,7 @@ class DataGenerator():
                 "input_length": x_train_len,
                 "label_length": y_train_len
             }
-            output = {"CTCloss": np.zeros(x_train.shape[0])}
+            output = {"CTCloss": np.zeros(self.batch_size)}
 
             yield (inputs, output)
 
@@ -101,14 +101,13 @@ class DataGenerator():
             self.valid_index += self.batch_size
 
             x_valid = self.valid[index:until]
-            y_valid = self.valid_gt[index:until]
+            y_valid = self.encode_ctc(self.valid_gt[index:until], self.charset)
 
-            # x_valid_len (image rotate height) must be higher y_valid_len (max char in line)
-            x_valid_len = np.asarray([len(x_valid[i][0]) for i in range(self.batch_size)])
-            y_valid_len = np.asarray([len(y_valid[i][0]) for i in range(self.batch_size)])
+            x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
 
             x_valid = padding_list(x_valid, value=255)
-            y_valid = padding_list(self.encode_ctc(y_valid, self.charset), value=len(self.charset))
+            y_valid = padding_list(y_valid, value=len(self.charset))
 
             inputs = {
                 "input": x_valid,
@@ -116,7 +115,7 @@ class DataGenerator():
                 "input_length": x_valid_len,
                 "label_length": y_valid_len
             }
-            output = {"CTCloss": np.zeros(x_valid.shape[0])}
+            output = {"CTCloss": np.zeros(self.batch_size)}
 
             yield (inputs, output)
 
@@ -132,13 +131,12 @@ class DataGenerator():
             self.test_index += self.batch_size
 
             x_test = self.test[index:until]
-            y_test = self.test_gt[index:until]
+            y_test = self.encode_ctc(self.test_gt[index:until], self.charset)
 
-            # x_test_len (image rotate height) must be higher y_test_len (max char in line)
-            x_test_len = np.asarray([len(x_test[i][0]) for i in range(self.batch_size)])
-            y_test_len = np.asarray([len(y_test[i][0]) for i in range(self.batch_size)])
+            x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            y_test_len = np.asarray([len(y_test[i]) for i in range(self.batch_size)])
 
             x_test = padding_list(x_test, value=255)
-            y_test = padding_list(self.encode_ctc(y_test, self.charset), value=len(self.charset))
+            y_test = padding_list(y_test, value=len(self.charset))
 
             yield [x_test, y_test, x_test_len, y_test_len]

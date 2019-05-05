@@ -2,8 +2,7 @@
 
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, PReLU
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
-from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
-from tensorflow.keras.optimizers import Adamax
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, CSVLogger
 from tensorflow.keras import backend as k
 from network.ctc_model import CTCModel
 from contextlib import redirect_stdout
@@ -19,8 +18,8 @@ class HTRNetwork:
         self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
         self.logger_path = os.path.join(env.output, "logger.log")
 
-        self.__build_network(env.model_input_size, dtgen.charset, dtgen.training)
-        self.__build_callbacks()
+        self._build_network(env.model_input_size, dtgen.charset, dtgen.max_text_length, dtgen.training)
+        self._build_callbacks()
 
         if os.path.isfile(self.checkpoint_path):
             self.model.load_checkpoint(self.checkpoint_path)
@@ -32,7 +31,7 @@ class HTRNetwork:
             with redirect_stdout(f):
                 self.model.summary()
 
-    def __build_network(self, input_size, charset, training):
+    def _build_network(self, input_size, charset, max_text_length, training):
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
@@ -41,13 +40,13 @@ class HTRNetwork:
         filters = [32, 64, 128, 128, 256]
         kernels = [5, 5, 3, 3, 3]
         nb_layers = len(kernels)
-        pool_sizes, strides = get_pool_strides(input_size[1], nb_layers)
+        pool_sizes, strides = get_pool_strides(input_size, max_text_length, nb_layers)
 
         cnn = k.expand_dims(input_data, axis=3)
 
         for i in range(nb_layers):
             cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", kernel_initializer="he_normal")(cnn)
-            cnn = BatchNormalization(trainable=training)(cnn)
+            cnn = BatchNormalization(scale=False, center=True, trainable=training)(cnn)
             cnn = PReLU(shared_axes=[1,2])(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
 
@@ -67,9 +66,9 @@ class HTRNetwork:
             top_paths=1,
             charset=charset)
 
-        self.model.compile(optimizer=Adamax(learning_rate=0.001))
+        self.model.compile(optimizer="adam")
 
-    def __build_callbacks(self):
+    def _build_callbacks(self):
         """Build/Call callbacks to the model"""
 
         self.callbacks = [
@@ -85,13 +84,6 @@ class HTRNetwork:
                 write_images=True,
                 update_freq="epoch"
             ),
-            EarlyStopping(
-                monitor="val_loss",
-                min_delta=1e-5,
-                patience=6,
-                restore_best_weights=True,
-                verbose=1
-            ),
             ModelCheckpoint(
                 filepath=self.checkpoint_path,
                 period=1,
@@ -103,27 +95,33 @@ class HTRNetwork:
         ]
 
 
-def get_pool_strides(nb_features, nb_layers):
+def get_pool_strides(image_size, max_text_length, nb_layers):
     """Automatic generator of the pool and strides values"""
 
-    factores, pool, strides = [], [], []
+    def get_factors(value, nb_layers):
+        factores = []
+        for i in range(2, value + 1):
+            while value % i == 0:
+                value = value / i
+                factores.append(i)
 
-    for i in range(2, nb_features + 1):
-        while nb_features % i == 0:
-            nb_features = nb_features / i
-            factores.append(i)
+        order = sorted(factores, reverse=True)
+        cand = order[:nb_layers]
+        order = order[nb_layers:]
 
-    order = sorted(factores, reverse=True)
-    cand = order[:nb_layers]
-    order = order[nb_layers:]
+        for i in range(len(cand)):
+            if len(order) == 0:
+                break
+            cand[i] *= order.pop()
 
-    for i in range(len(cand)):
-        if len(order) == 0:
-            break
-        cand[i] *= order.pop()
+        while len(cand) < nb_layers:
+            cand.append(1)
+        return cand
 
-    for i in range(nb_layers):
-        pool.append((int(cand[i] / 2), cand[i]))
-        strides.append((int(cand[i] / 2), cand[i]))
+    x = get_factors(int(image_size[0] / max_text_length), nb_layers)
+    y = get_factors(image_size[1], nb_layers)
+
+    pool = [(w, h) for w, h in zip(x, y)]
+    strides = [(w, h) for w, h in zip(x, y)]
 
     return pool, strides
