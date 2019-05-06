@@ -276,6 +276,7 @@ class CTCModel:
                       class_weight=None,
                       max_queue_size=10,
                       workers=1,
+                      shuffle=True,
                       initial_epoch=0):
         """
         Model training on data yielded batch-by-batch by a Python generator.
@@ -293,14 +294,15 @@ class CTCModel:
         out = self.model_train.fit_generator(generator, steps_per_epoch, epochs=epochs, verbose=verbose,
                                              callbacks=callbacks, validation_data=validation_data,
                                              validation_steps=validation_steps, class_weight=class_weight,
-                                             max_queue_size=max_queue_size, workers=workers,
+                                             max_queue_size=max_queue_size, workers=workers, shuffle=True,
                                              initial_epoch=initial_epoch)
 
-        self.model_pred.set_weights(self.model_train.get_weights())  # required??
+        self.model_pred.set_weights(self.model_train.get_weights())
         self.model_eval.set_weights(self.model_train.get_weights())
         return out
 
-    def fit(self, x=None,
+    def fit(self,
+            x=None,
             y=None,
             batch_size=None,
             epochs=1,
@@ -606,6 +608,7 @@ class CTCModel:
 
                 for i, out in enumerate(outs):
                     all_outs[i].append([val_out for val_out in out if val_out != -1])
+
                     if isinstance(y_length[i], list):
                         all_lab[i].append(y[i][:y_length[i][0]])
                     elif isinstance(y_length[i], int):
@@ -625,13 +628,14 @@ class CTCModel:
 
         batch_size = len(all_outs)
         nb_data = len(all_outs[0])
-        pred_out = []
         lab_out = []
-        for i in range(nb_data):
-            pred_out += [all_outs[b][i] for b in range(batch_size)]
-            lab_out += [all_lab[b][i] for b in range(batch_size)]
+        pred_out = []
 
-        if decode_func is not None:  # convert model prediction (a label between 0 to nb_labels to an original label sequence)
+        for i in range(nb_data):
+            lab_out += [all_lab[b][i] for b in range(batch_size)]
+            pred_out += [all_outs[b][i] for b in range(batch_size)]
+
+        if decode_func is not None:
             lab_out = decode_func(lab_out, self.charset)
             pred_out = decode_func(pred_out, self.charset)
 

@@ -76,12 +76,9 @@ class DataGenerator():
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
-            x_train = padding_list(x_train, value=255)
-            y_train = padding_list(y_train, value=len(self.charset))
-
             inputs = {
-                "input": x_train,
-                "labels": y_train,
+                "input": padding_list(x_train),
+                "labels": padding_list(y_train),
                 "input_length": x_train_len,
                 "label_length": y_train_len
             }
@@ -106,12 +103,9 @@ class DataGenerator():
             x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
 
-            x_valid = padding_list(x_valid, value=255)
-            y_valid = padding_list(y_valid, value=len(self.charset))
-
             inputs = {
-                "input": x_valid,
-                "labels": y_valid,
+                "input": padding_list(x_valid),
+                "labels": padding_list(y_valid),
                 "input_length": x_valid_len,
                 "label_length": y_valid_len
             }
@@ -136,7 +130,4 @@ class DataGenerator():
             x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_test_len = np.asarray([len(y_test[i]) for i in range(self.batch_size)])
 
-            x_test = padding_list(x_test, value=255)
-            y_test = padding_list(y_test, value=len(self.charset))
-
-            yield [x_test, y_test, x_test_len, y_test_len]
+            yield [padding_list(x_test), padding_list(y_test), x_test_len, y_test_len]

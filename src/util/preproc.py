@@ -60,7 +60,7 @@ def remove_cursive_style(img):
     return cv2.warpAffine(img, result[2], result[1], borderValue=255)
 
 
-def padding_list(inputs, value):
+def padding_list(inputs, value=0):
     """Fill lists with pad value"""
 
     return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")

@@ -18,5 +18,5 @@ class Env():
         self.epochs = args.epochs
         self.batch_size = args.batch_size
 
-        self.model_input_size = (512, 64, 1)
-        self.max_text_length = 144
+        self.model_input_size = (800, 64, 1)
+        self.max_text_length = 128

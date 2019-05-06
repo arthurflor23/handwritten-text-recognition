@@ -3,9 +3,12 @@
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, PReLU
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, CSVLogger
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.regularizers import l2
 from tensorflow.keras import backend as k
 from network.ctc_model import CTCModel
 from contextlib import redirect_stdout
+import tensorflow as tf
 import os
 
 
@@ -37,24 +40,26 @@ class HTRNetwork:
         # build CNN
         input_data = Input(name="input", shape=(None, input_size[1]))
 
-        filters = [32, 64, 128, 128, 256]
-        kernels = [5, 5, 3, 3, 3]
+        filters = [64, 64, 128, 128, 256, 512]
+        kernels = [5, 5, 5, 3, 3, 3]
         nb_layers = len(kernels)
         pool_sizes, strides = get_pool_strides(input_size, max_text_length, nb_layers)
 
+        init = tf.random_normal_initializer(stddev=0.1)
         cnn = k.expand_dims(input_data, axis=3)
 
         for i in range(nb_layers):
-            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", kernel_initializer="he_normal")(cnn)
-            cnn = BatchNormalization(scale=False, center=True, trainable=training)(cnn)
+            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same",
+                         kernel_initializer=init, kernel_regularizer=l2(0.001))(cnn)
             cnn = PReLU(shared_axes=[1,2])(cnn)
+            cnn = BatchNormalization(scale=False, center=True, trainable=training)(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
 
         outcnn = k.squeeze(cnn, axis=2)
 
         # build RNN
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer="he_normal"))(blstm)
+        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer=init))(outcnn)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer=init))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
         # create and compile CTC model
@@ -66,7 +71,7 @@ class HTRNetwork:
             top_paths=1,
             charset=charset)
 
-        self.model.compile(optimizer="adam")
+        self.model.compile(optimizer=Adam(learning_rate=1e-3))
 
     def _build_callbacks(self):
         """Build/Call callbacks to the model"""
@@ -118,7 +123,7 @@ def get_pool_strides(image_size, max_text_length, nb_layers):
             cand.append(1)
         return cand
 
-    x = get_factors(int(image_size[0] / max_text_length), nb_layers)
+    x = get_factors(int(image_size[0] / (max_text_length + 1)), nb_layers)
     y = get_factors(image_size[1], nb_layers)
 
     pool = [(w, h) for w, h in zip(x, y)]
