@@ -1,28 +1,26 @@
 """Handwritten text recognition network"""
 
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, PReLU
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, Reshape
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, CSVLogger
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, CSVLogger, ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras import backend as k
 from network.ctc_model import CTCModel
 from contextlib import redirect_stdout
-import tensorflow as tf
 import os
 
 
 class HTRNetwork:
 
     def __init__(self, env, dtgen):
-        os.makedirs(env.output, exist_ok=True)
-
         self.summary_path = os.path.join(env.output, "summary.txt")
         self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
         self.logger_path = os.path.join(env.output, "logger.log")
 
         self._build_network(env.model_input_size, dtgen.charset, dtgen.max_text_length, dtgen.training)
-        self._build_callbacks()
+
+        if dtgen.training:
+            self._build_callbacks(env.output)
 
         if os.path.isfile(self.checkpoint_path):
             self.model.load_checkpoint(self.checkpoint_path)
@@ -38,28 +36,27 @@ class HTRNetwork:
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
-        input_data = Input(name="input", shape=(None, input_size[1]))
+        input_data = Input(name="input", shape=(None, input_size[1], 1))
 
-        filters = [64, 64, 128, 128, 256, 512]
-        kernels = [5, 5, 5, 3, 3, 3]
+        filters = [32, 64, 128, 256]
+        kernels = [5, 5, 3, 3]
         nb_layers = len(kernels)
         pool_sizes, strides = get_pool_strides(input_size, max_text_length, nb_layers)
 
-        init = tf.random_normal_initializer(stddev=0.1)
-        cnn = k.expand_dims(input_data, axis=3)
+        cnn = input_data
 
         for i in range(nb_layers):
-            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same",
-                         kernel_initializer=init, kernel_regularizer=l2(0.001))(cnn)
-            cnn = PReLU(shared_axes=[1,2])(cnn)
+            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", activation="relu",
+                         kernel_initializer="he_normal", kernel_regularizer=l2(0.01))(cnn)
             cnn = BatchNormalization(scale=False, center=True, trainable=training)(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
 
-        outcnn = k.squeeze(cnn, axis=2)
+        shape = cnn.get_shape()
+        outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
 
         # build RNN
-        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer=init))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer=init))(blstm)
+        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer="he_normal"))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
         # create and compile CTC model
@@ -67,14 +64,18 @@ class HTRNetwork:
             inputs=[input_data],
             outputs=[outrnn],
             greedy=False,
-            beam_width=100,
+            beam_width=max_text_length,
             top_paths=1,
             charset=charset)
 
-        self.model.compile(optimizer=Adam(learning_rate=1e-3))
+        self.model.compile(optimizer=Adam(learning_rate=1e-2))
 
-    def _build_callbacks(self):
-        """Build/Call callbacks to the model"""
+    def _build_callbacks(self, output):
+        """Build callbacks to the model"""
+
+        os.makedirs(output, exist_ok=True)
+        os.makedirs(os.path.join(output, "train"), exist_ok=True)
+        os.makedirs(os.path.join(output, "validation"), exist_ok=True)
 
         self.callbacks = [
             CSVLogger(
@@ -82,7 +83,7 @@ class HTRNetwork:
                 append=True
             ),
             TensorBoard(
-                log_dir=os.path.dirname(self.logger_path),
+                log_dir=output,
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
@@ -94,7 +95,14 @@ class HTRNetwork:
                 period=1,
                 monitor="val_loss",
                 save_best_only=True,
-                save_weights_only=True,
+                save_weights_only=False,
+                verbose=1
+            ),
+            ReduceLROnPlateau(
+                monitor="val_loss",
+                min_lr=1e-3,
+                factor=0.1,
+                patience=5,
                 verbose=1
             )
         ]

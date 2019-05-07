@@ -450,7 +450,7 @@ class CTCModel:
         return outmetrics
 
     def evaluate_generator(self, generator, steps=None, max_queue_size=10, workers=1,
-                           verbose=False, metrics=["loss", "ler", "ser"]):
+                           verbose=0, metrics=["loss", "ler", "ser"]):
         """ Evaluates the model on a data generator.
 
         :param: See keras.engine.Model.fit()
@@ -798,7 +798,6 @@ class CTCModel:
         """
         y_pred, labels, input_length, label_length = args
         return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
-        # , ignore_longer_outputs_than_inputs=True)
 
     @staticmethod
     def ctc_complete_decoding_lambda_func(args, **arguments):
@@ -835,8 +834,6 @@ class CTCModel:
         :return:
             ler = label error rate
         """
-
-        # import tensorflow as tf # Require for loading a model saved
 
         y_pred, labels, input_length, label_len = args
         my_params = arguments

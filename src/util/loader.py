@@ -1,6 +1,7 @@
 """Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time"""
 
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from util.preproc import padding_list
 import numpy as np
 
@@ -10,13 +11,22 @@ class DataGenerator():
 
     def __init__(self, env, train=False):
         self.max_text_length = env.max_text_length
-        self.charset = "".join([chr(i) for i in range(32, 127)])
         self.batch_size = max(2, env.batch_size)
-        self.training = train
+        self.charset = "".join([chr(i) for i in range(32, 127)])
 
         self.train_npz = env.train
         self.valid_npz = env.valid
         self.test_npz = env.test
+
+        self.training = train
+        self.generator = ImageDataGenerator(
+            fill_mode="constant",
+            rotation_range=0.5,
+            width_shift_range=0.02,
+            height_shift_range=0.02,
+            shear_range=0.02,
+            zoom_range=0.02
+        )
 
         if self.training:
             self.train_index, self.valid_index = 0, 0
@@ -52,12 +62,12 @@ class DataGenerator():
     def encode_ctc(self, txt, charset):
         """Encode text batch to CTC input (sparse)"""
 
-        return [[np.abs(float(charset.find(x))) for x in vec] for vec in txt]
+        return [[np.abs(float(charset.find(x))) for x in vec.strip()] for vec in txt]
 
     def decode_ctc(self, arr, charset):
         """Decode CTC output batch to text"""
 
-        return ["".join(charset[int(c)] for c in vec if c < len(charset)) for vec in arr]
+        return [("".join(charset[int(c)] for c in vec)).strip() for vec in arr]
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -76,9 +86,12 @@ class DataGenerator():
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
+            x_train = self.generator.flow(padding_list(x_train), batch_size=self.batch_size, shuffle=False)[0]
+            y_train = padding_list(y_train)
+
             inputs = {
-                "input": padding_list(x_train),
-                "labels": padding_list(y_train),
+                "input": x_train,
+                "labels": y_train,
                 "input_length": x_train_len,
                 "label_length": y_train_len
             }

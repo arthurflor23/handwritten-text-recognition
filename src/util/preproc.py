@@ -20,9 +20,9 @@ def preproc(img, img_size, read_first=False):
     img = tf.image.rot90(img, k=3)
 
     img = tf.image.per_image_standardization(img)
-    img = image.img_to_array(img)[:,:,0]
+    img = image.img_to_array(img)
 
-    # cv2.imshow("img", img)
+    # cv2.imshow("img", img[:,:,0])
     # cv2.waitKey(0)
     return img
 

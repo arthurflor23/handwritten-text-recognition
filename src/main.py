@@ -106,7 +106,7 @@ if __name__ == "__main__":
             verbose=1,
             decode_func=dtgen.decode_ctc)
 
-        pred_corpus = ["Label | Predict"] + [f"{l} | {p}" for (l, p) in zip(pred[0], pred[1])]
+        pred_corpus = ["Label\t|\tPredict"] + [f"{l}\t|\t{p}" for (l, p) in zip(pred[0], pred[1])]
 
         os.makedirs(env.output_tasks, exist_ok=True)
         with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
@@ -118,6 +118,5 @@ if __name__ == "__main__":
         for x in range(23):
             print(sample["dt"].shape)
             print(sample["gt"][x])
-
-            cv2.imshow("img", sample["dt"][x])
+            cv2.imshow("img", sample["dt"][x][:,:,0])
             cv2.waitKey(0)
