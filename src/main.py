@@ -75,8 +75,8 @@ if __name__ == "__main__":
             f"Batch:                        {env.batch_size}\n",
             f"Train dataset images:         {dtgen.train.shape[0]}",
             f"Validation dataset images:    {dtgen.valid.shape[0]}\n",
-            f"Train dataset loss:           {h.history['loss'][0]:.4f}",
-            f"Validation dataset loss:      {h.history['val_loss'][0]:.4f}"
+            f"Train dataset loss:           {min(h.history['loss']):.4f}",
+            f"Validation dataset loss:      {min(h.history['val_loss']):.4f}"
         ])
 
         with open(os.path.join(env.output_tasks, "train.txt"), "w") as lg:
@@ -110,5 +110,5 @@ if __name__ == "__main__":
             lg.write(eval_corpus)
 
         with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
-            print(pred_corpus)
+            print(f"\n{pred_corpus}")
             lg.write(pred_corpus)

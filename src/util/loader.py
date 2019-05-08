@@ -21,10 +21,10 @@ class DataGenerator():
         self.training = train
         self.generator = ImageDataGenerator(
             fill_mode="constant",
-            rotation_range=0.5,
-            width_shift_range=0.05,
+            rotation_range=0.02,
+            width_shift_range=0.02,
             height_shift_range=0.02,
-            shear_range=0.02,
+            shear_range=0.01,
             zoom_range=0.01
         )
 

@@ -137,7 +137,5 @@ def get_pool_strides(image_size, max_text_length, nb_layers):
     x = get_factors(int(image_size[0] / (max_text_length + 1)), nb_layers)
     y = get_factors(image_size[1], nb_layers)
 
-    pool = [(w, h) for w, h in zip(x, y)]
-    strides = [(w, h) for w, h in zip(x, y)]
-
+    pool = strides = [(min(2, w), h) for w, h in zip(x, y)]
     return pool, strides

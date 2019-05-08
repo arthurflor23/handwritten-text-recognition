@@ -1,7 +1,8 @@
 # Datasets
 /data/**/
-/output/**/
 /raw/**/
+/output/
+/tensorboard/
 
 # Hidden files
 .vscode
