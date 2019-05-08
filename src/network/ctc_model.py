@@ -1,13 +1,14 @@
-import os
-import pickle
-import numpy as np
-import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
 from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, Dense
 from tensorflow.keras.preprocessing import sequence
+import tensorflow as tf
+import editdistance
+import numpy as np
+import pickle
+import os
 
 """
 authors: Yann Soullard, Cyprien Ruffino (2017)
@@ -41,6 +42,7 @@ class CTCModel:
         self.model_train = None
         self.model_pred = None
         self.model_eval = None
+
         if not isinstance(inputs, list):
             self.inputs = [inputs]
         else:
@@ -82,13 +84,13 @@ class CTCModel:
             self.outputs + [labels, input_length, label_length])
 
         # Lambda layer for the decoding function
-        out_decoded_dense = Lambda(self.ctc_complete_decoding_lambda_func, output_shape=(None, None), name="CTCdecode", arguments={
-                                   "greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
+        out_decoded_dense = Lambda(self.ctc_complete_decoding_lambda_func, output_shape=(None, None), name="CTCdecode",
+                                   arguments={"greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
                                    dtype="float32")(self.outputs + [input_length])
 
         # Lambda layer to perform an analysis (CER and SER)
-        out_analysis = Lambda(self.ctc_complete_analysis_lambda_func, output_shape=(None,), name="CTCanalysis", arguments={
-                              "greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
+        out_analysis = Lambda(self.ctc_complete_analysis_lambda_func, output_shape=(None,), name="CTCanalysis",
+                              arguments={"greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
                               dtype="float32")(self.outputs + [labels, input_length, label_length])
 
         # create Keras models
@@ -120,7 +122,7 @@ class CTCModel:
         """
         return self.model_eval
 
-    def get_loss_on_batch(self, inputs, verbose=False):
+    def get_loss_on_batch(self, inputs, verbose=0):
         """
         Computation the loss
         inputs is a list of 4 elements:
@@ -136,11 +138,9 @@ class CTCModel:
         no_lab = True if 0 in y_len else False
 
         if no_lab is False:
-            loss_data = self.model_train.predict_on_batch([x, y, x_len, y_len], verbose=verbose)
+            loss_data = self.model_train.predict_on_batch([x, y, x_len, y_len])
 
-        loss = np.sum(loss_data)
-
-        return loss, loss_data
+        return np.sum(loss_data), loss_data
 
     def get_loss(self, inputs, verbose=False):
         """
@@ -192,35 +192,6 @@ class CTCModel:
         loss = np.sum(loss_per_data)
         return loss, loss_per_data
 
-    def get_probas_generator(self, generator, nb_batchs, verbose=False):
-        """
-        Get the probabilities of each label at each time of an observation sequence (matrix T x D)
-        This is the output of the softmax function after the recurrent layers (the input of the CTC computations)
-
-        Computation is done in batches using a generator. This function does not exist in a Keras Model.
-
-        :return: A set of probabilities for each sequence and each time frame, one probability per label + the blank
-            (this is the output of the TimeDistributed Dense layer, the blank label is the last probability)
-        """
-
-        probs_epoch = []
-
-        for k in range(nb_batchs):
-
-            data = next(generator)
-
-            x = data[0][0]
-            x_len = data[0][2]
-            batch_size = x.shape[0]
-
-            # Find the output of the softmax function
-            probs = self.model_init.predict(x, batch_size=batch_size, verbose=verbose)
-
-            # Select the outputs that do not refer to padding
-            probs_epoch += [np.asarray(probs[data_idx, :x_len[data_idx][0], :]) for data_idx in range(batch_size)]
-
-        return probs_epoch
-
     def get_probas_on_batch(self, inputs, verbose=False):
         """
         Get the probabilities of each label at each time of an observation sequence (matrix T x D)
@@ -266,39 +237,45 @@ class CTCModel:
 
         return probs_epoch
 
-    def fit_generator(self, generator,
-                      steps_per_epoch,
-                      epochs=1,
-                      verbose=1,
-                      callbacks=None,
-                      validation_data=None,
-                      validation_steps=None,
-                      class_weight=None,
-                      max_queue_size=10,
-                      workers=1,
-                      shuffle=True,
-                      initial_epoch=0):
+    def get_probas_generator(self, generator, nb_batchs, verbose=False):
         """
-        Model training on data yielded batch-by-batch by a Python generator.
+        Get the probabilities of each label at each time of an observation sequence (matrix T x D)
+        This is the output of the softmax function after the recurrent layers (the input of the CTC computations)
 
-        The generator is run in parallel to the model, for efficiency.
-        For instance, this allows you to do real-time data augmentation on images on CPU in parallel to training your model on GPU.
+        Computation is done in batches using a generator. This function does not exist in a Keras Model.
 
-        A major modification concerns the generator that must provide x data of the form:
-          [input_sequences, label_sequences, inputs_lengths, labels_length]
-        (in a similar way than for using CTC in tensorflow)
-
-        :param: See keras.engine.Model.fit_generator()
-        :return: A History object
+        :return: A set of probabilities for each sequence and each time frame, one probability per label + the blank
+            (this is the output of the TimeDistributed Dense layer, the blank label is the last probability)
         """
-        out = self.model_train.fit_generator(generator, steps_per_epoch, epochs=epochs, verbose=verbose,
-                                             callbacks=callbacks, validation_data=validation_data,
-                                             validation_steps=validation_steps, class_weight=class_weight,
-                                             max_queue_size=max_queue_size, workers=workers, shuffle=True,
-                                             initial_epoch=initial_epoch)
+
+        probs_epoch = []
+
+        for k in range(nb_batchs):
+
+            data = next(generator)
+
+            x = data[0][0]
+            x_len = data[0][2]
+            batch_size = x.shape[0]
+
+            # Find the output of the softmax function
+            probs = self.model_init.predict(x, batch_size=batch_size, verbose=verbose)
+
+            # Select the outputs that do not refer to padding
+            probs_epoch += [np.asarray(probs[data_idx, :x_len[data_idx][0], :]) for data_idx in range(batch_size)]
+
+        return probs_epoch
+
+    def train_on_batch(self, x, y, sample_weight=None, class_weight=None):
+        """ Runs a single gradient update on a single batch of data.
+        See Keras.Model for more details.
+        """
+
+        out = self.model_train.train_on_batch(x, y, sample_weight=sample_weight, class_weight=class_weight)
 
         self.model_pred.set_weights(self.model_train.get_weights())
         self.model_eval.set_weights(self.model_train.get_weights())
+
         return out
 
     def fit(self,
@@ -337,167 +314,41 @@ class CTCModel:
 
         return out
 
-    def train_on_batch(self, x, y, sample_weight=None, class_weight=None):
-        """ Runs a single gradient update on a single batch of data.
-        See Keras.Model for more details.
+    def fit_generator(self, generator,
+                      steps_per_epoch,
+                      epochs=1,
+                      verbose=1,
+                      callbacks=None,
+                      validation_data=None,
+                      validation_steps=None,
+                      class_weight=None,
+                      max_queue_size=10,
+                      workers=1,
+                      shuffle=True,
+                      initial_epoch=0):
         """
+        Model training on data yielded batch-by-batch by a Python generator.
 
-        out = self.model_train.train_on_batch(x, y, sample_weight=sample_weight, class_weight=class_weight)
+        The generator is run in parallel to the model, for efficiency.
+        For instance, this allows you to do real-time data augmentation on images on CPU in parallel to training your model on GPU.
+
+        A major modification concerns the generator that must provide x data of the form:
+          [input_sequences, label_sequences, inputs_lengths, labels_length]
+        (in a similar way than for using CTC in tensorflow)
+
+        :param: See keras.engine.Model.fit_generator()
+        :return: A History object
+        """
+        out = self.model_train.fit_generator(generator, steps_per_epoch, epochs=epochs, verbose=verbose,
+                                             callbacks=callbacks, validation_data=validation_data,
+                                             validation_steps=validation_steps, class_weight=class_weight,
+                                             max_queue_size=max_queue_size, workers=workers, shuffle=True,
+                                             initial_epoch=initial_epoch)
 
         self.model_pred.set_weights(self.model_train.get_weights())
         self.model_eval.set_weights(self.model_train.get_weights())
 
         return out
-
-    def evaluate(self, x=None, batch_size=None, verbose=1, steps=None, metrics=["loss", "ler", "ser"]):
-        """ Evaluates the model on a dataset_manager.
-
-                :param: See keras.engine.Model.predict()
-                :return: A History object
-
-                CTC evaluation on data yielded batch-by-batch by a Python generator.
-
-                Inputs x:
-                        x_input = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
-                        y = Input data as a 2D Tensor (batch_size, max_label_len)
-                        x_len = 1D array with the length of each data in batch_size
-                        y_len = 1D array with the length of each labeling
-
-                metrics = list of metrics that are computed. This is elements among the 3 following metrics:
-                    "loss" : compute the loss function on x
-                    "ler" : compute the label error rate
-                    "ser" : compute the sequence error rate
-
-                Outputs: a list containing:
-                    ler_dataset = label error rate for each data (a list)
-                    seq_error = sequence error rate on the dataset_manager
-        """
-        seq_error = 0
-
-        x_input = x[0]
-        x_len = x[2]
-        y = x[1]
-        y_len = x[3]
-        nb_data = x_input.shape[0]
-
-        if "ler" in metrics or "ser" in metrics:
-            eval_batch = self.model_eval.predict([x_input, y, x_len, y_len], batch_size=batch_size, verbose=verbose, steps=steps)
-
-        if "ser" in metrics:
-            seq_error += np.sum([1 for ler_data in eval_batch if ler_data != 0])
-            seq_error = seq_error / nb_data if nb_data > 0 else -1.
-
-        outmetrics = []
-        if "loss" in metrics:
-            outmetrics.append(self.get_loss(x))
-        if "ler" in metrics:
-            outmetrics.append(eval_batch)
-        if "ser" in metrics:
-            outmetrics.append(seq_error)
-
-        return outmetrics
-
-    def test_on_batch(self, x=None, metrics=["loss", "ler", "ser"]):
-        """ Name of a Keras Model function: this relates to evaluate on batch """
-        return self.evaluate_on_batch(x)
-
-    def evaluate_on_batch(self, x=None, metrics=["loss", "ler", "ser"]):
-        """ Evaluates the model on a dataset_manager.
-
-                :param: See keras.engine.Model.predict_on_batch()
-                :return: A History object
-
-                CTC evaluation on data yielded batch-by-batch by a Python generator.
-
-                Inputs x:
-                        x_input = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
-                        y = Input data as a 2D Tensor (batch_size, max_label_len)
-                        x_len = 1D array with the length of each data in batch_size
-                        y_len = 1D array with the length of each labeling
-
-                metrics = list of metrics that are computed. This is elements among the 3 following metrics:
-                    "loss" : compute the loss function on x
-                    "ler" : compute the label error rate
-                    "ser" : compute the sequence error rate
-
-                Outputs: a list containing:
-                    ler_dataset = label error rate for each data (a list)
-                    seq_error = sequence error rate on the dataset_manager
-        """
-        seq_error = 0
-
-        x_input = x[0]
-        x_len = x[2]
-        y = x[1]
-        y_len = x[3]
-        nb_data = x_input.shape[0]
-
-        if "ler" in metrics or "ser" in metrics:
-            eval_batch = self.model_eval.predict_on_batch([x_input, y, x_len, y_len])
-
-        if "ser" in metrics:
-            seq_error += np.sum([1 for ler_data in eval_batch if ler_data != 0])
-            seq_error = seq_error / nb_data if nb_data > 0 else -1.
-
-        outmetrics = []
-        if "loss" in metrics:
-            outmetrics.append(self.get_loss(x))
-        if "ler" in metrics:
-            outmetrics.append(eval_batch)
-        if "ser" in metrics:
-            outmetrics.append(seq_error)
-
-        return outmetrics
-
-    def evaluate_generator(self, generator, steps=None, max_queue_size=10, workers=1,
-                           verbose=0, metrics=["loss", "ler", "ser"]):
-        """ Evaluates the model on a data generator.
-
-        :param: See keras.engine.Model.fit()
-        :return: A History object
-
-        CTC evaluation on data yielded batch-by-batch by a Python generator.
-
-        Inputs:
-            generator = DataGenerator class that returns:
-                    x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
-                    y = Input data as a 2D Tensor (batch_size, max_label_len)
-                    x_len = 1D array with the length of each data in batch_size
-                    y_len = 1D array with the length of each labeling
-            nb_batchs = number of batchs that are evaluated
-
-            metrics = list of metrics that are computed. This is elements among the 3 following metrics:
-                    "loss" : compute the loss function on x
-                    "ler" : compute the label error rate
-                    "ser" : compute the sequence error rate
-            Warning: if the "loss" and another metric are requested, make sure that the number of
-                     steps allows to evaluate the entire dataset, even if the data given by the generator
-                     will be not the same for all metrics. To make sure, you can only compute
-                     "ler" and "ser" here then initialize again the generator and call get_loss_generator.
-
-        Outputs: a list containing the metrics given in argument:
-            loss : the loss on the set
-            ler : the label error rate for each data (a list)
-            seq_error : the sequence error rate on the dataset
-        """
-
-        if "ler" in metrics or "ser" in metrics:
-            ler_dataset = self.model_eval.predict_generator(generator, steps,
-                                                            max_queue_size=max_queue_size, workers=workers,
-                                                            use_multiprocessing=False, verbose=verbose)
-        if "ser" in metrics:
-            seq_error = float(np.sum([1 for ler_data in ler_dataset if ler_data != 0])) \
-                / len(ler_dataset) if len(ler_dataset) > 0 else 1.
-
-        outmetrics = []
-        if "loss" in metrics:
-            outmetrics.append(self.get_loss_generator(generator, steps))
-        if "ler" in metrics:
-            outmetrics.append(ler_dataset)
-        if "ser" in metrics:
-            outmetrics.append(seq_error)
-
-        return outmetrics
 
     def predict_on_batch(self, x):
         """Returns predictions for a single batch of samples.
@@ -516,133 +367,6 @@ class CTCModel:
         output = [[pr for pr in pred if pr != -1] for pred in out]
 
         return output
-
-    def predict_generator(self, generator, steps,
-                          max_queue_size=10,
-                          workers=1,
-                          verbose=0,
-                          decode_func=None):
-        """Generates predictions for the input samples from a data generator.
-
-        The generator should return the same kind of data as accepted by
-        `predict_on_batch`.
-
-        generator = DataGenerator class that returns:
-                        x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
-                        y = Input data as a 2D Tensor (batch_size, max_label_len)
-                        x_len = 1D array with the length of each data in batch_size
-                        y_len = 1D array with the length of each labeling
-
-        # Arguments
-            generator: Generator yielding batches of input samples
-                    or an instance of Sequence (keras.utils.Sequence)
-                    object in order to avoid duplicate data
-                    when using multiprocessing.
-            steps: Total number of steps (batches of samples)
-                to yield from `generator` before stopping.
-            max_queue_size: Maximum size for the generator queue.
-            workers: Maximum number of processes to spin up
-                when using process based threading
-            verbose: verbosity mode, 0 or 1.
-            decode_func: a function for decoding a list of predicted sequences (using self.charset)
-
-        # Returns
-            A tuple containing:
-                A numpy array(s) of ground truth.
-                A numpy array(s) of predictions.
-
-        # Raises
-            ValueError: In case the generator yields
-                data in an invalid format.
-        """
-        self.model_pred._make_predict_function()
-
-        steps_done = 0
-        all_outs = []
-        all_lab = []
-
-        is_sequence = isinstance(generator, Sequence)
-        enqueuer = None
-
-        try:
-            if is_sequence:
-                enqueuer = OrderedEnqueuer(generator)
-            else:
-                enqueuer = GeneratorEnqueuer(generator)
-
-            enqueuer.start(workers=workers, max_queue_size=max_queue_size)
-            output_generator = enqueuer.get()
-
-            if verbose == 1:
-                progbar = Progbar(target=steps)
-
-            while steps_done < steps:
-                generator_output = next(output_generator)
-
-                if isinstance(generator_output, tuple):
-                    # Compatibility with the generators
-                    # used for training.
-                    if len(generator_output) == 2:
-                        x, _ = generator_output
-                    elif len(generator_output) == 3:
-                        x, _, _ = generator_output
-                    else:
-                        raise ValueError("Output of generator should be "
-                                         "a tuple `(x, y, sample_weight)` "
-                                         "or `(x, y)`. Found: " + str(generator_output))
-                else:
-                    # Assumes a generator that only
-                    # yields inputs (not targets and sample weights).
-                    x = generator_output
-
-                [x_input, y, x_length, y_length] = x
-                outs = self.predict_on_batch([x_input, x_length])
-
-                if not isinstance(outs, list):
-                    outs = [outs]
-
-                if not all_outs:
-                    for out in outs:
-                        all_outs.append([])
-                        all_lab.append([])
-
-                for i, out in enumerate(outs):
-                    all_outs[i].append([val_out for val_out in out if val_out != -1])
-
-                    if isinstance(y_length[i], list):
-                        all_lab[i].append(y[i][:y_length[i][0]])
-                    elif isinstance(y_length[i], int):
-                        all_lab[i].append(y[i][:y_length[i]])
-                    elif isinstance(y_length[i], float):
-                        all_lab[i].append(y[i][:int(y_length[i])])
-                    else:
-                        all_lab[i].append(y[i])
-
-                steps_done += 1
-                if verbose == 1:
-                    progbar.update(steps_done)
-
-        finally:
-            if enqueuer is not None:
-                enqueuer.stop()
-
-        batch_size = len(all_outs)
-        nb_data = len(all_outs[0])
-        lab_out = []
-        pred_out = []
-
-        for i in range(nb_data):
-            lab_out += [all_lab[b][i] for b in range(batch_size)]
-            pred_out += [all_outs[b][i] for b in range(batch_size)]
-
-        if decode_func is not None:
-            lab_out = decode_func(lab_out, self.charset)
-            pred_out = decode_func(pred_out, self.charset)
-
-        return lab_out, pred_out
-
-    def summary(self):
-        return self.model_train.summary()
 
     def predict(self, x, batch_size=None, verbose=0, steps=None, max_len=None, max_value=999):
         """
@@ -708,161 +432,169 @@ class CTCModel:
 
         out_decode = [dec_data[:list(dec_data).index(max_value)] if max_value in dec_data else dec_data for i, dec_data
                       in enumerate(out)]
+
         return out_decode
 
-    def _predict_loop(self, f, ins, max_len=100, max_value=999, batch_size=32, verbose=0, steps=None):
-        """Abstract method to loop over some data in batches.
+    def predict_generator(self,
+                          generator,
+                          steps,
+                          max_queue_size=10,
+                          workers=1,
+                          verbose=0,
+                          decode_func=None):
+        """Generates predictions and evaluations (loss, cer, wer, ler)
+        for the input samples from a data generator.
 
-        Keras function that has been modified.
+        The generator should return the same kind of data as accepted by
+        `predict_on_batch`.
+
+        generator = DataGenerator class that returns:
+                        x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
+                        y = Input data as a 2D Tensor (batch_size, max_label_len)
+                        x_len = 1D array with the length of each data in batch_size
+                        y_len = 1D array with the length of each labeling
 
         # Arguments
-            f: Keras function returning a list of tensors.
-            ins: list of tensors to be fed to `f`.
-            batch_size: integer batch size.
-            verbose: verbosity mode.
-            steps: Total number of steps (batches of samples)
-                before declaring `_predict_loop` finished.
-                Ignored with the default value of `None`.
+            generator: Generator yielding batches of input samples
+                    or an instance of Sequence (keras.utils.Sequence)
+                    object in order to avoid duplicate data
+                    when using multiprocessing.
+            steps:
+                Total number of steps (batches of samples)
+                to yield from `generator` before stopping.
+            max_queue_size:
+                Maximum size for the generator queue.
+            workers: Maximum number of processes to spin up
+                when using process based threading
+            verbose:
+                verbosity mode, 0 or 1.
+            decode_func:
+                a function for decoding a list of predicted sequences (using self.charset)
 
         # Returns
-            Array of predictions (if the model has a single output)
-            or list of arrays of predictions
-            (if the model has multiple outputs).
+            A tuple containing:
+                A numpy array(s) of ground truth.
+                A numpy array(s) of predictions.
+            A list containing the error rate:
+                loss : the loss mean on the set
+                cer : the character error rate on the dataset
+                wer : the word error rate on the dataset
+                ler : the line error rate on the dataset
+
+        # Raises
+            ValueError: In case the generator yields
+                data in an invalid format.
         """
-        # num_samples = self.model_pred._check_num_samples(ins, batch_size,
-        #                                       steps,
-        #                                       "steps")
-        num_samples = check_num_samples(ins,
-                                        batch_size=batch_size,
-                                        steps=steps,
-                                        steps_name="steps")
+        self.model_pred._make_predict_function()
+        is_sequence = isinstance(generator, Sequence)
 
-        if steps is not None:
-            # Step-based predictions.
-            # Since we do not know how many samples
-            # we will see, we cannot pre-allocate
-            # the returned Numpy arrays.
-            # Instead, we store one array per batch seen
-            # and concatenate them upon returning.
-            unconcatenated_outs = []
-            for step in range(steps):
-                batch_outs = f(ins)
-                if not isinstance(batch_outs, list):
-                    batch_outs = [batch_outs]
-                if step == 0:
-                    for batch_out in batch_outs:
-                        unconcatenated_outs.append([])
-                for i, batch_out in enumerate(batch_outs):
-                    unconcatenated_outs[i].append(batch_out)
+        allab_outs, all_lab = [], []
+        loss = []
+        steps_done = 0
+        enqueuer = None
 
-            if len(unconcatenated_outs) == 1:
-                return np.concatenate(unconcatenated_outs[0], axis=0)
-            return [np.concatenate(unconcatenated_outs[i], axis=0)
-                    for i in range(len(unconcatenated_outs))]
-        else:
-            # Sample-based predictions.
-            outs = []
-            batches = _make_batches(num_samples, batch_size)
-            index_array = np.arange(num_samples)
-            for batch_index, (batch_start, batch_end) in enumerate(batches):
-                batch_ids = index_array[batch_start:batch_end]
-                if ins and isinstance(ins[-1], float):
-                    # Do not slice the training phase flag.
-                    ins_batch = _slice_arrays(ins[:-1], batch_ids) + [ins[-1]]
+        try:
+            if is_sequence:
+                enqueuer = OrderedEnqueuer(generator)
+            else:
+                enqueuer = GeneratorEnqueuer(generator)
+
+            enqueuer.start(workers=workers, max_queue_size=max_queue_size)
+            output_generator = enqueuer.get()
+
+            if verbose == 1:
+                progbar = Progbar(target=steps)
+
+            while steps_done < steps:
+                generator_output = next(output_generator)
+
+                if isinstance(generator_output, tuple):
+                    # Compatibility with the generators
+                    # used for training.
+                    if len(generator_output) == 2:
+                        x, _ = generator_output
+                    elif len(generator_output) == 3:
+                        x, _, _ = generator_output
+                    else:
+                        raise ValueError("Output of generator should be "
+                                         "a tuple `(x, y, sample_weight)` "
+                                         "or `(x, y)`. Found: " + str(generator_output))
                 else:
-                    ins_batch = _slice_arrays(ins, batch_ids)
-                batch_outs = f(ins_batch)
-                if not isinstance(batch_outs, list):
-                    batch_outs = [batch_outs]
-                if batch_index == 0:
-                    # Pre-allocate the results arrays.
-                    for batch_out in batch_outs:
-                        shape = (num_samples, max_len)
-                        outs.append(np.zeros(shape, dtype=batch_out.dtype))
-                for i, batch_out in enumerate(batch_outs):
-                    outs[i][batch_start:batch_end] = sequence.pad_sequences(batch_out, value=float(max_value),
-                                                                            maxlen=max_len,
-                                                                            dtype=batch_out.dtype, padding="post")
+                    # Assumes a generator that only
+                    # yields inputs (not targets and sample weights).
+                    x = generator_output
 
-            if len(outs) == 1:
-                return outs[0]
-            return outs
+                [x_input, y, x_length, y_length] = x
+                outs = self.predict_on_batch([x_input, x_length])
 
-    @staticmethod
-    def ctc_loss_lambda_func(args):
-        """
-        Function for computing the ctc loss (can be put in a Lambda layer)
-        :param args:
-            y_pred, labels, input_length, label_length
-        :return: CTC loss
-        """
-        y_pred, labels, input_length, label_length = args
-        return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
+                c_loss, c_loss_data = self.get_loss_on_batch(x)
+                loss.append(c_loss / len(c_loss_data))
 
-    @staticmethod
-    def ctc_complete_decoding_lambda_func(args, **arguments):
-        """
-        Complete CTC decoding using Keras (function K.ctc_decode)
-        :param args:
-            y_pred, input_length
-        :param arguments:
-            greedy, beam_width, top_paths
-        :return:
-            K.ctc_decode with dtype="float32"
-        """
+                if not isinstance(outs, list):
+                    outs = [outs]
 
-        # import tensorflow as tf # Require for loading a model saved
+                if not allab_outs:
+                    for out in outs:
+                        allab_outs.append([])
+                        all_lab.append([])
 
-        y_pred, input_length = args
-        my_params = arguments
+                for i, out in enumerate(outs):
+                    allab_outs[i].append([valab_out for valab_out in out if valab_out != -1])
 
-        assert (K.backend() == "tensorflow")
+                    if isinstance(y_length[i], list):
+                        all_lab[i].append(y[i][:y_length[i][0]])
+                    elif isinstance(y_length[i], int):
+                        all_lab[i].append(y[i][:y_length[i]])
+                    elif isinstance(y_length[i], float):
+                        all_lab[i].append(y[i][:int(y_length[i])])
+                    else:
+                        all_lab[i].append(y[i])
 
-        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length), greedy=my_params["greedy"],
-                      beam_width=my_params["beam_width"], top_paths=my_params["top_paths"])[0][0],
-                      dtype="float32")
+                steps_done += 1
+                if verbose == 1:
+                    progbar.update(steps_done)
 
-    @staticmethod
-    def ctc_complete_analysis_lambda_func(args, **arguments):
-        """
-        Complete CTC analysis using Keras and tensorflow
-        WARNING : tf is required
-        :param args:
-            y_pred, labels, input_length, label_len
-        :param arguments:
-            greedy, beam_width, top_paths
-        :return:
-            ler = label error rate
-        """
+        finally:
+            if enqueuer is not None:
+                enqueuer.stop()
 
-        y_pred, labels, input_length, label_len = args
-        my_params = arguments
+        batch_size = len(allab_outs)
+        nb_data = len(allab_outs[0])
+        lab_out, pred_out = [], []
+        cer, wer, ler = [], [], []
 
-        assert (K.backend() == "tensorflow")
+        for i in range(nb_data):
+            lab_out += [all_lab[b][i] for b in range(batch_size)]
+            pred_out += [allab_outs[b][i] for b in range(batch_size)]
 
-        batch = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + 1e-8)
-        input_length = tf.cast(tf.squeeze(input_length), tf.int32)
+        # decode
+        if decode_func is not None:
+            lab_out = decode_func(lab_out, self.charset)
+            pred_out = decode_func(pred_out, self.charset)
 
-        greedy = my_params["greedy"]
-        beam_width = my_params["beam_width"]
-        top_paths = my_params["top_paths"]
+        # error rate calculations
+        for (lab, pred) in zip(lab_out, pred_out):
+            pd, lb = list(pred), list(lab)
+            length = max(len(pd), len(lb))
+            dist = editdistance.eval(pd, lb)
+            cer.append(dist / length)
 
-        if greedy:
-            (decoded, log_prob) = tf.nn.ctc_greedy_decoder(
-                inputs=batch,
-                sequence_length=input_length)
-        else:
-            (decoded, log_prob) = tf.nn.ctc_beam_search_decoder(
-                inputs=batch, sequence_length=input_length,
-                beam_width=beam_width, top_paths=top_paths)
+            pd, lb = pred.split(), lab.split()
+            length = max(len(pd), len(lb))
+            dist = editdistance.eval(pd, lb)
+            wer.append(dist / length)
 
-        cast_decoded = tf.cast(decoded[0], tf.float32)
+            pd, lb = [pred], [lab]
+            length = max(len(pd), len(lb))
+            dist = editdistance.eval(pd, lb)
+            ler.append(dist / length)
 
-        sparse_y = K.ctc_label_dense_to_sparse(labels, tf.cast(tf.squeeze(label_len), tf.int32))
-        ed_tensor = tf_edit_distance(cast_decoded, sparse_y, norm=True)
-        ler_per_seq = Kreshape_To1D(ed_tensor)
+        loss = sum(loss) / len(loss)
+        cer = sum(cer) / len(cer)
+        wer = sum(wer) / len(wer)
+        ler = sum(ler) / len(ler)
 
-        return K.cast(ler_per_seq, dtype="float32")
+        return [lab_out, pred_out], [loss, cer, wer, ler]
 
     def save_model(self, path_dir, charset=None):
         """ Save a model in path_dir
@@ -1059,6 +791,159 @@ class CTCModel:
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_eval.compile(loss={"CTCanalysis": lambda yt, yp: yp}, optimizer=optimizer)
+
+    def summary(self):
+        return self.model_train.summary()
+
+    def _predict_loop(self, f, ins, max_len=100, max_value=999, batch_size=32, verbose=0, steps=None):
+        """Abstract method to loop over some data in batches.
+
+        Keras function that has been modified.
+
+        # Arguments
+            f: Keras function returning a list of tensors.
+            ins: list of tensors to be fed to `f`.
+            batch_size: integer batch size.
+            verbose: verbosity mode.
+            steps: Total number of steps (batches of samples)
+                before declaring `_predict_loop` finished.
+                Ignored with the default value of `None`.
+
+        # Returns
+            Array of predictions (if the model has a single output)
+            or list of arrays of predictions
+            (if the model has multiple outputs).
+        """
+
+        num_samples = check_num_samples(ins,
+                                        batch_size=batch_size,
+                                        steps=steps,
+                                        steps_name="steps")
+
+        if steps is not None:
+            # Step-based predictions.
+            # Since we do not know how many samples
+            # we will see, we cannot pre-allocate
+            # the returned Numpy arrays.
+            # Instead, we store one array per batch seen
+            # and concatenate them upon returning.
+            unconcatenated_outs = []
+            for step in range(steps):
+                batch_outs = f(ins)
+                if not isinstance(batch_outs, list):
+                    batch_outs = [batch_outs]
+                if step == 0:
+                    for batch_out in batch_outs:
+                        unconcatenated_outs.append([])
+                for i, batch_out in enumerate(batch_outs):
+                    unconcatenated_outs[i].append(batch_out)
+
+            if len(unconcatenated_outs) == 1:
+                return np.concatenate(unconcatenated_outs[0], axis=0)
+            return [np.concatenate(unconcatenated_outs[i], axis=0)
+                    for i in range(len(unconcatenated_outs))]
+        else:
+            # Sample-based predictions.
+            outs = []
+            batches = _make_batches(num_samples, batch_size)
+            index_array = np.arange(num_samples)
+            for batch_index, (batch_start, batch_end) in enumerate(batches):
+                batch_ids = index_array[batch_start:batch_end]
+                if ins and isinstance(ins[-1], float):
+                    # Do not slice the training phase flag.
+                    ins_batch = _slice_arrays(ins[:-1], batch_ids) + [ins[-1]]
+                else:
+                    ins_batch = _slice_arrays(ins, batch_ids)
+                batch_outs = f(ins_batch)
+                if not isinstance(batch_outs, list):
+                    batch_outs = [batch_outs]
+                if batch_index == 0:
+                    # Pre-allocate the results arrays.
+                    for batch_out in batch_outs:
+                        shape = (num_samples, max_len)
+                        outs.append(np.zeros(shape, dtype=batch_out.dtype))
+                for i, batch_out in enumerate(batch_outs):
+                    outs[i][batch_start:batch_end] = sequence.pad_sequences(batch_out, value=float(max_value),
+                                                                            maxlen=max_len,
+                                                                            dtype=batch_out.dtype, padding="post")
+
+            if len(outs) == 1:
+                return outs[0]
+            return outs
+
+    @staticmethod
+    def ctc_loss_lambda_func(args):
+        """
+        Function for computing the ctc loss (can be put in a Lambda layer)
+        :param args:
+            y_pred, labels, input_length, label_length
+        :return: CTC loss
+        """
+        y_pred, labels, input_length, label_length = args
+        return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
+
+    @staticmethod
+    def ctc_complete_decoding_lambda_func(args, **arguments):
+        """
+        Complete CTC decoding using Keras (function K.ctc_decode)
+        :param args:
+            y_pred, input_length
+        :param arguments:
+            greedy, beam_width, top_paths
+        :return:
+            K.ctc_decode with dtype="float32"
+        """
+
+        y_pred, input_length = args
+        my_params = arguments
+
+        assert (K.backend() == "tensorflow")
+
+        return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length), greedy=my_params["greedy"],
+                      beam_width=my_params["beam_width"], top_paths=my_params["top_paths"])[0][0],
+                      dtype="float32")
+
+    @staticmethod
+    def ctc_complete_analysis_lambda_func(args, **arguments):
+        """
+        Complete CTC analysis using Keras and tensorflow
+        WARNING : tf is required
+        :param args:
+            y_pred, labels, input_length, label_len
+        :param arguments:
+            greedy, beam_width, top_paths
+        :return:
+            ler = label error rate
+        """
+
+        y_pred, labels, input_length, label_len = args
+        my_params = arguments
+
+        assert (K.backend() == "tensorflow")
+
+        batch = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + 1e-8)
+        input_length = tf.cast(tf.squeeze(input_length), tf.int32)
+
+        greedy = my_params["greedy"]
+        beam_width = my_params["beam_width"]
+        top_paths = my_params["top_paths"]
+
+        if greedy:
+            (decoded, log_prob) = tf.nn.ctc_greedy_decoder(
+                inputs=batch,
+                sequence_length=input_length)
+        else:
+            (decoded, log_prob) = tf.nn.ctc_beam_search_decoder(
+                inputs=batch, sequence_length=input_length,
+                beam_width=beam_width, top_paths=top_paths)
+
+        cast_decoded = tf.cast(decoded[0], tf.float32)
+
+        sparse_y = K.ctc_label_dense_to_sparse(labels, tf.cast(tf.squeeze(label_len), tf.int32))
+        ed_tensor = tf_edit_distance(cast_decoded, sparse_y, norm=True)
+        ler_per_seq = Kreshape_To1D(ed_tensor)
+
+        return K.cast(ler_per_seq, dtype="float32")
 
 
 def _standardize_input_data(data, names, shapes=None,
@@ -1276,4 +1161,5 @@ def check_num_samples(ins,
 
     if hasattr(ins[0], "shape"):
         return int(ins[0].shape[0])
-    return None  # Edge case where ins == [static_learning_phase]
+
+    return None

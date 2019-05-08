@@ -1,10 +1,11 @@
 """Handwritten text recognition network"""
 
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, Reshape
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, Reshape, PReLU
 from tensorflow.keras.layers import TimeDistributed, Activation, Dense, Bidirectional, LSTM
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, CSVLogger, ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
+from tensorflow import random_normal_initializer
 from network.ctc_model import CTCModel
 from contextlib import redirect_stdout
 import os
@@ -43,21 +44,23 @@ class HTRNetwork:
         nb_layers = len(kernels)
         pool_sizes, strides = get_pool_strides(input_size, max_text_length, nb_layers)
 
+        init = random_normal_initializer(stddev=0.1)
         cnn = input_data
 
         for i in range(nb_layers):
-            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", activation="relu",
-                         kernel_initializer="he_normal", kernel_regularizer=l2(0.01))(cnn)
-            cnn = BatchNormalization(scale=False, center=True, trainable=training)(cnn)
+            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same",
+                         kernel_initializer=init, kernel_regularizer=l2(0.01))(cnn)
+            cnn = BatchNormalization(axis=3, scale=False, center=False, trainable=training)(cnn)
+            cnn = PReLU(shared_axes=[1,2], name=f"prelu_{i}")(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
 
         shape = cnn.get_shape()
         outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
 
         # build RNN
-        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer="he_normal"))(blstm)
-        outrnn = Activation(activation="softmax")(dense)
+        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer=init))(outcnn)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer=init))(blstm)
+        outrnn = Activation(activation="softmax", name="softmax")(dense)
 
         # create and compile CTC model
         self.model = CTCModel(
@@ -68,7 +71,7 @@ class HTRNetwork:
             top_paths=1,
             charset=charset)
 
-        self.model.compile(optimizer=Adam(learning_rate=1e-2))
+        self.model.compile(optimizer=Adam(learning_rate=1e-3))
 
     def _build_callbacks(self, output):
         """Build callbacks to the model"""
@@ -87,7 +90,7 @@ class HTRNetwork:
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
-                write_images=True,
+                write_images=False,
                 update_freq="epoch"
             ),
             ModelCheckpoint(

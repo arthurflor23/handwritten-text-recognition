@@ -25,7 +25,6 @@ if __name__ == "__main__":
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
-    parser.add_argument("--eval", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -46,72 +45,6 @@ if __name__ == "__main__":
         transform.dataset(env, preproc)
         print(f"Transformation finished.")
 
-    elif args.train:
-        dtgen = DataGenerator(env, train=True)
-        htr = HTRNetwork(env, dtgen)
-
-        htr.model.summary()
-        htr.summary_to_file()
-
-        h = htr.model.fit_generator(
-            generator=dtgen.next_train_batch(),
-            epochs=env.epochs,
-            steps_per_epoch=dtgen.train_steps,
-            validation_data=dtgen.next_valid_batch(),
-            validation_steps=dtgen.val_steps,
-            callbacks=htr.callbacks,
-            verbose=1)
-
-        train_corpus = [
-            f"Epochs:                       {env.epochs}",
-            f"Batch:                        {env.batch_size}\n",
-            f"Train dataset images:         {dtgen.train.shape[0]}",
-            f"Validation dataset images:    {dtgen.valid.shape[0]}\n",
-            f"Train dataset loss:           {h.history['loss'][0]:.2f}",
-            f"Validation dataset loss:      {h.history['val_loss'][0]:.2f}"
-        ]
-
-        os.makedirs(env.output_tasks, exist_ok=True)
-        with open(os.path.join(env.output_tasks, "train.txt"), "w") as lg:
-            lg.write("\n".join(train_corpus))
-
-    elif args.eval:
-        dtgen = DataGenerator(env)
-        htr = HTRNetwork(env, dtgen)
-
-        eval = htr.model.evaluate_generator(
-            generator=dtgen.next_test_batch(),
-            steps=dtgen.test_steps,
-            metrics=["loss", "ler", "ser"],
-            verbose=1)
-
-        eval_corpus = [
-            f"Test dataset images:  {dtgen.test.shape[0]}\n",
-            f"Test dataset loss:    {sum(eval[0][1])/len(eval[0][1]):.2f}",
-            f"Label error rate:     {sum(eval[1])/len(eval[1]):.2f}",
-            f"Sequence error rate:  {eval[2]:.2f}"
-        ]
-
-        os.makedirs(env.output_tasks, exist_ok=True)
-        with open(os.path.join(env.output_tasks, "evaluate.txt"), "w") as lg:
-            lg.write("\n".join(eval_corpus))
-
-    elif args.test:
-        dtgen = DataGenerator(env)
-        htr = HTRNetwork(env, dtgen)
-
-        pred = htr.model.predict_generator(
-            generator=dtgen.next_test_batch(),
-            steps=dtgen.test_steps,
-            verbose=1,
-            decode_func=dtgen.decode_ctc)
-
-        pred_corpus = ["Label\t|\tPredict"] + [f"{l}\t|\t{p}" for (l, p) in zip(pred[0], pred[1])]
-
-        os.makedirs(env.output_tasks, exist_ok=True)
-        with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
-            lg.write("\n".join(pred_corpus))
-
     elif args.cv2:
         sample = np.load(env.train, allow_pickle=True, mmap_mode="r")
 
@@ -120,3 +53,62 @@ if __name__ == "__main__":
             print(sample["gt"][x])
             cv2.imshow("img", sample["dt"][x][:,:,0])
             cv2.waitKey(0)
+
+    elif args.train:
+        os.makedirs(env.output_tasks, exist_ok=True)
+        dtgen = DataGenerator(env, train=True)
+        htr = HTRNetwork(env, dtgen)
+
+        htr.model.summary()
+        htr.summary_to_file()
+
+        h = htr.model.fit_generator(generator=dtgen.next_train_batch(),
+                                    epochs=env.epochs,
+                                    steps_per_epoch=dtgen.train_steps,
+                                    validation_data=dtgen.next_valid_batch(),
+                                    validation_steps=dtgen.val_steps,
+                                    callbacks=htr.callbacks,
+                                    verbose=1)
+
+        train_corpus = "\n".join([
+            f"Epochs:                       {env.epochs}",
+            f"Batch:                        {env.batch_size}\n",
+            f"Train dataset images:         {dtgen.train.shape[0]}",
+            f"Validation dataset images:    {dtgen.valid.shape[0]}\n",
+            f"Train dataset loss:           {h.history['loss'][0]:.4f}",
+            f"Validation dataset loss:      {h.history['val_loss'][0]:.4f}"
+        ])
+
+        with open(os.path.join(env.output_tasks, "train.txt"), "w") as lg:
+            print(train_corpus)
+            lg.write(train_corpus)
+
+    elif args.test:
+        os.makedirs(env.output_tasks, exist_ok=True)
+        dtgen = DataGenerator(env)
+        htr = HTRNetwork(env, dtgen)
+
+        pred, eval = htr.model.predict_generator(generator=dtgen.next_test_batch(),
+                                                 steps=dtgen.test_steps,
+                                                 verbose=1,
+                                                 decode_func=dtgen.decode_ctc)
+
+        eval_corpus = "\n".join([
+            f"Test dataset images:  {dtgen.test.shape[0]}\n",
+            f"Test dataset loss:    {eval[0]:.4f}",
+            f"Character error rate: {eval[1]:.4f}",
+            f"Word error rate:      {eval[2]:.4f}",
+            f"Line error rate:      {eval[3]:.4f}"
+        ])
+
+        pred_corpus = "\n".join(
+            ["Label\t|\tPredict"] + [f"{lb}\t|\t{pd}" for (lb, pd) in zip(pred[0], pred[1])]
+        )
+
+        with open(os.path.join(env.output_tasks, "evaluate.txt"), "w") as lg:
+            print(eval_corpus)
+            lg.write(eval_corpus)
+
+        with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
+            print(pred_corpus)
+            lg.write(pred_corpus)
