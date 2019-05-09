@@ -103,7 +103,7 @@ class HTRNetwork:
             ),
             ReduceLROnPlateau(
                 monitor="val_loss",
-                cooldown=100,
+                cooldown=5,
                 min_lr=1e-3,
                 factor=0.1,
                 patience=5,
