@@ -16,7 +16,7 @@ import cv2
 from util.environment import Env
 from util.loader import DataGenerator
 from network.network import HTRNetwork
-from util.preproc import preproc
+from util.preproc import preproc, encode_ctc, decode_ctc
 
 
 if __name__ == "__main__":
@@ -39,24 +39,23 @@ if __name__ == "__main__":
         package = f"dt_transform.{args.dataset}"
         transform = importlib.import_module(package)
 
-        if not os.path.exists(env.source):
-            os.makedirs(env.source, exist_ok=True)
-
-        transform.dataset(env, preproc)
+        os.makedirs(env.data, exist_ok=True)
+        transform.dataset(env, preproc, encode_ctc)
         print(f"Transformation finished.")
 
     elif args.cv2:
-        sample = np.load(env.train, allow_pickle=True, mmap_mode="r")
+        sample = np.load(env.source, allow_pickle=True, mmap_mode="r")
 
         for x in range(23):
-            print(sample["dt"].shape)
-            print(sample["gt"][x])
-            cv2.imshow("img", sample["dt"][x][:,:,0])
+            print(sample["train_dt"].shape)
+            print(sample["train_gt"][x])
+            cv2.imshow("img", sample["train_dt"][x][:,:,0])
             cv2.waitKey(0)
 
     elif args.train:
         os.makedirs(env.output_tasks, exist_ok=True)
-        dtgen = DataGenerator(env, train=True)
+
+        dtgen = DataGenerator(env)
         htr = HTRNetwork(env, dtgen)
 
         htr.model.summary()
@@ -68,6 +67,7 @@ if __name__ == "__main__":
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.val_steps,
                                     callbacks=htr.callbacks,
+                                    shuffle=False,
                                     verbose=1)
 
         train_corpus = "\n".join([
@@ -85,13 +85,14 @@ if __name__ == "__main__":
 
     elif args.test:
         os.makedirs(env.output_tasks, exist_ok=True)
+
         dtgen = DataGenerator(env)
         htr = HTRNetwork(env, dtgen)
 
         pred, eval = htr.model.predict_generator(generator=dtgen.next_test_batch(),
                                                  steps=dtgen.test_steps,
                                                  verbose=1,
-                                                 decode_func=dtgen.decode_ctc)
+                                                 decode_func=decode_ctc)
 
         eval_corpus = "\n".join([
             f"Test dataset images:  {dtgen.test.shape[0]}\n",

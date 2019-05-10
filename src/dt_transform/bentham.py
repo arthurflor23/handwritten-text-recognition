@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 
-def dataset(env, preproc_func):
+def dataset(env, preproc, encode):
     """Load and save npz file of the ground truth and images (preprocessed)"""
 
     env.raw_source = os.path.join(env.raw_source, "BenthamDatasetR0-GT")
@@ -19,17 +19,22 @@ def dataset(env, preproc_func):
         text = " ".join(open(os.path.join(path, x)).read().splitlines()).replace("_", "")
         gt_dict[os.path.splitext(x)[0]] = text.strip()
 
-    dt, gt = build_data_from(env, "TrainLines.lst", gt_dict, preproc_func)
-    np.savez_compressed(env.train, dt=dt, gt=gt)
+    train_dt, train_gt = build_data(env, "TrainLines.lst", gt_dict, preproc, encode)
+    valid_dt, valid_gt = build_data(env, "ValidationLines.lst", gt_dict, preproc, encode)
+    test_dt, test_gt = build_data(env, "TestLines.lst", gt_dict, preproc, encode)
 
-    dt, gt = build_data_from(env, "ValidationLines.lst", gt_dict, preproc_func)
-    np.savez_compressed(env.valid, dt=dt, gt=gt)
+    np.savez_compressed(
+        env.source,
+        train_dt=train_dt,
+        train_gt=train_gt,
+        valid_dt=valid_dt,
+        valid_gt=valid_gt,
+        test_dt=test_dt,
+        test_gt=test_gt,
+    )
 
-    dt, gt = build_data_from(env, "TestLines.lst", gt_dict, preproc_func)
-    np.savez_compressed(env.test, dt=dt, gt=gt)
 
-
-def build_data_from(env, partition, gt_dict, preproc_func):
+def build_data(env, partition, gt_dict, preproc, encode):
     """Preprocess images with pool function"""
 
     pt_path = os.path.join(env.raw_source, "Partitions")
@@ -46,7 +51,8 @@ def build_data_from(env, partition, gt_dict, preproc_func):
             dt.append(path)
 
     pool = Pool()
-    dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)
+    dt = pool.map(partial(preproc, img_size=env.model_input_size, read_first=True), dt)
+    gt = pool.map(partial(encode, charset=env.charset), gt)
     pool.close()
     pool.join()
 

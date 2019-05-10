@@ -18,10 +18,8 @@ class HTRNetwork:
         self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
         self.logger_path = os.path.join(env.output, "logger.log")
 
-        self._build_network(env.model_input_size, dtgen.charset, dtgen.max_text_length, dtgen.training)
-
-        if dtgen.training:
-            self._build_callbacks(env.output)
+        self._build_network(env.model_input_size, env.charset, dtgen.max_text_length)
+        self._build_callbacks(env.output)
 
         if os.path.isfile(self.checkpoint_path):
             self.model.load_checkpoint(self.checkpoint_path)
@@ -33,7 +31,7 @@ class HTRNetwork:
             with redirect_stdout(f):
                 self.model.summary()
 
-    def _build_network(self, input_size, charset, max_text_length, training):
+    def _build_network(self, input_size, charset, max_text_length):
         """Build the HTR network: CNN -> RNN -> CTC"""
 
         # build CNN
@@ -48,18 +46,18 @@ class HTRNetwork:
         cnn = input_data
 
         for i in range(nb_layers):
-            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same",
-                         kernel_initializer=init, kernel_regularizer=l2(0.01))(cnn)
-            cnn = BatchNormalization(axis=3, scale=False, center=False, trainable=training)(cnn)
-            cnn = PReLU(shared_axes=[1,2], name=f"prelu_{i}")(cnn)
+            cnn = Conv2D(filters=filters[i], kernel_size=kernels[i], padding="same", activation="relu",
+                         kernel_initializer="he_normal", kernel_regularizer=l2(0.01))(cnn)
+            cnn = BatchNormalization(axis=3, scale=False, center=False)(cnn)
+            # cnn = PReLU(shared_axes=[1,2], name=f"prelu_{i}")(cnn)
             cnn = MaxPooling2D(pool_size=pool_sizes[i], strides=strides[i], padding="valid")(cnn)
 
         shape = cnn.get_shape()
         outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
 
         # build RNN
-        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer=init))(outcnn)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer=init))(blstm)
+        blstm = Bidirectional(LSTM(units=512, return_sequences=True, kernel_initializer="he_normal"))(outcnn)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1), kernel_initializer="he_normal"))(blstm)
         outrnn = Activation(activation="softmax", name="softmax")(dense)
 
         # create and compile CTC model
@@ -103,10 +101,9 @@ class HTRNetwork:
             ),
             ReduceLROnPlateau(
                 monitor="val_loss",
-                cooldown=5,
-                min_lr=1e-3,
                 factor=0.1,
-                patience=5,
+                patience=6,
+                min_delta=1e-4,
                 verbose=1
             )
         ]

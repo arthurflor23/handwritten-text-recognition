@@ -6,6 +6,18 @@ import numpy as np
 import cv2
 
 
+def encode_ctc(text, charset):
+    """Encode text batch to CTC input (sparse)"""
+
+    return np.array([[np.abs(float(charset.find(x))) for x in vec][0] for vec in text.strip()])
+
+
+def decode_ctc(arr, charset):
+    """Decode CTC output batch to text"""
+
+    return np.array([("".join(charset[int(c)] for c in vec)).strip() for vec in arr])
+
+
 def preproc(img, img_size, read_first=False):
     """Make the process with the `img_size` to the scale resize"""
 
@@ -27,7 +39,7 @@ def preproc(img, img_size, read_first=False):
 
     # cv2.imshow("img", img[:,:,0])
     # cv2.waitKey(0)
-    return img
+    return np.array(img, dtype=np.float32)
 
 
 def illumination_compensation(img):
@@ -118,12 +130,10 @@ def illumination_compensation(img):
 
     result = np.divide(cei, ldi) * 260
     result[np.where(erosion != 0)] *= 1.5
-
     result[result < 0] = 0
     result[result > 255] = 255
-    result = np.array(result, dtype=np.uint8)
 
-    return result
+    return np.array(result, dtype=np.uint8)
 
 
 def remove_cursive_style(img):
@@ -158,7 +168,7 @@ def remove_cursive_style(img):
         results.append([np.sum(sum_alpha), size, transform])
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
-    return cv2.warpAffine(img, result[2], result[1], borderValue=255)
+    return cv2.warpAffine(binary, result[2], result[1], borderValue=255)
 
 
 def sauvola(img, window, thresh, k):

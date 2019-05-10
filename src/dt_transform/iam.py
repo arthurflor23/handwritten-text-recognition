@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 
-def dataset(env, preproc_func):
+def dataset(env, preproc, encode):
     """Load and save npz file of the ground truth and images (preprocessed)"""
 
     gt = os.path.join(env.raw_source, "ascii")
@@ -24,17 +24,22 @@ def dataset(env, preproc_func):
         text = splited[len(splited) - 1].replace("|", " ").strip()
         gt_dict[name] = text
 
-    dt, gt = build_data_from(env, "trainset.txt", gt_dict, preproc_func)
-    np.savez_compressed(env.train, dt=dt, gt=gt)
+    train_dt, train_gt = build_data(env, "trainset.txt", gt_dict, preproc, encode)
+    valid_dt, valid_gt = build_data(env, "validationset2.txt", gt_dict, preproc, encode)
+    test_dt, test_gt = build_data(env, "testset.txt", gt_dict, preproc, encode)
 
-    dt, gt = build_data_from(env, "validationset2.txt", gt_dict, preproc_func)
-    np.savez_compressed(env.valid, dt=dt, gt=gt)
+    np.savez_compressed(
+        env.source,
+        train_dt=train_dt,
+        train_gt=train_gt,
+        valid_dt=valid_dt,
+        valid_gt=valid_gt,
+        test_dt=test_dt,
+        test_gt=test_gt,
+    )
 
-    dt, gt = build_data_from(env, "testset.txt", gt_dict, preproc_func)
-    np.savez_compressed(env.test, dt=dt, gt=gt)
 
-
-def build_data_from(env, partition, gt_dict, preproc_func):
+def build_data(env, partition, gt_dict, preproc, encode):
     """Preprocess images with pool function"""
 
     pt_path = os.path.join(env.raw_source, "largeWriterIndependentTextLineRecognitionTask")
@@ -54,7 +59,8 @@ def build_data_from(env, partition, gt_dict, preproc_func):
             dt.append(path)
 
     pool = Pool()
-    dt = pool.map(partial(preproc_func, img_size=env.model_input_size, read_first=True), dt)
+    dt = pool.map(partial(preproc, img_size=env.model_input_size, read_first=True), dt)
+    gt = pool.map(partial(encode, charset=env.charset), gt)
     pool.close()
     pool.join()
 

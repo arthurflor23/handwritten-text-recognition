@@ -11,20 +11,18 @@ import pickle
 import os
 
 """
-authors: Yann Soullard, Cyprien Ruffino (2017)
-LITIS lab, university of Rouen (France)
-
-The CTCModel class extends the Keras Model for the use of the Connectionist Temporal Classification (CTC)
+The CTCModel class extends the Tensorflow Keras Model (version 2)
+for the use of the Connectionist Temporal Classification (CTC) with the Hadwritten Text Recognition (HTR).
 One makes use of the CTC proposed in tensorflow. Thus CTCModel can only be used with the backend tensorflow.
 
-The CTCModel structure is composed of 3 branches. Each branch is a Keras Model:
+The CTCModel structure is composed of 2 branches. Each branch is a Tensorflow Keras Model:
     - One for computing the CTC loss (model_train)
-    - One for predicting using the ctc_decode method (model_pred)
-    - One for analyzing (model_eval) that computes the Label Error Rate (LER) and Sequence Error Rate (SER).
+    - One for predicting using the ctc_decode method (model_pred) and
+        computing the Character Error Rate (CER), Word Error Rate (WER), Line Error Rate (LER).
 
-In a Keras Model, x is the input features and y the labels.
+In a Tensorflow Keras Model, x is the input features and y the labels.
 Here, x data are of the form [input_sequences, label_sequences, inputs_lengths, labels_length]
-and y are not used as in a Keras Model (this is an array which is not considered,
+and y are not used as in a Tensorflow Keras Model (this is an array which is not considered,
 the labeling is given in the x data structure).
 """
 
@@ -61,15 +59,13 @@ class CTCModel:
         """
         Configures the CTC Model for training.
 
-        There is 3 Keras models:
+        There is 2 Tensorflow Keras models:
             - one for training
-            - one for predicting
-            - one for analyzing
+            - one for predicting/evaluate
 
         Lambda layers are used to compute:
             - the CTC loss function
             - the CTC decoding
-            - the CTC evaluation
 
         :param optimizer: The optimizer used during training
         """
@@ -88,21 +84,14 @@ class CTCModel:
                                    arguments={"greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
                                    dtype="float32")(self.outputs + [input_length])
 
-        # Lambda layer to perform an analysis (CER and SER)
-        out_analysis = Lambda(self.ctc_complete_analysis_lambda_func, output_shape=(None,), name="CTCanalysis",
-                              arguments={"greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths},
-                              dtype="float32")(self.outputs + [labels, input_length, label_length])
-
-        # create Keras models
+        # create Tensorflow Keras models
         self.model_init = Model(inputs=self.inputs, outputs=self.outputs)
         self.model_train = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=loss_out)
         self.model_pred = Model(inputs=self.inputs + [input_length], outputs=out_decoded_dense)
-        self.model_eval = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=out_analysis)
 
         # Compile models
         self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
         self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
-        self.model_eval.compile(loss={"CTCanalysis": lambda yt, yp: yp}, optimizer=optimizer)
 
     def get_model_train(self):
         """
@@ -115,12 +104,6 @@ class CTCModel:
         :return: Model used for testing using the CTC approach
         """
         return self.model_pred
-
-    def get_model_eval(self):
-        """
-        :return: Model used for evaluating using the CTC approach
-        """
-        return self.model_eval
 
     def get_loss_on_batch(self, inputs, verbose=0):
         """
@@ -162,7 +145,6 @@ class CTCModel:
             loss_data = self.model_train.predict([x, y, x_len, y_len], batch_size=batch_size, verbose=verbose)
 
         loss = np.sum(loss_data)
-
         return loss, loss_data
 
     def get_loss_generator(self, generator, nb_batchs, verbose=False):
@@ -176,7 +158,6 @@ class CTCModel:
         for k in range(nb_batchs):
 
             data = next(generator)
-
             x = data[0]
             x_len = data[2]
             y = data[1]
@@ -197,7 +178,7 @@ class CTCModel:
         Get the probabilities of each label at each time of an observation sequence (matrix T x D)
         This is the output of the softmax function after the recurrent layers (the input of the CTC computations)
 
-        Computation is done for a batch. This function does not exist in a Keras Model.
+        Computation is done for a batch. This function does not exist in a Tensorflow Keras Model.
 
         :return: A set of probabilities for each sequence and each time frame, one probability per label + the blank
             (this is the output of the TimeDistributed Dense layer, the blank label is the last probability)
@@ -220,7 +201,7 @@ class CTCModel:
         Get the probabilities of each label at each time of an observation sequence (matrix T x D)
         This is the output of the softmax function after the recurrent layers (the input of the CTC computations)
 
-        Computation is done for a batch. This function does not exist in a Keras Model.
+        Computation is done for a batch. This function does not exist in a Tensorflow Keras Model.
 
         :return: A set of probabilities for each sequence and each time frame, one probability per label + the blank
             (this is the output of the TimeDistributed Dense layer, the blank label is the last probability)
@@ -242,7 +223,7 @@ class CTCModel:
         Get the probabilities of each label at each time of an observation sequence (matrix T x D)
         This is the output of the softmax function after the recurrent layers (the input of the CTC computations)
 
-        Computation is done in batches using a generator. This function does not exist in a Keras Model.
+        Computation is done in batches using a generator. This function does not exist in a Tensorflow Keras Model.
 
         :return: A set of probabilities for each sequence and each time frame, one probability per label + the blank
             (this is the output of the TimeDistributed Dense layer, the blank label is the last probability)
@@ -268,14 +249,11 @@ class CTCModel:
 
     def train_on_batch(self, x, y, sample_weight=None, class_weight=None):
         """ Runs a single gradient update on a single batch of data.
-        See Keras.Model for more details.
+        See tensorflow.keras.model for more details.
         """
 
         out = self.model_train.train_on_batch(x, y, sample_weight=sample_weight, class_weight=class_weight)
-
         self.model_pred.set_weights(self.model_train.get_weights())
-        self.model_eval.set_weights(self.model_train.get_weights())
-
         return out
 
     def fit(self,
@@ -300,7 +278,7 @@ class CTCModel:
           [input_sequences, label_sequences, inputs_lengths, labels_length]
         (in a similar way than for using CTC in tensorflow)
 
-        :param: See keras.engine.Model.fit()
+        :param: See tensorflow.keras.engine.Model.fit()
         :return: A History object
         """
 
@@ -310,8 +288,6 @@ class CTCModel:
                                    initial_epoch=initial_epoch, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps)
 
         self.model_pred.set_weights(self.model_train.get_weights())
-        self.model_eval.set_weights(self.model_train.get_weights())
-
         return out
 
     def fit_generator(self, generator,
@@ -336,7 +312,7 @@ class CTCModel:
           [input_sequences, label_sequences, inputs_lengths, labels_length]
         (in a similar way than for using CTC in tensorflow)
 
-        :param: See keras.engine.Model.fit_generator()
+        :param: See tensorflow.keras.engine.Model.fit_generator()
         :return: A History object
         """
         out = self.model_train.fit_generator(generator, steps_per_epoch, epochs=epochs, verbose=verbose,
@@ -346,22 +322,15 @@ class CTCModel:
                                              initial_epoch=initial_epoch)
 
         self.model_pred.set_weights(self.model_train.get_weights())
-        self.model_eval.set_weights(self.model_train.get_weights())
-
         return out
 
     def predict_on_batch(self, x):
         """Returns predictions for a single batch of samples.
-
-                # Arguments
-                    x: [Input samples as a Numpy array, Input length as a numpy array]
-
-                # Returns
-                    Numpy array(s) of predictions.
+            # Arguments
+                x: [Input samples as a Numpy array, Input length as a numpy array]
+            # Returns
+                Numpy array(s) of predictions.
         """
-
-        # batch_size = x[0].shape[0]
-        # return self.predict(x, batch_size=batch_size)
 
         out = self.model_pred.predict_on_batch(x)
         output = [[pr for pr in pred if pr != -1] for pred in out]
@@ -370,57 +339,51 @@ class CTCModel:
 
     def predict(self, x, batch_size=None, verbose=0, steps=None, max_len=None, max_value=999):
         """
-        The same function as in the Keras Model but with a different function predict_loop for dealing with variable length predictions
+        The same function as in the Tensorflow Keras Model but with a different function
+        predict_loop for dealing with variable length predictions.
         Except that x = [x_features, x_len]
 
         Generates output predictions for the input samples.
+            Computation is done in batches.
 
-                Computation is done in batches.
+            # Arguments
+                x: The input data, as a Numpy array
+                    (or list of Numpy arrays if the model has multiple outputs).
+                batch_size: Integer. If unspecified, it will default to 32.
+                verbose: Verbosity mode, 0 or 1.
+                steps: Total number of steps (batches of samples)
+                    before declaring the prediction round finished.
+                    Ignored with the default value of `None`.
 
-                # Arguments
-                    x: The input data, as a Numpy array
-                        (or list of Numpy arrays if the model has multiple outputs).
-                    batch_size: Integer. If unspecified, it will default to 32.
-                    verbose: Verbosity mode, 0 or 1.
-                    steps: Total number of steps (batches of samples)
-                        before declaring the prediction round finished.
-                        Ignored with the default value of `None`.
+            # Returns
+                Numpy array(s) of predictions.
 
-                # Returns
-                    Numpy array(s) of predictions.
-
-                # Raises
-                    ValueError: In case of mismatch between the provided
-                        input data and the model"s expectations,
-                        or in case a stateful model receives a number of samples
-                        that is not a multiple of the batch size.
+            # Raises
+                ValueError: In case of mismatch between the provided
+                    input data and the model"s expectations,
+                    or in case a stateful model receives a number of samples
+                    that is not a multiple of the batch size.
                 """
         [x_inputs, x_len] = x
 
         if max_len is None:
             max_len = np.max(x_len)
 
-        # Backwards compatibility.
         if batch_size is None and steps is None:
             batch_size = 32
         if x is None and steps is None:
-            raise ValueError("If predicting from data tensors, "
-                             "you should specify the `steps` "
-                             "argument.")
-        # Validate user data.
+            raise ValueError("If predicting from data tensors, you should specify the `steps` argument.")
+
         x = _standardize_input_data(x, self.model_pred._feed_input_names,
                                     self.model_pred._feed_input_shapes,
                                     check_batch_axis=False)
         if self.model_pred.stateful:
             if x[0].shape[0] > batch_size and x[0].shape[0] % batch_size != 0:
-                raise ValueError("In a stateful network, "
-                                 "you should only pass inputs with "
+                raise ValueError("In a stateful network, you should only pass inputs with "
                                  "a number of samples that can be "
                                  "divided by the batch size. Found: " + str(x[0].shape[0]) + " samples. "
                                  "Batch size: " + str(batch_size) + ".")
 
-        # Prepare inputs, delegate logic to `_predict_loop`.
-        # if self.model_pred.uses_learning_phase and not isinstance(K.learning_phase(), int):
         if not isinstance(K.learning_phase(), int):
             ins = x + [0.]
         else:
@@ -430,8 +393,8 @@ class CTCModel:
         out = self._predict_loop(f, ins, batch_size=batch_size, max_value=max_value,
                                  verbose=verbose, steps=steps, max_len=max_len)
 
-        out_decode = [dec_data[:list(dec_data).index(max_value)] if max_value in dec_data else dec_data for i, dec_data
-                      in enumerate(out)]
+        out_decode = [dec_data[:list(dec_data).index(max_value)] if max_value in dec_data else dec_data
+                      for i, dec_data in enumerate(out)]
 
         return out_decode
 
@@ -456,7 +419,7 @@ class CTCModel:
 
         # Arguments
             generator: Generator yielding batches of input samples
-                    or an instance of Sequence (keras.utils.Sequence)
+                    or an instance of Sequence (tensorflow.keras.utils.Sequence)
                     object in order to avoid duplicate data
                     when using multiprocessing.
             steps:
@@ -485,6 +448,7 @@ class CTCModel:
             ValueError: In case the generator yields
                 data in an invalid format.
         """
+
         self.model_pred._make_predict_function()
         is_sequence = isinstance(generator, Sequence)
 
@@ -509,19 +473,14 @@ class CTCModel:
                 generator_output = next(output_generator)
 
                 if isinstance(generator_output, tuple):
-                    # Compatibility with the generators
-                    # used for training.
                     if len(generator_output) == 2:
                         x, _ = generator_output
                     elif len(generator_output) == 3:
                         x, _, _ = generator_output
                     else:
-                        raise ValueError("Output of generator should be "
-                                         "a tuple `(x, y, sample_weight)` "
+                        raise ValueError("Output of generator should be a tuple `(x, y, sample_weight)` "
                                          "or `(x, y)`. Found: " + str(generator_output))
                 else:
-                    # Assumes a generator that only
-                    # yields inputs (not targets and sample weights).
                     x = generator_output
 
                 [x_input, y, x_length, y_length] = x
@@ -614,10 +573,6 @@ class CTCModel:
         with open(path_dir + "/model_pred.json", "w") as json_file:
             json_file.write(model_json)
 
-        model_json = self.model_eval.to_json()
-        with open(path_dir + "/model_eval.json", "w") as json_file:
-            json_file.write(model_json)
-
         model_json = self.model_init.to_json()
         with open(path_dir + "/model_init.json", "w") as json_file:
             json_file.write(model_json)
@@ -636,7 +591,6 @@ class CTCModel:
 
         self.model_train.load_weights(checkpoint)
         self.model_pred.set_weights(self.model_train.get_weights())
-        self.model_eval.set_weights(self.model_train.get_weights())
 
     def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
                    init_last_layer=False, add_layers=None, trainable=False, removed_layers=2):
@@ -657,7 +611,6 @@ class CTCModel:
         """
 
         if init_archi:
-
             json_file = open(path_dir + "/model_train.json", "r")
             loaded_model_json = json_file.read()
             json_file.close()
@@ -667,13 +620,6 @@ class CTCModel:
             loaded_model_json = json_file.read()
             json_file.close()
             self.model_pred = model_from_json(loaded_model_json, custom_objects={"tf": tf})
-
-            json_file = open(path_dir + "/model_eval.json", "r")
-            loaded_model_json = json_file.read()
-            json_file.close()
-            self.model_eval = model_from_json(loaded_model_json, custom_objects={"tf": tf, "ctc": tf.nn,
-                                                                                 "tf_edit_distance": tf_edit_distance,
-                                                                                 "Kreshape_To1D": Kreshape_To1D})
 
             json_file = open(path_dir + "/model_init.json", "r")
             loaded_model_json = json_file.read()
@@ -700,11 +646,9 @@ class CTCModel:
             if os.path.exists(file_weights):
                 self.model_train.load_weights(file_weights)
                 self.model_pred.set_weights(self.model_train.get_weights())
-                self.model_eval.set_weights(self.model_train.get_weights())
             elif os.path.exists(path_dir + file_weights):
                 self.model_train.load_weights(path_dir + file_weights)
                 self.model_pred.set_weights(self.model_train.get_weights())
-                self.model_eval.set_weights(self.model_train.get_weights())
 
         # add layers after transfer
         if add_layers is not None:
@@ -732,23 +676,14 @@ class CTCModel:
                                                                     "top_paths": self.top_paths}, dtype="float32")(
                 self.outputs + [input_length])
 
-            # Lambda layer to perform an analysis (CER and SER)
-            out_analysis = Lambda(self.ctc_complete_analysis_lambda_func, output_shape=(None,), name="CTCanalysis",
-                                  arguments={"greedy": self.greedy,
-                                             "beam_width": self.beam_width, "top_paths": self.top_paths},
-                                  dtype="float32")(
-                self.outputs + [labels, input_length, label_length])
-
-            # create Keras models
+            # create Tensorflow Keras models
             self.model_init = Model(inputs=self.inputs, outputs=self.outputs)
             self.model_train = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=loss_out)
             self.model_pred = Model(inputs=self.inputs + [input_length], outputs=out_decoded_dense)
-            self.model_eval = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=out_analysis)
 
             # Compile models
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
-            self.model_eval.compile(loss={"CTCanalysis": lambda yt, yp: yp}, optimizer=optimizer)
 
         elif init_last_layer:
             labels = Input(name="labels", shape=[None])
@@ -767,6 +702,7 @@ class CTCModel:
             # Lambda layer for computing the loss function
             loss_out = Lambda(self.ctc_loss_lambda_func, output_shape=(1,), name="CTCloss")(
                 self.outputs + [labels, input_length, label_length])
+
             # Lambda layer for the decoding function
             out_decoded_dense = Lambda(self.ctc_complete_decoding_lambda_func, output_shape=(None, None),
                                        name="CTCdecode", arguments={"greedy": self.greedy,
@@ -774,23 +710,14 @@ class CTCModel:
                                                                     "top_paths": self.top_paths}, dtype="float32")(
                 self.outputs + [input_length])
 
-            # Lambda layer to perform an analysis (CER and SER)
-            out_analysis = Lambda(self.ctc_complete_analysis_lambda_func, output_shape=(None,), name="CTCanalysis",
-                                  arguments={"greedy": self.greedy,
-                                             "beam_width": self.beam_width, "top_paths": self.top_paths},
-                                  dtype="float32")(
-                self.outputs + [labels, input_length, label_length])
-
-            # create Keras models
+            # create Tensorflow Keras models
             self.model_init = Model(inputs=self.inputs, outputs=self.outputs)
             self.model_train = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=loss_out)
             self.model_pred = Model(inputs=self.inputs + [input_length], outputs=out_decoded_dense)
-            self.model_eval = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=out_analysis)
 
             # Compile models
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
-            self.model_eval.compile(loss={"CTCanalysis": lambda yt, yp: yp}, optimizer=optimizer)
 
     def summary(self):
         return self.model_train.summary()
@@ -798,10 +725,10 @@ class CTCModel:
     def _predict_loop(self, f, ins, max_len=100, max_value=999, batch_size=32, verbose=0, steps=None):
         """Abstract method to loop over some data in batches.
 
-        Keras function that has been modified.
+        Tensorflow Keras function that has been modified.
 
         # Arguments
-            f: Keras function returning a list of tensors.
+            f: Tensorflow Keras function returning a list of tensors.
             ins: list of tensors to be fed to `f`.
             batch_size: integer batch size.
             verbose: verbosity mode.
@@ -821,12 +748,6 @@ class CTCModel:
                                         steps_name="steps")
 
         if steps is not None:
-            # Step-based predictions.
-            # Since we do not know how many samples
-            # we will see, we cannot pre-allocate
-            # the returned Numpy arrays.
-            # Instead, we store one array per batch seen
-            # and concatenate them upon returning.
             unconcatenated_outs = []
             for step in range(steps):
                 batch_outs = f(ins)
@@ -843,14 +764,12 @@ class CTCModel:
             return [np.concatenate(unconcatenated_outs[i], axis=0)
                     for i in range(len(unconcatenated_outs))]
         else:
-            # Sample-based predictions.
             outs = []
             batches = _make_batches(num_samples, batch_size)
             index_array = np.arange(num_samples)
             for batch_index, (batch_start, batch_end) in enumerate(batches):
                 batch_ids = index_array[batch_start:batch_end]
                 if ins and isinstance(ins[-1], float):
-                    # Do not slice the training phase flag.
                     ins_batch = _slice_arrays(ins[:-1], batch_ids) + [ins[-1]]
                 else:
                     ins_batch = _slice_arrays(ins, batch_ids)
@@ -858,7 +777,6 @@ class CTCModel:
                 if not isinstance(batch_outs, list):
                     batch_outs = [batch_outs]
                 if batch_index == 0:
-                    # Pre-allocate the results arrays.
                     for batch_out in batch_outs:
                         shape = (num_samples, max_len)
                         outs.append(np.zeros(shape, dtype=batch_out.dtype))
@@ -885,7 +803,7 @@ class CTCModel:
     @staticmethod
     def ctc_complete_decoding_lambda_func(args, **arguments):
         """
-        Complete CTC decoding using Keras (function K.ctc_decode)
+        Complete CTC decoding using Tensorflow Keras (function K.ctc_decode)
         :param args:
             y_pred, input_length
         :param arguments:
@@ -902,48 +820,6 @@ class CTCModel:
         return K.cast(K.ctc_decode(y_pred, tf.squeeze(input_length), greedy=my_params["greedy"],
                       beam_width=my_params["beam_width"], top_paths=my_params["top_paths"])[0][0],
                       dtype="float32")
-
-    @staticmethod
-    def ctc_complete_analysis_lambda_func(args, **arguments):
-        """
-        Complete CTC analysis using Keras and tensorflow
-        WARNING : tf is required
-        :param args:
-            y_pred, labels, input_length, label_len
-        :param arguments:
-            greedy, beam_width, top_paths
-        :return:
-            ler = label error rate
-        """
-
-        y_pred, labels, input_length, label_len = args
-        my_params = arguments
-
-        assert (K.backend() == "tensorflow")
-
-        batch = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + 1e-8)
-        input_length = tf.cast(tf.squeeze(input_length), tf.int32)
-
-        greedy = my_params["greedy"]
-        beam_width = my_params["beam_width"]
-        top_paths = my_params["top_paths"]
-
-        if greedy:
-            (decoded, log_prob) = tf.nn.ctc_greedy_decoder(
-                inputs=batch,
-                sequence_length=input_length)
-        else:
-            (decoded, log_prob) = tf.nn.ctc_beam_search_decoder(
-                inputs=batch, sequence_length=input_length,
-                beam_width=beam_width, top_paths=top_paths)
-
-        cast_decoded = tf.cast(decoded[0], tf.float32)
-
-        sparse_y = K.ctc_label_dense_to_sparse(labels, tf.cast(tf.squeeze(label_len), tf.int32))
-        ed_tensor = tf_edit_distance(cast_decoded, sparse_y, norm=True)
-        ler_per_seq = Kreshape_To1D(ed_tensor)
-
-        return K.cast(ler_per_seq, dtype="float32")
 
 
 def _standardize_input_data(data, names, shapes=None,
@@ -965,7 +841,7 @@ def _standardize_input_data(data, names, shapes=None,
             value found in `shapes`.
         exception_prefix: String prefix used for exception formatting.
 
-    Keras function that has been modified.
+    Tensorflow Keras function that has been modified.
 
     # Returns
         List of standardized input arrays (one array per model input).
@@ -1008,8 +884,6 @@ def _standardize_input_data(data, names, shapes=None,
             raise TypeError("Error when checking model " + exception_prefix + ": data should be a Numpy array, "
                             "or list/dict of Numpy arrays. Found: " + str(data)[:200] + "...")
         if len(names) > 1:
-            # Case: model expects multiple inputs but only received
-            # a single Numpy array.
             raise ValueError("The model expects " + str(len(names)) + " " + exception_prefix + " arrays, but only "
                              "received one array. Found: array with shape " + str(data.shape))
         arrays = [data]
@@ -1053,7 +927,7 @@ def _slice_arrays(arrays, start=None, stop=None):
 
     Can also work on list/array of indices: `_slice_arrays(x, indices)`
 
-    Keras function that has been modified.
+    Tensorflow Keras function that has been modified.
 
     # Arguments
         arrays: Single array or list of arrays.
@@ -1069,7 +943,6 @@ def _slice_arrays(arrays, start=None, stop=None):
         return [None]
     elif isinstance(arrays, list):
         if hasattr(start, "__len__"):
-            # hdf5 datasets only support list objects as indices
             if hasattr(start, "shape"):
                 start = start.tolist()
             return [None if x is None else x[start] for x in arrays]
@@ -1089,7 +962,7 @@ def _slice_arrays(arrays, start=None, stop=None):
 def _make_batches(size, batch_size):
     """Returns a list of batch indices (tuples of indices).
 
-    Keras function that has been modified.
+    Tensorflow Keras function that has been modified.
 
     # Arguments
         size: Integer, total size of the data to slice into batches.
@@ -1112,7 +985,6 @@ def Kreshape_To1D(my_tensor):
 
 def tf_edit_distance(hypothesis, truth, norm=False):
     """ Edit distance using tensorflow
-
     inputs are tf.Sparse_tensors """
 
     return tf.edit_distance(hypothesis, truth, normalize=norm, name="edit_distance")
@@ -1126,7 +998,7 @@ def check_num_samples(ins,
     The number of samples is not defined when running with `steps`,
     in which case the number of samples is set to `None`.
     # Arguments
-        ins: List of tensors to be fed to the Keras function.
+        ins: List of tensors to be fed to the Tensorflow Keras function.
         batch_size: Integer batch size or `None` if not defined.
         steps: Total number of steps (batches of samples)
             before declaring `predict_loop` finished.
@@ -1145,6 +1017,7 @@ def check_num_samples(ins,
     # Raises
         ValueError: In case of invalid arguments.
     """
+
     if steps is not None and batch_size is not None:
         raise ValueError(
             "If " + steps_name + " is set, the `batch_size` must be None.")

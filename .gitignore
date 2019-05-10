@@ -1,6 +1,6 @@
 # Datasets
-/data/**/
-/raw/**/
+/data/
+/raw/
 /output/
 /tensorboard/
 
