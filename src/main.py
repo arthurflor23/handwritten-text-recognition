@@ -14,7 +14,7 @@ import numpy as np
 import cv2
 
 from data.preproc import preproc, encode_ctc, decode_ctc
-from network.network import HTRNetwork
+from network.htr_network import HTRNetwork
 from data.loader import DataGenerator
 from data.util import Environment
 

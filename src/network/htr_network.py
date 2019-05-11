@@ -114,25 +114,14 @@ class HTRNetwork:
 
 
 class GatedConv(Conv2D):
-    """A Keras layer implementing gated convolutions [1]_.
-    Args:
-        nb_filters (int): Number of output filters.
-        kernel_size (int or tuple): Size of convolution kernel.
-        strides (int or tuple): Strides of the convolution.
-        padding (str): One of ``'valid'`` or ``'same'``.
-        kwargs: Other layer keyword arguments.
-    References:
-        .. [1] Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
-               “Language modeling with gated convolutional networks,” in
-               Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
-               Sydney, Australia, 2017, pp. 933–941.
-    """
+    """Gated Convolutional Class"""
+
     def __init__(self, nb_filters=64, kernel_size=(3, 3), **kwargs):
         super(GatedConv, self).__init__(filters=nb_filters * 2, kernel_size=kernel_size, **kwargs)
         self.nb_filters = nb_filters
 
     def call(self, inputs):
-        """Apply gated convolution."""
+        """Apply gated convolution"""
 
         output = super(GatedConv, self).call(inputs)
         nb_filters = self.nb_filters
@@ -142,13 +131,13 @@ class GatedConv(Conv2D):
         return Multiply()([linear, sigmoid])
 
     def compute_output_shape(self, input_shape):
-        """Compute shape of layer output."""
+        """Compute shape of layer output"""
 
         output_shape = super(GatedConv, self).compute_output_shape(input_shape)
         return tuple(output_shape[:3]) + (self.nb_filters,)
 
     def get_config(self):
-        """Return the config of the layer."""
+        """Return the config of the layer"""
 
         config = super(GatedConv, self).get_config()
         config['nb_filters'] = self.nb_filters
