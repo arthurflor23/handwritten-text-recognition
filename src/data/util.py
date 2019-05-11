@@ -3,7 +3,7 @@
 import os
 
 
-class Env():
+class Environment():
 
     def __init__(self, args):
         self.data = os.path.join("..", "data")

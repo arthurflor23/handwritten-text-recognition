@@ -18,6 +18,12 @@ def decode_ctc(arr, charset):
     return np.array([("".join(charset[int(c)] for c in vec)).strip() for vec in arr])
 
 
+def padding_list(inputs, value=0):
+    """Fill lists with pad value"""
+
+    return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")
+
+
 def preproc(img, img_size, read_first=False):
     """Make the process with the `img_size` to the scale resize"""
 
@@ -168,7 +174,7 @@ def remove_cursive_style(img):
         results.append([np.sum(sum_alpha), size, transform])
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
-    return cv2.warpAffine(binary, result[2], result[1], borderValue=255)
+    return cv2.warpAffine(img, result[2], result[1], borderValue=255)
 
 
 def sauvola(img, window, thresh, k):
@@ -195,9 +201,3 @@ def sauvola(img, window, thresh, k):
     threshold = (mean * (1 + k * (std / thresh - 1))) * (mean >= 100)
 
     return np.array(255 * (img >= threshold), 'uint8')
-
-
-def padding_list(inputs, value=0):
-    """Fill lists with pad value"""
-
-    return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")

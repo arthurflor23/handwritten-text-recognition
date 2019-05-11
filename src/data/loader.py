@@ -2,7 +2,7 @@
 Image renderings and text are created on the fly each time"""
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from util.preproc import padding_list
+from data.preproc import padding_list
 import numpy as np
 
 
@@ -15,7 +15,7 @@ class DataGenerator():
 
         self.generator = ImageDataGenerator(
             fill_mode="constant",
-            rotation_range=1,
+            rotation_range=0.2,
             width_shift_range=0.02,
             height_shift_range=0.02,
             shear_range=1e-2,

@@ -13,10 +13,10 @@ import argparse
 import numpy as np
 import cv2
 
-from util.environment import Env
-from util.loader import DataGenerator
+from data.preproc import preproc, encode_ctc, decode_ctc
 from network.network import HTRNetwork
-from util.preproc import preproc, encode_ctc, decode_ctc
+from data.loader import DataGenerator
+from data.util import Environment
 
 
 if __name__ == "__main__":
@@ -26,11 +26,11 @@ if __name__ == "__main__":
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-    parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
-    env = Env(args)
+    env = Environment(args)
 
     if args.transform:
         assert os.path.exists(env.raw_source)
