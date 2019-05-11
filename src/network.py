@@ -1,14 +1,158 @@
-from tensorflow.keras import Input
-from tensorflow.keras import backend as K
+"""Handwritten Text Recognition Neural Network"""
+
 from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
-from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, Dense
+from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, Dense, Dropout
+from tensorflow.keras.layers import Input, Conv2D, Reshape, Multiply, Bidirectional, LSTM
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras import backend as K
+from contextlib import redirect_stdout
 import tensorflow as tf
 import editdistance
 import numpy as np
 import pickle
 import os
+
+
+class HTRNetwork:
+
+    def __init__(self, env, dtgen):
+        os.makedirs(os.path.join(env.output, "tasks"), exist_ok=True)
+        os.makedirs(os.path.join(env.output, "train"), exist_ok=True)
+        os.makedirs(os.path.join(env.output, "validation"), exist_ok=True)
+
+        self.summary_path = os.path.join(env.output, "summary.txt")
+        self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
+
+        self.callbacks = [
+            TensorBoard(
+                log_dir=env.output,
+                histogram_freq=1,
+                profile_batch=0,
+                write_graph=True,
+                write_images=True,
+                update_freq="epoch"
+            ),
+            ModelCheckpoint(
+                filepath=self.checkpoint_path,
+                period=1,
+                monitor="val_loss",
+                save_best_only=True,
+                save_weights_only=False,
+                verbose=1
+            )
+        ]
+
+        self._build_network(env.model_input_size, env.charset)
+
+        if os.path.isfile(self.checkpoint_path):
+            self.model.load_checkpoint(self.checkpoint_path)
+
+    def summary(self, save_to_file=False):
+        """Show/Save model structure (summary)"""
+
+        self.model.summary()
+
+        if save_to_file:
+            with open(self.summary_path, "w") as f:
+                with redirect_stdout(f):
+                    self.model.summary()
+
+    def _build_network(self, input_size, charset):
+        """Build Gated Convolucional Recurrent Neural Network"""
+
+        input_data = Input(name="input", shape=(None, input_size[1], 1))
+        init = "glorot_uniform"
+
+        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding='same',
+                     activation="relu", kernel_initializer=init)(input_data)
+        cnn = Dropout(rate=0.5)(cnn)
+
+        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding='same',
+                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+
+        cnn = GatedConv(nb_filters=16, kernel_size=(3,3))(cnn)
+
+        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding='same',
+                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+
+        cnn = GatedConv(nb_filters=32, kernel_size=(3,3))(cnn)
+
+        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding='same',
+                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+
+        cnn = GatedConv(nb_filters=64, kernel_size=(3,3))(cnn)
+
+        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding='same',
+                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+
+        shape = cnn.get_shape()
+        outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
+
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True, kernel_initializer=init))(outcnn)
+        dense = Dense(units=128, kernel_initializer=init)(blstm)
+
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True, kernel_initializer=init))(dense)
+        dense = Dense(units=128, kernel_initializer=init)(blstm)
+
+        outrnn = Activation(activation="softmax")(dense)
+
+        self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
+        self.model.compile(optimizer=RMSprop(learning_rate=4e-4))
+
+
+"""A Tensorflow Keras layer implementing gated convolutions [1]_.
+    Args:
+        nb_filters (int): Number of output filters.
+        kernel_size (int or tuple): Size of convolution kernel.
+        strides (int or tuple): Strides of the convolution.
+        padding (str): One of ``'valid'`` or ``'same'``.
+        kwargs: Other layer keyword arguments.
+    References:
+        .. [1] Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
+               “Language modeling with gated convolutional networks,” in
+               Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
+               Sydney, Australia, 2017, pp. 933–941.
+"""
+
+
+class GatedConv(Conv2D):
+    """Gated Convolutional Class"""
+
+    def __init__(self, nb_filters=64, kernel_size=(3, 3), **kwargs):
+        super(GatedConv, self).__init__(filters=nb_filters * 2, kernel_size=kernel_size, **kwargs)
+        self.nb_filters = nb_filters
+
+    def call(self, inputs):
+        """Apply gated convolution"""
+
+        output = super(GatedConv, self).call(inputs)
+        nb_filters = self.nb_filters
+        linear = Activation('linear')(output[:, :, :, :nb_filters])
+        sigmoid = Activation('sigmoid')(output[:, :, :, nb_filters:])
+
+        return Multiply()([linear, sigmoid])
+
+    def compute_output_shape(self, input_shape):
+        """Compute shape of layer output"""
+
+        output_shape = super(GatedConv, self).compute_output_shape(input_shape)
+        return tuple(output_shape[:3]) + (self.nb_filters,)
+
+    def get_config(self):
+        """Return the config of the layer"""
+
+        config = super(GatedConv, self).get_config()
+        config['nb_filters'] = self.nb_filters
+        del config['filters']
+        return config
+
 
 """
 The CTCModel class extends the Tensorflow Keras Model (version 2)
@@ -29,7 +173,7 @@ the labeling is given in the x data structure).
 
 class CTCModel:
 
-    def __init__(self, inputs, outputs, greedy=True, beam_width=100, top_paths=1, charset=None):
+    def __init__(self, inputs, outputs, greedy=False, beam_width=128, top_paths=1, charset=None):
         """
         Initialization of a CTC Model.
         :param inputs: Input layer of the neural network
@@ -997,6 +1141,7 @@ def check_num_samples(ins,
     """Checks the number of samples provided for training and evaluation.
     The number of samples is not defined when running with `steps`,
     in which case the number of samples is set to `None`.
+
     # Arguments
         ins: List of tensors to be fed to the Tensorflow Keras function.
         batch_size: Integer batch size or `None` if not defined.
@@ -1004,16 +1149,19 @@ def check_num_samples(ins,
             before declaring `predict_loop` finished.
             Ignored with the default value of `None`.
         steps_name: The public API"s parameter name for `steps`.
+
     # Raises
         ValueError: when `steps` is `None` and the attribute `ins.shape`
         does not exist. Also raises ValueError when `steps` is not `None`
         and `batch_size` is not `None` because they are mutually
         exclusive.
+
     # Returns
         When `steps` is `None`, returns the number of samples to be
         processed based on the size of the first dimension of the
         first input Numpy array. When `steps` is not `None` and
         `batch_size` is `None`, returns `None`.
+
     # Raises
         ValueError: In case of invalid arguments.
     """
@@ -1026,8 +1174,7 @@ def check_num_samples(ins,
         if steps is None:
             raise ValueError(
                 "If your data is in the form of symbolic tensors, "
-                "you should specify the `" + steps_name + "` argument "
-                                                          "(instead of the `batch_size` argument, "
+                "you should specify the `" + steps_name + "` argument (instead of the `batch_size` argument, "
                                                           "because symbolic tensors are expected to produce "
                                                           "batches of input data).")
         return None

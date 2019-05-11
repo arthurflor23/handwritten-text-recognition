@@ -13,10 +13,9 @@ import argparse
 import numpy as np
 import cv2
 
-from data.preproc import preproc, encode_ctc, decode_ctc
-from network.htr_network import HTRNetwork
-from data.loader import DataGenerator
-from data.util import Environment
+from data import DataGenerator, preproc, encode_ctc, decode_ctc
+from network import HTRNetwork
+from util import Environment
 
 
 if __name__ == "__main__":
@@ -53,13 +52,9 @@ if __name__ == "__main__":
             cv2.waitKey(0)
 
     elif args.train:
-        os.makedirs(env.output_tasks, exist_ok=True)
-
         dtgen = DataGenerator(env)
         htr = HTRNetwork(env, dtgen)
-
-        htr.model.summary()
-        htr.summary_to_file()
+        htr.summary(save_to_file=True)
 
         h = htr.model.fit_generator(generator=dtgen.next_train_batch(),
                                     epochs=env.epochs,
@@ -84,8 +79,6 @@ if __name__ == "__main__":
             lg.write(train_corpus)
 
     elif args.test:
-        os.makedirs(env.output_tasks, exist_ok=True)
-
         dtgen = DataGenerator(env)
         htr = HTRNetwork(env, dtgen)
 
