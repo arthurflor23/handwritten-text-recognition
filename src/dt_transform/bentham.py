@@ -14,6 +14,7 @@ def dataset(env, preproc, encode):
             dt, gt = build_data(env, target, gt_dict, preproc, encode)
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            print(f"[OK] {group} partition.")
             del dt, gt
 
     env.raw_source = os.path.join(env.raw_source, "BenthamDatasetR0-GT")
@@ -26,9 +27,9 @@ def dataset(env, preproc, encode):
         text = " ".join(open(os.path.join(path, x)).read().splitlines()).replace("_", "")
         gt_dict[os.path.splitext(x)[0]] = text.strip()
 
-    transform(group="train", target="TrainLines.lst")
-    transform(group="valid", target="ValidationLines.lst")
     transform(group="test", target="TestLines.lst")
+    transform(group="valid", target="ValidationLines.lst")
+    transform(group="train", target="TrainLines.lst")
 
 
 def build_data(env, partition, gt_dict, preproc, encode):

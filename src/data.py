@@ -10,12 +10,10 @@ import cv2
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, source, batch_size, max_text_length, generator_mode=False):
+    def __init__(self, env):
 
-        if generator_mode:
-            self.dataset = h5py.File(source, "r")
-        else:
-            with h5py.File(source, "r") as hf:
+        if env.worker_mode:
+            with h5py.File(env.source, "r") as hf:
                 self.dataset = {
                     "train": {
                         "dt": hf["train"]["dt"][:],
@@ -30,17 +28,19 @@ class DataGenerator():
                         "gt": hf["test"]["gt"][:]
                     }
                 }
+        else:
+            self.dataset = h5py.File(env.source, "r")
 
-        self.max_text_length = max_text_length
-        self.batch_size = max(2, batch_size)
+        self.max_text_length = env.max_text_length
+        self.batch_size = max(2, env.batch_size)
         self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
         self.generator = ImageDataGenerator(
             fill_mode="constant",
-            rotation_range=0.01,
-            width_shift_range=0.01,
-            height_shift_range=0.01,
-            zoom_range=0.01
+            rotation_range=0.05,
+            width_shift_range=0.05,
+            height_shift_range=0.05,
+            zoom_range=0.02
         )
 
         self.total_train = self.dataset["train"]["gt"][:].shape[0]
@@ -168,6 +168,14 @@ def decode_ctc(arr, charset):
     return np.array([("".join(charset[int(c)] for c in vec)).strip() for vec in arr])
 
 
+"""
+Preprocess metodology based in:
+    H. Scheidl, S. Fiel and R. Sablatnig,
+    Word Beam Search: A Connectionist Temporal Classification Decoding Algorithm, in
+    16th International Conference on Frontiers in Handwriting Recognition, pp. 256-258, 2018.
+"""
+
+
 def preproc(img, img_size, read_first=False):
     """Make the process with the `img_size` to the scale resize"""
 
@@ -195,6 +203,14 @@ def preproc(img, img_size, read_first=False):
     # cv2.waitKey(0)
 
     return np.reshape(img, img.shape + (1,))
+
+
+"""
+Illumination Compensation based in:
+    K.-N. Chen, C.-H. Chen, C.-C. Chang,
+    Efficient illumination compensation techniques for text images, in
+    Digital Signal Processing, 22(5), pp. 726-733, 2012.
+"""
 
 
 def illumination_compensation(img):
@@ -291,6 +307,14 @@ def illumination_compensation(img):
     return np.array(result, dtype=np.uint8)
 
 
+"""
+Deslating image process based in,
+    A. Vinciarelli and J. Luettin,
+    A New Normalization Technique for Cursive Handwritten Wrods, in
+    Pattern Recognition, 22, 2001.
+"""
+
+
 def remove_cursive_style(img):
     """Remove cursive writing style from image with deslanting algorithm"""
 
@@ -326,6 +350,13 @@ def remove_cursive_style(img):
     warp = cv2.warpAffine(img, result[2], result[1], borderValue=255)
 
     return cv2.resize(warp, dsize=(cols, rows))
+
+
+"""
+Sauvola binarization based in,
+    J. Sauvola, T. Seppanen, S. Haapakoski, M. Pietikainen,
+    Adaptive Document Binarization, in IEEE Computer Society Washington, 1997.
+"""
 
 
 def sauvola(img, window, thresh, k):

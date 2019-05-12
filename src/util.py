@@ -15,7 +15,9 @@ class Environment():
 
         self.epochs = args.epochs
         self.batch_size = args.batch_size
+        self.worker_mode = args.worker_mode
+        self.full_mode = args.full_mode
 
         self.charset = "".join([chr(i) for i in range(32, 127)])
-        self.input_size = (800, 64, 1)
+        self.input_size = (1024, 128, 1)
         self.max_text_length = 128

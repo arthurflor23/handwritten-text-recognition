@@ -19,6 +19,7 @@ def dataset(env, preproc, encode):
             if valid is None:
                 hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
                 hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+                print(f"[OK] {group} partition.")
                 del dt, gt
             else:
                 index = int(len(dt) * 0.9)
@@ -26,16 +27,18 @@ def dataset(env, preproc, encode):
                 valid_dt, valid_gt = dt[index:], gt[index:]
                 del dt, gt
 
-                hf.create_dataset(f"{group}/dt", data=train_dt, compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{group}/gt", data=train_gt, compression="gzip", compression_opts=9)
-                del train_dt, train_gt
-
                 hf.create_dataset(f"{valid}/dt", data=valid_dt, compression="gzip", compression_opts=9)
                 hf.create_dataset(f"{valid}/gt", data=valid_gt, compression="gzip", compression_opts=9)
+                print(f"[OK] {valid} partition.")
                 del valid_dt, valid_gt
 
-    transform(group="train", xml="training_2011.xml", partition="training_2011", valid="valid")
+                hf.create_dataset(f"{group}/dt", data=train_dt, compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{group}/gt", data=train_gt, compression="gzip", compression_opts=9)
+                print(f"[OK] {group} partition.")
+                del train_dt, train_gt
+
     transform(group="test", xml="eval_2011_annotated.xml", partition="eval_2011")
+    transform(group="train", xml="training_2011.xml", partition="training_2011", valid="valid")
 
 
 def build_data(env, xml, partition, preproc, encode):

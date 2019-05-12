@@ -1,11 +1,12 @@
 """Handwritten Text Recognition Neural Network"""
 
-from tensorflow.keras.models import Model, model_from_json
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
+from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
+from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
+from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, LeakyReLU
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
-from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, Dense, Dropout
-from tensorflow.keras.layers import Input, Conv2D, Reshape, Multiply, Bidirectional, LSTM
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
@@ -18,18 +19,19 @@ import os
 
 class HTRNetwork:
 
-    def __init__(self, log_dir, input_size, charset):
-        os.makedirs(os.path.join(log_dir, "tasks"), exist_ok=True)
-        os.makedirs(os.path.join(log_dir, "train"), exist_ok=True)
-        os.makedirs(os.path.join(log_dir, "validation"), exist_ok=True)
+    def __init__(self, env):
+        os.makedirs(os.path.join(env.output_tasks), exist_ok=True)
+        self.summary_path = os.path.join(env.output, "summary.txt")
+        self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
 
-        self.summary_path = os.path.join(log_dir, "summary.txt")
-        self.checkpoint_path = os.path.join(log_dir, "checkpoint_weights.hdf5")
-        self._build_network(input_size, charset)
+        if env.full_mode:
+            self._cnn_1dlstm(env.input_size, env.max_text_length, env.charset)
+        else:
+            self._gated_cnn_1dlstm(env.input_size, env.max_text_length, env.charset)
 
         self.callbacks = [
             TensorBoard(
-                log_dir=log_dir,
+                log_dir=env.output,
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
@@ -44,12 +46,11 @@ class HTRNetwork:
                 save_weights_only=False,
                 verbose=1
             ),
-            ReduceLROnPlateau(
+            EarlyStopping(
                 monitor="val_loss",
-                factor=0.2,
-                patience=5,
-                min_lr=0.001,
-                cooldown=10
+                min_delta=0.0001,
+                patience=20,
+                verbose=1,
             )
         ]
 
@@ -59,66 +60,142 @@ class HTRNetwork:
     def summary(self, save_to_file=False):
         """Show/Save model structure (summary)"""
 
-        self.model.summary()
-
         if save_to_file:
             with open(self.summary_path, "w") as f:
                 with redirect_stdout(f):
                     self.model.summary()
+        self.model.summary()
 
-    def _build_network(self, input_size, charset):
-        """Build Gated Convolucional Recurrent Neural Network"""
+    def _cnn_1dlstm(self, input_size, max_text_length, charset):
+        """
+        Convolucional Recurrent Neural Network by Puigcerver et al.
+            Reference:
+                Puigcerver, J.: Are multidimensional recurrent layers really
+                necessary for handwritten text recognition? In: Document
+                Analysis and Recognition (ICDAR), 2017 14th
+                IAPR International Conference on, vol. 1, pp. 67–72. IEEE (2017)
+        """
 
         input_data = Input(name="input", shape=input_size)
 
-        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(input_data)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
+        cnn = LeakyReLU()(cnn)
+        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
-        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same", activation="relu")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
+        cnn = LeakyReLU()(cnn)
+        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
-        cnn = GatedConv(nb_filters=16, kernel_size=(3,3))(cnn)
+        cnn = Dropout(rate=0.2)(cnn)
+        cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
+        cnn = LeakyReLU()(cnn)
+        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
-        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = Dropout(rate=0.2)(cnn)
+        cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
+        cnn = LeakyReLU()(cnn)
 
-        cnn = GatedConv(nb_filters=32, kernel_size=(3,3))(cnn)
-
-        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same", activation="relu")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
-
-        cnn = GatedConv(nb_filters=64, kernel_size=(3,3))(cnn)
-
-        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = Dropout(rate=0.2)(cnn)
+        cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
+        cnn = LeakyReLU()(cnn)
 
         shape = cnn.get_shape()
-        outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
+        outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
+
+        blstm = Dropout(rate=0.5)(outcnn)
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+
+        blstm = Dropout(rate=0.5)(blstm)
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+
+        blstm = Dropout(rate=0.5)(blstm)
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+
+        blstm = Dropout(rate=0.5)(blstm)
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+
+        blstm = Dropout(rate=0.5)(blstm)
+        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+
+        dense = Dropout(rate=0.5)(blstm)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(dense)
+        outrnn = Activation(activation="softmax")(dense)
+
+        self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
+        self.model.compile(optimizer=RMSprop(learning_rate=3e-4))
+
+    def _gated_cnn_1dlstm(self, input_size, max_text_length, charset):
+        """
+        Gated Convolucional Recurrent Neural Network by Bluche et al.
+            Reference:
+                Bluche, T., Messina, R.: Gated convolutional recurrent
+                neural networks for multilingual handwriting recognition.
+                In: Document Analysis and Recognition (ICDAR), 2017
+                14th IAPR International Conference on, vol. 1, pp. 646–651, 2017.
+        """
+
+        input_data = Input(name="input", shape=input_size)
+
+        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
+        cnn = Dropout(rate=0.5)(cnn)
+        cnn = LeakyReLU()(cnn)
+
+        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+        cnn = LeakyReLU()(cnn)
+
+        cnn = GatedConv(nb_filters=16, kernel_size=(3,3), strides=(1,1))(cnn)
+
+        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+        cnn = LeakyReLU()(cnn)
+
+        cnn = GatedConv(nb_filters=32, kernel_size=(3,3), strides=(1,1))(cnn)
+
+        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+        cnn = LeakyReLU()(cnn)
+
+        cnn = GatedConv(nb_filters=64, kernel_size=(3,3), strides=(1,1))(cnn)
+
+        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+        cnn = Dropout(rate=0.5)(cnn)
+        cnn = LeakyReLU()(cnn)
+
+        cnn = MaxPooling2D(pool_size=(2,1), strides=(2,1), padding="valid")(cnn)
+
+        shape = cnn.get_shape()
+        outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
 
         blstm = Bidirectional(LSTM(units=128, return_sequences=True))(outcnn)
         dense = Dense(units=128)(blstm)
 
         blstm = Bidirectional(LSTM(units=128, return_sequences=True))(dense)
-        dense = Dense(units=128)(blstm)
-
+        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(blstm)
         outrnn = Activation(activation="softmax")(dense)
 
         self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
         self.model.compile(optimizer=RMSprop(learning_rate=4e-4))
 
 
-"""A Tensorflow Keras layer implementing gated convolutions [1]_.
+"""
+A Tensorflow Keras layer implementing gated convolutions by Dauphin et al.
     Args:
         nb_filters (int): Number of output filters.
         kernel_size (int or tuple): Size of convolution kernel.
         strides (int or tuple): Strides of the convolution.
         padding (str): One of ``'valid'`` or ``'same'``.
         kwargs: Other layer keyword arguments.
-    References:
-        .. [1] Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
-               “Language modeling with gated convolutional networks,” in
-               Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
-               Sydney, Australia, 2017, pp. 933–941.
+    Reference:
+        Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
+        Language modeling with gated convolutional networks, in
+        Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
+        Sydney, Australia, pp. 933–941, 2017.
 """
 
 
@@ -155,6 +232,14 @@ class GatedConv(Conv2D):
 
 
 """
+Class extended from CTCModel:
+    Reference:
+        Y. Soullard, C. Ruffino and T. Paquet,
+        CTCModel: A Connectionnist Temporal Classification implementation for Keras.
+        ee: https://arxiv.org/abs/1901.07957, 2019.
+        github: https://github.com/ysoullard/CTCModel
+
+
 The CTCModel class extends the Tensorflow Keras Model (version 2)
 for the use of the Connectionist Temporal Classification (CTC) with the Hadwritten Text Recognition (HTR).
 One makes use of the CTC proposed in tensorflow. Thus CTCModel can only be used with the backend tensorflow.

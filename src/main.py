@@ -1,7 +1,8 @@
 """
 Provides options via the command line to perform project tasks.
     * Transform dataset to this project standard
-    * Visualize sample of the transformed dataset with opencv
+    * Visualize sample of the transformed dataset
+    * Visualize summary model architecture
     * Train model with dataset parameter name
     * Evaluate model with dataset parameter name
     * Test model with dataset parameter name
@@ -23,10 +24,13 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
+    parser.add_argument("--summary", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--worker_mode", action="store_true", default=False)
+    parser.add_argument("--full_mode", action="store_true", default=False)
     args = parser.parse_args()
 
     env = Environment(args)
@@ -53,9 +57,13 @@ if __name__ == "__main__":
             cv2.imshow("img", dt[x][:,:,0])
             cv2.waitKey(0)
 
+    elif args.summary:
+        htr = HTRNetwork(env)
+        htr.summary(save_to_file=False)
+
     elif args.train:
-        dtgen = DataGenerator(env.source, env.batch_size, env.max_text_length)
-        htr = HTRNetwork(env.output, env.input_size, env.charset)
+        dtgen = DataGenerator(env)
+        htr = HTRNetwork(env)
         htr.summary(save_to_file=True)
 
         h = htr.model.fit_generator(generator=dtgen.next_train_batch(),
@@ -81,8 +89,8 @@ if __name__ == "__main__":
             lg.write(train_corpus)
 
     elif args.test:
-        dtgen = DataGenerator(env.source, env.batch_size, env.max_text_length)
-        htr = HTRNetwork(env.output, env.input_size, env.charset)
+        dtgen = DataGenerator(env)
+        htr = HTRNetwork(env)
 
         pred, eval = htr.model.predict_generator(generator=dtgen.next_test_batch(),
                                                  steps=dtgen.test_steps,

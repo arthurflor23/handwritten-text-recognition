@@ -15,6 +15,7 @@ def dataset(env, preproc, encode):
             dt, gt = build_data(env, target, gt_dict, preproc, encode)
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            print(f"[OK] {group} partition.")
             del dt, gt
 
     gt = os.path.join(env.raw_source, "ground_truth")
@@ -32,9 +33,9 @@ def dataset(env, preproc, encode):
         text = splited[1].replace("-", "").replace("|", " ").strip()
         gt_dict[name] = text
 
-    transform(group="train", target="train.txt")
-    transform(group="valid", target="valid.txt")
     transform(group="test", target="test.txt")
+    transform(group="valid", target="valid.txt")
+    transform(group="train", target="train.txt")
 
 
 def build_data(env, partition, gt_dict, preproc, encode):
