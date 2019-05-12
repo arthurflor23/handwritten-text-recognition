@@ -50,6 +50,7 @@ class HTRNetwork:
                 monitor="val_loss",
                 min_delta=0.0001,
                 patience=20,
+                restore_best_weights=True,
                 verbose=1,
             )
         ]
