@@ -10,9 +10,30 @@ import cv2
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, source, batch_size, max_text_length):
+    def __init__(self, source, batch_size, max_text_length, generator_mode=False):
+
+        if generator_mode:
+            self.dataset = h5py.File(source, "r")
+        else:
+            with h5py.File(source, "r") as hf:
+                self.dataset = {
+                    "train": {
+                        "dt": hf["train"]["dt"][:],
+                        "gt": hf["train"]["gt"][:]
+                    },
+                    "valid": {
+                        "dt": hf["valid"]["dt"][:],
+                        "gt": hf["valid"]["gt"][:]
+                    },
+                    "test": {
+                        "dt": hf["test"]["dt"][:],
+                        "gt": hf["test"]["gt"][:]
+                    }
+                }
+
         self.max_text_length = max_text_length
         self.batch_size = max(2, batch_size)
+        self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
         self.generator = ImageDataGenerator(
             fill_mode="constant",
@@ -21,9 +42,6 @@ class DataGenerator():
             height_shift_range=0.01,
             zoom_range=0.01
         )
-
-        self.dataset = h5py.File(source, "r")
-        self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
         self.total_train = self.dataset["train"]["gt"][:].shape[0]
         self.total_valid = self.dataset["valid"]["gt"][:].shape[0]

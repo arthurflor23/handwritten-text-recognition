@@ -99,7 +99,7 @@ class HTRNetwork:
         dense = Dense(units=128)(blstm)
 
         blstm = Bidirectional(LSTM(units=128, return_sequences=True))(dense)
-        dense = Dense(units=110)(blstm)
+        dense = Dense(units=128)(blstm)
 
         outrnn = Activation(activation="softmax")(dense)
 
