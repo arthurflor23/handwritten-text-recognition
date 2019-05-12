@@ -4,8 +4,8 @@ from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
 from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, Dense, Dropout
 from tensorflow.keras.layers import Input, Conv2D, Reshape, Multiply, Bidirectional, LSTM
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
-from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
@@ -18,21 +18,22 @@ import os
 
 class HTRNetwork:
 
-    def __init__(self, env, dtgen):
-        os.makedirs(os.path.join(env.output, "tasks"), exist_ok=True)
-        os.makedirs(os.path.join(env.output, "train"), exist_ok=True)
-        os.makedirs(os.path.join(env.output, "validation"), exist_ok=True)
+    def __init__(self, log_dir, input_size, charset):
+        os.makedirs(os.path.join(log_dir, "tasks"), exist_ok=True)
+        os.makedirs(os.path.join(log_dir, "train"), exist_ok=True)
+        os.makedirs(os.path.join(log_dir, "validation"), exist_ok=True)
 
-        self.summary_path = os.path.join(env.output, "summary.txt")
-        self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
+        self.summary_path = os.path.join(log_dir, "summary.txt")
+        self.checkpoint_path = os.path.join(log_dir, "checkpoint_weights.hdf5")
+        self._build_network(input_size, charset)
 
         self.callbacks = [
             TensorBoard(
-                log_dir=env.output,
+                log_dir=log_dir,
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
-                write_images=True,
+                write_images=False,
                 update_freq="epoch"
             ),
             ModelCheckpoint(
@@ -42,10 +43,15 @@ class HTRNetwork:
                 save_best_only=True,
                 save_weights_only=False,
                 verbose=1
+            ),
+            ReduceLROnPlateau(
+                monitor="val_loss",
+                factor=0.2,
+                patience=5,
+                min_lr=0.001,
+                cooldown=10
             )
         ]
-
-        self._build_network(env.model_input_size, env.charset)
 
         if os.path.isfile(self.checkpoint_path):
             self.model.load_checkpoint(self.checkpoint_path)
@@ -63,43 +69,37 @@ class HTRNetwork:
     def _build_network(self, input_size, charset):
         """Build Gated Convolucional Recurrent Neural Network"""
 
-        input_data = Input(name="input", shape=(None, input_size[1], 1))
-        init = "glorot_uniform"
+        input_data = Input(name="input", shape=input_size)
 
-        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding='same',
-                     activation="relu", kernel_initializer=init)(input_data)
+        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(input_data)
         cnn = Dropout(rate=0.5)(cnn)
 
-        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding='same',
-                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same", activation="relu")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
 
         cnn = GatedConv(nb_filters=16, kernel_size=(3,3))(cnn)
 
-        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding='same',
-                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
 
         cnn = GatedConv(nb_filters=32, kernel_size=(3,3))(cnn)
 
-        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding='same',
-                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same", activation="relu")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
 
         cnn = GatedConv(nb_filters=64, kernel_size=(3,3))(cnn)
 
-        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding='same',
-                     activation="relu", kernel_initializer=init)(cnn)
+        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
 
         shape = cnn.get_shape()
         outcnn = Reshape((-1, shape[2] * shape[3]))(cnn)
 
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True, kernel_initializer=init))(outcnn)
-        dense = Dense(units=128, kernel_initializer=init)(blstm)
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(outcnn)
+        dense = Dense(units=128)(blstm)
 
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True, kernel_initializer=init))(dense)
-        dense = Dense(units=128, kernel_initializer=init)(blstm)
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(dense)
+        dense = Dense(units=110)(blstm)
 
         outrnn = Activation(activation="softmax")(dense)
 
@@ -925,9 +925,9 @@ class CTCModel:
                         shape = (num_samples, max_len)
                         outs.append(np.zeros(shape, dtype=batch_out.dtype))
                 for i, batch_out in enumerate(batch_outs):
-                    outs[i][batch_start:batch_end] = sequence.pad_sequences(batch_out, value=float(max_value),
-                                                                            maxlen=max_len,
-                                                                            dtype=batch_out.dtype, padding="post")
+                    outs[i][batch_start:batch_end] = pad_sequences(batch_out, value=float(max_value),
+                                                                   maxlen=max_len,
+                                                                   dtype=batch_out.dtype, padding="post")
 
             if len(outs) == 1:
                 return outs[0]

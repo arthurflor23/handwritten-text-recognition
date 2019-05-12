@@ -10,7 +10,7 @@ Provides options via the command line to perform project tasks.
 import os
 import importlib
 import argparse
-import numpy as np
+import h5py
 import cv2
 
 from data import DataGenerator, preproc, encode_ctc, decode_ctc
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=32)
     args = parser.parse_args()
 
     env = Environment(args)
@@ -43,24 +43,26 @@ if __name__ == "__main__":
         print(f"Transformation finished.")
 
     elif args.cv2:
-        sample = np.load(env.source, allow_pickle=True, mmap_mode="r")
+        with h5py.File(env.source, "r") as hf:
+            dt = hf["train"]["dt"][0:23]
+            gt = hf["train"]["gt"][0:23]
 
-        for x in range(23):
-            print(sample["train_dt"].shape)
-            print(sample["train_gt"][x])
-            cv2.imshow("img", sample["train_dt"][x][:,:,0])
+        for x in range(len(dt)):
+            print(f"Image shape: {dt[x].shape}")
+            print(f"Ground truth encoded:\n{gt[x]}\n")
+            cv2.imshow("img", dt[x][:,:,0])
             cv2.waitKey(0)
 
     elif args.train:
-        dtgen = DataGenerator(env)
-        htr = HTRNetwork(env, dtgen)
+        dtgen = DataGenerator(env.source, env.batch_size, env.max_text_length)
+        htr = HTRNetwork(env.output, env.input_size, env.charset)
         htr.summary(save_to_file=True)
 
         h = htr.model.fit_generator(generator=dtgen.next_train_batch(),
                                     epochs=env.epochs,
                                     steps_per_epoch=dtgen.train_steps,
                                     validation_data=dtgen.next_valid_batch(),
-                                    validation_steps=dtgen.val_steps,
+                                    validation_steps=dtgen.valid_steps,
                                     callbacks=htr.callbacks,
                                     shuffle=False,
                                     verbose=1)
@@ -68,8 +70,8 @@ if __name__ == "__main__":
         train_corpus = "\n".join([
             f"Epochs:                       {env.epochs}",
             f"Batch:                        {env.batch_size}\n",
-            f"Train dataset images:         {dtgen.train.shape[0]}",
-            f"Validation dataset images:    {dtgen.valid.shape[0]}\n",
+            f"Train dataset images:         {dtgen.total_train}",
+            f"Validation dataset images:    {dtgen.total_valid}\n",
             f"Train dataset loss:           {min(h.history['loss']):.4f}",
             f"Validation dataset loss:      {min(h.history['val_loss']):.4f}"
         ])
@@ -79,8 +81,8 @@ if __name__ == "__main__":
             lg.write(train_corpus)
 
     elif args.test:
-        dtgen = DataGenerator(env)
-        htr = HTRNetwork(env, dtgen)
+        dtgen = DataGenerator(env.source, env.batch_size, env.max_text_length)
+        htr = HTRNetwork(env.output, env.input_size, env.charset)
 
         pred, eval = htr.model.predict_generator(generator=dtgen.next_test_batch(),
                                                  steps=dtgen.test_steps,
@@ -88,7 +90,7 @@ if __name__ == "__main__":
                                                  decode_func=decode_ctc)
 
         eval_corpus = "\n".join([
-            f"Test dataset images:  {dtgen.test.shape[0]}\n",
+            f"Test dataset images:  {dtgen.total_test}\n",
             f"Test dataset loss:    {eval[0]:.4f}",
             f"Character error rate: {eval[1]:.4f}",
             f"Word error rate:      {eval[2]:.4f}",
@@ -104,5 +106,4 @@ if __name__ == "__main__":
             lg.write(eval_corpus)
 
         with open(os.path.join(env.output_tasks, "test.txt"), "w") as lg:
-            print(f"\n{pred_corpus}")
             lg.write(pred_corpus)

@@ -3,12 +3,19 @@
 from multiprocessing import Pool
 from functools import partial
 from glob import glob
-import numpy as np
+import h5py
 import os
 
 
 def dataset(env, preproc, encode):
-    """Load and save npz file of the ground truth and images (preprocessed)"""
+    """Load and save hdf5 file of the ground truth and images (preprocessed)"""
+
+    def transform(group, target):
+        with h5py.File(env.source, "a") as hf:
+            dt, gt = build_data(env, target, gt_dict, preproc, encode)
+            hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            del dt, gt
 
     gt = os.path.join(env.raw_source, "ground_truth")
     ground_truth = open(os.path.join(gt, "transcription.txt")).read().splitlines()
@@ -25,19 +32,9 @@ def dataset(env, preproc, encode):
         text = splited[1].replace("-", "").replace("|", " ").strip()
         gt_dict[name] = text
 
-    train_dt, train_gt = build_data(env, "train.txt", gt_dict, preproc, encode)
-    valid_dt, valid_gt = build_data(env, "valid.txt", gt_dict, preproc, encode)
-    test_dt, test_gt = build_data(env, "test.txt", gt_dict, preproc, encode)
-
-    np.savez_compressed(
-        env.source,
-        train_dt=train_dt,
-        train_gt=train_gt,
-        valid_dt=valid_dt,
-        valid_gt=valid_gt,
-        test_dt=test_dt,
-        test_gt=test_gt,
-    )
+    transform(group="train", target="train.txt")
+    transform(group="valid", target="valid.txt")
+    transform(group="test", target="test.txt")
 
 
 def build_data(env, partition, gt_dict, preproc, encode):
@@ -57,12 +54,12 @@ def build_data(env, partition, gt_dict, preproc, encode):
             text_line = gt_dict[index].strip()
 
             if len(text_line) > 0:
-                gt.append(text_line)
                 dt.append(path)
+                gt.append(text_line)
 
     pool = Pool()
-    dt = pool.map(partial(preproc, img_size=env.model_input_size, read_first=True), dt)
-    gt = pool.map(partial(encode, charset=env.charset), gt)
+    dt = pool.map(partial(preproc, img_size=env.input_size, read_first=True), dt)
+    gt = pool.map(partial(encode, charset=env.charset, mtl=env.max_text_length), gt)
     pool.close()
     pool.join()
 

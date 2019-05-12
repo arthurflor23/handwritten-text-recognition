@@ -2,72 +2,66 @@
 Image renderings and text are created on the fly each time"""
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.preprocessing import sequence, image
-import tensorflow as tf
 import numpy as np
+import h5py
 import cv2
 
 
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, env):
-        self.max_text_length = env.max_text_length
-        self.batch_size = max(2, env.batch_size)
+    def __init__(self, source, batch_size, max_text_length):
+        self.max_text_length = max_text_length
+        self.batch_size = max(2, batch_size)
 
         self.generator = ImageDataGenerator(
             fill_mode="constant",
-            rotation_range=0.2,
-            width_shift_range=0.02,
-            height_shift_range=0.02,
-            shear_range=1e-2,
-            zoom_range=1e-2
+            rotation_range=0.01,
+            width_shift_range=0.01,
+            height_shift_range=0.01,
+            zoom_range=0.01
         )
 
+        self.dataset = h5py.File(source, "r")
         self.train_index, self.valid_index, self.test_index = 0, 0, 0
-        arr = np.load(env.source, allow_pickle=True, mmap_mode="r")
 
-        self.train, self.train_gt = self.fill_by_batch(arr["train_dt"], arr["train_gt"])
-        self.train_steps = len(self.train) // self.batch_size
+        self.total_train = self.dataset["train"]["gt"][:].shape[0]
+        self.total_valid = self.dataset["valid"]["gt"][:].shape[0]
+        self.total_test = self.dataset["test"]["gt"][:].shape[0]
 
-        self.valid, self.valid_gt = self.fill_by_batch(arr["valid_dt"], arr["valid_gt"])
-        self.val_steps = len(self.valid) // self.batch_size
+        self.train_steps = self.total_train // self.batch_size
+        self.valid_steps = self.total_valid // self.batch_size
+        self.test_steps = self.total_test // self.batch_size
 
-        self.test, self.test_gt = self.fill_by_batch(arr["test_dt"], arr["test_gt"])
-        self.test_steps = len(self.test) // self.batch_size
-        del arr
+    def fill_batch(self, partition, total, x, y):
+        """Fill batch array (x, y) if necessary (batch_size)"""
 
-    def fill_by_batch(self, dt_arr, gt_arr):
-        """Random fill until batch divider"""
-
-        nb = len(dt_arr)
-        arange = np.arange(nb - 1)
-        rp = np.ones(nb, dtype=np.uint8)
-
-        while (np.sum(rp) % self.batch_size) > 0:
-            rp[np.random.choice(arange, 1)[0]] += 1
-
-        return np.repeat(dt_arr, rp, axis=0), np.repeat(gt_arr, rp, axis=0)
+        if len(x) < self.batch_size:
+            fill = self.batch_size - len(x)
+            i = np.random.choice(np.arange(0, total - fill), 1)[0]
+            x = np.append(x, self.dataset[partition]["dt"][i:i + fill], axis=0)
+            y = np.append(y, self.dataset[partition]["gt"][i:i + fill], axis=0)
+        return x, y
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
 
         while True:
-            if self.train_index >= self.train.shape[0]:
+            if self.train_index >= self.total_train:
                 self.train_index = 0
 
             index = self.train_index
             until = self.train_index + self.batch_size
             self.train_index += self.batch_size
 
-            x_train = self.train[index:until]
-            y_train = self.train_gt[index:until]
+            x_train = self.dataset["train"]["dt"][index:until]
+            y_train = self.dataset["train"]["gt"][index:until]
+            x_train, y_train = self.fill_batch("train", self.total_train, x_train, y_train)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
-            y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
+            y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
 
-            x_train = self.generator.flow(padding_list(x_train), batch_size=self.batch_size, shuffle=False)[0]
-            y_train = padding_list(y_train)
+            x_train = self.generator.flow(x_train, batch_size=self.batch_size, shuffle=False)[0]
 
             inputs = {
                 "input": x_train,
@@ -83,22 +77,23 @@ class DataGenerator():
         """Get the next batch from validation partition (yield)"""
 
         while True:
-            if self.valid_index >= self.valid.shape[0]:
+            if self.valid_index >= self.total_valid:
                 self.valid_index = 0
 
             index = self.valid_index
             until = self.valid_index + self.batch_size
             self.valid_index += self.batch_size
 
-            x_valid = self.valid[index:until]
-            y_valid = self.valid_gt[index:until]
+            x_valid = self.dataset["valid"]["dt"][index:until]
+            y_valid = self.dataset["valid"]["gt"][index:until]
+            x_valid, y_valid = self.fill_batch("valid", self.total_valid, x_valid, y_valid)
 
             x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
-            y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
+            y_valid_len = np.asarray([len(np.trim_zeros(y_valid[i])) for i in range(self.batch_size)])
 
             inputs = {
-                "input": padding_list(x_valid),
-                "labels": padding_list(y_valid),
+                "input": x_valid,
+                "labels": y_valid,
                 "input_length": x_valid_len,
                 "label_length": y_valid_len
             }
@@ -110,26 +105,43 @@ class DataGenerator():
         """Return model evaluate parameters"""
 
         while True:
-            if self.test_index >= self.test.shape[0]:
+            if self.test_index >= self.total_test:
                 self.test_index = 0
 
             index = self.test_index
             until = self.test_index + self.batch_size
             self.test_index += self.batch_size
 
-            x_test = self.test[index:until]
-            y_test = self.test_gt[index:until]
+            x_test = self.dataset["test"]["dt"][index:until]
+            y_test = self.dataset["test"]["gt"][index:until]
+            x_test, y_test = self.fill_batch("test", self.total_test, x_test, y_test)
 
             x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
-            y_test_len = np.asarray([len(y_test[i]) for i in range(self.batch_size)])
+            y_test_len = np.asarray([len(np.trim_zeros(y_test[i])) for i in range(self.batch_size)])
 
-            yield [padding_list(x_test), padding_list(y_test), x_test_len, y_test_len]
+            yield [x_test, y_test, x_test_len, y_test_len]
 
 
-def encode_ctc(text, charset):
+"""
+Data preproc functions:
+    encode_ctc: encode batch of texts in sparse array with padding
+    decode_ctc: dencode batch arrays in text
+    preproc: main function to the preprocess.
+        Make the image:
+            illumination_compensation: apply illumination regularitation
+            remove_cursive_style: remove cursive style from image (if necessary)
+            sauvola: apply sauvola binarization
+"""
+
+
+def encode_ctc(text, charset, mtl):
     """Encode text batch to CTC input (sparse)"""
 
-    return np.array([[np.abs(float(charset.find(x))) for x in vec][0] for vec in text.strip()])
+    pad_encoded = np.zeros(mtl)
+    encoded = [[np.abs(float(charset.find(x))) for x in vec][0] for vec in text.strip()]
+    pad_encoded[0:len(encoded)] = encoded
+
+    return pad_encoded
 
 
 def decode_ctc(arr, charset):
@@ -138,34 +150,33 @@ def decode_ctc(arr, charset):
     return np.array([("".join(charset[int(c)] for c in vec)).strip() for vec in arr])
 
 
-def padding_list(inputs, value=0):
-    """Fill lists with pad value"""
-
-    return sequence.pad_sequences(inputs, value=float(value), dtype="float32", padding="post", truncating="post")
-
-
 def preproc(img, img_size, read_first=False):
     """Make the process with the `img_size` to the scale resize"""
 
     if read_first:
         img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
 
-    img = np.reshape(img, img.shape + (1,))
-    img = tf.image.resize(img, size=img_size[1::-1], preserve_aspect_ratio=True)
-    img = tf.image.resize(img, size=(img_size[1], img.shape[1]), preserve_aspect_ratio=False)
+    wt, ht, _ = img_size
+    h, w = img.shape
+    f = max((w / wt), (h / ht))
+    new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
+    img = cv2.resize(img, new_size)
 
-    img = image.img_to_array(img)[:,:,0]
     img = illumination_compensation(img)
     img = remove_cursive_style(img)
 
-    img = np.reshape(img, img.shape + (1,))
-    img = tf.image.rot90(img, k=3)
-    img = tf.image.per_image_standardization(img)
-    img = image.img_to_array(img)
+    target = np.ones([ht, wt])
+    target[0:new_size[1], 0:new_size[0]] = (img / 255)
+    img = cv2.transpose(target)
 
-    # cv2.imshow("img", img[:,:,0])
+    m, s = cv2.meanStdDev(img)
+    img = img - m[0][0]
+    img = img / s[0][0] if s[0][0] > 0 else img
+
+    # cv2.imshow("img", img)
     # cv2.waitKey(0)
-    return np.array(img, dtype=np.float32)
+
+    return np.reshape(img, img.shape + (1,))
 
 
 def illumination_compensation(img):
@@ -229,14 +240,14 @@ def illumination_compensation(img):
         for x in range(height):
 
             if erosion[x][y] == 0:
-                n = x
-                while(n < erosion.shape[0] and erosion[i][y] == 0):
-                    n += 1
-                end = n - x - 1
+                i = x
+                while(i < erosion.shape[0] and erosion[i][y] == 0):
+                    i += 1
 
-                if n > 30:
-                    x = end
-                else:
+                end = i - 1
+                n = end - x + 1
+
+                if n <= 30:
                     h, e = [], []
                     for k in range(5):
                         if x - k >= 0:
@@ -248,7 +259,7 @@ def illumination_compensation(img):
 
                     for m in range(n):
                         int_img[x + m][y] = mpv_h + (m + 1) * ((mpv_e - mpv_h) / n)
-                    x = end
+                x = end
                 break
 
     mean_filter = 1 / 121 * np.ones((11,11), np.uint8)
@@ -294,7 +305,9 @@ def remove_cursive_style(img):
         results.append([np.sum(sum_alpha), size, transform])
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
-    return cv2.warpAffine(img, result[2], result[1], borderValue=255)
+    warp = cv2.warpAffine(img, result[2], result[1], borderValue=255)
+
+    return cv2.resize(warp, dsize=(cols, rows))
 
 
 def sauvola(img, window, thresh, k):
