@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--summary", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--worker_mode", action="store_true", default=False)
     parser.add_argument("--full_mode", action="store_true", default=False)
@@ -75,18 +75,26 @@ if __name__ == "__main__":
                                     shuffle=False,
                                     verbose=1)
 
-        train_corpus = "\n".join([
-            f"Epochs:                       {env.epochs}",
-            f"Batch:                        {env.batch_size}\n",
-            f"Train dataset images:         {dtgen.total_train}",
-            f"Validation dataset images:    {dtgen.total_valid}\n",
-            f"Train dataset loss:           {min(h.history['loss']):.4f}",
-            f"Validation dataset loss:      {min(h.history['val_loss']):.4f}"
-        ])
+        loss = h.history['loss']
+        val_loss = h.history['val_loss']
 
-        with open(os.path.join(env.output_tasks, "train.txt"), "w") as lg:
-            print(train_corpus)
-            lg.write(train_corpus)
+        min_loss = min(loss)
+        min_val_loss = min(val_loss)
+
+        min_loss_i = loss.index(min_loss)
+        min_val_loss_i = val_loss.index(min_val_loss)
+
+        train_corpus = "\n".join([
+            f"Total training images:   {dtgen.total_train}",
+            f"Total validation images: {dtgen.total_valid}",
+            f"Batch:                   {env.batch_size}\n",
+            f"Total epochs:            {len(loss)}",
+            f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)",
+            f"Last val_loss:           {val_loss[-1]:.4f} ({len(val_loss)} epoch)\n",
+            f"Best validation loss:",
+            f"Minimum loss:            {loss[min_val_loss_i]:.4f} ({min_val_loss_i} epoch)",
+            f"Minimum val_loss:        {min_val_loss:.4f} ({min_val_loss_i} epoch)"
+        ])
 
     elif args.test:
         dtgen = DataGenerator(env)
@@ -98,15 +106,16 @@ if __name__ == "__main__":
                                                  decode_func=decode_ctc)
 
         eval_corpus = "\n".join([
-            f"Test dataset images:  {dtgen.total_test}\n",
-            f"Test dataset loss:    {eval[0]:.4f}",
-            f"Character error rate: {eval[1]:.4f}",
-            f"Word error rate:      {eval[2]:.4f}",
-            f"Line error rate:      {eval[3]:.4f}"
+            f"Total test images:    {dtgen.total_test}\n",
+            f"Test loss:            {eval[0]:.4f}\n",
+            f"Metrics:",
+            f"Character Error Rate: {eval[1]:.4f}",
+            f"Word Error Rate:      {eval[2]:.4f}",
+            f"Line Error Rate:      {eval[3]:.4f}"
         ])
 
         pred_corpus = "\n".join(
-            ["Label\t|\tPredict"] + [f"{lb}\t|\t{pd}" for (lb, pd) in zip(pred[0], pred[1])]
+            ["Label\t|\tPredict"] + [f"{l}\t|\t{p}" for (l, p) in zip(pred[0], pred[1])]
         )
 
         with open(os.path.join(env.output_tasks, "evaluate.txt"), "w") as lg:

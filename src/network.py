@@ -150,25 +150,25 @@ class HTRNetwork:
         cnn = Dropout(rate=0.5)(cnn)
         cnn = LeakyReLU()(cnn)
 
-        cnn = GatedConv(nb_filters=16, kernel_size=(3,3), strides=(1,1))(cnn)
+        cnn = GatedConv(nb_filters=16, kernel_size=(1,3), strides=(1,1))(cnn)
 
         cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
         cnn = LeakyReLU()(cnn)
 
-        cnn = GatedConv(nb_filters=32, kernel_size=(3,3), strides=(1,1))(cnn)
+        cnn = GatedConv(nb_filters=32, kernel_size=(1,3), strides=(1,1))(cnn)
 
         cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
         cnn = LeakyReLU()(cnn)
 
-        cnn = GatedConv(nb_filters=64, kernel_size=(3,3), strides=(1,1))(cnn)
+        cnn = GatedConv(nb_filters=64, kernel_size=(1,3), strides=(1,1))(cnn)
 
         cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
         cnn = Dropout(rate=0.5)(cnn)
         cnn = LeakyReLU()(cnn)
 
-        cnn = MaxPooling2D(pool_size=(2,1), strides=(2,1), padding="valid")(cnn)
+        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
         shape = cnn.get_shape()
         outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
@@ -212,8 +212,8 @@ class GatedConv(Conv2D):
 
         output = super(GatedConv, self).call(inputs)
         nb_filters = self.nb_filters
-        linear = Activation('linear')(output[:, :, :, :nb_filters])
-        sigmoid = Activation('sigmoid')(output[:, :, :, nb_filters:])
+        linear = Activation("linear")(output[:, :, :, :nb_filters])
+        sigmoid = Activation("sigmoid")(output[:, :, :, nb_filters:])
 
         return Multiply()([linear, sigmoid])
 
