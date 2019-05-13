@@ -125,6 +125,7 @@ class HTRNetwork:
 
         dense = Dropout(rate=0.5)(blstm)
         dense = TimeDistributed(Dense(units=(len(charset) + 1)))(dense)
+
         outrnn = Activation(activation="softmax")(dense)
 
         self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
@@ -143,29 +144,32 @@ class HTRNetwork:
         input_data = Input(name="input", shape=input_size)
 
         cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
         cnn = LeakyReLU()(cnn)
 
         cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
         cnn = LeakyReLU()(cnn)
 
         cnn = GatedConv(nb_filters=16, kernel_size=(1,3), strides=(1,1))(cnn)
 
+        cnn = Dropout(rate=0.2)(cnn)
         cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
         cnn = LeakyReLU()(cnn)
 
         cnn = GatedConv(nb_filters=32, kernel_size=(1,3), strides=(1,1))(cnn)
 
+        cnn = Dropout(rate=0.2)(cnn)
         cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
         cnn = LeakyReLU()(cnn)
 
         cnn = GatedConv(nb_filters=64, kernel_size=(1,3), strides=(1,1))(cnn)
 
+        cnn = Dropout(rate=0.2)(cnn)
         cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = Dropout(rate=0.5)(cnn)
+        cnn = BatchNormalization(epsilon=0.001)(cnn)
         cnn = LeakyReLU()(cnn)
 
         cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
@@ -173,11 +177,18 @@ class HTRNetwork:
         shape = cnn.get_shape()
         outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
 
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(outcnn)
-        dense = Dense(units=128)(blstm)
+        blstm = Dropout(rate=0.5)(outcnn)
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
 
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(dense)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(blstm)
+        dense = Dropout(rate=0.5)(blstm)
+        dense = Dense(units=128)(dense)
+
+        blstm = Dropout(rate=0.5)(dense)
+        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+
+        dense = Dropout(rate=0.5)(blstm)
+        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(dense)
+
         outrnn = Activation(activation="softmax")(dense)
 
         self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
