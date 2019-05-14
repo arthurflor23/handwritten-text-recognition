@@ -29,7 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--worker_mode", action="store_true", default=False)
+    parser.add_argument("--lazy_loading", action="store_true", default=False)
     parser.add_argument("--full_mode", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -92,8 +92,8 @@ if __name__ == "__main__":
             f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)",
             f"Last val_loss:           {val_loss[-1]:.4f} ({len(val_loss)} epoch)\n",
             f"Best validation loss:",
-            f"Minimum loss:            {loss[min_val_loss_i]:.4f} ({min_val_loss_i} epoch)",
-            f"Minimum val_loss:        {min_val_loss:.4f} ({min_val_loss_i} epoch)"
+            f"Minimum val_loss:        {min_val_loss:.4f} ({min_val_loss_i} epoch)",
+            f"Respective loss:         {loss[min_val_loss_i]:.4f} ({min_val_loss_i} epoch)"
         ])
 
     elif args.test:

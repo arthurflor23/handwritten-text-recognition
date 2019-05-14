@@ -15,7 +15,7 @@ class Environment():
 
         self.epochs = args.epochs
         self.batch_size = args.batch_size
-        self.worker_mode = args.worker_mode
+        self.lazy_loading = args.lazy_loading
         self.full_mode = args.full_mode
 
         self.charset = "".join([chr(i) for i in range(32, 127)])

@@ -12,7 +12,9 @@ class DataGenerator():
 
     def __init__(self, env):
 
-        if env.worker_mode:
+        if env.lazy_loading:
+            self.dataset = h5py.File(env.source, "r")
+        else:
             with h5py.File(env.source, "r") as hf:
                 self.dataset = {
                     "train": {
@@ -28,8 +30,6 @@ class DataGenerator():
                         "gt": hf["test"]["gt"][:]
                     }
                 }
-        else:
-            self.dataset = h5py.File(env.source, "r")
 
         self.max_text_length = env.max_text_length
         self.batch_size = max(2, env.batch_size)
