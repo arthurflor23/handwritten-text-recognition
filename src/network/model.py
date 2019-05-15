@@ -1,13 +1,10 @@
 """Handwritten Text Recognition Neural Network"""
 
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
-from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
-from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
-from tensorflow.keras.layers import Lambda, TimeDistributed, Activation, LeakyReLU
+from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activation
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Model, model_from_json
-from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
 import tensorflow as tf
@@ -17,246 +14,20 @@ import pickle
 import os
 
 
-class HTRNetwork:
-
-    def __init__(self, env):
-        os.makedirs(os.path.join(env.output_tasks), exist_ok=True)
-        self.summary_path = os.path.join(env.output, "summary.txt")
-        self.checkpoint_path = os.path.join(env.output, "checkpoint_weights.hdf5")
-
-        if env.full_mode:
-            self._cnn_1dlstm(env.input_size, env.max_text_length, env.charset)
-        else:
-            self._gated_cnn_1dlstm(env.input_size, env.max_text_length, env.charset)
-
-        self.callbacks = [
-            TensorBoard(
-                log_dir=env.output,
-                histogram_freq=1,
-                profile_batch=0,
-                write_graph=True,
-                write_images=False,
-                update_freq="epoch"
-            ),
-            ModelCheckpoint(
-                filepath=self.checkpoint_path,
-                period=1,
-                monitor="val_loss",
-                save_best_only=True,
-                save_weights_only=False,
-                verbose=1
-            ),
-            EarlyStopping(
-                monitor="val_loss",
-                min_delta=0.0001,
-                patience=20,
-                restore_best_weights=True,
-                verbose=1,
-            )
-        ]
-
-        if os.path.isfile(self.checkpoint_path):
-            self.model.load_checkpoint(self.checkpoint_path)
-
-    def summary(self, save_to_file=False):
-        """Show/Save model structure (summary)"""
-
-        if save_to_file:
-            with open(self.summary_path, "w") as f:
-                with redirect_stdout(f):
-                    self.model.summary()
-        self.model.summary()
-
-    def _cnn_1dlstm(self, input_size, max_text_length, charset):
-        """
-        Convolucional Recurrent Neural Network by Puigcerver et al.
-            Reference:
-                Puigcerver, J.: Are multidimensional recurrent layers really
-                necessary for handwritten text recognition? In: Document
-                Analysis and Recognition (ICDAR), 2017 14th
-                IAPR International Conference on, vol. 1, pp. 67–72. IEEE (2017)
-        """
-
-        input_data = Input(name="input", shape=input_size)
-
-        cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
-
-        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        shape = cnn.get_shape()
-        outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
-
-        blstm = Dropout(rate=0.5)(outcnn)
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-        blstm = Dropout(rate=0.5)(blstm)
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-        blstm = Dropout(rate=0.5)(blstm)
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-        blstm = Dropout(rate=0.5)(blstm)
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-        blstm = Dropout(rate=0.5)(blstm)
-        blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-        dense = Dropout(rate=0.5)(blstm)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(dense)
-
-        outrnn = Activation(activation="softmax")(dense)
-
-        self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
-        self.model.compile(optimizer=RMSprop(learning_rate=3e-4))
-
-    def _gated_cnn_1dlstm(self, input_size, max_text_length, charset):
-        """
-        Gated Convolucional Recurrent Neural Network by Bluche et al.
-            Reference:
-                Bluche, T., Messina, R.: Gated convolutional recurrent
-                neural networks for multilingual handwriting recognition.
-                In: Document Analysis and Recognition (ICDAR), 2017
-                14th IAPR International Conference on, vol. 1, pp. 646–651, 2017.
-        """
-
-        input_data = Input(name="input", shape=input_size)
-
-        cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = GatedConv(nb_filters=16, kernel_size=(1,3), strides=(1,1))(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = GatedConv(nb_filters=32, kernel_size=(1,3), strides=(1,1))(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = GatedConv(nb_filters=64, kernel_size=(1,3), strides=(1,1))(cnn)
-
-        cnn = Dropout(rate=0.2)(cnn)
-        cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-        cnn = BatchNormalization(epsilon=0.001)(cnn)
-        cnn = LeakyReLU()(cnn)
-
-        cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
-
-        shape = cnn.get_shape()
-        outcnn = Reshape((max_text_length, shape[2] * shape[3]))(cnn)
-
-        blstm = Dropout(rate=0.5)(outcnn)
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-
-        dense = Dropout(rate=0.5)(blstm)
-        dense = Dense(units=128)(dense)
-
-        blstm = Dropout(rate=0.5)(dense)
-        blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-
-        dense = Dropout(rate=0.5)(blstm)
-        dense = TimeDistributed(Dense(units=(len(charset) + 1)))(dense)
-
-        outrnn = Activation(activation="softmax")(dense)
-
-        self.model = CTCModel(inputs=[input_data], outputs=[outrnn], charset=charset)
-        self.model.compile(optimizer=RMSprop(learning_rate=4e-4))
-
-
 """
-A Tensorflow Keras layer implementing gated convolutions by Dauphin et al.
-    Args:
-        nb_filters (int): Number of output filters.
-        kernel_size (int or tuple): Size of convolution kernel.
-        strides (int or tuple): Strides of the convolution.
-        padding (str): One of ``'valid'`` or ``'same'``.
-        kwargs: Other layer keyword arguments.
-    Reference:
-        Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
-        Language modeling with gated convolutional networks, in
-        Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
-        Sydney, Australia, pp. 933–941, 2017.
-"""
-
-
-class GatedConv(Conv2D):
-    """Gated Convolutional Class"""
-
-    def __init__(self, nb_filters=64, kernel_size=(3, 3), **kwargs):
-        super(GatedConv, self).__init__(filters=nb_filters * 2, kernel_size=kernel_size, **kwargs)
-        self.nb_filters = nb_filters
-
-    def call(self, inputs):
-        """Apply gated convolution"""
-
-        output = super(GatedConv, self).call(inputs)
-        nb_filters = self.nb_filters
-        linear = Activation("linear")(output[:, :, :, :nb_filters])
-        sigmoid = Activation("sigmoid")(output[:, :, :, nb_filters:])
-
-        return Multiply()([linear, sigmoid])
-
-    def compute_output_shape(self, input_shape):
-        """Compute shape of layer output"""
-
-        output_shape = super(GatedConv, self).compute_output_shape(input_shape)
-        return tuple(output_shape[:3]) + (self.nb_filters,)
-
-    def get_config(self):
-        """Return the config of the layer"""
-
-        config = super(GatedConv, self).get_config()
-        config['nb_filters'] = self.nb_filters
-        del config['filters']
-        return config
-
-
-"""
-Class extended from CTCModel:
+HTRModel class:
     Reference:
         Y. Soullard, C. Ruffino and T. Paquet,
         CTCModel: A Connectionnist Temporal Classification implementation for Keras.
         ee: https://arxiv.org/abs/1901.07957, 2019.
-        github: https://github.com/ysoullard/CTCModel
+        github: https://github.com/ysoullard/HTRModel
 
 
-The CTCModel class extends the Tensorflow Keras Model (version 2)
+The HTRModel class extends the Tensorflow Keras Model (version 2)
 for the use of the Connectionist Temporal Classification (CTC) with the Hadwritten Text Recognition (HTR).
-One makes use of the CTC proposed in tensorflow. Thus CTCModel can only be used with the backend tensorflow.
+One makes use of the CTC proposed in tensorflow. Thus HTRModel can only be used with the backend tensorflow.
 
-The CTCModel structure is composed of 2 branches. Each branch is a Tensorflow Keras Model:
+The HTRModel structure is composed of 2 branches. Each branch is a Tensorflow Keras Model:
     - One for computing the CTC loss (model_train)
     - One for predicting using the ctc_decode method (model_pred) and
         computing the Character Error Rate (CER), Word Error Rate (WER), Line Error Rate (LER).
@@ -268,11 +39,11 @@ the labeling is given in the x data structure).
 """
 
 
-class CTCModel:
+class HTRModel:
 
     def __init__(self, inputs, outputs, greedy=False, beam_width=128, top_paths=1, charset=None):
         """
-        Initialization of a CTC Model.
+        Initialization of a HTR Model.
         :param inputs: Input layer of the neural network
             outputs: Last layer of the neural network before CTC (e.g. a TimeDistributed Dense)
             greedy, beam_width, top_paths: Parameters of the CTC decoding (see ctc decoding tensorflow for more details)
@@ -280,7 +51,6 @@ class CTCModel:
         """
         self.model_train = None
         self.model_pred = None
-        self.model_eval = None
 
         if not isinstance(inputs, list):
             self.inputs = [inputs]
@@ -298,7 +68,7 @@ class CTCModel:
 
     def compile(self, optimizer):
         """
-        Configures the CTC Model for training.
+        Configures the HTR Model for training.
 
         There is 2 Tensorflow Keras models:
             - one for training
@@ -798,7 +568,7 @@ class CTCModel:
 
     def save_model(self, path_dir, charset=None):
         """ Save a model in path_dir
-        save model_train, model_pred and model_eval in json
+        save model_train, model_pred in json
         save inputs and outputs in json
         save model CTC parameters in a pickle
 
@@ -827,7 +597,7 @@ class CTCModel:
 
     def load_checkpoint(self, checkpoint):
         """ Load a model with checkpoint file
-        load model_train, model_pred and model_eval from hdf5
+        load model_train, model_pred from hdf5
         """
 
         self.model_train.load_weights(checkpoint)
@@ -836,7 +606,7 @@ class CTCModel:
     def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
                    init_last_layer=False, add_layers=None, trainable=False, removed_layers=2):
         """ Load a model in path_dir
-        load model_train, model_pred and model_eval from json
+        load model_train, model_pred from json
         load inputs and outputs from json
         load model CTC parameters from a pickle
 
@@ -960,8 +730,48 @@ class CTCModel:
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-    def summary(self):
-        return self.model_train.summary()
+    def set_callbacks(self, output):
+        os.makedirs(os.path.join(output), exist_ok=True)
+        checkpoint_weights = os.path.join(output, "checkpoint_weights.hdf5")
+
+        self.callbacks = [
+            TensorBoard(
+                log_dir=output,
+                histogram_freq=1,
+                profile_batch=0,
+                write_graph=True,
+                write_images=False,
+                update_freq="epoch"
+            ),
+            ModelCheckpoint(
+                filepath=checkpoint_weights,
+                period=1,
+                monitor="val_loss",
+                save_best_only=True,
+                save_weights_only=False,
+                verbose=1
+            ),
+            EarlyStopping(
+                monitor="val_loss",
+                min_delta=0.0001,
+                patience=20,
+                restore_best_weights=True,
+                verbose=1,
+            )
+        ]
+
+        return checkpoint_weights
+
+    def summary(self, output=None):
+        """Show/Save model structure (summary)"""
+
+        if output is not None:
+            os.makedirs(output, exist_ok=True)
+
+            with open(os.path.join(output, "summary.txt"), "w") as f:
+                with redirect_stdout(f):
+                    self.model_train.summary()
+        self.model_train.summary()
 
     def _predict_loop(self, f, ins, max_len=100, max_value=999, batch_size=32, verbose=0, steps=None):
         """Abstract method to loop over some data in batches.
