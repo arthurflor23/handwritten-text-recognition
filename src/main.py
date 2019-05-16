@@ -13,11 +13,11 @@ import argparse
 import h5py
 import cv2
 
+from data.generator import DataGenerator
+from data.preproc import preproc, encode_ctc, decode_ctc
 from network import architecture as arch
 from network.model import HTRModel
-from util.environment import Environment
-from util.generator import DataGenerator
-from util.preproc import preproc, encode_ctc, decode_ctc
+from environment import Environment
 
 
 if __name__ == "__main__":
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         assert os.path.exists(env.raw_source)
 
         print(f"The {args.dataset} dataset will be transformed...")
-        package = f"dt_transform.{args.dataset}"
+        package = f"transform.{args.dataset}"
         transform = importlib.import_module(package)
 
         os.makedirs(env.data, exist_ok=True)

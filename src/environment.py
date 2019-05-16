@@ -17,5 +17,5 @@ class Environment():
         self.gated = args.gated
 
         self.charset = "".join([chr(i) for i in range(32, 127)])
-        self.input_size = (512, 64, 1)
+        self.input_size = (1024, 128, 1)
         self.max_text_length = 128
