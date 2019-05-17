@@ -3,67 +3,101 @@
 from multiprocessing import Pool
 from functools import partial
 import xml.etree.ElementTree as ET
+import html
 import h5py
 import cv2
 import os
 
 
-def dataset(env, preproc, encode):
-    """Load and save hdf5 file of the ground truth and images (preprocessed)"""
+class Transform():
 
-    def transform(group, xml, partition, valid=None):
-        with h5py.File(env.source, "a") as hf:
-            xml = os.path.join(env.raw_source, xml)
-            dt, gt = build_data(env, xml, partition, preproc, encode)
+    def __init__(self, env, preproc, encode):
+        self.env = env
+        self.preproc = preproc
+        self.encode = encode
 
-            if valid is None:
-                hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
-                print(f"[OK] {group} partition.")
-                del dt, gt
-            else:
+    def paragraph(self):
+        """Make process of paragraph hdf5"""
+
+        partition = self._get_partitions(page=True)
+        self._build(self._extract, partition, "train")
+        self._build(self._extract, partition, "valid")
+        self._build(self._extract, partition, "test")
+
+    def line(self):
+        """Make process of line hdf5"""
+
+        partition = self._get_partitions(page=False)
+        self._build(self._extract, partition, "train")
+        self._build(self._extract, partition, "valid")
+        self._build(self._extract, partition, "test")
+
+    def _build(self, func, partition, group):
+        """Preprocessing and build line tasks"""
+
+        pool = Pool()
+        dt, gt = zip(*pool.map(partial(func), partition[group]))
+        pool.close()
+        pool.join()
+
+        self._save(group=group, dt=dt, gt=gt)
+        del dt, gt
+
+    def _extract(self, item):
+        """Extract lines from the pages"""
+
+        dt = cv2.imread(os.path.join(self.env.raw_source, item[0]), cv2.IMREAD_GRAYSCALE)
+        dt = dt[item[2][0]:item[2][1], item[2][2]:item[2][3]]
+
+        dt = self.preproc(img=dt, img_size=self.env.input_size, read_first=False)
+        gt = self.encode(text=item[1], charset=self.env.charset, mtl=self.env.max_text_length)
+
+        return dt, gt
+
+    def _get_partitions(self, page=False):
+        """Read the partitions file"""
+
+        def generate(xml, subpath, partition, validation=False):
+            xml = ET.parse(os.path.join(self.env.raw_source, xml)).getroot()
+            dt = []
+
+            for page_tag in xml:
+                page_path = page_tag.attrib["FileName"]
+                text_page = []
+
+                for i, line_tag in enumerate(page_tag.iter("Line")):
+                    text_line = html.unescape(line_tag.attrib["Value"]).strip()
+
+                    if len(text_line) > 0:
+                        if page:
+                            text_page.append(text_line)
+                            continue
+
+                        bound = [abs(int(line_tag.attrib["Top"])), abs(int(line_tag.attrib["Bottom"])),
+                                 abs(int(line_tag.attrib["Left"])), abs(int(line_tag.attrib["Right"]))]
+                        dt.append([os.path.join(subpath, page_path), text_line, bound])
+                if page:
+                    dt.append([os.path.join(subpath, page_path), " ".join(text_page), [0,-1,0,-1]])
+
+            if validation:
                 index = int(len(dt) * 0.9)
-                train_dt, train_gt = dt[:index], gt[:index]
-                valid_dt, valid_gt = dt[index:], gt[index:]
-                del dt, gt
+                partition["valid"] = dt[index:]
+                partition["train"] = dt[:index]
+            else:
+                partition["test"] = dt
 
-                hf.create_dataset(f"{valid}/dt", data=valid_dt, compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{valid}/gt", data=valid_gt, compression="gzip", compression_opts=9)
-                print(f"[OK] {valid} partition.")
-                del valid_dt, valid_gt
+        partition = dict()
+        generate("training_2011.xml", "training_2011", partition, validation=True)
+        generate("eval_2011_annotated.xml", "eval_2011", partition, validation=False)
 
-                hf.create_dataset(f"{group}/dt", data=train_dt, compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{group}/gt", data=train_gt, compression="gzip", compression_opts=9)
-                print(f"[OK] {group} partition.")
-                del train_dt, train_gt
+        return partition
 
-    transform(group="test", xml="eval_2011_annotated.xml", partition="eval_2011")
-    transform(group="train", xml="training_2011.xml", partition="training_2011", valid="valid")
+    def _save(self, group, dt, gt):
+        """Save hdf5 file"""
 
+        os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
 
-def build_data(env, xml, partition, preproc, encode):
-    """Preprocess images with pool function"""
-
-    root = ET.parse(xml).getroot()
-    dt, gt = [], []
-
-    for page_tag in root:
-        basename = page_tag.attrib["FileName"]
-        page_path = os.path.join(env.raw_source, partition, basename)
-        page = cv2.imread(page_path, cv2.IMREAD_GRAYSCALE)
-
-        for i, line_tag in enumerate(page_tag.iter("Line")):
-            text_line = line_tag.attrib["Value"].strip()
-
-            if len(text_line) > 0:
-                gt.append(text_line)
-                dt.append(page[abs(int(line_tag.attrib["Top"])):abs(int(line_tag.attrib["Bottom"])),
-                               abs(int(line_tag.attrib["Left"])):abs(int(line_tag.attrib["Right"]))])
-
-    pool = Pool()
-    dt = pool.map(partial(preproc, img_size=env.input_size, read_first=False), dt)
-    gt = pool.map(partial(encode, charset=env.charset, mtl=env.max_text_length), gt)
-    pool.close()
-    pool.join()
-
-    return dt, gt
+        with h5py.File(self.env.source, "a") as hf:
+            hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            print(f"[OK] {group} partition.")

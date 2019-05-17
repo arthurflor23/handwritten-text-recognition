@@ -3,7 +3,7 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import data.preproc as pp
 import numpy as np
 import h5py
 
@@ -36,14 +36,6 @@ class DataGenerator():
         self.batch_size = max(2, env.batch_size)
         self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
-        self.generator = ImageDataGenerator(
-            fill_mode="constant",
-            rotation_range=0.5,
-            width_shift_range=0.02,
-            height_shift_range=0.02,
-            zoom_range=0.02
-        )
-
         self.total_train = self.dataset["train"]["gt"][:].shape[0]
         self.total_valid = self.dataset["valid"]["gt"][:].shape[0]
         self.total_test = self.dataset["test"]["gt"][:].shape[0]
@@ -75,12 +67,12 @@ class DataGenerator():
 
             x_train = self.dataset["train"]["dt"][index:until]
             y_train = self.dataset["train"]["gt"][index:until]
+
             x_train, y_train = self.fill_batch("train", self.total_train, x_train, y_train)
+            x_train = pp.data_augmentation(x_train)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
-
-            x_train = self.generator.flow(x_train, batch_size=self.batch_size, shuffle=False)[0]
 
             inputs = {
                 "input": x_train,

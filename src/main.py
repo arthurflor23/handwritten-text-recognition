@@ -13,8 +13,8 @@ import argparse
 import h5py
 import cv2
 
+from data import preproc as pp
 from data.generator import DataGenerator
-from data.preproc import preproc, encode_ctc, decode_ctc
 from network import architecture as arch
 from network.model import HTRModel
 from environment import Environment
@@ -23,14 +23,15 @@ from environment import Environment
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--level", type=str, required=True)
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--lazy_loading", action="store_true", default=False)
-    parser.add_argument("--gated", action="store_true", default=False)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--lazy_loading", type=int, default=1)
+    parser.add_argument("--gated", type=int, default=1)
     args = parser.parse_args()
 
     env = Environment(args)
@@ -40,10 +41,11 @@ if __name__ == "__main__":
 
         print(f"The {args.dataset} dataset will be transformed...")
         package = f"transform.{args.dataset}"
-        transform = importlib.import_module(package)
+        mod = importlib.import_module(package)
 
-        os.makedirs(env.data, exist_ok=True)
-        transform.dataset(env, preproc, encode_ctc)
+        trans = mod.Transform(env, pp.preproc, pp.encode_ctc)
+        transform_func = getattr(trans, env.level)
+        transform_func()
         print(f"Transformation finished.")
 
     elif args.cv2:
@@ -113,7 +115,7 @@ if __name__ == "__main__":
             pred, eval = model.predict_generator(generator=dtgen.next_test_batch(),
                                                  steps=dtgen.test_steps,
                                                  verbose=1,
-                                                 decode_func=decode_ctc)
+                                                 decode_func=pp.decode_ctc)
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}\n",

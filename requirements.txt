@@ -1,6 +1,5 @@
 autopep8==1.4.4
 flake8==3.7.7
-scipy==1.2.1
 editdistance==0.5.3
 opencv-python==4.1.0.25
 tensorflow==2.0.0-alpha0

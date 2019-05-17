@@ -13,6 +13,26 @@ import numpy as np
 import cv2
 
 
+def data_augmentation(imgs, rotation_range=1.5, width_shift_range=0.01, height_shift_range=0.01, zoom_range=0.02):
+    """Data augmentation method with range parameters: rotate, width and height shift and zoom/scale"""
+
+    for i in range(len(imgs)):
+        h, w, _ = imgs[i].shape
+        rotate_seed = np.random.uniform(-rotation_range, rotation_range)
+        shift_w_seed = np.random.uniform(-width_shift_range * w, width_shift_range * w)
+        shift_h_seed = np.random.uniform(-height_shift_range * h, height_shift_range * h)
+        scale_seed = np.random.uniform(-zoom_range, zoom_range)
+
+        R = cv2.getRotationMatrix2D((w // 2, h // 2), rotate_seed, (1 + scale_seed))
+        S = np.float32([[1, 0, shift_w_seed], [0, 1, shift_h_seed]])
+
+        img = cv2.warpAffine(imgs[i], R[:2], (w, h))
+        img = cv2.warpAffine(imgs[i], S, (w, h))
+        imgs[i] = np.reshape(img, img.shape + (1,))
+
+    return imgs
+
+
 def encode_ctc(text, charset, mtl):
     """Encode text batch to CTC input (sparse)"""
 
