@@ -41,7 +41,7 @@ the labeling is given in the x data structure).
 
 class HTRModel:
 
-    def __init__(self, inputs, outputs, greedy=False, beam_width=128, top_paths=1, charset=None):
+    def __init__(self, inputs, outputs, greedy=False, beam_width=100, top_paths=1, charset=None):
         """
         Initialization of a HTR Model.
         :param inputs: Input layer of the neural network

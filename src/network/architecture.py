@@ -84,7 +84,7 @@ def gated_cnn_1dlstm(env):
 
     cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = ReLU()(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
