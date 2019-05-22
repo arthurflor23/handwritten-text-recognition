@@ -1,5 +1,6 @@
 """
 Data preproc functions:
+    normalization: apply normalization and variations on images (if necessary)
     encode_ctc: encode batch of texts in sparse array with padding
     decode_ctc: dencode batch arrays in text
     preproc: main function to the preprocess.
@@ -9,35 +10,46 @@ Data preproc functions:
             sauvola: apply sauvola binarization
 """
 
+from unicodedata import normalize
 import numpy as np
 import cv2
 
 
-def data_augmentation(imgs, rotation_range=1.5, width_shift_range=0.01, height_shift_range=0.01, zoom_range=0.02):
-    """Data augmentation method with range parameters: rotate, width and height shift and zoom/scale"""
+def normalization(imgs, rotation_range=0, width_shift_range=0, height_shift_range=0, zoom_range=0):
+    """Normalization with data augmentation if necessary (rotate, width and height shift and zoom/scale)"""
+
+    imgs = imgs.astype(np.float32)
 
     for i in range(len(imgs)):
-        h, w, _ = imgs[i].shape
-        rotate_seed = np.random.uniform(-rotation_range, rotation_range)
-        shift_w_seed = np.random.uniform(-width_shift_range * w, width_shift_range * w)
-        shift_h_seed = np.random.uniform(-height_shift_range * h, height_shift_range * h)
-        scale_seed = np.random.uniform(-zoom_range, zoom_range)
+        h, w = imgs[i].shape
+        m, s = cv2.meanStdDev(imgs[i])
 
-        R = cv2.getRotationMatrix2D((w // 2, h // 2), rotate_seed, (1 + scale_seed))
-        S = np.float32([[1, 0, shift_w_seed], [0, 1, shift_h_seed]])
+        imgs[i] = imgs[i] - m[0][0]
+        imgs[i] = imgs[i] / s[0][0] if s[0][0] > 0 else imgs[i]
 
-        img = cv2.warpAffine(imgs[i], R[:2], (w, h))
-        img = cv2.warpAffine(imgs[i], S, (w, h))
-        imgs[i] = np.reshape(img, img.shape + (1,))
+        if rotation_range > 0 or width_shift_range > 0 or height_shift_range > 0 or zoom_range > 0:
+            rotation_range = np.random.uniform(-rotation_range, rotation_range)
+            width_shift_range = np.random.uniform(-width_shift_range, width_shift_range) * w
+            height_shift_range = np.random.uniform(-height_shift_range, height_shift_range) * h
+            zoom_range = np.random.uniform(1 - zoom_range, 1 + zoom_range)
 
-    return imgs
+            S = np.float32([[1, 0, width_shift_range], [0, 1, height_shift_range]])
+            imgs[i] = cv2.warpAffine(imgs[i], S, (w, h))
+
+            R = cv2.getRotationMatrix2D((w // 2, h // 2), rotation_range, zoom_range)
+            imgs[i] = cv2.warpAffine(imgs[i], R[:2], (w, h))
+
+    return np.expand_dims(imgs, axis=-1)
 
 
 def encode_ctc(text, charset, mtl):
     """Encode text batch to CTC input (sparse)"""
 
     pad_encoded = np.zeros(mtl)
-    encoded = [[np.abs(float(charset.find(x))) for x in vec][0] for vec in text.strip()]
+    text = normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
+    text = " ".join(text.split())
+
+    encoded = [float(charset.find(x)) for x in text if charset.find(x) > -1]
     pad_encoded[0:len(encoded)] = encoded
 
     return pad_encoded
@@ -72,18 +84,11 @@ def preproc(img, img_size, read_first=False):
     img = illumination_compensation(img)
     img = remove_cursive_style(img)
 
-    target = np.ones([ht, wt])
-    target[0:new_size[1], 0:new_size[0]] = (img / 255)
+    target = np.ones([ht, wt], dtype=np.uint8) * 255
+    target[0:new_size[1], 0:new_size[0]] = img
     img = cv2.transpose(target)
 
-    m, s = cv2.meanStdDev(img)
-    img = img - m[0][0]
-    img = img / s[0][0] if s[0][0] > 0 else img
-
-    # cv2.imshow("img", img)
-    # cv2.waitKey(0)
-
-    return np.reshape(img, img.shape + (1,))
+    return img
 
 
 """
@@ -147,7 +152,7 @@ def illumination_compensation(img):
     tli[np.where(eg_bin == 255)] = 0
     tli[np.where(cei_bin == 255)] = 0
 
-    kernel = np.ones((3,3),np.uint8)
+    kernel = np.ones((3,3), np.uint8)
     erosion = cv2.erode(tli, kernel, iterations=1)
     int_img = np.array(cei)
 

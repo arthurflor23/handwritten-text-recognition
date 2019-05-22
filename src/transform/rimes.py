@@ -41,7 +41,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt)
-        del dt, gt
 
     def _extract(self, item):
         """Extract lines from the pages"""
@@ -66,7 +65,7 @@ class Transform():
                 text_page = []
 
                 for i, line_tag in enumerate(page_tag.iter("Line")):
-                    text_line = html.unescape(line_tag.attrib["Value"]).strip()
+                    text_line = " ".join(html.unescape(line_tag.attrib["Value"]).split())
 
                     if len(text_line) > 0:
                         if page:
@@ -76,7 +75,8 @@ class Transform():
                         bound = [abs(int(line_tag.attrib["Top"])), abs(int(line_tag.attrib["Bottom"])),
                                  abs(int(line_tag.attrib["Left"])), abs(int(line_tag.attrib["Right"]))]
                         dt.append([os.path.join(subpath, page_path), text_line, bound])
-                if page:
+
+                if page and len(text_page) > 0:
                     dt.append([os.path.join(subpath, page_path), " ".join(text_page), [0,-1,0,-1]])
 
             if validation:

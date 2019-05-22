@@ -3,7 +3,7 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
-import data.preproc as pp
+from data.preproc import normalization
 import numpy as np
 import h5py
 
@@ -69,7 +69,11 @@ class DataGenerator():
             y_train = self.dataset["train"]["gt"][index:until]
 
             x_train, y_train = self.fill_batch("train", self.total_train, x_train, y_train)
-            x_train = pp.data_augmentation(x_train)
+            x_train = normalization(x_train,
+                                    rotation_range=1.5,
+                                    width_shift_range=0.02,
+                                    height_shift_range=0.02,
+                                    zoom_range=0.02)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
@@ -97,7 +101,9 @@ class DataGenerator():
 
             x_valid = self.dataset["valid"]["dt"][index:until]
             y_valid = self.dataset["valid"]["gt"][index:until]
+
             x_valid, y_valid = self.fill_batch("valid", self.total_valid, x_valid, y_valid)
+            x_valid = normalization(x_valid)
 
             x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_valid_len = np.asarray([len(np.trim_zeros(y_valid[i])) for i in range(self.batch_size)])
@@ -125,7 +131,9 @@ class DataGenerator():
 
             x_test = self.dataset["test"]["dt"][index:until]
             y_test = self.dataset["test"]["gt"][index:until]
+
             x_test, y_test = self.fill_batch("test", self.total_test, x_test, y_test)
+            x_test = normalization(x_test)
 
             x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_test_len = np.asarray([len(np.trim_zeros(y_test[i])) for i in range(self.batch_size)])

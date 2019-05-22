@@ -2,6 +2,7 @@
 
 from multiprocessing import Pool
 from functools import partial
+import html
 import h5py
 import os
 
@@ -29,9 +30,10 @@ class Transform():
         gt = os.listdir(path=path)
         gt_dict = dict()
 
-        for x in gt:
-            text = " ".join(open(os.path.join(path, x)).read().splitlines()).replace("_", "")
-            gt_dict[os.path.splitext(x)[0]] = text.strip()
+        for index, x in enumerate(gt):
+            text = " ".join(open(os.path.join(path, x)).read().splitlines())
+            text = html.unescape(" ".join(text.split())).replace("<gap/>", "")
+            gt_dict[os.path.splitext(x)[0]] = text
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")
@@ -44,11 +46,10 @@ class Transform():
         dt, gt = [], []
 
         for line in partition[group]:
-            text_line = gt_dict[line].strip()
 
-            if len(text_line) > 0:
+            if len(gt_dict[line]) > 0:
                 dt.append(os.path.join(path, f"{line}.png"))
-                gt.append(text_line)
+                gt.append(gt_dict[line])
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
@@ -57,7 +58,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt)
-        del dt, gt
 
     def _get_partitions(self):
         """Read the partitions file"""

@@ -31,12 +31,9 @@ class Transform():
             if (not line or line[0] == "#"):
                 continue
 
-            splited = line.strip().split(" ")
-            assert len(splited) >= 3
-
-            name = splited[0].strip()
-            text = splited[1].replace("-", "").replace("|", " ").strip()
-            gt_dict[name] = text
+            splited = line.split()
+            text = " ".join(splited[1].replace("-", "").replace("|", " ").split())
+            gt_dict[splited[0]] = text
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")
@@ -52,13 +49,12 @@ class Transform():
             glob_filter = os.path.join(path, f"{line}*")
             img_list = [x for x in glob(glob_filter, recursive=True)]
 
-            for path in img_list:
-                index = os.path.splitext(os.path.basename(path))[0]
-                text_line = gt_dict[index].strip()
+            for img_path in img_list:
+                index = os.path.splitext(os.path.basename(img_path))[0]
 
-                if len(text_line) > 0:
-                    dt.append(path)
-                    gt.append(text_line)
+                if len(gt_dict[index]) > 0:
+                    dt.append(img_path)
+                    gt.append(gt_dict[index])
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
@@ -67,7 +63,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt)
-        del dt, gt
 
     def _get_partitions(self):
         """Read the partitions file"""

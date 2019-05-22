@@ -17,12 +17,11 @@ class Environment():
 
         self.lazy_loading = args.lazy_loading
         self.gated = args.gated
-        self.charset = "".join([chr(i) for i in range(32, 127)])
+        self.charset = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz{|} "
 
         if self.level == "paragraph":
-            self.input_size = (1200, 960, 1)
-            self.max_text_length = 1200
+            self.input_size = (1024, 1280, 1)
+            self.max_text_length = 1280
         else:
             self.input_size = (1024, 128, 1)
-            # self.input_size = (800, 64, 1)
             self.max_text_length = 128

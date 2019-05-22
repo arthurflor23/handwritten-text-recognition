@@ -39,12 +39,9 @@ class Transform():
             if (not line or line[0] == "#"):
                 continue
 
-            splited = line.strip().split(" ")
-            assert len(splited) >= 9
-
-            name = splited[0].strip()
-            text = splited[len(splited) - 1].replace("|", " ").strip()
-            gt_dict[name] = text
+            splited = line.split()
+            text = " ".join(splited[-1].replace("|", " ").split())
+            gt_dict[splited[0]] = text
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")
@@ -56,15 +53,14 @@ class Transform():
         dt, gt = [], []
 
         for line in partition[group]:
-            text_line = gt_dict[line].strip()
 
-            if len(text_line) > 0:
+            if len(gt_dict[line]) > 0:
                 split = line.split("-")
                 path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
                 path = os.path.join(self.env.raw_source, "lines", path)
 
                 dt.append(path)
-                gt.append(text_line)
+                gt.append(gt_dict[line])
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
@@ -73,7 +69,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt)
-        del dt, gt
 
     def _build_paragraphs(self, partition, group):
         """Preprocessing and build paragraph tasks"""
@@ -87,7 +82,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt)
-        del dt, gt
 
     def _extract(self, x, xml_path, form_path):
         """Extract paragraphs from the pages"""
@@ -102,7 +96,7 @@ class Transform():
 
         for page_tag in root:
             for i, line_tag in enumerate(page_tag.iter("line")):
-                text_line = html.unescape(line_tag.attrib["text"]).strip()
+                text_line = " ".join(html.unescape(line_tag.attrib["text"]).split())
 
                 if len(text_line) > 0:
                     text.append(text_line)

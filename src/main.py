@@ -30,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lazy_loading", type=int, default=1)
+    parser.add_argument("--lazy_loading", type=int, default=0)
     parser.add_argument("--gated", type=int, default=1)
     args = parser.parse_args()
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         for x in range(len(dt)):
             print(f"Image shape: {dt[x].shape}")
             print(f"Ground truth encoded:\n{gt[x]}\n")
-            cv2.imshow("img", dt[x][:,:,0])
+            cv2.imshow("img", dt[x])
             cv2.waitKey(0)
 
     elif args.train or args.test:
@@ -100,8 +100,8 @@ if __name__ == "__main__":
                 f"Total validation images: {dtgen.total_valid}",
                 f"Batch:                   {env.batch_size}\n",
                 f"Total epochs:            {len(loss)}",
-                f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)",
                 f"Last val_loss:           {val_loss[-1]:.4f} ({len(val_loss)} epoch)\n",
+                f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)",
                 f"Best validation loss:",
                 f"Minimum val_loss:        {min_val_loss:.4f} ({min_val_loss_i} epoch)",
                 f"Respective loss:         {loss[min_val_loss_i]:.4f} ({min_val_loss_i} epoch)"
