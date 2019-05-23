@@ -1,6 +1,6 @@
 """
 Data preproc functions:
-    normalization: apply normalization and variations on images (if necessary)
+    normalization: apply normalization and variations on images (if required)
     encode_ctc: encode batch of texts in sparse array with padding
     decode_ctc: dencode batch arrays in text
     preproc: main function to the preprocess.
@@ -15,29 +15,33 @@ import numpy as np
 import cv2
 
 
-def normalization(imgs, rotation_range=0, width_shift_range=0, height_shift_range=0, zoom_range=0):
-    """Normalization with data augmentation if necessary (rotate, width and height shift and zoom/scale)"""
+def normalization(imgs, rotation_range=0, shift_range=(0,0), zoom_range=0):
+    """Normalization with data augmentation if required (rotate, width and height shift and zoom/scale)"""
 
     imgs = imgs.astype(np.float32)
+    _, h, w = imgs.shape
+    dt_aug = (rotation_range != 0 or shift_range[0] != 0 or shift_range[1] != 0 or zoom_range != 0)
+
+    if dt_aug:
+        rotation = np.random.uniform(-rotation_range, rotation_range)
+        zoom = np.random.uniform(1 - zoom_range, 1)
+        width_shift = np.random.uniform(-shift_range[1], shift_range[1])
+        height_shift = np.random.uniform(-shift_range[0], shift_range[0])
+
+        trans_map = np.float32([[1, 0, width_shift * w], [0, 1, -height_shift * h]])
+        rot_map = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, zoom)
+
+        trans_map_aff = np.r_[trans_map, [[0, 0, 1]]]
+        rot_map_aff = np.r_[rot_map, [[0, 0, 1]]]
+        affine_mat = rot_map_aff.dot(trans_map_aff)[:2, :]
 
     for i in range(len(imgs)):
-        h, w = imgs[i].shape
         m, s = cv2.meanStdDev(imgs[i])
-
         imgs[i] = imgs[i] - m[0][0]
         imgs[i] = imgs[i] / s[0][0] if s[0][0] > 0 else imgs[i]
 
-        if rotation_range > 0 or width_shift_range > 0 or height_shift_range > 0 or zoom_range > 0:
-            rotation_range = np.random.uniform(-rotation_range, rotation_range)
-            width_shift_range = np.random.uniform(-width_shift_range, width_shift_range) * w
-            height_shift_range = np.random.uniform(-height_shift_range, height_shift_range) * h
-            zoom_range = np.random.uniform(1 - zoom_range, 1 + zoom_range)
-
-            S = np.float32([[1, 0, width_shift_range], [0, 1, height_shift_range]])
-            imgs[i] = cv2.warpAffine(imgs[i], S, (w, h))
-
-            R = cv2.getRotationMatrix2D((w // 2, h // 2), rotation_range, zoom_range)
-            imgs[i] = cv2.warpAffine(imgs[i], R[:2], (w, h))
+        if dt_aug:
+            imgs[i] = cv2.warpAffine(imgs[i], affine_mat, (w, h), flags=cv2.INTER_NEAREST)
 
     return np.expand_dims(imgs, axis=-1)
 

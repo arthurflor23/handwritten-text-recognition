@@ -100,8 +100,8 @@ if __name__ == "__main__":
                 f"Total validation images: {dtgen.total_valid}",
                 f"Batch:                   {env.batch_size}\n",
                 f"Total epochs:            {len(loss)}",
-                f"Last val_loss:           {val_loss[-1]:.4f} ({len(val_loss)} epoch)\n",
-                f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)",
+                f"Last val_loss:           {val_loss[-1]:.4f} ({len(val_loss)} epoch)",
+                f"Last loss:               {loss[-1]:.4f} ({len(loss)} epoch)\n",
                 f"Best validation loss:",
                 f"Minimum val_loss:        {min_val_loss:.4f} ({min_val_loss_i} epoch)",
                 f"Respective loss:         {loss[min_val_loss_i]:.4f} ({min_val_loss_i} epoch)"

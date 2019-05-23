@@ -118,7 +118,7 @@ def gated_cnn_1dlstm(env):
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=128)(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    # blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = TimeDistributed(Dense(units=(len(env.charset) + 1)))(blstm)
 

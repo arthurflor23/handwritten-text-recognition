@@ -69,11 +69,7 @@ class DataGenerator():
             y_train = self.dataset["train"]["gt"][index:until]
 
             x_train, y_train = self.fill_batch("train", self.total_train, x_train, y_train)
-            x_train = normalization(x_train,
-                                    rotation_range=1.5,
-                                    width_shift_range=0.02,
-                                    height_shift_range=0.02,
-                                    zoom_range=0.02)
+            x_train = normalization(x_train, rotation_range=2, shift_range=(0.04, 0.04), zoom_range=0.04)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
