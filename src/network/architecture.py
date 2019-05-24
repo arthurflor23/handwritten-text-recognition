@@ -3,6 +3,7 @@
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
 from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU, ReLU
+from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
 
@@ -118,13 +119,16 @@ def gated_cnn_1dlstm(env):
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=128)(blstm)
 
-    # blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = TimeDistributed(Dense(units=(len(env.charset) + 1)))(blstm)
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    return [input_data], [outrnn], RMSprop(learning_rate=4e-4)
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=4e-6,
+                                   first_decay_steps=int(94000 / env.batch_size))
+
+    return [input_data], [outrnn], RMSprop(learning_rate=decay_lr)
 
 
 """
