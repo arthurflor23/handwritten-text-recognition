@@ -46,9 +46,9 @@ def cnn_1dlstm(env):
     cnn = LeakyReLU()(cnn)
 
     shape = cnn.get_shape()
-    outcnn = Reshape((shape[1], shape[2] * shape[3]))(cnn)
+    blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(outcnn)
+    blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
@@ -65,9 +65,13 @@ def cnn_1dlstm(env):
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = TimeDistributed(Dense(units=(len(env.charset) + 1)))(blstm)
+
     outrnn = Activation(activation="softmax")(blstm)
 
-    return [input_data], [outrnn], RMSprop(learning_rate=3e-4)
+    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=3e-8,
+                                   first_decay_steps=int(94000 / env.batch_size))
+
+    return [input_data], [outrnn], RMSprop(learning_rate=decay_lr)
 
 
 def gated_cnn_1dlstm(env):
@@ -113,9 +117,9 @@ def gated_cnn_1dlstm(env):
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     shape = cnn.get_shape()
-    outcnn = Reshape((shape[1], shape[2] * shape[3]))(cnn)
+    blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(outcnn)
+    blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=128)(blstm)
 
@@ -125,7 +129,7 @@ def gated_cnn_1dlstm(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=4e-6,
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=4e-8,
                                    first_decay_steps=int(94000 / env.batch_size))
 
     return [input_data], [outrnn], RMSprop(learning_rate=decay_lr)
