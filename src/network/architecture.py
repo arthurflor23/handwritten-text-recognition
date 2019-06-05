@@ -7,7 +7,7 @@ from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
 
-def cnn_1dlstm(env):
+def puigcerver(env):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
         Reference:
@@ -71,10 +71,10 @@ def cnn_1dlstm(env):
     decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=3e-8,
                                    first_decay_steps=int(94000 / env.batch_size))
 
-    return [input_data], [outrnn], RMSprop(learning_rate=decay_lr)
+    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
 
 
-def gated_cnn_1dlstm(env):
+def bluche(env):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
         Reference:
@@ -132,7 +132,7 @@ def gated_cnn_1dlstm(env):
     decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=4e-8,
                                    first_decay_steps=int(94000 / env.batch_size))
 
-    return [input_data], [outrnn], RMSprop(learning_rate=decay_lr)
+    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
 
 
 """

@@ -36,11 +36,11 @@ class Transform():
         """Preprocessing and build line tasks"""
 
         pool = Pool()
-        dt, gt = zip(*pool.map(partial(func), partition[group]))
+        dt, gt, gt_sparse = zip(*pool.map(partial(func), partition[group]))
         pool.close()
         pool.join()
 
-        self._save(group=group, dt=dt, gt=gt)
+        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
 
     def _extract(self, item):
         """Extract lines from the pages"""
@@ -49,9 +49,9 @@ class Transform():
         dt = dt[item[2][0]:item[2][1], item[2][2]:item[2][3]]
 
         dt = self.preproc(img=dt, img_size=self.env.input_size, read_first=False)
-        gt = self.encode(text=item[1], charset=self.env.charset, mtl=self.env.max_text_length)
+        gt_sparse = self.encode(text=item[1], charset=self.env.charset, mtl=self.env.max_text_length)
 
-        return dt, gt
+        return dt, item[1], gt_sparse
 
     def _get_partitions(self, page=False):
         """Read the partitions file"""
@@ -92,12 +92,13 @@ class Transform():
 
         return partition
 
-    def _save(self, group, dt, gt):
+    def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
         os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
 
         with h5py.File(self.env.source, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
-            hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)
             print(f"[OK] {group} partition.")

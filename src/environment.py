@@ -6,18 +6,16 @@ import os
 class Environment():
 
     def __init__(self, args):
-        profile = f"{args.level}_{args.dataset}"
-        self.source = os.path.join("..", "data", f"{profile}.hdf5")
-        self.output = os.path.join("..", "output", profile)
-        self.raw_source = os.path.join("..", "raw", args.dataset)
+        self.arch = args.arch
+        self.charset = "".join([chr(i) for i in range(32, 127)])
 
         self.level = args.level
         self.epochs = args.epochs
         self.batch_size = args.batch_size
 
-        self.lazy_loading = args.lazy_loading
-        self.gated = args.gated
-        self.charset = "".join([chr(i) for i in range(32, 127)])
+        self.raw_source = os.path.join("..", "raw", args.dataset)
+        self.source = os.path.join("..", "data", f"{args.dataset}_{args.level}.hdf5")
+        self.output = os.path.join("..", "output", f"{args.dataset}_{args.arch}_{args.level}")
 
         if self.level == "paragraph":
             self.input_size = (1024, 1280, 1)

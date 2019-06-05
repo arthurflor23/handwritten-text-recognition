@@ -46,18 +46,17 @@ class Transform():
         dt, gt = [], []
 
         for line in partition[group]:
-
             if len(gt_dict[line]) > 0:
                 dt.append(os.path.join(path, f"{line}.png"))
                 gt.append(gt_dict[line])
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
-        gt = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
+        gt_sparse = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
         pool.close()
         pool.join()
 
-        self._save(group=group, dt=dt, gt=gt)
+        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
 
     def _get_partitions(self):
         """Read the partitions file"""
@@ -70,12 +69,13 @@ class Transform():
         }
         return partition
 
-    def _save(self, group, dt, gt):
+    def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
         os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
 
         with h5py.File(self.env.source, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
-            hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)
             print(f"[OK] {group} partition.")

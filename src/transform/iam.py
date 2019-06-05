@@ -64,11 +64,11 @@ class Transform():
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
-        gt = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
+        gt_sparse = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
         pool.close()
         pool.join()
 
-        self._save(group=group, dt=dt, gt=gt)
+        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
 
     def _build_paragraphs(self, partition, group):
         """Preprocessing and build paragraph tasks"""
@@ -77,16 +77,16 @@ class Transform():
         form = os.path.join(self.env.raw_source, "forms")
         pool = Pool()
 
-        dt, gt = zip(*pool.map(partial(self._extract, xml_path=xml, form_path=form), partition[group]))
+        dt, gt, gt_sparse = zip(*pool.map(partial(self._extract, xml_path=xml, form_path=form), partition[group]))
         pool.close()
         pool.join()
 
-        self._save(group=group, dt=dt, gt=gt)
+        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
 
     def _extract(self, x, xml_path, form_path):
         """Extract paragraphs from the pages"""
 
-        dt, gt = [], []
+        dt, gt_sparse = [], []
         xml = f"{os.path.join(xml_path, x)}.xml"
         png = f"{os.path.join(form_path, x)}.png"
 
@@ -103,14 +103,14 @@ class Transform():
                     top = min(top, abs(int(line_tag.attrib["asy"])))
                     bottom = max(bottom, abs(int(line_tag.attrib["dsy"])))
 
-        text = " ".join(text)
+        gt = " ".join(text)
         page = cv2.imread(png, cv2.IMREAD_GRAYSCALE)
         page = page[top:bottom, 0:-1]
 
         dt.append(self.preproc(img=page, img_size=self.env.input_size, read_first=False))
-        gt.append(self.encode(text=text, charset=self.env.charset, mtl=self.env.max_text_length))
+        gt_sparse.append(self.encode(text=gt, charset=self.env.charset, mtl=self.env.max_text_length))
 
-        return dt, gt
+        return dt, gt, gt_sparse
 
     def _get_partitions(self):
         """Read the partitions file"""
@@ -123,12 +123,13 @@ class Transform():
         }
         return partition
 
-    def _save(self, group, dt, gt):
+    def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
         os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
 
         with h5py.File(self.env.source, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
-            hf.create_dataset(f"{group}/gt", data=gt, compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
+            hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)
             print(f"[OK] {group} partition.")

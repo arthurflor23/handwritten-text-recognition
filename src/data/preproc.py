@@ -2,7 +2,6 @@
 Data preproc functions:
     normalization: apply normalization and variations on images (if required)
     encode_ctc: encode batch of texts in sparse array with padding
-    decode_ctc: dencode batch arrays in text
     preproc: main function to the preprocess.
         Make the image:
             illumination_compensation: apply illumination regularitation
@@ -47,22 +46,17 @@ def normalization(imgs, rotation_range=0, shift_range=(0,0), zoom_range=0):
 
 
 def encode_ctc(text, charset, mtl):
-    """Encode text batch to CTC input (sparse)"""
+    """Encode text array to CTC input (sparse)"""
 
     pad_encoded = np.zeros(mtl)
     text = normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
     text = " ".join(text.split())
 
     encoded = [float(charset.find(x)) for x in text if charset.find(x) > -1]
+    encoded = [float(charset.find("&"))] if len(encoded) == 0 else encoded
+
     pad_encoded[0:len(encoded)] = encoded
-
     return pad_encoded
-
-
-def decode_ctc(arr, charset):
-    """Decode CTC output batch to text"""
-
-    return np.array([("".join(charset[int(c)] for c in vec)).strip() for vec in arr])
 
 
 """
