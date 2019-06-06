@@ -167,9 +167,8 @@ class HTRModel:
                           steps,
                           max_queue_size=10,
                           workers=1,
-                          verbose=0,
-                          decode_func=None):
-        """Generates predictions and evaluations (loss, cer, wer, ser)
+                          verbose=0):
+        """Generates predictions and evaluations (cer, wer, ser)
         for the input samples from a data generator.
 
         The generator should return the same kind of data as accepted by `predict_on_batch`.
@@ -193,8 +192,6 @@ class HTRModel:
                 when using process based threading
             verbose:
                 verbosity mode, 0 or 1.
-            decode_func:
-                a function for decoding a list of predicted sequences (using self.charset)
 
         # Returns
             A tuple containing:
@@ -303,7 +300,7 @@ class HTRModel:
         wer = sum(wer) / len(wer)
         ser = sum(ser) / len(ser)
 
-        return [lab_out, pred_out], [cer, wer, ser]
+        return (lab_out, pred_out), (cer, wer, ser)
 
     def save_model(self, path_dir, charset=None):
         """ Save a model in path_dir
