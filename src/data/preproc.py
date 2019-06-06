@@ -25,7 +25,7 @@ def normalization(imgs, rotation_range=0, shift_range=(0,0), zoom_range=0):
         rotation = np.random.uniform(-rotation_range, rotation_range)
         height_shift = np.random.uniform(-shift_range[0], shift_range[0])
         width_shift = np.random.uniform(-shift_range[1], shift_range[1])
-        zoom = np.random.uniform(1 - zoom_range, 1)
+        zoom = np.random.uniform(1 - zoom_range, 1 + zoom_range)
 
         trans_map = np.float32([[1, 0, width_shift * w], [0, 1, -height_shift * h]])
         rot_map = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, zoom)

@@ -1,9 +1,9 @@
 """
 Provides options via the command line to perform project tasks.
-    * Transform dataset to this project standard
-    * Visualize sample of the transformed dataset
-    * Train model with dataset parameter name
-    * Test model with dataset parameter name
+    --transform: Transform dataset to this project standard
+    --cv2: Visualize sample of the transformed dataset
+    --train: Train model with dataset parameter name
+    --test: Test model with dataset parameter name
 """
 
 import os
@@ -22,12 +22,14 @@ from environment import Environment
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--level", type=str, required=True)
+    parser.add_argument("--level", type=str, default="line")
     parser.add_argument("--arch", type=str, default="bluche")
+
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
+
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
