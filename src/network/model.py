@@ -492,7 +492,7 @@ class HTRModel:
             EarlyStopping(
                 monitor="val_loss",
                 min_delta=0.0001,
-                patience=40,
+                patience=80,
                 restore_best_weights=True,
                 verbose=1,
             )

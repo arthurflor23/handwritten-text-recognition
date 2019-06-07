@@ -1,9 +1,9 @@
 """
 Provides options via the command line to perform project tasks.
-    --transform: Transform dataset to this project standard
-    --cv2: Visualize sample of the transformed dataset
-    --train: Train model with dataset parameter name
-    --test: Test model with dataset parameter name
+    --transform: transform dataset to the HDF5 file
+    --cv2: visualize sample from transformed dataset
+    --train: train model with the dataset argument
+    --test: test model with the dataset argument
 """
 
 import os
@@ -22,8 +22,8 @@ from environment import Environment
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--level", type=str, default="line")
     parser.add_argument("--arch", type=str, default="bluche")
+    parser.add_argument("--level", type=str, default="line")
 
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)

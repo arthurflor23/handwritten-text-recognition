@@ -68,7 +68,7 @@ def puigcerver(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=3e-8,
+    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=4e-8,
                                    first_decay_steps=int(94000 / env.batch_size))
 
     return (input_data, outrnn, RMSprop(learning_rate=decay_lr))

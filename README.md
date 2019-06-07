@@ -1,39 +1,44 @@
-# Handwritten Text Recognition (HTR)
+# Handwritten Text Recognition with TensorFlow 2.0
 
-Project summary...
+<img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/images/000.png?raw=true">
 
-## 1 Project structure
+Handwritten Text Recognition (HTR) system implemented with TensorFlow 2.0 and trained on the Bentham/IAM/Rimes/Saint Gall offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
 
-Structure summary...
+Data partitioning (train, validation, test) was performed following the methodology of each dataset. The project implemented the HTRModel abstraction model (adapted from the [CTCModel](https://github.com/ysoullard/CTCModel)) as a way to facilitate the development of HTR systems.
 
-## 2 How to run
+**Notes**:
+1. All **references** are commented in the code.
+2. This project **doesn't offer** post-processing, such as N-gram Language Model.
+3. Sample results (txt files reports) can be find in **doc** folder, divided by architecture/dataset.
+4. For more information and demo run step by step, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
 
-Summary...
+## Datasets supported
 
-### 2.1 Prepare the environment
+a. [Bentham Dataset](http://transcriptorium.eu/datasets/bentham-collection/)
 
-Install dependencies ...
+b. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
 
-### 2.2 Obtain datasets
+c. [Rimes Dataset](http://www.a2ialab.com/doku.php?id=rimes_database:start)
 
-Details `here`...
+d. [Saint Gall Database](http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/saint-gall-database)
 
-### 2.3 Transform dataset
+## Requirements
 
-Scrips `here`...
+* Python 3
+* OpenCV 4
+* editdistance
+* TensorFlow 2.0
 
-### 2.4 Preprocess data
+## Command line arguments
 
-Scrips `here`...
+* `--dataset`: dataset name (bentham, iam, rimes, saintgall)
+* `--arch`: network to be used (bluche, puigcerver)
+* `--level`: recognition level (line, paragraph::experimental)
+* `--transform`: transform dataset to the HDF5 file
+* `--cv2`: visualize sample from transformed dataset
+* `--train`: train model with the dataset argument
+* `--test`: evaluate and predict model with the dataset argument
 
-### 2.5 Train Model
+## Tutorial (Google Colab/Drive)
 
-Scrips `here`...
-
-### 2.6 Test Model
-
-Scrips `here`...
-
-## 3 References
-
-[1] References...
+A Jupyter Notebook is available to demo run, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
