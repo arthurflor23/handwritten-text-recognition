@@ -12,21 +12,17 @@ class DataGenerator():
     """Generator class with data streaming"""
 
     def __init__(self, env):
+        self.batch_size = env.batch_size
+        self.max_text_length = env.max_text_length
 
         with h5py.File(env.source, "r") as hf:
-            # partition: train, valid, test
             self.dataset = dict()
 
             for partition in hf.keys():
-                # data_type: dt (data/image), gt_sparse, gt_bytes
                 self.dataset[partition] = dict()
 
                 for data_type in hf[partition]:
                     self.dataset[partition][data_type] = hf[partition][data_type][:]
-
-        self.max_text_length = env.max_text_length
-        self.batch_size = max(2, env.batch_size)
-        self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
         self.total_train = len(self.dataset["train"]["dt"])
         self.total_valid = len(self.dataset["valid"]["dt"])
@@ -50,7 +46,7 @@ class DataGenerator():
         """Get the next batch from train partition (yield)"""
 
         while True:
-            if self.train_index >= self.total_train:
+            if not hasattr(self, "train_index") or self.train_index >= self.total_train:
                 self.train_index = 0
 
             index = self.train_index
@@ -61,7 +57,7 @@ class DataGenerator():
             y_train = self.dataset["train"]["gt_sparse"][index:until]
 
             x_train, y_train = self.fill_batch("train", self.total_train, x_train, y_train, "gt_sparse")
-            x_train = normalization(x_train, rotation_range=0.25, shift_range=(0.01, 0.01), zoom_range=0.01)
+            x_train = normalization(x_train, rotation_range=0.5, height_shift_range=0.01, width_shift_range=0.1, zoom_range=0.01)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
@@ -80,7 +76,7 @@ class DataGenerator():
         """Get the next batch from validation partition (yield)"""
 
         while True:
-            if self.valid_index >= self.total_valid:
+            if not hasattr(self, "valid_index") or self.valid_index >= self.total_valid:
                 self.valid_index = 0
 
             index = self.valid_index
@@ -110,7 +106,7 @@ class DataGenerator():
         """Return model evaluate parameters"""
 
         while True:
-            if self.test_index >= self.total_test:
+            if not hasattr(self, "test_index") is None or self.test_index >= self.total_test:
                 self.test_index = 0
 
             index = self.test_index

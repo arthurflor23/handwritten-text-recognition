@@ -14,17 +14,17 @@ import numpy as np
 import cv2
 
 
-def normalization(imgs, rotation_range=0, shift_range=(0,0), zoom_range=0):
+def normalization(imgs, rotation_range=0, height_shift_range=0, width_shift_range=0, zoom_range=0):
     """Normalization with data augmentation if required (rotate, width and height shift and zoom/scale)"""
 
     imgs = imgs.astype(np.float32)
     _, h, w = imgs.shape
-    dt_aug = (rotation_range != 0 or shift_range[0] != 0 or shift_range[1] != 0 or zoom_range != 0)
+    dt_aug = (rotation_range != 0 or height_shift_range != 0 or width_shift_range != 0 or zoom_range != 0)
 
     if dt_aug:
         rotation = np.random.uniform(-rotation_range, rotation_range)
-        height_shift = np.random.uniform(-shift_range[0], shift_range[0])
-        width_shift = np.random.uniform(-shift_range[1], shift_range[1])
+        height_shift = np.random.uniform(-height_shift_range, 0)
+        width_shift = np.random.uniform(0, width_shift_range)
         zoom = np.random.uniform(1 - zoom_range, 1 + zoom_range)
 
         trans_map = np.float32([[1, 0, width_shift * w], [0, 1, -height_shift * h]])
@@ -35,12 +35,12 @@ def normalization(imgs, rotation_range=0, shift_range=(0,0), zoom_range=0):
         affine_mat = rot_map_aff.dot(trans_map_aff)[:2, :]
 
     for i in range(len(imgs)):
+        if dt_aug:
+            imgs[i] = cv2.warpAffine(imgs[i], affine_mat, (w, h), flags=cv2.INTER_NEAREST, borderValue=255)
+
         m, s = cv2.meanStdDev(imgs[i])
         imgs[i] = imgs[i] - m[0][0]
         imgs[i] = imgs[i] / s[0][0] if s[0][0] > 0 else imgs[i]
-
-        if dt_aug:
-            imgs[i] = cv2.warpAffine(imgs[i], affine_mat, (w, h), flags=cv2.INTER_NEAREST)
 
     return np.expand_dims(imgs, axis=-1)
 

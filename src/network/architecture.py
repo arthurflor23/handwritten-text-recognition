@@ -68,10 +68,10 @@ def puigcerver(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=4e-8,
-                                   first_decay_steps=int(94000 / env.batch_size))
+    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, first_decay_steps=int(64000 / env.batch_size))
+    opt = RMSprop(learning_rate=decay_lr)
 
-    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
+    return (input_data, outrnn, opt)
 
 
 def bluche(env):
@@ -129,10 +129,10 @@ def bluche(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=4e-8,
-                                   first_decay_steps=int(94000 / env.batch_size))
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, first_decay_steps=int(64000 / env.batch_size))
+    opt = RMSprop(learning_rate=decay_lr)
 
-    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
+    return (input_data, outrnn, opt)
 
 
 """

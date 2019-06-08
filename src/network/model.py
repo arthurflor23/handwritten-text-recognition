@@ -50,6 +50,7 @@ class HTRModel:
         """
         self.model_train = None
         self.model_pred = None
+        self.model_checkpoint = "checkpoint_weights.hdf5"
 
         if not isinstance(inputs, list):
             self.inputs = [inputs]
@@ -167,6 +168,7 @@ class HTRModel:
                           steps,
                           max_queue_size=10,
                           workers=1,
+                          use_multiprocessing=False,
                           verbose=0):
         """Generates predictions and evaluations (cer, wer, ser)
         for the input samples from a data generator.
@@ -190,6 +192,10 @@ class HTRModel:
                 Maximum size for the generator queue.
             workers: Maximum number of processes to spin up
                 when using process based threading
+            use_multiprocessing: If `True`, use process based threading.
+                Note that because this implementation relies on multiprocessing,
+                you should not pass non picklable arguments to the generator
+                as they can't be passed easily to children processes.
             verbose:
                 verbosity mode, 0 or 1.
 
@@ -216,9 +222,9 @@ class HTRModel:
 
         try:
             if is_sequence:
-                enqueuer = OrderedEnqueuer(generator)
+                enqueuer = OrderedEnqueuer(generator, use_multiprocessing=use_multiprocessing)
             else:
-                enqueuer = GeneratorEnqueuer(generator)
+                enqueuer = GeneratorEnqueuer(generator, use_multiprocessing=use_multiprocessing)
 
             enqueuer.start(workers=workers, max_queue_size=max_queue_size)
             output_generator = enqueuer.get()
@@ -331,13 +337,16 @@ class HTRModel:
         p.dump(param)
         output.close()
 
-    def load_checkpoint(self, checkpoint):
+    def load_checkpoint(self, logdir, model_checkpoint=None):
         """ Load a model with checkpoint file
         load model_train, model_pred from hdf5
         """
 
-        if os.path.isfile(checkpoint):
-            self.model_train.load_weights(checkpoint)
+        weights_file = model_checkpoint if model_checkpoint else self.model_checkpoint
+        weights_file = os.path.join(logdir, weights_file)
+
+        if os.path.isfile(weights_file):
+            self.model_train.load_weights(weights_file)
             self.model_pred.set_weights(self.model_train.get_weights())
 
     def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
@@ -468,13 +477,15 @@ class HTRModel:
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-    def set_callbacks(self, output):
-        os.makedirs(os.path.join(output), exist_ok=True)
-        checkpoint_weights = os.path.join(output, "checkpoint_weights.hdf5")
+    def get_callbacks(self, logdir, model_checkpoint=None):
+        os.makedirs(os.path.join(logdir), exist_ok=True)
 
-        self.callbacks = [
+        weights_file = model_checkpoint if model_checkpoint else self.model_checkpoint
+        weights_file = os.path.join(logdir, weights_file)
+
+        callbacks = [
             TensorBoard(
-                log_dir=output,
+                log_dir=logdir,
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
@@ -482,7 +493,7 @@ class HTRModel:
                 update_freq="epoch"
             ),
             ModelCheckpoint(
-                filepath=checkpoint_weights,
+                filepath=weights_file,
                 period=1,
                 monitor="val_loss",
                 save_best_only=True,
@@ -498,15 +509,15 @@ class HTRModel:
             )
         ]
 
-        return checkpoint_weights
+        return callbacks
 
-    def summary(self, output=None):
+    def summary(self, logdir=None):
         """Show/Save model structure (summary)"""
 
-        if output is not None:
-            os.makedirs(output, exist_ok=True)
+        if logdir is not None:
+            os.makedirs(logdir, exist_ok=True)
 
-            with open(os.path.join(output, "summary.txt"), "w") as f:
+            with open(os.path.join(logdir, "summary.txt"), "w") as f:
                 with redirect_stdout(f):
                     self.model_train.summary()
         self.model_train.summary()

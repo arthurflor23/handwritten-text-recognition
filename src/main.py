@@ -70,10 +70,9 @@ if __name__ == "__main__":
 
         model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=env.charset)
         model.compile(optimizer=ioo[2])
-        model.summary(env.output)
 
-        checkpoint = model.set_callbacks(env.output)
-        model.load_checkpoint(checkpoint)
+        model.summary(logdir=env.output)
+        model.load_checkpoint(logdir=env.output)
 
         if args.train:
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -81,7 +80,7 @@ if __name__ == "__main__":
                                     steps_per_epoch=dtgen.train_steps,
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.valid_steps,
-                                    callbacks=model.callbacks,
+                                    callbacks=model.get_callbacks(logdir=env.output),
                                     shuffle=False,
                                     verbose=1)
 
@@ -106,16 +105,16 @@ if __name__ == "__main__":
                 lg.write(train_corpus)
 
         else:
-            pred, metric = model.predict_generator(generator=dtgen.next_test_batch(),
-                                                   steps=dtgen.test_steps,
-                                                   verbose=1)
+            pred, metrics = model.predict_generator(generator=dtgen.next_test_batch(),
+                                                    steps=dtgen.test_steps,
+                                                    verbose=1)
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}\n",
                 f"Metrics:",
-                f"Character Error Rate: {metric[0]:.4f}",
-                f"Word Error Rate:      {metric[1]:.4f}",
-                f"Sequence Error Rate:  {metric[2]:.4f}"
+                f"Character Error Rate: {metrics[0]:.4f}",
+                f"Word Error Rate:      {metrics[1]:.4f}",
+                f"Sequence Error Rate:  {metrics[2]:.4f}"
             ])
 
             pred_corpus = "\n".join([f"L: {l}\nP: {p}\n" for (l, p) in zip(pred[0], pred[1])])
