@@ -2,7 +2,7 @@
 
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
-from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU, ReLU
+from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU
 from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
@@ -21,29 +21,29 @@ def puigcerver(env):
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -68,7 +68,7 @@ def puigcerver(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, first_decay_steps=int(64000 / env.batch_size))
+    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=0.4, first_decay_steps=1000)
     opt = RMSprop(learning_rate=decay_lr)
 
     return (input_data, outrnn, opt)
@@ -88,40 +88,48 @@ def bluche(env):
 
     cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = ReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = ReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
-    cnn = GatedConv(nb_filters=16, kernel_size=(1,3), strides=(1,1))(cnn)
+    cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = ReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
-    cnn = GatedConv(nb_filters=32, kernel_size=(1,3), strides=(1,1))(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
+    cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
 
+    cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = ReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
-    cnn = GatedConv(nb_filters=64, kernel_size=(1,3), strides=(1,1))(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
+    cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
 
+    cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = ReLU()(cnn)
-    cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
+
+    cnn = MaxPooling2D(pool_size=(2,4), strides=(2,4), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+
     blstm = Dense(units=128)(blstm)
+    blstm = BatchNormalization(epsilon=0.001)(blstm)
+    blstm = LeakyReLU(alpha=0.01)(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
@@ -129,7 +137,7 @@ def bluche(env):
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, first_decay_steps=int(64000 / env.batch_size))
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=0.3, first_decay_steps=1000)
     opt = RMSprop(learning_rate=decay_lr)
 
     return (input_data, outrnn, opt)
@@ -154,8 +162,8 @@ A Tensorflow Keras layer implementing gated convolutions by Dauphin et al.
 class GatedConv(Conv2D):
     """Gated Convolutional Class"""
 
-    def __init__(self, nb_filters=64, kernel_size=(3, 3), **kwargs):
-        super(GatedConv, self).__init__(filters=nb_filters * 2, kernel_size=kernel_size, **kwargs)
+    def __init__(self, nb_filters, **kwargs):
+        super(GatedConv, self).__init__(filters=nb_filters * 2, **kwargs)
         self.nb_filters = nb_filters
 
     def call(self, inputs):

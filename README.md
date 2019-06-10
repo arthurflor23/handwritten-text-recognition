@@ -12,13 +12,13 @@ Data partitioning (train, validation, test) was performed following the methodol
 
 ## Datasets supported
 
-a. [Bentham Dataset](http://transcriptorium.eu/datasets/bentham-collection/)
+a. [Bentham](http://transcriptorium.eu/datasets/bentham-collection/)
 
 b. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
 
-c. [Rimes Dataset](http://www.a2ialab.com/doku.php?id=rimes_database:start)
+c. [Rimes](http://www.a2ialab.com/doku.php?id=rimes_database:start)
 
-d. [Saint Gall Database](http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/saint-gall-database)
+d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/saint-gall-database)
 
 ## Requirements
 

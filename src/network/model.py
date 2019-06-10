@@ -1,6 +1,6 @@
 """Handwritten Text Recognition Neural Network"""
 
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
+from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activation
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
 from tensorflow.keras.models import Model, model_from_json
@@ -104,32 +104,8 @@ class HTRModel:
         self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
         self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-    def get_loss_generator(self, generator, nb_batchs, verbose=False):
-        """
-        The generator must provide x as [input_sequences, label_sequences, inputs_lengths, labels_length]
-        :return: loss on the entire dataset_manager and the loss per data
-        """
-
-        loss_per_data = []
-
-        for k in range(nb_batchs):
-
-            data = next(generator)
-            x = data[0]
-            x_len = data[2]
-            y = data[1]
-            y_len = data[3]
-            batch_size = x.shape[0]
-
-            no_lab = True if 0 in y_len else False
-
-            if no_lab is False:
-                loss_data = self.model_train.predict([x, y, x_len, y_len], batch_size=batch_size, verbose=verbose)
-                loss_per_data += [elmt[0] for elmt in loss_data]
-
-        return np.sum(loss_per_data), loss_per_data
-
-    def fit_generator(self, generator,
+    def fit_generator(self,
+                      generator,
                       steps_per_epoch,
                       epochs=1,
                       verbose=1,
@@ -157,7 +133,7 @@ class HTRModel:
         out = self.model_train.fit_generator(generator, steps_per_epoch, epochs=epochs, verbose=verbose,
                                              callbacks=callbacks, validation_data=validation_data,
                                              validation_steps=validation_steps, class_weight=class_weight,
-                                             max_queue_size=max_queue_size, workers=workers, shuffle=True,
+                                             max_queue_size=max_queue_size, workers=workers, shuffle=shuffle,
                                              initial_epoch=initial_epoch)
 
         self.model_pred.set_weights(self.model_train.get_weights())
@@ -166,19 +142,20 @@ class HTRModel:
     def predict_generator(self,
                           generator,
                           steps,
+                          metrics=["cer", "wer", "ser"],
                           max_queue_size=10,
                           workers=1,
                           use_multiprocessing=False,
                           verbose=0):
-        """Generates predictions and evaluations (cer, wer, ser)
-        for the input samples from a data generator.
-
+        """Generates predictions for the input samples from a data generator.
         The generator should return the same kind of data as accepted by `predict_on_batch`.
 
         generator = DataGenerator class that returns:
-                        x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
-                        x_len = 1D array with the length of each data in batch_size
-                        y = Input data (bytes format) as a 2D Tensor (batch_size, max_label_len)
+            x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
+            x_len = 1D array with the length of each data in batch_size
+            y = Input data (sparse format) as a 3D Tensor (batch_size, max_input_len, dim_features)
+            y_len = 1D array with the length of each data in batch_size
+            y = Input data (bytes format) as a 2D Tensor (batch_size)
 
         # Arguments
             generator: Generator yielding batches of input samples
@@ -188,6 +165,11 @@ class HTRModel:
             steps:
                 Total number of steps (batches of samples)
                 to yield from `generator` before stopping.
+            metrics = list of metrics that are computed. This is elements among the 4 following metrics:
+                'loss' : compute the loss function on x
+                'cer' : compute the character error rate
+                'wer' : compute the word error rate
+                'ser' : compute the sequence error rate
             max_queue_size:
                 Maximum size for the generator queue.
             workers: Maximum number of processes to spin up
@@ -216,6 +198,7 @@ class HTRModel:
         self.model_pred._make_predict_function()
         is_sequence = isinstance(generator, Sequence)
 
+        loss, cer, wer, ser = [], [], [], []
         allab_outs, all_lab = [], []
         steps_done = 0
         enqueuer = None
@@ -236,6 +219,7 @@ class HTRModel:
                 generator_output = next(output_generator)
 
                 if isinstance(generator_output, tuple):
+                    # Compatibility with the generators used for training.
                     if len(generator_output) == 2:
                         x, _ = generator_output
                     elif len(generator_output) == 3:
@@ -244,12 +228,15 @@ class HTRModel:
                         raise ValueError("Output of generator should be a tuple `(x, y, sample_weight)` "
                                          "or `(x, y)`. Found: " + str(generator_output))
                 else:
+                    # Assumes a generator that only yields inputs (not targets and sample weights).
                     x = generator_output
 
-                [x_input, x_length, y] = x
+                [x_input, y, x_length, y_length, w] = x
+                outs = self.predict_on_batch([x_input, x_length])
 
-                predict = self.model_pred.predict_on_batch([x_input, x_length])
-                outs = [[pr for pr in pred if pr != -1] for pred in predict]
+                if metrics and "loss" in metrics:
+                    c_loss, c_loss_data = self.get_loss_on_batch(x)
+                    loss.append(c_loss / len(c_loss_data))
 
                 if not isinstance(outs, list):
                     outs = [outs]
@@ -260,8 +247,10 @@ class HTRModel:
                         all_lab.append([])
 
                 for i, out in enumerate(outs):
-                    all_lab[i].append(y[i])
-                    allab_outs[i].append([valab_out for valab_out in out if valab_out != -1])
+                    encode = [valab_out for valab_out in out if valab_out != -1]
+
+                    all_lab[i].append(w[i].decode())
+                    allab_outs[i].append("".join(self.charset[int(c)] for c in encode).strip())
 
                 steps_done += 1
                 if verbose == 1:
@@ -272,41 +261,76 @@ class HTRModel:
                 enqueuer.stop()
 
         batch_size = len(allab_outs)
-        nb_data = len(allab_outs[0])
-
         lab_out, pred_out = [], []
-        cer, wer, ser = [], [], []
+        metrics_out = []
 
-        for i in range(nb_data):
+        for i in range(len(allab_outs[0])):
             lab_out += [all_lab[b][i] for b in range(batch_size)]
             pred_out += [allab_outs[b][i] for b in range(batch_size)]
 
-        # decode
-        lab_out = np.array([b.decode() for b in lab_out])
-        pred_out = np.array([("".join(self.charset[int(c)] for c in l)).strip() for l in pred_out])
+        if metrics:
+            for (lab, pred) in zip(lab_out, pred_out):
+                if "cer" in metrics:
+                    pd, lb = list(pred), list(lab)
+                    length = max(len(pd), len(lb))
+                    dist = editdistance.eval(pd, lb)
+                    cer.append(dist / length)
 
-        # error rate calculations
-        for (lab, pred) in zip(lab_out, pred_out):
-            pd, lb = list(pred), list(lab)
-            length = max(len(pd), len(lb))
-            dist = editdistance.eval(pd, lb)
-            cer.append(dist / length)
+                if "wer" in metrics:
+                    pd, lb = pred.split(), lab.split()
+                    length = max(len(pd), len(lb))
+                    dist = editdistance.eval(pd, lb)
+                    wer.append(dist / length)
 
-            pd, lb = pred.split(), lab.split()
-            length = max(len(pd), len(lb))
-            dist = editdistance.eval(pd, lb)
-            wer.append(dist / length)
+                if "ser" in metrics:
+                    pd, lb = [pred], [lab]
+                    length = max(len(pd), len(lb))
+                    dist = editdistance.eval(pd, lb)
+                    ser.append(dist / length)
 
-            pd, lb = [pred], [lab]
-            length = max(len(pd), len(lb))
-            dist = editdistance.eval(pd, lb)
-            ser.append(dist / length)
+            if "loss" in metrics:
+                metrics_out.append(sum(loss) / len(loss))
+            if "cer" in metrics:
+                metrics_out.append(sum(cer) / len(cer))
+            if "wer" in metrics:
+                metrics_out.append(sum(wer) / len(wer))
+            if "ser" in metrics:
+                metrics_out.append(sum(ser) / len(ser))
 
-        cer = sum(cer) / len(cer)
-        wer = sum(wer) / len(wer)
-        ser = sum(ser) / len(ser)
+        return (lab_out, pred_out), metrics_out
 
-        return (lab_out, pred_out), (cer, wer, ser)
+    def predict_on_batch(self, x):
+        """Returns predictions for a single batch of samples.
+            # Arguments
+                x: [Input samples as a Numpy array, Input length as a numpy array]
+            # Returns
+                Numpy array(s) of predictions.
+        """
+
+        out = self.model_pred.predict_on_batch(x)
+        output = [[pr for pr in pred if pr != -1] for pred in out]
+
+        return output
+
+    def get_loss_on_batch(self, inputs, verbose=0):
+        """
+        Computation the loss
+        inputs is a list of 4 elements:
+            x_features, y_label, x_len, y_len (similarly to the CTC in tensorflow)
+        :return: Probabilities (output of the TimeDistributedDense layer)
+        """
+
+        x = inputs[0]
+        x_len = inputs[2]
+        y = inputs[1]
+        y_len = inputs[3]
+
+        no_lab = True if 0 in y_len else False
+
+        if no_lab is False:
+            loss_data = self.model_train.predict_on_batch([x, y, x_len, y_len])
+
+        return np.sum(loss_data), loss_data
 
     def save_model(self, path_dir, charset=None):
         """ Save a model in path_dir
@@ -482,8 +506,14 @@ class HTRModel:
 
         weights_file = model_checkpoint if model_checkpoint else self.model_checkpoint
         weights_file = os.path.join(logdir, weights_file)
+        log_file = os.path.join(logdir, "epochs.log")
 
         callbacks = [
+            CSVLogger(
+                filename=log_file,
+                separator=";",
+                append=True,
+            ),
             TensorBoard(
                 log_dir=logdir,
                 histogram_freq=1,

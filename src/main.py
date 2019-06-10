@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", default=False)
 
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
     env = Environment(args)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.valid_steps,
                                     callbacks=model.get_callbacks(logdir=env.output),
-                                    shuffle=False,
+                                    shuffle=True,
                                     verbose=1)
 
             loss = h.history['loss']
@@ -92,10 +92,10 @@ if __name__ == "__main__":
 
             train_corpus = "\n".join([
                 f"Total train images:      {dtgen.total_train}",
-                f"Total validation images: {dtgen.total_valid}\n",
-                f"Batch:                   {env.batch_size}",
-                f"Total epochs:            {len(loss)}\n",
-                f"Best epoch ({min_val_loss_i + 1})",
+                f"Total validation images: {dtgen.total_valid}",
+                f"Batch:                   {env.batch_size}\n",
+                f"Total epochs:            {len(loss)}",
+                f"Best epoch               {min_val_loss_i + 1}\n",
                 f"Training loss:           {loss[min_val_loss_i]:.4f}",
                 f"Validation loss:         {min_val_loss:.4f}"
             ])
@@ -105,23 +105,25 @@ if __name__ == "__main__":
                 lg.write(train_corpus)
 
         else:
-            pred, metrics = model.predict_generator(generator=dtgen.next_test_batch(),
-                                                    steps=dtgen.test_steps,
-                                                    verbose=1)
+            predict, evaluate = model.predict_generator(generator=dtgen.next_test_batch(),
+                                                        steps=dtgen.test_steps,
+                                                        metrics=["loss", "cer", "wer", "ser"],
+                                                        verbose=1)
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}\n",
                 f"Metrics:",
-                f"Character Error Rate: {metrics[0]:.4f}",
-                f"Word Error Rate:      {metrics[1]:.4f}",
-                f"Sequence Error Rate:  {metrics[2]:.4f}"
+                f"Test Loss:            {evaluate[0]:.4f}",
+                f"Character Error Rate: {evaluate[1]:.4f}",
+                f"Word Error Rate:      {evaluate[2]:.4f}",
+                f"Sequence Error Rate:  {evaluate[3]:.4f}"
             ])
-
-            pred_corpus = "\n".join([f"L: {l}\nP: {p}\n" for (l, p) in zip(pred[0], pred[1])])
 
             with open(os.path.join(env.output, "evaluate.txt"), "w") as lg:
                 print(f"\n{eval_corpus}")
                 lg.write(eval_corpus)
+
+            pred_corpus = "\n".join([f"L: {l}\nP: {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
             with open(os.path.join(env.output, "predict.txt"), "w") as lg:
                 lg.write(pred_corpus)
