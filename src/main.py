@@ -14,9 +14,8 @@ import cv2
 
 from data import preproc as pp
 from data.generator import DataGenerator
-from network import architecture as arch
+from network import architecture
 from network.model import HTRModel
-from environment import Environment
 
 
 if __name__ == "__main__":
@@ -24,32 +23,47 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--arch", type=str, default="bluche")
     parser.add_argument("--level", type=str, default="line")
-
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
-    env = Environment(args)
+    if args.level == "paragraph":
+        input_size = (1024, 1280, 1)
+        max_text_length = 1280
+    else:
+        input_size = (1024, 128, 1)
+        max_text_length = 128
+
+    raw_source = os.path.join("..", "raw", args.dataset)
+    hdf5_src = os.path.join("..", "data", f"{args.dataset}_{args.level}.hdf5")
+    output = os.path.join("..", "output", f"{args.dataset}_{args.arch}_{args.level}")
+    charset = "".join([chr(i) for i in range(32, 127)])
 
     if args.transform:
-        assert os.path.exists(env.raw_source)
+        assert os.path.exists(raw_source)
 
         print(f"The {args.dataset} dataset will be transformed...")
         package = f"transform.{args.dataset}"
         mod = importlib.import_module(package)
 
-        trans = mod.Transform(env, pp.preproc, pp.encode_ctc)
-        transform_func = getattr(trans, env.level)
-        transform_func()
+        trf = mod.Transform(source=raw_source,
+                            target=os.path.dirname(hdf5_src),
+                            input_size=input_size,
+                            charset=charset,
+                            max_text_length=max_text_length,
+                            preproc=pp.preproc,
+                            encode=pp.encode_ctc)
+
+        transform_function = getattr(trf, args.level)
+        transform_function()
         print(f"Transformation finished.")
 
     elif args.cv2:
-        with h5py.File(env.source, "r") as hf:
+        with h5py.File(hdf5_src, "r") as hf:
             dt = hf["train"]["dt"][:]
             gt_bytes = hf["train"]["gt_bytes"][:]
             gt_sparse = hf["train"]["gt_sparse"][:]
@@ -63,24 +77,29 @@ if __name__ == "__main__":
             cv2.waitKey(0)
 
     elif args.train or args.test:
-        dtgen = DataGenerator(env)
+        dtgen = DataGenerator(hdf5_src, args.batch_size, max_text_length)
 
-        network_func = getattr(arch, env.arch)
-        ioo = network_func(env)
+        network_func = getattr(architecture, args.arch)
+        ioo = network_func(input_size=input_size,
+                           output_size=len(charset),
+                           nb_steps=dtgen.train_steps)
 
-        model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=env.charset)
+        model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset)
         model.compile(optimizer=ioo[2])
 
-        model.summary(logdir=env.output)
-        model.load_checkpoint(logdir=env.output)
+        checkpoint = "checkpoint_weights.hdf5"
+        model.load_checkpoint(output, checkpoint)
 
         if args.train:
+            model.summary(output, "summary.txt")
+            callbacks = model.callbacks(logdir=output, hdf5_target=checkpoint)
+
             h = model.fit_generator(generator=dtgen.next_train_batch(),
-                                    epochs=env.epochs,
+                                    epochs=args.epochs,
                                     steps_per_epoch=dtgen.train_steps,
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.valid_steps,
-                                    callbacks=model.get_callbacks(logdir=env.output),
+                                    callbacks=callbacks,
                                     shuffle=True,
                                     verbose=1)
 
@@ -93,14 +112,14 @@ if __name__ == "__main__":
             train_corpus = "\n".join([
                 f"Total train images:      {dtgen.total_train}",
                 f"Total validation images: {dtgen.total_valid}",
-                f"Batch:                   {env.batch_size}\n",
+                f"Batch:                   {args.batch_size}\n",
                 f"Total epochs:            {len(loss)}",
                 f"Best epoch               {min_val_loss_i + 1}\n",
                 f"Training loss:           {loss[min_val_loss_i]:.4f}",
                 f"Validation loss:         {min_val_loss:.4f}"
             ])
 
-            with open(os.path.join(env.output, "train.txt"), "w") as lg:
+            with open(os.path.join(output, "train.txt"), "w") as lg:
                 print(f"\n{train_corpus}")
                 lg.write(train_corpus)
 
@@ -119,11 +138,11 @@ if __name__ == "__main__":
                 f"Sequence Error Rate:  {evaluate[3]:.4f}"
             ])
 
-            with open(os.path.join(env.output, "evaluate.txt"), "w") as lg:
+            with open(os.path.join(output, "evaluate.txt"), "w") as lg:
                 print(f"\n{eval_corpus}")
                 lg.write(eval_corpus)
 
             pred_corpus = "\n".join([f"L: {l}\nP: {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
-            with open(os.path.join(env.output, "predict.txt"), "w") as lg:
+            with open(os.path.join(output, "predict.txt"), "w") as lg:
                 lg.write(pred_corpus)

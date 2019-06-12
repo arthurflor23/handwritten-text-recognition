@@ -11,11 +11,11 @@ import h5py
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, env):
-        self.batch_size = env.batch_size
-        self.max_text_length = env.max_text_length
+    def __init__(self, hdf5_src, batch_size, max_text_length):
+        self.batch_size = batch_size
+        self.max_text_length = max_text_length
 
-        with h5py.File(env.source, "r") as hf:
+        with h5py.File(hdf5_src, "r") as hf:
             self.dataset = dict()
 
             for partition in hf.keys():
@@ -65,8 +65,8 @@ class DataGenerator():
             y_train = self.dataset["train"]["gt_sparse"][index:until]
 
             x_train, y_train, _ = self.fill_batch("train", self.total_train, x_train, y_train, w=None)
-            x_train = normalization(x_train, rotation_range=0.5, zoom_range=0.01,
-                                    height_shift_range=0.01, width_shift_range=0.01)
+            x_train = normalization(x_train, rotation_range=2, scale_range=0.04,
+                                    height_shift_range=0.01, width_shift_range=0.04)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])

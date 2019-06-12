@@ -14,21 +14,21 @@ import numpy as np
 import cv2
 
 
-def normalization(imgs, rotation_range=0, zoom_range=0, height_shift_range=0, width_shift_range=0):
-    """Normalization with data augmentation if required (rotate, width and height shift and zoom/scale)"""
+def normalization(imgs, rotation_range=0, scale_range=0, height_shift_range=0, width_shift_range=0):
+    """Normalization with data augmentation if required (rotate, width and height shift and scale/scale)"""
 
     imgs = imgs.astype(np.float32)
     _, h, w = imgs.shape
-    dt_aug = (rotation_range != 0 or zoom_range != 0 or height_shift_range != 0 or width_shift_range != 0)
+    dt_aug = (rotation_range != 0 or scale_range != 0 or height_shift_range != 0 or width_shift_range != 0)
 
     if dt_aug:
         rotation = np.random.uniform(-rotation_range, rotation_range)
-        zoom = np.random.uniform(1 - zoom_range, 1 + zoom_range)
+        scale = np.random.uniform(1 - scale_range, 1)
         height_shift = np.random.uniform(0, height_shift_range)
         width_shift = np.random.uniform(0, width_shift_range)
 
         trans_map = np.float32([[1, 0, width_shift * w], [0, 1, height_shift * h]])
-        rot_map = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, zoom)
+        rot_map = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, scale)
 
         trans_map_aff = np.r_[trans_map, [[0, 0, 1]]]
         rot_map_aff = np.r_[rot_map, [[0, 0, 1]]]

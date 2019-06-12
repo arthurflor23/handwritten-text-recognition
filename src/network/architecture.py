@@ -2,12 +2,12 @@
 
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
-from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU
+from tensorflow.keras.layers import TimeDistributed, Activation, PReLU
 from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
 
-def puigcerver(env):
+def puigcerver(input_size, output_size, nb_steps):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
         Reference:
@@ -17,33 +17,33 @@ def puigcerver(env):
             IAPR International Conference on, vol. 1, pp. 67–72. IEEE (2017)
     """
 
-    input_data = Input(name="input", shape=env.input_size)
+    input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -64,17 +64,17 @@ def puigcerver(env):
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
-    blstm = TimeDistributed(Dense(units=(len(env.charset) + 1)))(blstm)
+    blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, alpha=0.4, first_decay_steps=1000)
-    opt = RMSprop(learning_rate=decay_lr)
+    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, m_mul=0.9, alpha=0.4,
+                                   first_decay_steps=(nb_steps * 10))
 
-    return (input_data, outrnn, opt)
+    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
 
 
-def bluche(env):
+def bluche(input_size, output_size, nb_steps):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
         Reference:
@@ -84,22 +84,22 @@ def bluche(env):
             14th IAPR International Conference on, vol. 1, pp. 646–651, 2017.
     """
 
-    input_data = Input(name="input", shape=env.input_size)
+    input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
@@ -108,7 +108,7 @@ def bluche(env):
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
@@ -117,7 +117,7 @@ def bluche(env):
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = MaxPooling2D(pool_size=(2,4), strides=(2,4), padding="valid")(cnn)
 
@@ -126,21 +126,18 @@ def bluche(env):
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-
     blstm = Dense(units=128)(blstm)
-    blstm = BatchNormalization(epsilon=0.001)(blstm)
-    blstm = LeakyReLU(alpha=0.01)(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = TimeDistributed(Dense(units=(len(env.charset) + 1)))(blstm)
+    blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
 
     outrnn = Activation(activation="softmax")(blstm)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=0.3, first_decay_steps=1000)
-    opt = RMSprop(learning_rate=decay_lr)
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, m_mul=0.9, alpha=0.3,
+                                   first_decay_steps=(nb_steps * 10))
 
-    return (input_data, outrnn, opt)
+    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
 
 
 """

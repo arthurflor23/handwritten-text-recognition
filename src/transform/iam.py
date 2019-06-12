@@ -11,8 +11,18 @@ import os
 
 class Transform():
 
-    def __init__(self, env, preproc, encode):
-        self.env = env
+    def __init__(self,
+                 source,
+                 target,
+                 input_size,
+                 charset,
+                 max_text_length,
+                 preproc, encode):
+        self.source = source
+        self.target = target
+        self.input_size = input_size
+        self.charset = charset
+        self.max_text_length = max_text_length
         self.preproc = preproc
         self.encode = encode
 
@@ -32,7 +42,7 @@ class Transform():
         """Make process of line hdf5"""
 
         partition = self._get_partitions()
-        lines = open(os.path.join(self.env.raw_source, "ascii", "lines.txt")).read().splitlines()
+        lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
         gt_dict = dict()
 
         for line in lines:
@@ -57,14 +67,14 @@ class Transform():
             if len(gt_dict[line]) > 0:
                 split = line.split("-")
                 path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
-                path = os.path.join(self.env.raw_source, "lines", path)
+                path = os.path.join(self.source, "lines", path)
 
                 dt.append(path)
                 gt.append(gt_dict[line])
 
         pool = Pool()
-        dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
-        gt_sparse = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
+        dt = pool.map(partial(self.preproc, img_size=self.input_size, read_first=True), dt)
+        gt_sparse = pool.map(partial(self.encode, charset=self.charset, mtl=self.max_text_length), gt)
         pool.close()
         pool.join()
 
@@ -73,8 +83,8 @@ class Transform():
     def _build_paragraphs(self, partition, group):
         """Preprocessing and build paragraph tasks"""
 
-        xml = os.path.join(self.env.raw_source, "xml")
-        form = os.path.join(self.env.raw_source, "forms")
+        xml = os.path.join(self.source, "xml")
+        form = os.path.join(self.source, "forms")
         pool = Pool()
 
         dt, gt, gt_sparse = zip(*pool.map(partial(self._extract, xml_path=xml, form_path=form), partition[group]))
@@ -107,15 +117,15 @@ class Transform():
         page = cv2.imread(png, cv2.IMREAD_GRAYSCALE)
         page = page[top:bottom, 0:-1]
 
-        dt.append(self.preproc(img=page, img_size=self.env.input_size, read_first=False))
-        gt_sparse.append(self.encode(text=gt, charset=self.env.charset, mtl=self.env.max_text_length))
+        dt.append(self.preproc(img=page, img_size=self.input_size, read_first=False))
+        gt_sparse.append(self.encode(text=gt, charset=self.charset, mtl=self.max_text_length))
 
         return dt, gt, gt_sparse
 
     def _get_partitions(self):
         """Read the partitions file"""
 
-        pt_path = os.path.join(self.env.raw_source, "largeWriterIndependentTextLineRecognitionTask")
+        pt_path = os.path.join(self.source, "largeWriterIndependentTextLineRecognitionTask")
         partition = {
             "train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
             "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
@@ -126,9 +136,9 @@ class Transform():
     def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
-        os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
+        os.makedirs(os.path.dirname(self.target), exist_ok=True)
 
-        with h5py.File(self.env.source, "a") as hf:
+        with h5py.File(self.target, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)

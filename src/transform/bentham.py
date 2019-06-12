@@ -9,10 +9,18 @@ import os
 
 class Transform():
 
-    def __init__(self, env, preproc, encode):
-        self.env = env
-        self.env.raw_source = os.path.join(self.env.raw_source, "BenthamDatasetR0-GT")
-
+    def __init__(self,
+                 source,
+                 target,
+                 input_size,
+                 charset,
+                 max_text_length,
+                 preproc, encode):
+        self.source = os.path.join(source, "BenthamDatasetR0-GT")
+        self.target = target
+        self.input_size = input_size
+        self.charset = charset
+        self.max_text_length = max_text_length
         self.preproc = preproc
         self.encode = encode
 
@@ -25,7 +33,7 @@ class Transform():
         """Make process of line hdf5"""
 
         partition = self._get_partitions()
-        path = os.path.join(self.env.raw_source, "Transcriptions")
+        path = os.path.join(self.source, "Transcriptions")
 
         gt = os.listdir(path=path)
         gt_dict = dict()
@@ -42,7 +50,7 @@ class Transform():
     def _build_lines(self, gt_dict, partition, group):
         """Preprocessing and build line tasks"""
 
-        path = os.path.join(self.env.raw_source, "Images", "Lines")
+        path = os.path.join(self.source, "Images", "Lines")
         dt, gt = [], []
 
         for line in partition[group]:
@@ -51,8 +59,8 @@ class Transform():
                 gt.append(gt_dict[line])
 
         pool = Pool()
-        dt = pool.map(partial(self.preproc, img_size=self.env.input_size, read_first=True), dt)
-        gt_sparse = pool.map(partial(self.encode, charset=self.env.charset, mtl=self.env.max_text_length), gt)
+        dt = pool.map(partial(self.preproc, img_size=self.input_size, read_first=True), dt)
+        gt_sparse = pool.map(partial(self.encode, charset=self.charset, mtl=self.max_text_length), gt)
         pool.close()
         pool.join()
 
@@ -61,7 +69,7 @@ class Transform():
     def _get_partitions(self):
         """Read the partitions file"""
 
-        pt_path = os.path.join(self.env.raw_source, "Partitions")
+        pt_path = os.path.join(self.source, "Partitions")
         partition = {
             "train": open(os.path.join(pt_path, "TrainLines.lst")).read().splitlines(),
             "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
@@ -72,9 +80,9 @@ class Transform():
     def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
-        os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
+        os.makedirs(os.path.dirname(self.target), exist_ok=True)
 
-        with h5py.File(self.env.source, "a") as hf:
+        with h5py.File(self.target, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)

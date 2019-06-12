@@ -11,8 +11,18 @@ import os
 
 class Transform():
 
-    def __init__(self, env, preproc, encode):
-        self.env = env
+    def __init__(self,
+                 source,
+                 target,
+                 input_size,
+                 charset,
+                 max_text_length,
+                 preproc, encode):
+        self.source = source
+        self.target = target
+        self.input_size = input_size
+        self.charset = charset
+        self.max_text_length = max_text_length
         self.preproc = preproc
         self.encode = encode
 
@@ -45,11 +55,11 @@ class Transform():
     def _extract(self, item):
         """Extract lines from the pages"""
 
-        dt = cv2.imread(os.path.join(self.env.raw_source, item[0]), cv2.IMREAD_GRAYSCALE)
+        dt = cv2.imread(os.path.join(self.raw_source, item[0]), cv2.IMREAD_GRAYSCALE)
         dt = dt[item[2][0]:item[2][1], item[2][2]:item[2][3]]
 
-        dt = self.preproc(img=dt, img_size=self.env.input_size, read_first=False)
-        gt_sparse = self.encode(text=item[1], charset=self.env.charset, mtl=self.env.max_text_length)
+        dt = self.preproc(img=dt, img_size=self.input_size, read_first=False)
+        gt_sparse = self.encode(text=item[1], charset=self.charset, mtl=self.max_text_length)
 
         return dt, item[1], gt_sparse
 
@@ -57,7 +67,7 @@ class Transform():
         """Read the partitions file"""
 
         def generate(xml, subpath, partition, validation=False):
-            xml = ET.parse(os.path.join(self.env.raw_source, xml)).getroot()
+            xml = ET.parse(os.path.join(self.raw_source, xml)).getroot()
             dt = []
 
             for page_tag in xml:
@@ -95,9 +105,9 @@ class Transform():
     def _save(self, group, dt, gt, gt_sparse):
         """Save hdf5 file"""
 
-        os.makedirs(os.path.dirname(self.env.source), exist_ok=True)
+        os.makedirs(os.path.dirname(self.target), exist_ok=True)
 
-        with h5py.File(self.env.source, "a") as hf:
+        with h5py.File(self.target, "a") as hf:
             hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
             hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)

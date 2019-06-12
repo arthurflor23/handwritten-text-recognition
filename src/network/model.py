@@ -50,7 +50,6 @@ class HTRModel:
         """
         self.model_train = None
         self.model_pred = None
-        self.model_checkpoint = "checkpoint_weights.hdf5"
 
         if not isinstance(inputs, list):
             self.inputs = [inputs]
@@ -361,16 +360,14 @@ class HTRModel:
         p.dump(param)
         output.close()
 
-    def load_checkpoint(self, logdir, model_checkpoint=None):
+    def load_checkpoint(self, output, hdf5):
         """ Load a model with checkpoint file
         load model_train, model_pred from hdf5
         """
+        target = os.path.join(output, hdf5)
 
-        weights_file = model_checkpoint if model_checkpoint else self.model_checkpoint
-        weights_file = os.path.join(logdir, weights_file)
-
-        if os.path.isfile(weights_file):
-            self.model_train.load_weights(weights_file)
+        if os.path.isfile(target):
+            self.model_train.load_weights(target)
             self.model_pred.set_weights(self.model_train.get_weights())
 
     def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
@@ -501,53 +498,44 @@ class HTRModel:
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-    def get_callbacks(self, logdir, model_checkpoint=None):
+    def callbacks(self, logdir, hdf5_target):
         os.makedirs(os.path.join(logdir), exist_ok=True)
-
-        weights_file = model_checkpoint if model_checkpoint else self.model_checkpoint
-        weights_file = os.path.join(logdir, weights_file)
-        log_file = os.path.join(logdir, "epochs.log")
-
         callbacks = [
             CSVLogger(
-                filename=log_file,
-                separator=";",
-                append=True,
-            ),
+                filename=os.path.join(logdir, "epochs.log"),
+                separator=';',
+                append=True),
             TensorBoard(
                 log_dir=logdir,
                 histogram_freq=1,
                 profile_batch=0,
                 write_graph=True,
                 write_images=False,
-                update_freq="epoch"
-            ),
+                update_freq="epoch"),
             ModelCheckpoint(
-                filepath=weights_file,
+                filepath=os.path.join(logdir, hdf5_target),
                 period=1,
                 monitor="val_loss",
                 save_best_only=True,
                 save_weights_only=False,
-                verbose=1
-            ),
+                verbose=1),
             EarlyStopping(
                 monitor="val_loss",
                 min_delta=0.0001,
                 patience=80,
                 restore_best_weights=True,
-                verbose=1,
-            )
+                verbose=1)
         ]
 
         return callbacks
 
-    def summary(self, logdir=None):
+    def summary(self, output, target=None):
         """Show/Save model structure (summary)"""
 
-        if logdir is not None:
-            os.makedirs(logdir, exist_ok=True)
+        if target is not None:
+            os.makedirs(output, exist_ok=True)
 
-            with open(os.path.join(logdir, "summary.txt"), "w") as f:
+            with open(os.path.join(output, target), "w") as f:
                 with redirect_stdout(f):
                     self.model_train.summary()
         self.model_train.summary()
