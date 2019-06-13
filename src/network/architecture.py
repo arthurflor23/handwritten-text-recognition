@@ -2,12 +2,12 @@
 
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
-from tensorflow.keras.layers import TimeDistributed, Activation, PReLU
+from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU, PReLU
 from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
 
-def puigcerver(input_size, output_size, nb_steps):
+def puigcerver(input_size, output_size, **kwargs):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
         Reference:
@@ -21,29 +21,29 @@ def puigcerver(input_size, output_size, nb_steps):
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -64,17 +64,15 @@ def puigcerver(input_size, output_size, nb_steps):
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
-    blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
+    blstm = Dense(units=(output_size + 1))(blstm)
 
     outrnn = Activation(activation="softmax")(blstm)
+    optimizer = RMSprop(learning_rate=3e-4)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=3e-4, m_mul=0.9, alpha=0.4,
-                                   first_decay_steps=(nb_steps * 10))
-
-    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
+    return (input_data, outrnn, optimizer)
 
 
-def bluche(input_size, output_size, nb_steps):
+def bluche(input_size, output_size, **kwargs):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
         Reference:
@@ -86,58 +84,101 @@ def bluche(input_size, output_size, nb_steps):
 
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Activation(activation="tanh")(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Activation(activation="tanh")(cnn)
 
     cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Activation(activation="tanh")(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Activation(activation="tanh")(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(epsilon=0.001)(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Activation(activation="tanh")(cnn)
 
-    cnn = MaxPooling2D(pool_size=(2,4), strides=(2,4), padding="valid")(cnn)
+    cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+
+    blstm = Dense(units=128)(blstm)
+    blstm = Activation(activation="tanh")(blstm)
+
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+    blstm = Dense(units=(output_size + 1))(blstm)
+
+    outrnn = Activation(activation="softmax")(blstm)
+    optimizer = RMSprop(learning_rate=4e-4)
+
+    return (input_data, outrnn, optimizer)
+
+
+def flor(input_size, output_size, **kwargs):
+    input_data = Input(name="input", shape=input_size)
+
+    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, renorm=True)(cnn)
+
+    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = Dropout(rate=0.2)(cnn)
+    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = Dropout(rate=0.2)(cnn)
+    # cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = Dropout(rate=0.2)(cnn)
+    # cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = Dropout(rate=0.2)(cnn)
+    # cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+
+    # cnn = MaxPooling2D(pool_size=(2,4), strides=(2,4), padding="valid")(cnn)
+
+    shape = cnn.get_shape()
+    blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
+
+    # blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=128)(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
+    # blstm = Dropout(rate=0.5)(blstm)
+    # blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+    # blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
 
     outrnn = Activation(activation="softmax")(blstm)
+    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=0.3,
+                                   first_decay_steps=(kwargs.get("nb_steps") * 10))
+    optimizer = RMSprop(learning_rate=decay_lr)
 
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, m_mul=0.9, alpha=0.3,
-                                   first_decay_steps=(nb_steps * 10))
-
-    return (input_data, outrnn, RMSprop(learning_rate=decay_lr))
+    return (input_data, outrnn, optimizer)
 
 
 """

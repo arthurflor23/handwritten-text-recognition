@@ -55,7 +55,7 @@ class Transform():
     def _extract(self, item):
         """Extract lines from the pages"""
 
-        dt = cv2.imread(os.path.join(self.raw_source, item[0]), cv2.IMREAD_GRAYSCALE)
+        dt = cv2.imread(os.path.join(self.source, item[0]), cv2.IMREAD_GRAYSCALE)
         dt = dt[item[2][0]:item[2][1], item[2][2]:item[2][3]]
 
         dt = self.preproc(img=dt, img_size=self.input_size, read_first=False)
@@ -67,7 +67,7 @@ class Transform():
         """Read the partitions file"""
 
         def generate(xml, subpath, partition, validation=False):
-            xml = ET.parse(os.path.join(self.raw_source, xml)).getroot()
+            xml = ET.parse(os.path.join(self.source, xml)).getroot()
             dt = []
 
             for page_tag in xml:

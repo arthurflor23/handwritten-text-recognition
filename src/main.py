@@ -1,9 +1,14 @@
 """
 Provides options via the command line to perform project tasks.
-    --transform: transform dataset to the HDF5 file
-    --cv2: visualize sample from transformed dataset
-    --train: train model with the dataset argument
-    --test: test model with the dataset argument
+* `--dataset`: dataset name (bentham, iam, rimes, saintgall)
+* `--arch`: network to be used (puigcerver, bluche, flor)
+* `--aug`: enable data augmentation in train mode
+* `--transform`: transform dataset to the HDF5 file
+* `--cv2`: visualize sample from transformed dataset
+* `--train`: train model with the dataset argument
+* `--test`: evaluate and predict model with the dataset argument
+* `--epochs`: number of epochs
+* `--batch_size`: number of batches
 """
 
 import os
@@ -21,26 +26,22 @@ from network.model import HTRModel
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--arch", type=str, default="bluche")
-    parser.add_argument("--level", type=str, default="line")
+    parser.add_argument("--arch", type=str, default="flor")
+    parser.add_argument("--aug", action="store_true", default=False)
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
-    if args.level == "paragraph":
-        input_size = (1024, 1280, 1)
-        max_text_length = 1280
-    else:
-        input_size = (1024, 128, 1)
-        max_text_length = 128
-
     raw_source = os.path.join("..", "raw", args.dataset)
-    hdf5_src = os.path.join("..", "data", f"{args.dataset}_{args.level}.hdf5")
-    output = os.path.join("..", "output", f"{args.dataset}_{args.arch}_{args.level}")
+    hdf5_src = os.path.join("..", "data", f"{args.dataset}.hdf5")
+    output = os.path.join("..", "output", args.dataset, f"{args.arch}{'_aug' if args.aug else ''}")
+
+    input_size = (1024, 128, 1)
+    max_text_length = 128
     charset = "".join([chr(i) for i in range(32, 127)])
 
     if args.transform:
@@ -50,16 +51,14 @@ if __name__ == "__main__":
         package = f"transform.{args.dataset}"
         mod = importlib.import_module(package)
 
-        trf = mod.Transform(source=raw_source,
-                            target=os.path.dirname(hdf5_src),
-                            input_size=input_size,
-                            charset=charset,
-                            max_text_length=max_text_length,
-                            preproc=pp.preproc,
-                            encode=pp.encode_ctc)
-
-        transform_function = getattr(trf, args.level)
-        transform_function()
+        transform = mod.Transform(source=raw_source,
+                                  target=hdf5_src,
+                                  input_size=input_size,
+                                  charset=charset,
+                                  max_text_length=max_text_length,
+                                  preproc=pp.preproc,
+                                  encode=pp.encode_ctc)
+        transform.line()
         print(f"Transformation finished.")
 
     elif args.cv2:
@@ -77,7 +76,10 @@ if __name__ == "__main__":
             cv2.waitKey(0)
 
     elif args.train or args.test:
-        dtgen = DataGenerator(hdf5_src, args.batch_size, max_text_length)
+        dtgen = DataGenerator(hdf5_src=hdf5_src,
+                              batch_size=args.batch_size,
+                              max_text_length=max_text_length,
+                              augmentation=args.aug)
 
         network_func = getattr(architecture, args.arch)
         ioo = network_func(input_size=input_size,

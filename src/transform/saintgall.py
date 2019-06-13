@@ -33,7 +33,7 @@ class Transform():
         """Make process of line hdf5"""
 
         partition = self._get_partitions()
-        gt = os.path.join(self.raw_source, "ground_truth")
+        gt = os.path.join(self.source, "ground_truth")
         lines = open(os.path.join(gt, "transcription.txt")).read().splitlines()
         gt_dict = dict()
 
@@ -52,7 +52,7 @@ class Transform():
     def _build_lines(self, gt_dict, partition, group):
         """Preprocessing and build line tasks"""
 
-        path = os.path.join(self.raw_source, "data", "line_images_normalized")
+        path = os.path.join(self.source, "data", "line_images_normalized")
         dt, gt = [], []
 
         for line in partition[group]:
@@ -77,7 +77,7 @@ class Transform():
     def _get_partitions(self):
         """Read the partitions file"""
 
-        pt_path = os.path.join(self.raw_source, "sets")
+        pt_path = os.path.join(self.source, "sets")
         partition = {
             "train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
             "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),

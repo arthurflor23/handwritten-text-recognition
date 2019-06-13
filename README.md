@@ -7,7 +7,7 @@ Data partitioning (train, validation, test) was performed following the methodol
 **Notes**:
 1. All **references** are commented in the code.
 2. This project **doesn't offer** post-processing, such as N-gram Language Model.
-3. Sample results (txt files reports) can be find in **doc** folder, divided by architecture/dataset.
+3. Sample results (txt files reports) can be find in **doc** folder, divided by dataset/architecture.
 4. For more information and demo run step by step, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
 
 ## Datasets supported
@@ -30,12 +30,14 @@ d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 ## Command line arguments
 
 * `--dataset`: dataset name (bentham, iam, rimes, saintgall)
-* `--arch`: network to be used (bluche, puigcerver)
-* `--level`: recognition level (line, paragraph::experimental)
+* `--arch`: network to be used (puigcerver, bluche, flor)
+* `--aug`: enable data augmentation in train mode
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
 * `--train`: train model with the dataset argument
 * `--test`: evaluate and predict model with the dataset argument
+* `--epochs`: number of epochs
+* `--batch_size`: number of batches
 
 ## Tutorial (Google Colab/Drive)
 
