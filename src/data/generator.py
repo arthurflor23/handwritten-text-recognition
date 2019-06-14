@@ -3,7 +3,7 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
-from data.preproc import normalization
+import data.preproc as pp
 import numpy as np
 import h5py
 
@@ -11,10 +11,9 @@ import h5py
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, hdf5_src, batch_size, max_text_length, augmentation=False):
+    def __init__(self, hdf5_src, batch_size, max_text_length):
         self.batch_size = batch_size
         self.max_text_length = max_text_length
-        self.augmentation = augmentation
 
         with h5py.File(hdf5_src, "r") as hf:
             self.dataset = dict()
@@ -66,12 +65,14 @@ class DataGenerator():
             y_train = self.dataset["train"]["gt_sparse"][index:until]
 
             x_train, y_train, _ = self.fill_batch("train", self.total_train, x_train, y_train, w=None)
-
-            if self.augmentation:
-                x_train = normalization(x_train, rotation_range=2.5, scale_range=0.05,
-                                        height_shift_range=0.025, width_shift_range=0.05)
-            else:
-                x_train = normalization(x_train)
+            x_train = pp.augmentation(x_train,
+                                      rotation_range=1.5,
+                                      scale_range=0.05,
+                                      height_shift_range=0.025,
+                                      width_shift_range=0.05,
+                                      erode_range=5,
+                                      dilate_range=3)
+            x_train = pp.normalization(x_train)
 
             x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
@@ -101,7 +102,7 @@ class DataGenerator():
             y_valid = self.dataset["valid"]["gt_sparse"][index:until]
 
             x_valid, y_valid, _ = self.fill_batch("valid", self.total_valid, x_valid, y_valid, w=None)
-            x_valid = normalization(x_valid)
+            x_valid = pp.normalization(x_valid)
 
             x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_valid_len = np.asarray([len(np.trim_zeros(y_valid[i])) for i in range(self.batch_size)])
@@ -132,7 +133,7 @@ class DataGenerator():
             w_test = self.dataset["test"]["gt_bytes"][index:until]
 
             x_test, y_test, w_test = self.fill_batch("test", self.total_test, x_test, y_test, w_test)
-            x_test = normalization(x_test)
+            x_test = pp.normalization(x_test)
 
             x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
             y_test_len = np.asarray([len(np.trim_zeros(y_test[i])) for i in range(self.batch_size)])

@@ -2,7 +2,6 @@
 Provides options via the command line to perform project tasks.
 * `--dataset`: dataset name (bentham, iam, rimes, saintgall)
 * `--arch`: network to be used (puigcerver, bluche, flor)
-* `--aug`: enable data augmentation in train mode
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
 * `--train`: train model with the dataset argument
@@ -16,6 +15,7 @@ import importlib
 import argparse
 import h5py
 import cv2
+import time
 
 from data import preproc as pp
 from data.generator import DataGenerator
@@ -27,18 +27,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--arch", type=str, default="flor")
-    parser.add_argument("--aug", action="store_true", default=False)
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
     raw_source = os.path.join("..", "raw", args.dataset)
     hdf5_src = os.path.join("..", "data", f"{args.dataset}.hdf5")
-    output = os.path.join("..", "output", args.dataset, f"{args.arch}{'_aug' if args.aug else ''}")
+    output = os.path.join("..", "output", f"{args.dataset}_{args.arch}")
 
     input_size = (1024, 128, 1)
     max_text_length = 128
@@ -78,8 +77,7 @@ if __name__ == "__main__":
     elif args.train or args.test:
         dtgen = DataGenerator(hdf5_src=hdf5_src,
                               batch_size=args.batch_size,
-                              max_text_length=max_text_length,
-                              augmentation=args.aug)
+                              max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
         ioo = network_func(input_size=input_size,
@@ -96,6 +94,7 @@ if __name__ == "__main__":
             model.summary(output, "summary.txt")
             callbacks = model.callbacks(logdir=output, hdf5_target=checkpoint)
 
+            start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
                                     epochs=args.epochs,
                                     steps_per_epoch=dtgen.train_steps,
@@ -104,6 +103,7 @@ if __name__ == "__main__":
                                     callbacks=callbacks,
                                     shuffle=True,
                                     verbose=1)
+            total_time = time.time() - start_time
 
             loss = h.history['loss']
             val_loss = h.history['val_loss']
@@ -112,13 +112,15 @@ if __name__ == "__main__":
             min_val_loss_i = val_loss.index(min_val_loss)
 
             train_corpus = "\n".join([
-                f"Total train images:      {dtgen.total_train}",
-                f"Total validation images: {dtgen.total_valid}",
-                f"Batch:                   {args.batch_size}\n",
-                f"Total epochs:            {len(loss)}",
-                f"Best epoch               {min_val_loss_i + 1}\n",
-                f"Training loss:           {loss[min_val_loss_i]:.4f}",
-                f"Validation loss:         {min_val_loss:.4f}"
+                f"Total train images:       {dtgen.total_train}",
+                f"Total validation images:  {dtgen.total_valid}",
+                f"Batch:                    {args.batch_size}\n",
+                f"Total time:               {total_time / 60} minutes",
+                f"Average time per epoch:   {total_time / len(loss)} seconds\n",
+                f"Total epochs:             {len(loss)}",
+                f"Best epoch                {min_val_loss_i + 1}\n",
+                f"Training loss:            {loss[min_val_loss_i]:.4f}",
+                f"Validation loss:          {min_val_loss:.4f}"
             ])
 
             with open(os.path.join(output, "train.txt"), "w") as lg:

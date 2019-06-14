@@ -2,7 +2,7 @@
 
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense, Multiply
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D, Reshape
-from tensorflow.keras.layers import TimeDistributed, Activation, LeakyReLU, PReLU
+from tensorflow.keras.layers import Activation, LeakyReLU, PReLU
 from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
@@ -65,8 +65,8 @@ def puigcerver(input_size, output_size, **kwargs):
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Dense(units=(output_size + 1))(blstm)
-
     outrnn = Activation(activation="softmax")(blstm)
+
     optimizer = RMSprop(learning_rate=3e-4)
 
     return (input_data, outrnn, optimizer)
@@ -116,9 +116,10 @@ def bluche(input_size, output_size, **kwargs):
     blstm = Activation(activation="tanh")(blstm)
 
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = Dense(units=(output_size + 1))(blstm)
 
+    blstm = Dense(units=(output_size + 1))(blstm)
     outrnn = Activation(activation="softmax")(blstm)
+
     optimizer = RMSprop(learning_rate=4e-4)
 
     return (input_data, outrnn, optimizer)

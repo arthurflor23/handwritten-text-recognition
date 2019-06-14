@@ -31,13 +31,12 @@ d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 
 * `--dataset`: dataset name (bentham, iam, rimes, saintgall)
 * `--arch`: network to be used (puigcerver, bluche, flor)
-* `--aug`: enable data augmentation in train mode
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
 * `--train`: train model with the dataset argument
 * `--test`: evaluate and predict model with the dataset argument
 * `--epochs`: number of epochs
-* `--batch_size`: number of batches
+* `--batch_size`: number of the size of each batch
 
 ## Tutorial (Google Colab/Drive)
 
