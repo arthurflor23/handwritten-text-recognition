@@ -7,6 +7,59 @@ from tensorflow.keras.experimental import CosineDecayRestarts
 from tensorflow.keras.optimizers import RMSprop
 
 
+def bluche(input_size, output_size, **kwargs):
+    """
+    Gated Convolucional Recurrent Neural Network by Bluche et al.
+        Reference:
+            Bluche, T., Messina, R.: Gated convolutional recurrent
+            neural networks for multilingual handwriting recognition.
+            In: Document Analysis and Recognition (ICDAR), 2017
+            14th IAPR International Conference on, vol. 1, pp. 646–651, 2017.
+    """
+
+    input_data = Input(name="input", shape=input_size)
+
+    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Activation(activation="tanh")(cnn)
+
+    cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Activation(activation="tanh")(cnn)
+
+    cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Activation(activation="tanh")(cnn)
+
+    cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+
+    cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Activation(activation="tanh")(cnn)
+
+    cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+
+    cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Activation(activation="tanh")(cnn)
+
+    cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
+
+    shape = cnn.get_shape()
+    blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
+
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+
+    blstm = Dense(units=128)(blstm)
+    blstm = Activation(activation="tanh")(blstm)
+
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
+
+    blstm = Dense(units=(output_size + 1))(blstm)
+    outrnn = Activation(activation="softmax")(blstm)
+
+    optimizer = RMSprop(learning_rate=4e-4)
+
+    return (input_data, outrnn, optimizer)
+
+
 def puigcerver(input_size, output_size, **kwargs):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
@@ -72,112 +125,64 @@ def puigcerver(input_size, output_size, **kwargs):
     return (input_data, outrnn, optimizer)
 
 
-def bluche(input_size, output_size, **kwargs):
-    """
-    Gated Convolucional Recurrent Neural Network by Bluche et al.
-        Reference:
-            Bluche, T., Messina, R.: Gated convolutional recurrent
-            neural networks for multilingual handwriting recognition.
-            In: Document Analysis and Recognition (ICDAR), 2017
-            14th IAPR International Conference on, vol. 1, pp. 646–651, 2017.
-    """
-
+def flor(input_size, output_size, **kwargs):
     input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
-    cnn = Activation(activation="tanh")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    cnn = Activation(activation="tanh")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, renorm=True)(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = Activation(activation="tanh")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
+    # cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
 
+    # cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    cnn = Activation(activation="tanh")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
+    # cnn = Dropout(rate=0.2)(cnn)
     cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
 
+    # cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = Activation(activation="tanh")(cnn)
+    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
     cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
+    # blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
 
     blstm = Dense(units=128)(blstm)
-    blstm = Activation(activation="tanh")(blstm)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
 
+    # blstm = Dropout(rate=0.5)(blstm)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
 
     blstm = Dense(units=(output_size + 1))(blstm)
     outrnn = Activation(activation="softmax")(blstm)
 
+    # decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=0.3,
+    #                                first_decay_steps=(kwargs.get("nb_steps") * 10))
+    # optimizer = RMSprop(learning_rate=decay_lr)
+
     optimizer = RMSprop(learning_rate=4e-4)
-
-    return (input_data, outrnn, optimizer)
-
-
-def flor(input_size, output_size, **kwargs):
-    input_data = Input(name="input", shape=input_size)
-
-    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
-    cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, renorm=True)(cnn)
-
-    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = Dropout(rate=0.2)(cnn)
-    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = Dropout(rate=0.2)(cnn)
-    # cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = Dropout(rate=0.2)(cnn)
-    # cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = Dropout(rate=0.2)(cnn)
-    # cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(epsilon=0.001, center=False, scale=False, renorm=True)(cnn)
-
-    # cnn = MaxPooling2D(pool_size=(2,4), strides=(2,4), padding="valid")(cnn)
-
-    shape = cnn.get_shape()
-    blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
-
-    # blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = Dense(units=128)(blstm)
-
-    # blstm = Dropout(rate=0.5)(blstm)
-    # blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    # blstm = TimeDistributed(Dense(units=(output_size + 1)))(blstm)
-
-    outrnn = Activation(activation="softmax")(blstm)
-    decay_lr = CosineDecayRestarts(initial_learning_rate=4e-4, alpha=0.3,
-                                   first_decay_steps=(kwargs.get("nb_steps") * 10))
-    optimizer = RMSprop(learning_rate=decay_lr)
 
     return (input_data, outrnn, optimizer)
 
