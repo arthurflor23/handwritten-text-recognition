@@ -517,7 +517,7 @@ class HTRModel:
                 period=1,
                 monitor="val_loss",
                 save_best_only=True,
-                save_weights_only=False,
+                save_weights_only=True,
                 verbose=1),
             EarlyStopping(
                 monitor="val_loss",

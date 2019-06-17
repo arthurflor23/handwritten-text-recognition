@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Activation, LeakyReLU, PReLU
 from tensorflow.keras.optimizers import RMSprop
 
 
-def bluche(input_size, output_size):
+def bluche(input_size, output_size, train_flag):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
         Reference:
@@ -23,14 +23,17 @@ def bluche(input_size, output_size):
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
+
     cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
+
     cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
+
     cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
@@ -46,7 +49,7 @@ def bluche(input_size, output_size):
     blstm = Activation(activation="tanh")(blstm)
 
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = Dense(units=(output_size + 1))(blstm)
+    blstm = Dense(units=output_size)(blstm)
     outrnn = Activation(activation="softmax")(blstm)
 
     optimizer = RMSprop(learning_rate=4e-4)
@@ -54,7 +57,7 @@ def bluche(input_size, output_size):
     return (input_data, outrnn, optimizer)
 
 
-def puigcerver(input_size, output_size):
+def puigcerver(input_size, output_size, train_flag):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
         Reference:
@@ -67,51 +70,51 @@ def puigcerver(input_size, output_size):
     input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-    cnn = BatchNormalization()(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
     cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization()(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
     cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn, training=train_flag)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization()(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
     cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn, training=train_flag)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization()(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
     cnn = LeakyReLU(alpha=0.01)(cnn)
 
-    cnn = Dropout(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn, training=train_flag)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization()(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
     cnn = LeakyReLU(alpha=0.01)(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Dense(units=(output_size + 1))(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
+    blstm = Dense(units=output_size)(blstm)
     outrnn = Activation(activation="softmax")(blstm)
 
     optimizer = RMSprop(learning_rate=3e-4)
@@ -119,43 +122,173 @@ def puigcerver(input_size, output_size):
     return (input_data, outrnn, optimizer)
 
 
-def flor(input_size, output_size):
+def flor(input_size, output_size, train_flag):
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,1), padding="same", kernel_initializer="he_uniform")(input_data)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
+    ######################################## Character Error Rate: 
 
-    cnn = Conv2D(filters=32, kernel_size=(2,4), strides=(2,2), padding="same", kernel_initializer="he_uniform")(cnn)
+    # cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = Conv2D(filters=24, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=24, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=48, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=48, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = MaxPooling2D(pool_size=(1,2), strides=(1,2), padding="valid")(cnn)
+
+
+    ######################################## Character Error Rate:
+
+    # cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = Conv2D(filters=24, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=24, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
+
+
+    ######################################## Character Error Rate: 
+
+    # cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+
+    # cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+
+    # cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+
+    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+
+    # cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+
+    # cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
+
+
+    ######################################## Character Error Rate: 
+
+    # cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(renorm=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(renorm=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(renorm=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(renorm=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
+
+    # cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    # cnn = PReLU(shared_axes=[1,2])(cnn)
+    # cnn = BatchNormalization(renorm=True, trainable=train_flag)(cnn, training=train_flag)
+
+    # cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
+
+
+    ######################################## Character Error Rate: 
+
+    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
     cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
+    cnn = GatedConv(nb_filters=16, kernel_size=(3,3), padding="same")(cnn)
+
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
+
     cnn = GatedConv(nb_filters=32, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(2,4), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
 
-    cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(1,2), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
     cnn = GatedConv(nb_filters=64, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,2), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
+    cnn = BatchNormalization(fused=True, trainable=train_flag)(cnn, training=train_flag)
 
     cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    # blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=128)(blstm)
 
-    # blstm = Dropout(rate=0.5)(blstm)
+    blstm = Dropout(rate=0.5)(blstm, training=train_flag)
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    blstm = Dense(units=(output_size + 1))(blstm)
+    blstm = Dense(units=output_size)(blstm)
     outrnn = Activation(activation="softmax")(blstm)
 
     optimizer = RMSprop(learning_rate=4e-4)
@@ -183,15 +316,16 @@ class GatedConv(Conv2D):
     """Gated Convolutional Class"""
 
     def __init__(self, nb_filters, **kwargs):
-        super(GatedConv, self).__init__(filters=nb_filters, **kwargs)
+        super(GatedConv, self).__init__(filters=nb_filters * 2, **kwargs)
         self.nb_filters = nb_filters
 
     def call(self, inputs):
         """Apply gated convolution"""
 
         output = super(GatedConv, self).call(inputs)
-        linear = Activation("linear")(output)
-        sigmoid = Activation("sigmoid")(output)
+        nb_filters = self.nb_filters
+        linear = Activation("linear")(output[:, :, :, :nb_filters])
+        sigmoid = Activation("sigmoid")(output[:, :, :, nb_filters:])
 
         return Multiply()([linear, sigmoid])
 

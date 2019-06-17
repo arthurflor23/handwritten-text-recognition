@@ -80,7 +80,7 @@ if __name__ == "__main__":
                               max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
-        ioo = network_func(input_size=input_size, output_size=len(charset))
+        ioo = network_func(input_size=input_size, output_size=len(charset) + 1, train_flag=args.train)
 
         model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset)
         model.compile(optimizer=ioo[2])
@@ -113,8 +113,8 @@ if __name__ == "__main__":
                 f"Total train images:       {dtgen.total_train}",
                 f"Total validation images:  {dtgen.total_valid}",
                 f"Batch:                    {args.batch_size}\n",
-                f"Total time:               {total_time / 60} minutes",
-                f"Average time per epoch:   {total_time / len(loss)} seconds\n",
+                f"Total time:               {(total_time / 60):.0f} min",
+                f"Average time per epoch:   {(total_time / len(loss)):.0f} sec\n",
                 f"Total epochs:             {len(loss)}",
                 f"Best epoch                {min_val_loss_i + 1}\n",
                 f"Training loss:            {loss[min_val_loss_i]:.4f}",
