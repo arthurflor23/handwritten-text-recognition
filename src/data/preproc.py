@@ -10,7 +10,7 @@ Data preproc functions:
             sauvola: apply sauvola binarization
 """
 
-from unicodedata import normalize
+import unicodedata
 import numpy as np
 import cv2
 
@@ -67,7 +67,7 @@ def encode_ctc(text, charset, mtl):
     """Encode text array to CTC input (sparse)"""
 
     pad_encoded = np.zeros(mtl)
-    text = normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
+    text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
     text = " ".join(text.split())
 
     encoded = [float(charset.find(x)) for x in text if charset.find(x) > -1]

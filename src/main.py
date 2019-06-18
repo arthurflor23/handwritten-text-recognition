@@ -80,7 +80,7 @@ if __name__ == "__main__":
                               max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
-        ioo = network_func(input_size=input_size, output_size=len(charset) + 1, train_flag=args.train)
+        ioo = network_func(input_size=input_size, output_size=len(charset) + 1)
 
         model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset)
         model.compile(optimizer=ioo[2])
