@@ -3,7 +3,7 @@
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D
 from tensorflow.keras.layers import Reshape, Activation, LeakyReLU, PReLU
-from tensorflow.keras.optimizers import RMSprop, Adam
+from tensorflow.keras.optimizers import RMSprop, Adam, Nadam
 from network.gated import Gated, GatedConv
 
 
@@ -169,7 +169,8 @@ def flor(input_size, output_size):
     output_data = Activation(activation="softmax")(blstm)
 
     # optimizer = RMSprop(learning_rate=4e-4)
-    optimizer = RMSprop(learning_rate=4e-4, centered=True)
+    optimizer = Nadam(learning_rate=4e-4)
+    # optimizer = Adam(learning_rate=4e-4)
     # optimizer = Adam(learning_rate=4e-4, amsgrad=True)
 
     return (input_data, output_data, optimizer)
