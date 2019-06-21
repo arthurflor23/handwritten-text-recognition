@@ -514,7 +514,6 @@ class HTRModel:
                 update_freq="epoch"),
             ModelCheckpoint(
                 filepath=os.path.join(logdir, hdf5_target),
-                save_freq=1,
                 monitor="val_loss",
                 save_best_only=True,
                 save_weights_only=True,

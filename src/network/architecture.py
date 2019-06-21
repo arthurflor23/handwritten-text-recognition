@@ -18,24 +18,25 @@ def bluche(input_size, output_size):
     """
 
     input_data = Input(name="input", shape=input_size)
+    cnn = Reshape((input_size[0] // 2, input_size[1] // 2, input_size[2] * 4))(input_data)
 
-    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
 
-    cnn = GatedConv(filters=16, kernel_size=(3,3), padding="same")(cnn)
+    cnn = GatedConv(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
 
-    cnn = GatedConv(filters=32, kernel_size=(3,3), padding="same")(cnn)
+    cnn = GatedConv(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
 
-    cnn = GatedConv(filters=64, kernel_size=(3,3), padding="same")(cnn)
+    cnn = GatedConv(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
@@ -51,8 +52,8 @@ def bluche(input_size, output_size):
 
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     blstm = Dense(units=output_size)(blstm)
-    output_data = Activation(activation="softmax")(blstm)
 
+    output_data = Activation(activation="softmax")(blstm)
     optimizer = RMSprop(learning_rate=4e-4)
 
     return (input_data, output_data, optimizer)
@@ -116,8 +117,8 @@ def puigcerver(input_size, output_size):
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Dense(units=output_size)(blstm)
-    output_data = Activation(activation="softmax")(blstm)
 
+    output_data = Activation(activation="softmax")(blstm)
     optimizer = RMSprop(learning_rate=3e-4)
 
     return (input_data, output_data, optimizer)
@@ -126,40 +127,7 @@ def puigcerver(input_size, output_size):
 def flor(input_size, output_size):
     input_data = Input(name="input", shape=input_size)
 
-    # # ##### CER: 
-    # cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
-
-    # cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
-
-    # cnn = Gated(filters=40, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = Dropout(rate=0.2)(cnn)
-
-    # cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
-
-    # cnn = Gated(filters=48, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = Dropout(rate=0.2)(cnn)
-
-    # cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
-
-    # cnn = Gated(filters=56, kernel_size=(3,3), padding="same")(cnn)
-    # cnn = Dropout(rate=0.2)(cnn)
-
-    # cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    # cnn = PReLU(shared_axes=[1,2])(cnn)
-    # cnn = BatchNormalization(renorm=True)(cnn)
-
-    # cnn = MaxPooling2D(pool_size=(1,2), strides=(1,2), padding="valid")(cnn)
-
-    # # ##### CER: 
-    cnn = Conv2D(filters=36, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
@@ -167,21 +135,20 @@ def flor(input_size, output_size):
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=44, kernel_size=(3,3), padding="same")(cnn)
-    cnn = Dropout(rate=0.2)(cnn)
+    cnn = Gated(filters=40, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=52, kernel_size=(3,3), padding="same")(cnn)
+    cnn = Gated(filters=48, kernel_size=(3,3), padding="same")(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=60, kernel_size=(3,3), padding="same")(cnn)
+    cnn = Gated(filters=56, kernel_size=(3,3), padding="same")(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
@@ -193,21 +160,16 @@ def flor(input_size, output_size):
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True, dropout=0.5))(blstm)
     blstm = Dense(units=128)(blstm)
-    # blstm = Activation(activation="tanh")(blstm)
-    # blstm = BatchNormalization(renorm=True)(blstm)
 
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-
+    blstm = Bidirectional(LSTM(units=128, return_sequences=True, dropout=0.5))(blstm)
     blstm = Dense(units=output_size)(blstm)
+
     output_data = Activation(activation="softmax")(blstm)
 
-    optimizer = RMSprop(learning_rate=4e-4)
-    # optimizer = RMSprop(learning_rate=4e-4, centered=True)
+    # optimizer = RMSprop(learning_rate=4e-4)
+    optimizer = RMSprop(learning_rate=4e-4, centered=True)
     # optimizer = Adam(learning_rate=4e-4, amsgrad=True)
 
     return (input_data, output_data, optimizer)
