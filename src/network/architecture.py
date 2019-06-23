@@ -3,7 +3,7 @@
 from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D
 from tensorflow.keras.layers import Reshape, Activation, LeakyReLU, PReLU
-from tensorflow.keras.optimizers import RMSprop, Adam, Nadam
+from tensorflow.keras.optimizers import RMSprop
 from network.gated import Gated, GatedConv
 
 
@@ -127,15 +127,22 @@ def puigcerver(input_size, output_size):
 def flor(input_size, output_size):
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
+
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = BatchNormalization(renorm=True)(cnn)
+
+    cnn = Gated(filters=32, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = Gated(filters=40, kernel_size=(3,3), padding="same")(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
@@ -168,9 +175,6 @@ def flor(input_size, output_size):
 
     output_data = Activation(activation="softmax")(blstm)
 
-    # optimizer = RMSprop(learning_rate=4e-4)
-    optimizer = Nadam(learning_rate=4e-4)
-    # optimizer = Adam(learning_rate=4e-4)
-    # optimizer = Adam(learning_rate=4e-4, amsgrad=True)
+    optimizer = RMSprop(learning_rate=5e-4)
 
     return (input_data, output_data, optimizer)
