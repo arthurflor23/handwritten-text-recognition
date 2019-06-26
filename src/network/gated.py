@@ -8,18 +8,14 @@ Gated implementations
 from tensorflow.keras.layers import Conv2D, Multiply, Activation
 
 """
-A Tensorflow Keras layer implementing gated convolutions by Dauphin et al.
+Tensorflow Keras layer implementation of the gated convolution.
     Args:
-        filters (int): Number of output filters.
-        kernel_size (int or tuple): Size of convolution kernel.
-        strides (int or tuple): Strides of the convolution.
-        padding (str): One of ``'valid'`` or ``'same'``.
-        kwargs: Other layer keyword arguments.
+        kwargs: Conv2D keyword arguments.
     Reference:
-        Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
-        Language modeling with gated convolutional networks, in
-        Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
-        Sydney, Australia, pp. 933–941, 2017.
+        T. Bluche, R. Messina,
+        Gated convolutional recurrent neural networks for multilingual handwriting recognition.
+        14th IAPR International Conference on Document Analysis andRecognition (ICDAR),
+        p. 646–651, 11 2017.
 """
 
 
@@ -43,6 +39,19 @@ class GatedConv(Conv2D):
 
         config = super(GatedConv, self).get_config()
         return config
+
+
+"""
+Tensorflow Keras layer implementation of the gated convolution.
+    Args:
+        filters (int): Number of output filters.
+        kwargs: Other Conv2D keyword arguments.
+    Reference:
+        Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
+        Language modeling with gated convolutional networks, in
+        Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
+        Sydney, Australia, pp. 933–941, 2017.
+"""
 
 
 class Gated(Conv2D):
