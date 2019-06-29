@@ -1,8 +1,9 @@
 """Handwritten Text Recognition Neural Network"""
 
-from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint, EarlyStopping
 from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activation
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
+from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
@@ -506,8 +507,8 @@ class HTRModel:
                 append=True),
             TensorBoard(
                 log_dir=logdir,
-                histogram_freq=1,
-                profile_batch=0,
+                histogram_freq=10,
+                profile_batch=10,
                 write_graph=True,
                 write_images=False,
                 update_freq="epoch"),
@@ -515,13 +516,20 @@ class HTRModel:
                 filepath=os.path.join(logdir, hdf5_target),
                 monitor="val_loss",
                 save_best_only=True,
-                save_weights_only=True,
+                save_weights_only=False,
+                load_weights_on_restart=True,
                 verbose=1),
             EarlyStopping(
                 monitor="val_loss",
                 min_delta=0.0001,
                 patience=20,
                 restore_best_weights=True,
+                verbose=1),
+            ReduceLROnPlateau(
+                monitor="val_loss",
+                min_delta=0.0001,
+                factor=0.2,
+                patience=10,
                 verbose=1)
         ]
 
