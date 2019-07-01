@@ -126,6 +126,10 @@ def puigcerver(input_size, output_size):
 
 
 def flor(input_size, output_size):
+    """
+    Gated Convolucional Recurrent Neural Network by Flor.
+    """
+
     input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)

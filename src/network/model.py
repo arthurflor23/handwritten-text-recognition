@@ -500,6 +500,7 @@ class HTRModel:
 
     def callbacks(self, logdir, hdf5_target):
         os.makedirs(os.path.join(logdir), exist_ok=True)
+
         callbacks = [
             CSVLogger(
                 filename=os.path.join(logdir, "epochs.log"),
@@ -529,7 +530,7 @@ class HTRModel:
                 monitor="val_loss",
                 min_delta=0.0001,
                 factor=0.2,
-                patience=10,
+                patience=15,
                 verbose=1)
         ]
 

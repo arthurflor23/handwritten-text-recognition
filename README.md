@@ -22,8 +22,8 @@ d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 
 ## Requirements
 
-* Python 3
-* OpenCV 4
+* Python 3.x
+* OpenCV 4.x
 * editdistance
 * TensorFlow 2.0
 
