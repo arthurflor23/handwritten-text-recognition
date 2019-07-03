@@ -101,20 +101,11 @@ def puigcerver(input_size, output_size):
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
-
-    blstm = Dropout(rate=0.5)(blstm)
-    blstm = Bidirectional(LSTM(units=256, return_sequences=True))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
     blstm = Dense(units=output_size)(blstm)

@@ -26,13 +26,9 @@
     Tiling                       (None, 128, 1280)      0      
     Dropout                      (None, 128, 1280)      0      
     Bidirectional                (None, 128, 512)       3147776
-    Dropout                      (None, 128, 512)       0      
     Bidirectional                (None, 128, 512)       1574912
-    Dropout                      (None, 128, 512)       0      
     Bidirectional                (None, 128, 512)       1574912
-    Dropout                      (None, 128, 512)       0      
     Bidirectional                (None, 128, 512)       1574912
-    Dropout                      (None, 128, 512)       0      
     Bidirectional                (None, 128, 512)       1574912
     Dropout                      (None, 128, 512)       0      
     Dense                        (None, 128, 96)        49248  

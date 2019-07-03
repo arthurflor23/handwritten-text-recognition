@@ -509,7 +509,7 @@ class HTRModel:
             TensorBoard(
                 log_dir=logdir,
                 histogram_freq=10,
-                profile_batch=10,
+                profile_batch=0,
                 write_graph=True,
                 write_images=False,
                 update_freq="epoch"),
@@ -517,7 +517,7 @@ class HTRModel:
                 filepath=os.path.join(logdir, hdf5_target),
                 monitor="val_loss",
                 save_best_only=True,
-                save_weights_only=False,
+                save_weights_only=True,
                 load_weights_on_restart=True,
                 verbose=1),
             EarlyStopping(
