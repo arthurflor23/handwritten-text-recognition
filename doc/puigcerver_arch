@@ -1,0 +1,43 @@
+
+    Layer                        Output Shape           Param #            
+    ==============================================================
+    InputLayer                   (None, 1024, 128, 1)   0      
+    Conv2D                       (None, 1024, 128, 16)  160    
+    BatchNormalization           (None, 1024, 128, 16)  64     
+    LeakyReLU                    (None, 1024, 128, 16)  0      
+    MaxPooling2D                 (None, 512, 64, 16)    0      
+    Conv2D                       (None, 512, 64, 32)    4640   
+    BatchNormalization           (None, 512, 64, 32)    128    
+    LeakyReLU                    (None, 512, 64, 32)    0      
+    MaxPooling2D                 (None, 256, 32, 32)    0      
+    Dropout                      (None, 256, 32, 32)    0      
+    Conv2D                       (None, 256, 32, 48)    13872  
+    BatchNormalization           (None, 256, 32, 48)    192    
+    LeakyReLU                    (None, 256, 32, 48)    0      
+    MaxPooling2D                 (None, 128, 16, 48)    0      
+    Dropout                      (None, 128, 16, 48)    0      
+    Conv2D                       (None, 128, 16, 64)    27712  
+    BatchNormalization           (None, 128, 16, 64)    256    
+    LeakyReLU                    (None, 128, 16, 64)    0      
+    Dropout                      (None, 128, 16, 64)    0      
+    Conv2D                       (None, 128, 16, 80)    46160  
+    BatchNormalization           (None, 128, 16, 80)    320    
+    LeakyReLU                    (None, 128, 16, 80)    0      
+    Tiling                       (None, 128, 1280)      0      
+    Dropout                      (None, 128, 1280)      0      
+    Bidirectional                (None, 128, 512)       3147776
+    Dropout                      (None, 128, 512)       0      
+    Bidirectional                (None, 128, 512)       1574912
+    Dropout                      (None, 128, 512)       0      
+    Bidirectional                (None, 128, 512)       1574912
+    Dropout                      (None, 128, 512)       0      
+    Bidirectional                (None, 128, 512)       1574912
+    Dropout                      (None, 128, 512)       0      
+    Bidirectional                (None, 128, 512)       1574912
+    Dropout                      (None, 128, 512)       0      
+    Dense                        (None, 128, 96)        49248  
+    Softmax                      (None, 128, 96)        0      
+    ==============================================================
+    Total params: 9,590,176
+    Trainable params: 9,589,696
+    Non-trainable params: 480

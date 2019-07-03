@@ -1,0 +1,30 @@
+
+    Layer                        Output Shape           Param #                       
+    ==============================================================
+    InputLayer                   (None, 1024, 128, 1)   0        
+    Tiling                       (None, 512, 64, 4)     0        
+    Conv2D                       (None, 512, 64, 8)     296      
+    Tanh                         (None, 512, 64, 8)     0        
+    Conv2D                       (None, 256, 16, 16)    1040     
+    Tanh                         (None, 256, 16, 16)    0        
+    GatedConv                    (None, 256, 16, 16)    2320     
+    Conv2D                       (None, 256, 16, 32)    4640     
+    Tanh                         (None, 256, 16, 32)    0        
+    GatedConv                    (None, 256, 16, 32)    9248     
+    Conv2D                       (None, 128, 4, 64)     16448    
+    Tanh                         (None, 128, 4, 64)     0        
+    GatedConv                    (None, 128, 4, 64)     36928    
+    Conv2D                       (None, 128, 4, 128)    73856    
+    Tanh                         (None, 128, 4, 128)    0        
+    MaxPooling2D                 (None, 128, 1, 128)    0        
+    Tiling                       (None, 128, 128)       0        
+    Bidirectional                (None, 128, 256)       263168   
+    Dense                        (None, 128, 128)       32896    
+    Tanh                         (None, 128, 128)       0        
+    Bidirectional                (None, 128, 256)       263168   
+    Dense                        (None, 128, 96)        24672    
+    Softmax                      (None, 128, 96)        0        
+    ==============================================================
+    Total params: 728,680
+    Trainable params: 728,680
+    Non-trainable params: 0

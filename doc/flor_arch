@@ -1,0 +1,41 @@
+
+    Layer                        Output Shape           Param #  
+    ==============================================================
+    InputLayer                   (None, 1024, 128, 1)   0     
+    Conv2D                       (None, 512, 64, 16)    160   
+    PReLU                        (None, 512, 64, 16)    16    
+    BatchRenormalization         (None, 512, 64, 16)    98    
+    Gated                        (None, 512, 64, 16)    4640  
+    Conv2D                       (None, 512, 64, 32)    4640  
+    PReLU                        (None, 512, 64, 32)    32    
+    BatchRenormalization         (None, 512, 64, 32)    194   
+    Gated                        (None, 512, 64, 32)    18496 
+    Conv2D                       (None, 256, 16, 40)    10280 
+    PReLU                        (None, 256, 16, 40)    40    
+    BatchRenormalization         (None, 256, 16, 40)    242   
+    Gated                        (None, 256, 16, 40)    28880 
+    Dropout                      (None, 256, 16, 40)    0     
+    Conv2D                       (None, 256, 16, 48)    17328 
+    PReLU                        (None, 256, 16, 48)    48    
+    BatchRenormalization         (None, 256, 16, 48)    290   
+    Gated                        (None, 256, 16, 48)    41568 
+    Dropout                      (None, 256, 16, 48)    0     
+    Conv2D                       (None, 128, 4, 56)     21560 
+    PReLU                        (None, 128, 4, 56)     56    
+    BatchRenormalization         (None, 128, 4, 56)     338   
+    Gated                        (None, 128, 4, 56)     56560 
+    Dropout                      (None, 128, 4, 56)     0     
+    Conv2D                       (None, 128, 4, 64)     32320 
+    PReLU                        (None, 128, 4, 64)     64    
+    BatchRenormalization         (None, 128, 4, 64)     386   
+    MaxPooling2D                 (None, 128, 2, 64)     0     
+    Tiling                       (None, 128, 128)       0     
+    Bidirectional                (None, 128, 256)       263168
+    Dense                        (None, 128, 128)       32896 
+    Bidirectional                (None, 128, 256)       263168
+    Dense                        (None, 128, 96)        24672 
+    Softmax                      (None, 128, 96)        0     
+    ==============================================================
+    Total params: 822,140
+    Trainable params: 821,104
+    Non-trainable params: 1,036

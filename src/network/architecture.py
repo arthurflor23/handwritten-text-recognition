@@ -1,7 +1,7 @@
 """Networks to the Handwritten Text Recognition Model"""
 
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Bidirectional, LSTM, Dense
-from tensorflow.keras.layers import SpatialDropout2D, Dropout, BatchNormalization
+from tensorflow.keras.layers import Input, Conv2D, Bidirectional, LSTM, Dense
+from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D
 from tensorflow.keras.layers import Reshape, Activation, LeakyReLU, PReLU
 from tensorflow.keras.constraints import MaxNorm
 from tensorflow.keras.optimizers import RMSprop
@@ -149,21 +149,21 @@ def flor(input_size, output_size):
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = Gated(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
-    cnn = SpatialDropout2D(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = Gated(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
-    cnn = SpatialDropout2D(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = Gated(filters=56, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
-    cnn = SpatialDropout2D(rate=0.2)(cnn)
+    cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)

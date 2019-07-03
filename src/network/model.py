@@ -530,7 +530,7 @@ class HTRModel:
                 monitor="val_loss",
                 min_delta=0.0001,
                 factor=0.2,
-                patience=15,
+                patience=10,
                 verbose=1)
         ]
 
