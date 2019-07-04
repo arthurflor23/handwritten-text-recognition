@@ -3,7 +3,7 @@ Total validation images:  235
 Batch:                    16
 
 Total time:               11 min
-Average time per epoch:   8 sec
+Average time per epoch:   7 sec
 
 Total epochs:             91
 Best epoch                71

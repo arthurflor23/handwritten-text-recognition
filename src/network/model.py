@@ -247,8 +247,9 @@ class HTRModel:
 
                 for i, out in enumerate(outs):
                     encode = [valab_out for valab_out in out if valab_out != -1]
+                    text = w[i].decode()
 
-                    all_lab[i].append(w[i].decode())
+                    all_lab[i].append(text)
                     allab_outs[i].append("".join(self.charset[int(c)] for c in encode).strip())
 
                 steps_done += 1
