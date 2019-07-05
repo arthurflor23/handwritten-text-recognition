@@ -4,12 +4,14 @@ from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activ
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
 from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.models import Model, model_from_json
+from tensorflow.keras.models import model_from_json, Model
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
 import tensorflow as tf
 import editdistance
 import numpy as np
+import unicodedata
+import string
 import pickle
 import os
 
@@ -142,6 +144,8 @@ class HTRModel:
                           generator,
                           steps,
                           metrics=["cer", "wer", "ser"],
+                          norm_accentuation=False,
+                          norm_punctuation=False,
                           max_queue_size=10,
                           workers=1,
                           use_multiprocessing=False,
@@ -164,11 +168,16 @@ class HTRModel:
             steps:
                 Total number of steps (batches of samples)
                 to yield from `generator` before stopping.
-            metrics = list of metrics that are computed. This is elements among the 4 following metrics:
-                'loss' : compute the loss function on x
-                'cer' : compute the character error rate
-                'wer' : compute the word error rate
-                'ser' : compute the sequence error rate
+            metrics:
+                list of metrics that are computed. This is elements among the 4 following metrics:
+                    'loss' : compute the loss function on x
+                    'cer' : compute the character error rate
+                    'wer' : compute the word error rate
+                    'ser' : compute the sequence error rate
+            norm_accentuation:
+                remove accentuation before calculation of the metrics
+            norm_punctuation:
+                remove ponctuation before calculation of the metrics
             max_queue_size:
                 Maximum size for the generator queue.
             workers: Maximum number of processes to spin up
@@ -218,7 +227,6 @@ class HTRModel:
                 generator_output = next(output_generator)
 
                 if isinstance(generator_output, tuple):
-                    # Compatibility with the generators used for training.
                     if len(generator_output) == 2:
                         x, _ = generator_output
                     elif len(generator_output) == 3:
@@ -227,7 +235,6 @@ class HTRModel:
                         raise ValueError("Output of generator should be a tuple `(x, y, sample_weight)` "
                                          "or `(x, y)`. Found: " + str(generator_output))
                 else:
-                    # Assumes a generator that only yields inputs (not targets and sample weights).
                     x = generator_output
 
                 [x_input, y, x_length, y_length, w] = x
@@ -247,10 +254,19 @@ class HTRModel:
 
                 for i, out in enumerate(outs):
                     encode = [valab_out for valab_out in out if valab_out != -1]
-                    text = w[i].decode()
+                    pd = "".join(self.charset[int(c)] for c in encode)
+                    gt = w[i].decode()
 
-                    all_lab[i].append(text)
-                    allab_outs[i].append("".join(self.charset[int(c)] for c in encode).strip())
+                    if norm_accentuation:
+                        pd = unicodedata.normalize("NFKD", pd).encode("ASCII", "ignore").decode("ASCII")
+                        gt = unicodedata.normalize("NFKD", gt).encode("ASCII", "ignore").decode("ASCII")
+
+                    if norm_punctuation:
+                        pd = pd.translate(str.maketrans("", "", string.punctuation))
+                        gt = gt.translate(str.maketrans("", "", string.punctuation))
+
+                    allab_outs[i].append(" ".join(pd.split()))
+                    all_lab[i].append(" ".join(gt.split()))
 
                 steps_done += 1
                 if verbose == 1:

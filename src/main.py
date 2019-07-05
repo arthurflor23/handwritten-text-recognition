@@ -129,6 +129,8 @@ if __name__ == "__main__":
             predict, evaluate = model.predict_generator(generator=dtgen.next_test_batch(),
                                                         steps=dtgen.test_steps,
                                                         metrics=["loss", "cer", "wer", "ser"],
+                                                        norm_accentuation=False,
+                                                        norm_punctuation=False,
                                                         verbose=1)
 
             eval_corpus = "\n".join([
