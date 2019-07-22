@@ -73,29 +73,29 @@ def puigcerver(input_size, output_size):
     input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
-    cnn = BatchNormalization(fused=True)(cnn)
+    cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU()(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(fused=True)(cnn)
+    cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU()(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(fused=True)(cnn)
+    cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU()(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(fused=True)(cnn)
+    cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU()(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization(fused=True)(cnn)
+    cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU()(cnn)
 
     shape = cnn.get_shape()
