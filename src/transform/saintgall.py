@@ -41,9 +41,9 @@ class Transform():
             if (not line or line[0] == "#"):
                 continue
 
-            splited = line.split()
-            text = " ".join(splited[1].replace("-", "").replace("|", " ").split())
-            gt_dict[splited[0]] = text
+            splitted = line.split()
+            text = " ".join(splitted[1].replace("-", "").replace("|", " ").split())
+            gt_dict[splitted[0]] = text
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")
