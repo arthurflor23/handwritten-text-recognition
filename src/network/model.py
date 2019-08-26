@@ -31,7 +31,7 @@ One makes use of the CTC proposed in tensorflow. Thus HTRModel can only be used 
 The HTRModel structure is composed of 2 branches. Each branch is a Tensorflow Keras Model:
     - One for computing the CTC loss (model_train)
     - One for predicting using the ctc_decode method (model_pred) and
-        computing the Character Error Rate (CER), Word Error Rate (WER), Sequence Error Rate (SER).
+        computing the Character Error Rate (CER), Word Error Rate (WER).
 
 In a Tensorflow Keras Model, x is the input features and y the labels.
 Here, x data are of the form [input_sequences, label_sequences, inputs_lengths, labels_length]
@@ -143,7 +143,7 @@ class HTRModel:
     def predict_generator(self,
                           generator,
                           steps,
-                          metrics=["cer", "wer", "ser"],
+                          metrics=["cer", "wer"],
                           norm_accentuation=False,
                           norm_punctuation=False,
                           max_queue_size=10,
@@ -173,7 +173,6 @@ class HTRModel:
                     'loss' : compute the loss function on x
                     'cer' : compute the character error rate
                     'wer' : compute the word error rate
-                    'ser' : compute the sequence error rate
             norm_accentuation:
                 remove accentuation before calculation of the metrics
             norm_punctuation:
@@ -196,7 +195,6 @@ class HTRModel:
             A list containing the error rate:
                 cer : the character error rate on the dataset
                 wer : the word error rate on the dataset
-                ser : the sequence error rate on the dataset
 
         # Raises
             ValueError: In case the generator yields
@@ -206,7 +204,7 @@ class HTRModel:
         self.model_pred._make_predict_function()
         is_sequence = isinstance(generator, Sequence)
 
-        loss, cer, wer, ser = [], [], [], []
+        loss, cer, wer = [], [], []
         allab_outs, all_lab = [], []
         steps_done = 0
         enqueuer = None
@@ -298,20 +296,12 @@ class HTRModel:
                     dist = editdistance.eval(pd, lb)
                     wer.append(dist / length)
 
-                if "ser" in metrics:
-                    pd, lb = [pred], [lab]
-                    length = max(len(pd), len(lb))
-                    dist = editdistance.eval(pd, lb)
-                    ser.append(dist / length)
-
             if "loss" in metrics:
                 metrics_out.append(sum(loss) / len(loss))
             if "cer" in metrics:
                 metrics_out.append(sum(cer) / len(cer))
             if "wer" in metrics:
                 metrics_out.append(sum(wer) / len(wer))
-            if "ser" in metrics:
-                metrics_out.append(sum(ser) / len(ser))
 
         return (lab_out, pred_out), metrics_out
 

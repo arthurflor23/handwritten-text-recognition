@@ -1,7 +1,0 @@
-Total test images:    1861
-
-Metrics:
-Test Loss:            24.3133
-Character Error Rate: 0.1430
-Word Error Rate:      0.4117
-Sequence Error Rate:  0.9784

@@ -47,8 +47,7 @@ if __name__ == "__main__":
         assert os.path.exists(raw_source)
 
         print(f"The {args.dataset} dataset will be transformed...")
-        package = f"transform.{args.dataset}"
-        mod = importlib.import_module(package)
+        mod = importlib.import_module(f"transform.{args.dataset}")
 
         transform = mod.Transform(source=raw_source,
                                   target=hdf5_src,
@@ -128,7 +127,7 @@ if __name__ == "__main__":
         else:
             predict, evaluate = model.predict_generator(generator=dtgen.next_test_batch(),
                                                         steps=dtgen.test_steps,
-                                                        metrics=["loss", "cer", "wer", "ser"],
+                                                        metrics=["loss", "cer", "wer"],
                                                         norm_accentuation=False,
                                                         norm_punctuation=False,
                                                         verbose=1)
@@ -138,15 +137,14 @@ if __name__ == "__main__":
                 f"Metrics:",
                 f"Test Loss:            {evaluate[0]:.4f}",
                 f"Character Error Rate: {evaluate[1]:.4f}",
-                f"Word Error Rate:      {evaluate[2]:.4f}",
-                f"Sequence Error Rate:  {evaluate[3]:.4f}"
+                f"Word Error Rate:      {evaluate[2]:.4f}"
             ])
 
             with open(os.path.join(output, "evaluate.txt"), "w") as lg:
                 print(f"\n{eval_corpus}")
                 lg.write(eval_corpus)
 
-            pred_corpus = "\n".join([f"L: {l}\nP: {p}\n" for (l, p) in zip(predict[0], predict[1])])
+            pred_corpus = "\n".join([f"L {l}\nS {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
             with open(os.path.join(output, "predict.txt"), "w") as lg:
                 lg.write(pred_corpus)
