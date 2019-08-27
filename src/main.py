@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     input_size = (1024, 128, 1)
     max_text_length = 128
-    charset_base = "".join([chr(i) for i in range(32, 127)]).replace("`", "°")
+    charset_base = "".join([chr(i) for i in range(32, 127)])
 
     if args.transform:
         assert os.path.exists(raw_source)
