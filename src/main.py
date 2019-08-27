@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     input_size = (1024, 128, 1)
     max_text_length = 128
-    charset = "".join([chr(i) for i in range(32, 127)])
+    charset_base = "".join([chr(i) for i in range(32, 127)]).replace("`", "°")
 
     if args.transform:
         assert os.path.exists(raw_source)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         transform = mod.Transform(source=raw_source,
                                   target=hdf5_src,
                                   input_size=input_size,
-                                  charset=charset,
+                                  charset=charset_base,
                                   max_text_length=max_text_length,
                                   preproc=pp.preproc,
                                   encode=pp.encode_ctc)
@@ -79,9 +79,9 @@ if __name__ == "__main__":
                               max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
-        ioo = network_func(input_size=input_size, output_size=len(charset) + 1)
+        ioo = network_func(input_size=input_size, output_size=len(charset_base) + 1)
 
-        model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset)
+        model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset_base)
         model.compile(optimizer=ioo[2])
 
         checkpoint = "checkpoint_weights.hdf5"
