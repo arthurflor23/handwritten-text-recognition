@@ -2,10 +2,8 @@
 
 from multiprocessing import Pool
 from functools import partial
-import xml.etree.ElementTree as ET
-import html
+import string
 import h5py
-import cv2
 import os
 
 
@@ -26,18 +24,6 @@ class Transform():
         self.preproc = preproc
         self.encode = encode
 
-    def paragraph(self):
-        """Make process of paragraph hdf5"""
-
-        partition = self._get_partitions()
-        partition["train"] = set([i[:-3] for i in partition["train"]])
-        partition["valid"] = set([i[:-3] for i in partition["valid"]])
-        partition["test"] = set([i[:-3] for i in partition["test"]])
-
-        self._build_paragraphs(partition, "train")
-        self._build_paragraphs(partition, "valid")
-        self._build_paragraphs(partition, "test")
-
     def line(self):
         """Make process of line hdf5"""
 
@@ -50,8 +36,12 @@ class Transform():
                 continue
 
             splitted = line.split()
-            text = " ".join(splitted[-1].replace("|", " ").split())
-            gt_dict[splitted[0]] = text
+            text = splitted[-1].replace("|", " ")
+
+            for i in string.punctuation.replace("'", ""):
+                text = text.replace(i, f" {i} ")
+
+            gt_dict[splitted[0]] = " ".join(text.split())
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")
@@ -79,48 +69,6 @@ class Transform():
         pool.join()
 
         self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
-
-    def _build_paragraphs(self, partition, group):
-        """Preprocessing and build paragraph tasks"""
-
-        xml = os.path.join(self.source, "xml")
-        form = os.path.join(self.source, "forms")
-        pool = Pool()
-
-        dt, gt, gt_sparse = zip(*pool.map(partial(self._extract, xml_path=xml, form_path=form), partition[group]))
-        pool.close()
-        pool.join()
-
-        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
-
-    def _extract(self, x, xml_path, form_path):
-        """Extract paragraphs from the pages"""
-
-        dt, gt_sparse = [], []
-        xml = f"{os.path.join(xml_path, x)}.xml"
-        png = f"{os.path.join(form_path, x)}.png"
-
-        root = ET.parse(xml).getroot()
-        top, bottom = 99999, 0
-        text = []
-
-        for page_tag in root:
-            for i, line_tag in enumerate(page_tag.iter("line")):
-                text_line = " ".join(html.unescape(line_tag.attrib["text"]).split())
-
-                if len(text_line) > 0:
-                    text.append(text_line)
-                    top = min(top, abs(int(line_tag.attrib["asy"])))
-                    bottom = max(bottom, abs(int(line_tag.attrib["dsy"])))
-
-        gt = " ".join(text)
-        page = cv2.imread(png, cv2.IMREAD_GRAYSCALE)
-        page = page[top:bottom, 0:-1]
-
-        dt.append(self.preproc(img=page, img_size=self.input_size, read_first=False))
-        gt_sparse.append(self.encode(text=gt, charset=self.charset, mtl=self.max_text_length))
-
-        return dt, gt, gt_sparse
 
     def _get_partitions(self):
         """Read the partitions file"""

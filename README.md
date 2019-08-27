@@ -1,6 +1,6 @@
 <img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/000.png?raw=true">
 
-Handwritten Text Recognition (HTR) system implemented using TensorFlow 2.0 and trained on the Bentham/IAM/Rimes/Saint Gall offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
+Handwritten Text Recognition (HTR) system implemented using TensorFlow 2.0 and trained on the Bentham/IAM/Rimes/Saint Gall/Washington offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
 
 Data partitioning (train, validation, test) was performed following the methodology of each dataset. The project implemented the HTRModel abstraction model (adapted from the [CTCModel](https://github.com/ysoullard/CTCModel)) as a way to facilitate the development of HTR systems.
 
@@ -20,6 +20,8 @@ c. [Rimes](http://www.a2ialab.com/doku.php?id=rimes_database:start)
 
 d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/saint-gall-database)
 
+e. [Washington](http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/washington-database)
+
 ## Requirements
 
 * Python 3.x
@@ -29,7 +31,7 @@ d. [Saint Gall](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 
 ## Command line arguments
 
-* `--dataset`: dataset name (bentham, iam, rimes, saintgall)
+* `--dataset`: dataset name (bentham, iam, rimes, saintgall, washington)
 * `--arch`: network to be used (puigcerver, bluche, flor)
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset

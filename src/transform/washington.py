@@ -1,8 +1,7 @@
-"""Transform Saint Gall dataset"""
+"""Transform Washington dataset"""
 
 from multiprocessing import Pool
 from functools import partial
-from glob import glob
 import string
 import h5py
 import os
@@ -35,7 +34,13 @@ class Transform():
 
         for line in lines:
             splitted = line.split()
-            text = splitted[1].replace("-", "").replace("|", " ")
+            splitted[1] = splitted[1].replace("-", "").replace("|", " ")
+            splitted[1] = splitted[1].replace("s_pt", ".").replace("s_cm", ",")
+            splitted[1] = splitted[1].replace("s_mi", "-").replace("s_qo", ":")
+            splitted[1] = splitted[1].replace("s_sq", ";").replace("s_et", "V")
+            splitted[1] = splitted[1].replace("s_bl", "(").replace("s_br", ")")
+            splitted[1] = splitted[1].replace("s_qt", "'").replace("s_", "")
+            text = " ".join(splitted[1].split())
 
             for i in string.punctuation.replace("'", ""):
                 text = text.replace(i, f" {i} ")
@@ -53,15 +58,8 @@ class Transform():
         dt, gt = [], []
 
         for line in partition[group]:
-            glob_filter = os.path.join(path, f"{line}*")
-            img_list = [x for x in glob(glob_filter, recursive=True)]
-
-            for img_path in img_list:
-                index = os.path.splitext(os.path.basename(img_path))[0]
-
-                if len(gt_dict[index]) > 0:
-                    dt.append(img_path)
-                    gt.append(gt_dict[index])
+            dt.append(os.path.join(path, f"{line}.png"))
+            gt.append(gt_dict[line])
 
         pool = Pool()
         dt = pool.map(partial(self.preproc, img_size=self.input_size, read_first=True), dt)
@@ -74,7 +72,7 @@ class Transform():
     def _get_partitions(self):
         """Read the partitions file"""
 
-        pt_path = os.path.join(self.source, "sets")
+        pt_path = os.path.join(self.source, "sets", "cv1")
         partition = {
             "train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
             "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),

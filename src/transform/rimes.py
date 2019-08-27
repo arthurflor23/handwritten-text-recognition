@@ -3,6 +3,7 @@
 from multiprocessing import Pool
 from functools import partial
 import xml.etree.ElementTree as ET
+import string
 import html
 import h5py
 import cv2
@@ -26,18 +27,10 @@ class Transform():
         self.preproc = preproc
         self.encode = encode
 
-    def paragraph(self):
-        """Make process of paragraph hdf5"""
-
-        partition = self._get_partitions(page=True)
-        self._build(self._extract, partition, "train")
-        self._build(self._extract, partition, "valid")
-        self._build(self._extract, partition, "test")
-
     def line(self):
         """Make process of line hdf5"""
 
-        partition = self._get_partitions(page=False)
+        partition = self._get_partitions()
         self._build(self._extract, partition, "train")
         self._build(self._extract, partition, "valid")
         self._build(self._extract, partition, "test")
@@ -63,7 +56,7 @@ class Transform():
 
         return dt, item[1], gt_sparse
 
-    def _get_partitions(self, page=False):
+    def _get_partitions(self):
         """Read the partitions file"""
 
         def generate(xml, subpath, partition, validation=False):
@@ -72,22 +65,19 @@ class Transform():
 
             for page_tag in xml:
                 page_path = page_tag.attrib["FileName"]
-                text_page = []
 
                 for i, line_tag in enumerate(page_tag.iter("Line")):
-                    text_line = " ".join(html.unescape(line_tag.attrib["Value"]).split())
+                    text = html.unescape(line_tag.attrib["Value"])
 
-                    if len(text_line) > 0:
-                        if page:
-                            text_page.append(text_line)
-                            continue
+                    for i in string.punctuation.replace("'", ""):
+                        text = text.replace(i, f" {i} ")
 
+                    text = " ".join(text.split())
+
+                    if len(text) > 0:
                         bound = [abs(int(line_tag.attrib["Top"])), abs(int(line_tag.attrib["Bottom"])),
                                  abs(int(line_tag.attrib["Left"])), abs(int(line_tag.attrib["Right"]))]
-                        dt.append([os.path.join(subpath, page_path), text_line, bound])
-
-                if page and len(text_page) > 0:
-                    dt.append([os.path.join(subpath, page_path), " ".join(text_page), [0,-1,0,-1]])
+                        dt.append([os.path.join(subpath, page_path), text, bound])
 
             if validation:
                 index = int(len(dt) * 0.9)

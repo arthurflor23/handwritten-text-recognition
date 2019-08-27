@@ -2,6 +2,7 @@
 
 from multiprocessing import Pool
 from functools import partial
+import string
 import html
 import h5py
 import os
@@ -24,11 +25,6 @@ class Transform():
         self.preproc = preproc
         self.encode = encode
 
-    def paragraph(self):
-        """Make process of paragraph hdf5"""
-
-        print("\nBentham dataset doesn't support paragraph transformation.\n")
-
     def line(self):
         """Make process of line hdf5"""
 
@@ -40,8 +36,12 @@ class Transform():
 
         for index, x in enumerate(gt):
             text = " ".join(open(os.path.join(path, x)).read().splitlines())
-            text = html.unescape(" ".join(text.split())).replace("<gap/>", "")
-            gt_dict[os.path.splitext(x)[0]] = text
+            text = html.unescape(text).replace("<gap/>", "")
+
+            for i in string.punctuation.replace("'", ""):
+                text = text.replace(i, f" {i} ")
+
+            gt_dict[os.path.splitext(x)[0]] = " ".join(text.split())
 
         self._build_lines(gt_dict, partition, "train")
         self._build_lines(gt_dict, partition, "valid")

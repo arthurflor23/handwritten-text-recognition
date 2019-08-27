@@ -1,6 +1,6 @@
 """
 Provides options via the command line to perform project tasks.
-* `--dataset`: dataset name (bentham, iam, rimes, saintgall)
+* `--dataset`: dataset name (bentham, iam, rimes, saintgall, washington)
 * `--arch`: network to be used (puigcerver, bluche, flor)
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
     raw_source = os.path.join("..", "raw", args.dataset)
@@ -146,5 +146,5 @@ if __name__ == "__main__":
 
             pred_corpus = "\n".join([f"L {l}\nS {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
-            with open(os.path.join(output, "predict.txt"), "w") as lg:
+            with open(os.path.join(output, "predict.m2"), "w") as lg:
                 lg.write(pred_corpus)
