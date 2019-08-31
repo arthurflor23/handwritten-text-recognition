@@ -144,7 +144,7 @@ if __name__ == "__main__":
                 print(f"\n{eval_corpus}")
                 lg.write(eval_corpus)
 
-            pred_corpus = "\n".join([f"L {l}\nS {p}\n" for (l, p) in zip(predict[0], predict[1])])
+            pred_corpus = "\n".join([f"TE_L {l}\nTE_S {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
             with open(os.path.join(output, "predict.m2"), "w") as lg:
                 lg.write(pred_corpus)
