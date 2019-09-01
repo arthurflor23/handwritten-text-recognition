@@ -1,13 +1,13 @@
 <img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/000.png?raw=true">
 
-Handwritten Text Recognition (HTR) system implemented using TensorFlow 2.0 and trained on the Bentham/IAM/Rimes/Saint Gall/Washington offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
+Handwritten Text Recognition (HTR) system implemented using [TensorFlow 2.0](https://www.tensorflow.org/) and trained on the Bentham/IAM/Rimes/Saint Gall/Washington offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
 
 Data partitioning (train, validation, test) was performed following the methodology of each dataset. The project implemented the HTRModel abstraction model (adapted from the [CTCModel](https://github.com/ysoullard/CTCModel)) as a way to facilitate the development of HTR systems.
 
 **Notes**:
 1. All **references** are commented in the code.
 2. This project **doesn't offer** post-processing, such as N-gram Language Model.
-3. Some results (txt files reports) can be find in **doc** folder, divided by dataset/architecture.
+3. Check out the presentation in the **doc** folder.
 4. For more information and demo run step by step, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
 
 ## Datasets supported
