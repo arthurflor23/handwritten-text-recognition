@@ -1,6 +1,6 @@
-# Datasets
+# Project stuffs
+/raw/*/
 /data/
-/raw/
 /output/
 /tensorboard/
 
