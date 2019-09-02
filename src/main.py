@@ -35,21 +35,21 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
-    raw_source = os.path.join("..", "raw", args.dataset)
+    raw_dir = os.path.join("..", "raw", args.dataset)
     hdf5_src = os.path.join("..", "data", f"{args.dataset}.hdf5")
-    output = os.path.join("..", "output", f"{args.dataset}_{args.arch}")
+    output_dir = os.path.join("..", "output", f"{args.dataset}_{args.arch}")
 
     input_size = (1024, 128, 1)
     max_text_length = 128
     charset_base = "".join([chr(i) for i in range(32, 127)])
 
     if args.transform:
-        assert os.path.exists(raw_source)
+        assert os.path.exists(raw_dir)
 
         print(f"The {args.dataset} dataset will be transformed...")
         mod = importlib.import_module(f"transform.{args.dataset}")
 
-        transform = mod.Transform(source=raw_source,
+        transform = mod.Transform(source=raw_dir,
                                   target=hdf5_src,
                                   input_size=input_size,
                                   charset=charset_base,
@@ -85,11 +85,11 @@ if __name__ == "__main__":
         model.compile(optimizer=ioo[2])
 
         checkpoint = "checkpoint_weights.hdf5"
-        model.load_checkpoint(output, checkpoint)
+        model.load_checkpoint(output_dir, checkpoint)
 
         if args.train:
-            model.summary(output, "summary.txt")
-            callbacks = model.callbacks(logdir=output, hdf5_target=checkpoint)
+            model.summary(output_dir, "summary.txt")
+            callbacks = model.callbacks(logdir=output_dir, hdf5_target=checkpoint)
 
             start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -112,39 +112,42 @@ if __name__ == "__main__":
                 f"Total train images:       {dtgen.total_train}",
                 f"Total validation images:  {dtgen.total_valid}",
                 f"Batch:                    {args.batch_size}\n",
-                f"Total time:               {(total_time / 60):.0f} min",
-                f"Average time per epoch:   {(total_time / len(loss)):.0f} sec\n",
+                f"Total time:               {total_time:.4f} sec",
+                f"Average time per epoch:   {(total_time / len(loss)):.4f} sec\n",
                 f"Total epochs:             {len(loss)}",
                 f"Best epoch                {min_val_loss_i + 1}\n",
                 f"Training loss:            {loss[min_val_loss_i]:.4f}",
                 f"Validation loss:          {min_val_loss:.4f}"
             ])
 
-            with open(os.path.join(output, "train.txt"), "w") as lg:
-                print(f"\n{train_corpus}")
+            with open(os.path.join(output_dir, "train.txt"), "w") as lg:
+                print(train_corpus)
                 lg.write(train_corpus)
 
         else:
+            start_time = time.time()
             predict, evaluate = model.predict_generator(generator=dtgen.next_test_batch(),
                                                         steps=dtgen.test_steps,
-                                                        metrics=["loss", "cer", "wer"],
+                                                        metrics=["cer", "wer"],
                                                         norm_accentuation=False,
                                                         norm_punctuation=False,
                                                         verbose=1)
+            total_time = time.time() - start_time
 
             eval_corpus = "\n".join([
-                f"Total test images:    {dtgen.total_test}\n",
+                f"Total test images:    {dtgen.total_test}",
+                f"Total time:           {total_time:.4f} sec",
+                f"Time per item:        {(total_time / dtgen.total_test):.4f} sec\n",
                 f"Metrics:",
-                f"Test Loss:            {evaluate[0]:.4f}",
-                f"Character Error Rate: {evaluate[1]:.4f}",
-                f"Word Error Rate:      {evaluate[2]:.4f}"
+                f"Character Error Rate: {evaluate[0]:.4f}",
+                f"Word Error Rate:      {evaluate[1]:.4f}"
             ])
 
-            with open(os.path.join(output, "evaluate.txt"), "w") as lg:
-                print(f"\n{eval_corpus}")
+            with open(os.path.join(output_dir, "evaluate.txt"), "w") as lg:
+                print(eval_corpus)
                 lg.write(eval_corpus)
 
-            pred_corpus = "\n".join([f"TE_L {l}\nTE_S {p}\n" for (l, p) in zip(predict[0], predict[1])])
+            pred_corpus = "\n".join([f"TE_L {l}\nTE_P {p}\n" for (l, p) in zip(predict[0], predict[1])])
 
-            with open(os.path.join(output, "predict.m2"), "w") as lg:
+            with open(os.path.join(output_dir, "predict.m2"), "w") as lg:
                 lg.write(pred_corpus)

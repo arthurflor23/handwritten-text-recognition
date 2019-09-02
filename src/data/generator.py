@@ -26,9 +26,9 @@ class DataGenerator():
 
         self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
-        self.total_train = len(self.dataset["train"]["dt"])
-        self.total_valid = len(self.dataset["valid"]["dt"])
-        self.total_test = len(self.dataset["test"]["dt"])
+        self.total_train = len(self.dataset["train"]["gt"])
+        self.total_valid = len(self.dataset["valid"]["gt"])
+        self.total_test = len(self.dataset["test"]["gt"])
 
         self.train_steps = self.total_train // self.batch_size
         self.valid_steps = self.total_valid // self.batch_size
