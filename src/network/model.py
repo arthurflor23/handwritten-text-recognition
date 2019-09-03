@@ -8,10 +8,7 @@ from tensorflow.keras.models import model_from_json, Model
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
 import tensorflow as tf
-import editdistance
 import numpy as np
-import unicodedata
-import string
 import pickle
 import os
 
@@ -143,7 +140,6 @@ class HTRModel:
     def predict_generator(self,
                           generator,
                           steps,
-                          metrics=["cer", "wer"],
                           norm_accentuation=False,
                           norm_punctuation=False,
                           max_queue_size=10,
@@ -168,15 +164,6 @@ class HTRModel:
             steps:
                 Total number of steps (batches of samples)
                 to yield from `generator` before stopping.
-            metrics:
-                list of metrics that are computed. This is elements among the 4 following metrics:
-                    'loss' : compute the loss function on x
-                    'cer' : compute the character error rate
-                    'wer' : compute the word error rate
-            norm_accentuation:
-                remove accentuation before calculation of the metrics
-            norm_punctuation:
-                remove ponctuation before calculation of the metrics
             max_queue_size:
                 Maximum size for the generator queue.
             workers: Maximum number of processes to spin up
@@ -192,9 +179,6 @@ class HTRModel:
             A tuple containing:
                 A numpy array(s) of ground truth.
                 A numpy array(s) of predictions.
-            A list containing the error rate:
-                cer : the character error rate on the dataset
-                wer : the word error rate on the dataset
 
         # Raises
             ValueError: In case the generator yields
@@ -204,7 +188,6 @@ class HTRModel:
         self.model_pred._make_predict_function()
         is_sequence = isinstance(generator, Sequence)
 
-        loss, cer, wer = [], [], []
         allab_outs, all_lab = [], []
         steps_done = 0
         enqueuer = None
@@ -238,10 +221,6 @@ class HTRModel:
                 [x_input, y, x_length, y_length, w] = x
                 outs = self.predict_on_batch([x_input, x_length])
 
-                if metrics and "loss" in metrics:
-                    c_loss, c_loss_data = self.get_loss_on_batch(x)
-                    loss.append(c_loss / len(c_loss_data))
-
                 if not isinstance(outs, list):
                     outs = [outs]
 
@@ -254,14 +233,6 @@ class HTRModel:
                     encode = [valab_out for valab_out in out if valab_out != -1]
                     pd = "".join(self.charset[int(c)] for c in encode)
                     gt = w[i].decode()
-
-                    if norm_accentuation:
-                        pd = unicodedata.normalize("NFKD", pd).encode("ASCII", "ignore").decode("ASCII")
-                        gt = unicodedata.normalize("NFKD", gt).encode("ASCII", "ignore").decode("ASCII")
-
-                    if norm_punctuation:
-                        pd = pd.translate(str.maketrans("", "", string.punctuation))
-                        gt = gt.translate(str.maketrans("", "", string.punctuation))
 
                     allab_outs[i].append(" ".join(pd.split()))
                     all_lab[i].append(" ".join(gt.split()))
@@ -276,34 +247,12 @@ class HTRModel:
 
         batch_size = len(allab_outs)
         lab_out, pred_out = [], []
-        metrics_out = []
 
         for i in range(len(allab_outs[0])):
             lab_out += [all_lab[b][i] for b in range(batch_size)]
             pred_out += [allab_outs[b][i] for b in range(batch_size)]
 
-        if metrics:
-            for (lab, pred) in zip(lab_out, pred_out):
-                if "cer" in metrics:
-                    pd, lb = list(pred), list(lab)
-                    length = max(len(pd), len(lb))
-                    dist = editdistance.eval(pd, lb)
-                    cer.append(dist / length)
-
-                if "wer" in metrics:
-                    pd, lb = pred.split(), lab.split()
-                    length = max(len(pd), len(lb))
-                    dist = editdistance.eval(pd, lb)
-                    wer.append(dist / length)
-
-            if "loss" in metrics:
-                metrics_out.append(sum(loss) / len(loss))
-            if "cer" in metrics:
-                metrics_out.append(sum(cer) / len(cer))
-            if "wer" in metrics:
-                metrics_out.append(sum(wer) / len(wer))
-
-        return (lab_out, pred_out), metrics_out
+        return (pred_out, lab_out)
 
     def predict_on_batch(self, x):
         """Returns predictions for a single batch of samples.
@@ -338,31 +287,31 @@ class HTRModel:
 
         return np.sum(loss_data), loss_data
 
-    def save_model(self, path_dir, charset=None):
-        """ Save a model in path_dir
+    def save_model(self, path, charset=None):
+        """ Save a model in path
         save model_train, model_pred in json
         save inputs and outputs in json
         save model CTC parameters in a pickle
 
-        :param path_dir: directory where the model architecture will be saved
+        :param path: directory where the model architecture will be saved
         :param charset: set of labels (useful to keep the label order)
         """
 
         model_json = self.model_train.to_json()
-        with open(path_dir + "/model_train.json", "w") as json_file:
+        with open(path + "/model_train.json", "w") as json_file:
             json_file.write(model_json)
 
         model_json = self.model_pred.to_json()
-        with open(path_dir + "/model_pred.json", "w") as json_file:
+        with open(path + "/model_pred.json", "w") as json_file:
             json_file.write(model_json)
 
         model_json = self.model_init.to_json()
-        with open(path_dir + "/model_init.json", "w") as json_file:
+        with open(path + "/model_init.json", "w") as json_file:
             json_file.write(model_json)
 
         param = {"greedy": self.greedy, "beam_width": self.beam_width, "top_paths": self.top_paths, "charset": self.charset}
 
-        output = open(path_dir + "/model_param.pkl", "wb")
+        output = open(path + "/model_param.pkl", "wb")
         p = pickle.Pickler(output)
         p.dump(param)
         output.close()
@@ -377,14 +326,14 @@ class HTRModel:
             self.model_train.load_weights(target)
             self.model_pred.set_weights(self.model_train.get_weights())
 
-    def load_model(self, path_dir, optimizer, init_archi=True, file_weights=None, change_parameters=False,
+    def load_model(self, path, optimizer, init_archi=True, file_weights=None, change_parameters=False,
                    init_last_layer=False, add_layers=None, trainable=False, removed_layers=2):
-        """ Load a model in path_dir
+        """ Load a model in path
         load model_train, model_pred from json
         load inputs and outputs from json
         load model CTC parameters from a pickle
 
-        :param path_dir: directory where the model is saved
+        :param path: directory where the model is saved
         :param optimizer: The optimizer used during training
         :param init_archi: load an architecture from json. Otherwise, the network archtiecture muste be initialized.
         :param file_weights: weights to load (None = default parameters are returned).
@@ -396,17 +345,17 @@ class HTRModel:
         """
 
         if init_archi:
-            json_file = open(path_dir + "/model_train.json", "r")
+            json_file = open(path + "/model_train.json", "r")
             loaded_model_json = json_file.read()
             json_file.close()
             self.model_train = model_from_json(loaded_model_json)
 
-            json_file = open(path_dir + "/model_pred.json", "r")
+            json_file = open(path + "/model_pred.json", "r")
             loaded_model_json = json_file.read()
             json_file.close()
             self.model_pred = model_from_json(loaded_model_json, custom_objects={"tf": tf})
 
-            json_file = open(path_dir + "/model_init.json", "r")
+            json_file = open(path + "/model_init.json", "r")
             loaded_model_json = json_file.read()
             json_file.close()
             self.model_init = model_from_json(loaded_model_json, custom_objects={"tf": tf})
@@ -414,7 +363,7 @@ class HTRModel:
             self.inputs = self.model_init.inputs
             self.outputs = self.model_init.outputs
 
-            input = open(path_dir + "/model_param.pkl", "rb")
+            input = open(path + "/model_param.pkl", "rb")
             p = pickle.Unpickler(input)
             param = p.load()
             input.close()
@@ -431,8 +380,8 @@ class HTRModel:
             if os.path.exists(file_weights):
                 self.model_train.load_weights(file_weights)
                 self.model_pred.set_weights(self.model_train.get_weights())
-            elif os.path.exists(path_dir + file_weights):
-                self.model_train.load_weights(path_dir + file_weights)
+            elif os.path.exists(path + file_weights):
+                self.model_train.load_weights(path + file_weights)
                 self.model_pred.set_weights(self.model_train.get_weights())
 
         # add layers after transfer
@@ -514,7 +463,7 @@ class HTRModel:
                 separator=';',
                 append=True),
             TensorBoard(
-                log_dir=logdir,
+                log_path=logdir,
                 histogram_freq=10,
                 profile_batch=0,
                 write_graph=True,
