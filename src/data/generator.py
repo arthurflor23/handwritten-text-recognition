@@ -74,7 +74,7 @@ class DataGenerator():
                                       dilate_range=3)
             x_train = pp.normalization(x_train)
 
-            x_train_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            x_train_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
             y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
 
             inputs = {
@@ -104,7 +104,7 @@ class DataGenerator():
             x_valid, y_valid, _ = self.fill_batch("valid", self.total_valid, x_valid, y_valid, w=None)
             x_valid = pp.normalization(x_valid)
 
-            x_valid_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            x_valid_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
             y_valid_len = np.asarray([len(np.trim_zeros(y_valid[i])) for i in range(self.batch_size)])
 
             inputs = {
@@ -118,7 +118,7 @@ class DataGenerator():
             yield (inputs, output)
 
     def next_test_batch(self):
-        """Return model evaluate/predict parameters"""
+        """Return model predict parameters"""
 
         while True:
             if self.test_index >= self.total_test:
@@ -135,7 +135,7 @@ class DataGenerator():
             x_test, y_test, w_test = self.fill_batch("test", self.total_test, x_test, y_test, w_test)
             x_test = pp.normalization(x_test)
 
-            x_test_len = np.asarray([self.max_text_length for i in range(self.batch_size)])
+            x_test_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
             y_test_len = np.asarray([len(np.trim_zeros(y_test[i])) for i in range(self.batch_size)])
 
             yield [x_test, y_test, x_test_len, y_test_len, w_test]

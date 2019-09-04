@@ -9,9 +9,7 @@ import editdistance
 
 
 def ocr_metrics(predict, ground_truth, norm_accentuation=False, norm_punctuation=False):
-    """
-    Calculate Character Error Rate (CER) and Word Error Rate (WER)
-    """
+    """Calculate Character Error Rate (CER) and Word Error Rate (WER)"""
 
     cer, wer = [], []
 

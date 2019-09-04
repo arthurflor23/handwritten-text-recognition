@@ -6,7 +6,7 @@ Data partitioning (train, validation, test) was performed following the methodol
 
 **Notes**:
 1. All **references** are commented in the code.
-2. This project **doesn't offer** post-processing, such as N-gram Language Model.
+2. This project **doesn't offer** post-processing, such as Statistical Language Model.
 3. Check out the presentation in the **doc** folder.
 4. For more information and demo run step by step, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
 

@@ -463,7 +463,7 @@ class HTRModel:
                 separator=';',
                 append=True),
             TensorBoard(
-                log_path=logdir,
+                log_dir=logdir,
                 histogram_freq=10,
                 profile_batch=0,
                 write_graph=True,

@@ -117,9 +117,7 @@ def puigcerver(input_size, output_size):
 
 
 def flor(input_size, output_size):
-    """
-    Gated Convolucional Recurrent Neural Network by Flor.
-    """
+    """Gated Convolucional Recurrent Neural Network by Flor."""
 
     input_data = Input(name="input", shape=input_size)
 

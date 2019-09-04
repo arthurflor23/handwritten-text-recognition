@@ -64,7 +64,7 @@ def normalization(imgs):
 
 
 def encode_ctc(text, charset, mtl):
-    """Encode text array to CTC input (sparse)"""
+    """Encode text array (sparse)"""
 
     pad_encoded = np.zeros(mtl)
     text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
