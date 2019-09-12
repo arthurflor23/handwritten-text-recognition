@@ -474,7 +474,6 @@ class HTRModel:
                 monitor="val_loss",
                 save_best_only=True,
                 save_weights_only=True,
-                load_weights_on_restart=True,
                 verbose=1),
             EarlyStopping(
                 monitor="val_loss",
