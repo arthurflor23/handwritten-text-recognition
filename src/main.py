@@ -19,7 +19,7 @@ import time
 
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator
-from network import architecture
+from network import architecture, callbacks
 from network.model import HTRModel
 
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
         if args.train:
             model.summary(output_path, "summary.txt")
-            callbacks = model.callbacks(logdir=output_path, hdf5_target=checkpoint)
+            cbs = callbacks.setup(logdir=output_path, hdf5_target=checkpoint)
 
             start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -99,7 +99,7 @@ if __name__ == "__main__":
                                     steps_per_epoch=dtgen.train_steps,
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.valid_steps,
-                                    callbacks=callbacks,
+                                    callbacks=cbs,
                                     shuffle=True,
                                     verbose=1)
             total_time = time.time() - start_time
@@ -126,11 +126,12 @@ if __name__ == "__main__":
                 print(train_corpus)
                 lg.write(train_corpus)
 
-        else:
+        elif args.test:
             start_time = time.time()
             predicts = model.predict_generator(generator=dtgen.next_test_batch(),
                                                steps=dtgen.test_steps, verbose=1)
             total_time = time.time() - start_time
+
             pred_corpus = "\n".join([f"TE_L {gt}\nTE_P {pd}\n" for (pd, gt) in zip(predicts[0], predicts[1])])
 
             with open(os.path.join(output_path, "predict.m2"), "w") as lg:

@@ -30,9 +30,9 @@ class DataGenerator():
         self.total_valid = len(self.dataset["valid"]["gt_bytes"])
         self.total_test = len(self.dataset["test"]["gt_bytes"])
 
-        self.train_steps = self.total_train // self.batch_size
-        self.valid_steps = self.total_valid // self.batch_size
-        self.test_steps = self.total_test // self.batch_size
+        self.train_steps = np.maximum(self.total_train // self.batch_size, 1)
+        self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
+        self.test_steps = np.maximum(self.total_test // self.batch_size, 1)
 
     def fill_batch(self, partition, maximum, x, y, w):
         """Fill batch array (x, y) if required (batch_size)"""

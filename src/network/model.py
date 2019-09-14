@@ -2,8 +2,6 @@
 
 from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activation
 from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
-from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.models import model_from_json, Model
 from tensorflow.keras import backend as K
 from contextlib import redirect_stdout
@@ -453,43 +451,6 @@ class HTRModel:
             # Compile models
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
-
-    def callbacks(self, logdir, hdf5_target):
-        os.makedirs(os.path.join(logdir), exist_ok=True)
-
-        callbacks = [
-            CSVLogger(
-                filename=os.path.join(logdir, "epochs.log"),
-                separator=';',
-                append=True),
-            TensorBoard(
-                log_dir=logdir,
-                histogram_freq=10,
-                profile_batch=0,
-                write_graph=True,
-                write_images=False,
-                update_freq="epoch"),
-            ModelCheckpoint(
-                filepath=os.path.join(logdir, hdf5_target),
-                monitor="val_loss",
-                save_best_only=True,
-                save_weights_only=True,
-                verbose=1),
-            EarlyStopping(
-                monitor="val_loss",
-                min_delta=0.0001,
-                patience=20,
-                restore_best_weights=True,
-                verbose=1),
-            ReduceLROnPlateau(
-                monitor="val_loss",
-                min_delta=0.0001,
-                factor=0.2,
-                patience=10,
-                verbose=1)
-        ]
-
-        return callbacks
 
     def summary(self, output, target=None):
         """Show/Save model structure (summary)"""
