@@ -5,7 +5,7 @@ from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 
-def setup(logdir, hdf5_target):
+def setup(logdir, hdf5_target, monitor="val_loss"):
     """Setup the list of callbacks for the model"""
 
     callbacks = [
@@ -22,18 +22,18 @@ def setup(logdir, hdf5_target):
             update_freq="epoch"),
         ModelCheckpoint(
             filepath=os.path.join(logdir, hdf5_target),
-            monitor="val_loss",
+            monitor=monitor,
             save_best_only=True,
             save_weights_only=True,
             verbose=1),
         EarlyStopping(
-            monitor="val_loss",
+            monitor=monitor,
             min_delta=0.0001,
             patience=20,
             restore_best_weights=True,
             verbose=1),
         ReduceLROnPlateau(
-            monitor="val_loss",
+            monitor=monitor,
             min_delta=0.0001,
             factor=0.2,
             patience=10,

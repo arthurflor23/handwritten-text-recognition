@@ -11,6 +11,7 @@ Provides options via the command line to perform project tasks.
 """
 
 import os
+import string
 import importlib
 import argparse
 import h5py
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-    parser.add_argument("--epochs", type=int, default=10000)
+    parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
 
     input_size = (1024, 128, 1)
     max_text_length = 128
-    charset_base = "".join([chr(i) for i in range(32, 127)])
+    charset_base = string.printable[:95]
 
     if args.transform:
         assert os.path.exists(raw_path)
