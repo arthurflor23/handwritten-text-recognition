@@ -24,7 +24,9 @@ class DataGenerator():
                 for data_type in hf[partition]:
                     self.dataset[partition][data_type] = hf[partition][data_type][:]
 
-        self.train_index, self.valid_index, self.test_index = 0, 0, 0
+        self.full_fill_partition("train")
+        self.full_fill_partition("valid")
+        self.full_fill_partition("test")
 
         self.total_train = len(self.dataset["train"]["gt_bytes"])
         self.total_valid = len(self.dataset["valid"]["gt_bytes"])
@@ -34,21 +36,16 @@ class DataGenerator():
         self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
         self.test_steps = np.maximum(self.total_test // self.batch_size, 1)
 
-    def fill_batch(self, partition, maximum, x, y, w):
-        """Fill batch array (x, y) if required (batch_size)"""
+        self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
-        if len(x) < self.batch_size:
-            fill = self.batch_size - len(x)
-            i = np.random.choice(np.arange(0, maximum - fill), 1)[0]
+    def full_fill_partition(self, pt):
+        """Make full fill partition up to batch size and steps"""
 
-            if x is not None:
-                x = np.append(x, self.dataset[partition]["dt"][i:i + fill], axis=0)
-            if y is not None:
-                y = np.append(y, self.dataset[partition]["gt_sparse"][i:i + fill], axis=0)
-            if w is not None:
-                w = np.append(w, self.dataset[partition]["gt_bytes"][i:i + fill], axis=0)
+        while len(self.dataset[pt]["dt"]) % self.batch_size:
+            i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
 
-        return (x, y, w)
+            for sub in ["dt", "gt_sparse", "gt_bytes"]:
+                self.dataset[pt][sub] = np.append(self.dataset[pt][sub], [self.dataset[pt][sub][i]], axis=0)
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -64,7 +61,6 @@ class DataGenerator():
             x_train = self.dataset["train"]["dt"][index:until]
             y_train = self.dataset["train"]["gt_sparse"][index:until]
 
-            x_train, y_train, _ = self.fill_batch("train", self.total_train, x_train, y_train, w=None)
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
                                       scale_range=0.05,
@@ -101,7 +97,6 @@ class DataGenerator():
             x_valid = self.dataset["valid"]["dt"][index:until]
             y_valid = self.dataset["valid"]["gt_sparse"][index:until]
 
-            x_valid, y_valid, _ = self.fill_batch("valid", self.total_valid, x_valid, y_valid, w=None)
             x_valid = pp.normalization(x_valid)
 
             x_valid_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
@@ -132,7 +127,6 @@ class DataGenerator():
             y_test = self.dataset["test"]["gt_sparse"][index:until]
             w_test = self.dataset["test"]["gt_bytes"][index:until]
 
-            x_test, y_test, w_test = self.fill_batch("test", self.total_test, x_test, y_test, w_test)
             x_test = pp.normalization(x_test)
 
             x_test_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])

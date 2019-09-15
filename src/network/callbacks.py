@@ -8,8 +8,6 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 def setup(logdir, hdf5_target):
     """Setup the list of callbacks for the model"""
 
-    os.makedirs(os.path.join(logdir), exist_ok=True)
-
     callbacks = [
         CSVLogger(
             filename=os.path.join(logdir, "epochs.log"),

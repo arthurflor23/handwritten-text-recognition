@@ -452,7 +452,7 @@ class HTRModel:
             self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
             self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-    def summary(self, output, target=None):
+    def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
 
         if target is not None:
