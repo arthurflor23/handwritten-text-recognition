@@ -130,7 +130,9 @@ if __name__ == "__main__":
         elif args.test:
             start_time = time.time()
             predicts = model.predict_generator(generator=dtgen.next_test_batch(),
-                                               steps=dtgen.test_steps, verbose=1)
+                                               steps=dtgen.test_steps,
+                                               use_multiprocessing=True,
+                                               verbose=1)
             total_time = time.time() - start_time
 
             pred_corpus = "\n".join([f"TE_L {gt}\nTE_P {pd}\n" for (pd, gt) in zip(predicts[0], predicts[1])])
@@ -138,8 +140,10 @@ if __name__ == "__main__":
             with open(os.path.join(output_path, "predict.m2"), "w") as lg:
                 lg.write(pred_corpus)
 
-            evaluate = evaluation.ocr_metrics(predict=predicts[0], ground_truth=predicts[1],
-                                              norm_accentuation=False, norm_punctuation=False)
+            evaluate = evaluation.ocr_metrics(predict=predicts[0],
+                                              ground_truth=predicts[1],
+                                              norm_accentuation=False,
+                                              norm_punctuation=False)
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}",
