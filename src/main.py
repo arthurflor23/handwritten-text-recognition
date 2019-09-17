@@ -11,7 +11,6 @@ Provides options via the command line to perform project tasks.
 """
 
 import os
-import string
 import importlib
 import argparse
 import h5py
@@ -42,7 +41,7 @@ if __name__ == "__main__":
 
     input_size = (1024, 128, 1)
     max_text_length = 128
-    charset_base = string.printable[:95]
+    charset_base = "".join([chr(i) for i in range(32, 127)])
 
     if args.transform:
         assert os.path.exists(raw_path)
