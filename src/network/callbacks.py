@@ -28,13 +28,13 @@ def setup(logdir, hdf5_target, monitor="val_loss"):
             verbose=1),
         EarlyStopping(
             monitor=monitor,
-            min_delta=0.0001,
+            min_delta=1e-4,
             patience=20,
             restore_best_weights=True,
             verbose=1),
         ReduceLROnPlateau(
             monitor=monitor,
-            min_delta=0.0001,
+            min_delta=1e-4,
             factor=0.2,
             patience=10,
             verbose=1)

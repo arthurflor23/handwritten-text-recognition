@@ -1,4 +1,4 @@
-<img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/000.png?raw=true">
+<img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/header.png?raw=true">
 
 Handwritten Text Recognition (HTR) system implemented using [TensorFlow 2.0](https://www.tensorflow.org/) and trained on the Bentham/IAM/Rimes/Saint Gall/Washington offline HTR datasets. This Neural Network model recognizes the text contained in the images of segmented texts lines.
 
