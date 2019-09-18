@@ -3,6 +3,7 @@ Data preproc functions:
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
     encode_ctc: encode batch of texts in sparse array with padding
+    standardize_texts: standardize batch of texts
     preproc: main function to the preprocess.
         Make the image:
             illumination_compensation: apply illumination regularitation
@@ -12,6 +13,7 @@ Data preproc functions:
 
 import unicodedata
 import numpy as np
+import string
 import cv2
 
 
@@ -63,18 +65,37 @@ def normalization(imgs):
     return np.expand_dims(imgs, axis=-1)
 
 
-def encode_ctc(text, charset, mtl):
+def encode_ctc(texts, charset, max_text_length):
     """Encode text array (sparse)"""
 
-    pad_encoded = np.zeros(mtl)
-    text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
-    text = " ".join(text.split())
+    pad_encoded = np.zeros((len(texts), max_text_length))
 
-    encoded = [float(charset.find(x)) for x in text if charset.find(x) > -1]
-    encoded = [float(charset.find("&"))] if len(encoded) == 0 else encoded
+    for i in range(len(texts)):
+        texts[i] = unicodedata.normalize("NFKD", texts[i]).encode("ASCII", "ignore").decode("ASCII")
+        texts[i] = " ".join(texts[i].split())
 
-    pad_encoded[0:len(encoded)] = encoded
+        encoded = [float(charset.find(x)) for x in texts[i] if charset.find(x) > -1]
+        encoded = [float(charset.find("&"))] if len(encoded) == 0 else encoded
+
+        pad_encoded[i, 0:len(encoded)] = encoded
+
     return pad_encoded
+
+
+def standardize_texts(texts):
+    """Organize/add spaces around punctuation marks"""
+
+    for i in range(len(texts)):
+        texts[i] = " ".join(texts[i].split()).replace(" '", "'").replace("' ", "'")
+        texts[i] = texts[i].replace("«", "").replace("»", "")
+
+        for y in texts[i]:
+            if y in string.punctuation.replace("'", ""):
+                texts[i] = texts[i].replace(y, f" {y} ")
+
+        texts[i] = " ".join(texts[i].split())
+
+    return texts
 
 
 """
@@ -85,11 +106,8 @@ Preprocess metodology based in:
 """
 
 
-def preproc(img, img_size, read_first=False):
+def preproc(img, img_size):
     """Make the process with the `img_size` to the scale resize"""
-
-    if read_first:
-        img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
 
     wt, ht, _ = img_size
     h, w = img.shape

@@ -17,6 +17,8 @@ import h5py
 import cv2
 import time
 
+from multiprocessing import Pool
+from functools import partial
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator
 from network import architecture, callbacks
@@ -37,7 +39,7 @@ if __name__ == "__main__":
 
     raw_path = os.path.join("..", "raw", args.dataset)
     hdf5_src = os.path.join("..", "data", f"{args.dataset}.hdf5")
-    output_path = os.path.join("..", "output", f"{args.dataset}_{args.arch}")
+    output_path = os.path.join("..", "output", args.dataset, args.arch)
 
     input_size = (1024, 128, 1)
     max_text_length = 128
@@ -45,18 +47,31 @@ if __name__ == "__main__":
 
     if args.transform:
         assert os.path.exists(raw_path)
-
         print(f"The {args.dataset} dataset will be transformed...")
-        mod = importlib.import_module(f"transform.{args.dataset}")
 
-        transform = mod.Transform(source=raw_path,
-                                  target=hdf5_src,
-                                  input_size=input_size,
-                                  charset=charset_base,
-                                  max_text_length=max_text_length,
-                                  preproc=pp.preproc,
-                                  encode=pp.encode_ctc)
-        transform.line()
+        mod = importlib.import_module(f"transform.{args.dataset}")
+        os.makedirs(os.path.dirname(hdf5_src), exist_ok=True)
+
+        dtgen = mod.Dataset(partitions=["train", "valid", "test"])
+        dataset = dtgen.get_partitions(source=raw_path)
+
+        for i in dtgen.partitions:
+            dataset[i]["gt"] = pp.standardize_texts(dataset[i]["gt"])
+            dataset[i]["gt_sparse"] = pp.encode_ctc(dataset[i]["gt"], charset_base, max_text_length)
+            dataset[i]["gt"] = [x.encode() for x in dataset[i]["gt"]]
+
+            pool = Pool()
+            dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=input_size), dataset[i]["dt"])
+            pool.close()
+            pool.join()
+
+            with h5py.File(hdf5_src, "a") as hf:
+                hf.create_dataset(f"{i}/dt", data=dataset[i]["dt"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/gt_sparse", data=dataset[i]["gt_sparse"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/gt_bytes", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
+                dataset[i] = None
+                print(f"[OK] {i} partition.")
+
         print(f"Transformation finished.")
 
     elif args.cv2:
@@ -114,12 +129,12 @@ if __name__ == "__main__":
                 f"Total train images:       {dtgen.total_train}",
                 f"Total validation images:  {dtgen.total_valid}",
                 f"Batch:                    {args.batch_size}\n",
-                f"Total time:               {total_time:.4f} sec",
-                f"Average time per epoch:   {(total_time / len(loss)):.4f} sec\n",
+                f"Total time:               {total_time:.8f} sec",
+                f"Average time per epoch:   {(total_time / len(loss)):.8f} sec\n",
                 f"Total epochs:             {len(loss)}",
                 f"Best epoch                {min_val_loss_i + 1}\n",
-                f"Training loss:            {loss[min_val_loss_i]:.4f}",
-                f"Validation loss:          {min_val_loss:.4f}"
+                f"Training loss:            {loss[min_val_loss_i]:.8f}",
+                f"Validation loss:          {min_val_loss:.8f}"
             ])
 
             with open(os.path.join(output_path, "train.txt"), "w") as lg:
@@ -136,7 +151,7 @@ if __name__ == "__main__":
 
             pred_corpus = "\n".join([f"TE_L {gt}\nTE_P {pd}\n" for (pd, gt) in zip(predicts[0], predicts[1])])
 
-            with open(os.path.join(output_path, "predict.m2"), "w") as lg:
+            with open(os.path.join(output_path, "predict.txt"), "w") as lg:
                 lg.write(pred_corpus)
 
             evaluate = evaluation.ocr_metrics(predict=predicts[0],
@@ -146,11 +161,11 @@ if __name__ == "__main__":
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}",
-                f"Total time:           {total_time:.4f} sec",
-                f"Time per item:        {(total_time / dtgen.total_test):.4f} sec\n",
+                f"Total time:           {total_time:.8f} sec",
+                f"Time per item:        {(total_time / dtgen.total_test):.8f} sec\n",
                 f"Metrics:",
-                f"Character Error Rate: {evaluate[0]:.4f}",
-                f"Word Error Rate:      {evaluate[1]:.4f}"
+                f"Character Error Rate: {evaluate[0]:.8f}",
+                f"Word Error Rate:      {evaluate[1]:.8f}"
             ])
 
             with open(os.path.join(output_path, "evaluate.txt"), "w") as lg:

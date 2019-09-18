@@ -1,66 +1,40 @@
 """Transform Rimes dataset"""
 
-from multiprocessing import Pool
-from functools import partial
 import xml.etree.ElementTree as ET
-import string
+import numpy as np
 import html
-import h5py
 import cv2
 import os
 
 
-class Transform():
+class Dataset():
 
-    def __init__(self,
-                 source,
-                 target,
-                 input_size,
-                 charset,
-                 max_text_length,
-                 preproc, encode):
-        self.source = source
-        self.target = target
-        self.input_size = input_size
-        self.charset = charset
-        self.max_text_length = max_text_length
-        self.preproc = preproc
-        self.encode = encode
+    def __init__(self, partitions):
+        self.partitions = partitions
 
-    def line(self):
-        """Make process of line hdf5"""
+    def get_partitions(self, source):
+        """Process of read partitions data/ground truth"""
 
-        partition = self._get_partitions()
-        self._build(self._extract, partition, "train")
-        self._build(self._extract, partition, "valid")
-        self._build(self._extract, partition, "test")
+        paths = self._get_partitions(source)
+        dataset = dict()
 
-    def _build(self, func, partition, group):
-        """Preprocessing and build line tasks"""
+        for i in self.partitions:
+            dataset[i] = {"dt": [], "gt": [], "gt_sparse": []}
 
-        pool = Pool()
-        dt, gt, gt_sparse = zip(*pool.map(partial(func), partition[group]))
-        pool.close()
-        pool.join()
+            for item in paths[i]:
+                img = cv2.imread(os.path.join(source, item[0]), cv2.IMREAD_GRAYSCALE)
+                img = np.array(img[item[2][0]:item[2][1], item[2][2]:item[2][3]], dtype=np.uint8)
 
-        self._save(group=group, dt=dt, gt=gt, gt_sparse=gt_sparse)
+                dataset[i]["dt"].append(img)
+                dataset[i]["gt"].append(item[1])
 
-    def _extract(self, item):
-        """Extract lines from the pages"""
+        return dataset
 
-        dt = cv2.imread(os.path.join(self.source, item[0]), cv2.IMREAD_GRAYSCALE)
-        dt = dt[item[2][0]:item[2][1], item[2][2]:item[2][3]]
-
-        dt = self.preproc(img=dt, img_size=self.input_size, read_first=False)
-        gt_sparse = self.encode(text=item[1], charset=self.charset, mtl=self.max_text_length)
-
-        return dt, item[1], gt_sparse
-
-    def _get_partitions(self):
+    def _get_partitions(self, source):
         """Read the partitions file"""
 
         def generate(xml, subpath, partition, validation=False):
-            xml = ET.parse(os.path.join(self.source, xml)).getroot()
+            xml = ET.parse(os.path.join(source, xml)).getroot()
             dt = []
 
             for page_tag in xml:
@@ -68,13 +42,9 @@ class Transform():
 
                 for i, line_tag in enumerate(page_tag.iter("Line")):
                     text = html.unescape(line_tag.attrib["Value"])
-
-                    for i in string.punctuation.replace("'", ""):
-                        text = text.replace(i, f" {i} ")
-
                     text = " ".join(text.split())
 
-                    if len(text) > 0:
+                    if len(text) > 3:
                         bound = [abs(int(line_tag.attrib["Top"])), abs(int(line_tag.attrib["Bottom"])),
                                  abs(int(line_tag.attrib["Left"])), abs(int(line_tag.attrib["Right"]))]
                         dt.append([os.path.join(subpath, page_path), text, bound])
@@ -91,14 +61,3 @@ class Transform():
         generate("eval_2011_annotated.xml", "eval_2011", partition, validation=False)
 
         return partition
-
-    def _save(self, group, dt, gt, gt_sparse):
-        """Save hdf5 file"""
-
-        os.makedirs(os.path.dirname(self.target), exist_ok=True)
-
-        with h5py.File(self.target, "a") as hf:
-            hf.create_dataset(f"{group}/dt", data=dt, compression="gzip", compression_opts=9)
-            hf.create_dataset(f"{group}/gt_bytes", data=[n.encode() for n in gt], compression="gzip", compression_opts=9)
-            hf.create_dataset(f"{group}/gt_sparse", data=gt_sparse, compression="gzip", compression_opts=9)
-            print(f"[OK] {group} partition.")
