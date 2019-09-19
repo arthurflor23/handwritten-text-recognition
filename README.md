@@ -43,3 +43,13 @@ e. [Washington](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 ## Tutorial (Google Colab/Drive)
 
 A Jupyter Notebook is available to demo run, check out the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** on Google Colab/Drive.
+
+## Sample
+
+Bentham sample with default parameters in the **[tutorial](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/src/tutorial.ipynb)** file.
+
+1. Preprocessed image (network input)
+2. TE_L: Ground Truth Text (label)
+3. TE_P: Predicted text (network output)
+
+<img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/bentham_sample.png?raw=true">
