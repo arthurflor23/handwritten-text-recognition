@@ -82,7 +82,7 @@ if __name__ == "__main__":
             print(f"Ground truth: {pp.decode_ctc([gt[x]], charset_base)[0]}")
             print(f"Ground truth sparsed:\n{gt[x]}\n")
 
-            cv2.imshow("img", dt[x])
+            cv2.imshow("img", pp.adjust_to_see(dt[x]))
             cv2.waitKey(0)
 
     elif args.train or args.test:
