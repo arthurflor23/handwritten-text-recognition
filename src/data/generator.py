@@ -28,9 +28,9 @@ class DataGenerator():
         self.full_fill_partition("valid")
         self.full_fill_partition("test")
 
-        self.total_train = len(self.dataset["train"]["gt_bytes"])
-        self.total_valid = len(self.dataset["valid"]["gt_bytes"])
-        self.total_test = len(self.dataset["test"]["gt_bytes"])
+        self.total_train = len(self.dataset["train"]["gt"])
+        self.total_valid = len(self.dataset["valid"]["gt"])
+        self.total_test = len(self.dataset["test"]["gt"])
 
         self.train_steps = np.maximum(self.total_train // self.batch_size, 1)
         self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
@@ -44,8 +44,8 @@ class DataGenerator():
         while len(self.dataset[pt]["dt"]) % self.batch_size:
             i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
 
-            for sub in ["dt", "gt_sparse", "gt_bytes"]:
-                self.dataset[pt][sub] = np.append(self.dataset[pt][sub], [self.dataset[pt][sub][i]], axis=0)
+            self.dataset[pt]["dt"] = np.append(self.dataset[pt]["dt"], [self.dataset[pt]["dt"][i]], axis=0)
+            self.dataset[pt]["gt"] = np.append(self.dataset[pt]["gt"], [self.dataset[pt]["gt"][i]], axis=0)
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -59,7 +59,7 @@ class DataGenerator():
             self.train_index += self.batch_size
 
             x_train = self.dataset["train"]["dt"][index:until]
-            y_train = self.dataset["train"]["gt_sparse"][index:until]
+            y_train = self.dataset["train"]["gt"][index:until]
 
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
@@ -95,7 +95,7 @@ class DataGenerator():
             self.valid_index += self.batch_size
 
             x_valid = self.dataset["valid"]["dt"][index:until]
-            y_valid = self.dataset["valid"]["gt_sparse"][index:until]
+            y_valid = self.dataset["valid"]["gt"][index:until]
 
             x_valid = pp.normalization(x_valid)
 
@@ -124,12 +124,8 @@ class DataGenerator():
             self.test_index += self.batch_size
 
             x_test = self.dataset["test"]["dt"][index:until]
-            y_test = self.dataset["test"]["gt_sparse"][index:until]
-            w_test = self.dataset["test"]["gt_bytes"][index:until]
-
             x_test = pp.normalization(x_test)
 
             x_test_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
-            y_test_len = np.asarray([len(np.trim_zeros(y_test[i])) for i in range(self.batch_size)])
 
-            yield [x_test, y_test, x_test_len, y_test_len, w_test]
+            yield (x_test, x_test_len)

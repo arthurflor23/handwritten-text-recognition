@@ -32,7 +32,7 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 3:

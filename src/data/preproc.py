@@ -65,8 +65,20 @@ def normalization(imgs):
     return np.expand_dims(imgs, axis=-1)
 
 
+def decode_ctc(texts, charset):
+    """Decode sparse array (sparse to text)"""
+
+    decoded = []
+
+    for i in range(len(texts)):
+        text = "".join([charset[int(c)] for c in texts[i]])
+        decoded.append(" ".join(text.split()))
+
+    return decoded
+
+
 def encode_ctc(texts, charset, max_text_length):
-    """Encode text array (sparse)"""
+    """Encode text array (text to sparse)"""
 
     pad_encoded = np.zeros((len(texts), max_text_length))
 

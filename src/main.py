@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
     raw_path = os.path.join("..", "raw", args.dataset)
@@ -57,8 +57,7 @@ if __name__ == "__main__":
 
         for i in dtgen.partitions:
             dataset[i]["gt"] = pp.standardize_texts(dataset[i]["gt"])
-            dataset[i]["gt_sparse"] = pp.encode_ctc(dataset[i]["gt"], charset_base, max_text_length)
-            dataset[i]["gt"] = [x.encode() for x in dataset[i]["gt"]]
+            dataset[i]["gt"] = pp.encode_ctc(dataset[i]["gt"], charset_base, max_text_length)
 
             pool = Pool()
             dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=input_size), dataset[i]["dt"])
@@ -66,9 +65,8 @@ if __name__ == "__main__":
             pool.join()
 
             with h5py.File(hdf5_src, "a") as hf:
+                hf.create_dataset(f"{i}/gt", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
                 hf.create_dataset(f"{i}/dt", data=dataset[i]["dt"], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt_sparse", data=dataset[i]["gt_sparse"], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt_bytes", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
                 dataset[i] = None
                 print(f"[OK] {i} partition.")
 
@@ -77,13 +75,12 @@ if __name__ == "__main__":
     elif args.cv2:
         with h5py.File(hdf5_src, "r") as hf:
             dt = hf["train"]["dt"][:]
-            gt_bytes = hf["train"]["gt_bytes"][:]
-            gt_sparse = hf["train"]["gt_sparse"][:]
+            gt = hf["train"]["gt"][:]
 
         for x in range(len(dt)):
             print(f"Image shape: {dt[x].shape}")
-            print(f"Ground truth: {gt_bytes[x].decode()}")
-            print(f"Ground truth sparsed:\n{gt_sparse[x]}\n")
+            print(f"Ground truth: {pp.decode_ctc([gt[x]], charset_base)[0]}")
+            print(f"Ground truth sparsed:\n{gt[x]}\n")
 
             cv2.imshow("img", dt[x])
             cv2.waitKey(0)
@@ -102,11 +99,11 @@ if __name__ == "__main__":
         model.compile(optimizer=ioo[2])
 
         checkpoint = "checkpoint_weights.hdf5"
-        model.load_checkpoint(output_path, checkpoint)
+        model.load_checkpoint(target=os.path.join(output_path, checkpoint))
 
         if args.train:
             model.summary(output_path, "summary.txt")
-            cbs = callbacks.setup(logdir=output_path, hdf5_target=checkpoint)
+            cbs = callbacks.setup(logdir=output_path, hdf5=checkpoint)
 
             start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -138,8 +135,8 @@ if __name__ == "__main__":
             ])
 
             with open(os.path.join(output_path, "train.txt"), "w") as lg:
-                print(train_corpus)
                 lg.write(train_corpus)
+                print(train_corpus)
 
         elif args.test:
             start_time = time.time()
@@ -147,15 +144,22 @@ if __name__ == "__main__":
                                                steps=dtgen.test_steps,
                                                use_multiprocessing=True,
                                                verbose=1)
+
+            predicts = pp.decode_ctc(predicts, charset_base)
             total_time = time.time() - start_time
 
-            pred_corpus = "\n".join([f"TE_L {gt}\nTE_P {pd}\n" for (pd, gt) in zip(predicts[0], predicts[1])])
+            ground_truth = pp.decode_ctc(dtgen.dataset["test"]["gt"], charset_base)
+            pred_corpus = []
+
+            for pd, gt in zip(predicts, ground_truth):
+                pred_corpus.append(f"TE_L {gt}\nTE_P {pd}\n")
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
-                lg.write(pred_corpus)
+                lg.write("\n".join(pred_corpus))
+                print("\n".join(pred_corpus))
 
-            evaluate = evaluation.ocr_metrics(predict=predicts[0],
-                                              ground_truth=predicts[1],
+            evaluate = evaluation.ocr_metrics(predicts=predicts,
+                                              ground_truth=ground_truth,
                                               norm_accentuation=False,
                                               norm_punctuation=False)
 
@@ -169,5 +173,5 @@ if __name__ == "__main__":
             ])
 
             with open(os.path.join(output_path, "evaluate.txt"), "w") as lg:
-                print(eval_corpus)
                 lg.write(eval_corpus)
+                print(eval_corpus)

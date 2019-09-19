@@ -138,8 +138,6 @@ class HTRModel:
     def predict_generator(self,
                           generator,
                           steps,
-                          norm_accentuation=False,
-                          norm_punctuation=False,
                           max_queue_size=10,
                           workers=1,
                           use_multiprocessing=False,
@@ -150,9 +148,6 @@ class HTRModel:
         generator = DataGenerator class that returns:
             x = Input data as a 3D Tensor (batch_size, max_input_len, dim_features)
             x_len = 1D array with the length of each data in batch_size
-            y = Input data (sparse format) as a 3D Tensor (batch_size, max_input_len, dim_features)
-            y_len = 1D array with the length of each data in batch_size
-            y = Input data (bytes format) as a 2D Tensor (batch_size)
 
         # Arguments
             generator: Generator yielding batches of input samples
@@ -174,9 +169,7 @@ class HTRModel:
                 verbosity mode, 0 or 1.
 
         # Returns
-            A tuple containing:
-                A numpy array(s) of ground truth.
-                A numpy array(s) of predictions.
+            A numpy array(s) of predictions.
 
         # Raises
             ValueError: In case the generator yields
@@ -186,7 +179,7 @@ class HTRModel:
         self.model_pred._make_predict_function()
         is_sequence = isinstance(generator, Sequence)
 
-        allab_outs, all_lab = [], []
+        allab_outs = []
         steps_done = 0
         enqueuer = None
 
@@ -203,37 +196,15 @@ class HTRModel:
                 progbar = Progbar(target=steps)
 
             while steps_done < steps:
-                generator_output = next(output_generator)
-
-                if isinstance(generator_output, tuple):
-                    if len(generator_output) == 2:
-                        x, _ = generator_output
-                    elif len(generator_output) == 3:
-                        x, _, _ = generator_output
-                    else:
-                        raise ValueError("Output of generator should be a tuple `(x, y, sample_weight)` "
-                                         "or `(x, y)`. Found: " + str(generator_output))
-                else:
-                    x = generator_output
-
-                [x_input, y, x_length, y_length, w] = x
-                outs = self.predict_on_batch([x_input, x_length])
+                x = next(output_generator)
+                outs = self.predict_on_batch(x)
 
                 if not isinstance(outs, list):
                     outs = [outs]
 
-                if not allab_outs:
-                    for out in outs:
-                        allab_outs.append([])
-                        all_lab.append([])
-
                 for i, out in enumerate(outs):
                     encode = [valab_out for valab_out in out if valab_out != -1]
-                    pd = "".join(self.charset[int(c)] for c in encode)
-                    gt = w[i].decode()
-
-                    allab_outs[i].append(" ".join(pd.split()))
-                    all_lab[i].append(" ".join(gt.split()))
+                    allab_outs.append([int(c) for c in encode])
 
                 steps_done += 1
                 if verbose == 1:
@@ -243,14 +214,7 @@ class HTRModel:
             if enqueuer is not None:
                 enqueuer.stop()
 
-        batch_size = len(allab_outs)
-        lab_out, pred_out = [], []
-
-        for i in range(len(allab_outs[0])):
-            lab_out += [all_lab[b][i] for b in range(batch_size)]
-            pred_out += [allab_outs[b][i] for b in range(batch_size)]
-
-        return (pred_out, lab_out)
+        return allab_outs
 
     def predict_on_batch(self, x):
         """Returns predictions for a single batch of samples.
@@ -314,11 +278,8 @@ class HTRModel:
         p.dump(param)
         output.close()
 
-    def load_checkpoint(self, output, hdf5):
-        """ Load a model with checkpoint file
-        load model_train, model_pred from hdf5
-        """
-        target = os.path.join(output, hdf5)
+    def load_checkpoint(self, target):
+        """ Load a model with checkpoint file"""
 
         if os.path.isfile(target):
             self.model_train.load_weights(target)

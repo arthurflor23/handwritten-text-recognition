@@ -8,12 +8,12 @@ import unicodedata
 import editdistance
 
 
-def ocr_metrics(predict, ground_truth, norm_accentuation=False, norm_punctuation=False):
+def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuation=False):
     """Calculate Character Error Rate (CER) and Word Error Rate (WER)"""
 
     cer, wer = [], []
 
-    for (pd, gt) in zip(predict, ground_truth):
+    for (pd, gt) in zip(predicts, ground_truth):
 
         if norm_accentuation:
             pd = unicodedata.normalize("NFKD", pd).encode("ASCII", "ignore").decode("ASCII")

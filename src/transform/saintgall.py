@@ -30,7 +30,7 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
                 glob_filter = os.path.join(img_path, f"{line}*")

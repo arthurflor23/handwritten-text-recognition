@@ -19,7 +19,7 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for item in paths[i]:
                 img = cv2.imread(os.path.join(source, item[0]), cv2.IMREAD_GRAYSCALE)
