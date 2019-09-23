@@ -5,7 +5,7 @@ from tensorflow.keras.layers import Dropout, BatchNormalization, MaxPooling2D
 from tensorflow.keras.layers import Reshape, Activation, LeakyReLU, PReLU
 from tensorflow.keras.constraints import MaxNorm
 from tensorflow.keras.optimizers import RMSprop
-from network.gated import Gated, GatedConv
+from network.layers import FullGatedConv2D, GatedConv2D
 
 
 def bluche(input_size, output_size):
@@ -36,19 +36,19 @@ def bluche(input_size, output_size):
     cnn = Activation(activation="tanh")(cnn)
     cnn = Dropout(rate=0.5)(cnn)
 
-    cnn = GatedConv(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = GatedConv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
     cnn = Dropout(rate=0.5)(cnn)
 
-    cnn = GatedConv(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = GatedConv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
     cnn = Dropout(rate=0.5)(cnn)
 
-    cnn = GatedConv(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = GatedConv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
@@ -137,33 +137,33 @@ def flor(input_size, output_size):
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=16, kernel_size=(3,3), padding="same")(cnn)
+    cnn = FullGatedConv2D(filters=16, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=32, kernel_size=(3,3), padding="same")(cnn)
+    cnn = FullGatedConv2D(filters=32, kernel_size=(3,3), padding="same")(cnn)
 
     cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = Gated(filters=56, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=56, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
