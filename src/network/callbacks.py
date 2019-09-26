@@ -24,7 +24,7 @@ def setup(logdir, hdf5, monitor="val_loss"):
             filepath=os.path.join(logdir, hdf5),
             monitor=monitor,
             save_best_only=True,
-            save_weights_only=False,
+            save_weights_only=True,
             verbose=1),
         EarlyStopping(
             monitor=monitor,
