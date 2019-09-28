@@ -21,7 +21,7 @@ from multiprocessing import Pool
 from functools import partial
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator
-from network import architecture, callbacks
+from network import architecture
 from network.model import HTRModel
 
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
         if args.train:
             model.summary(output_path, "summary.txt")
-            cbs = callbacks.setup(logdir=output_path, hdf5=checkpoint)
+            callbacks = model.get_callbacks(logdir=output_path, hdf5=checkpoint)
 
             start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -111,7 +111,7 @@ if __name__ == "__main__":
                                     steps_per_epoch=dtgen.train_steps,
                                     validation_data=dtgen.next_valid_batch(),
                                     validation_steps=dtgen.valid_steps,
-                                    callbacks=cbs,
+                                    callbacks=callbacks,
                                     shuffle=True,
                                     verbose=1)
             total_time = time.time() - start_time
