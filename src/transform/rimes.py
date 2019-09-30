@@ -19,14 +19,14 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
+            dataset[i] = {"dt": [], "gt_bytes": [], "gt_sparse": []}
 
             for item in paths[i]:
                 img = cv2.imread(os.path.join(source, item[0]), cv2.IMREAD_GRAYSCALE)
                 img = np.array(img[item[2][0]:item[2][1], item[2][2]:item[2][3]], dtype=np.uint8)
 
                 dataset[i]["dt"].append(img)
-                dataset[i]["gt"].append(item[1])
+                dataset[i]["gt_sparse"].append(item[1])
 
         return dataset
 

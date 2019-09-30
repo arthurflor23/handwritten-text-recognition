@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers import RMSprop
 from network.layers import FullGatedConv2D, GatedConv2D
 
 
-def bluche(input_size, output_size):
+def bluche(input_size, output_size, learning_rate=4e-4):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
         Reference:
@@ -67,12 +67,12 @@ def bluche(input_size, output_size):
     blstm = Dense(units=output_size)(blstm)
 
     output_data = Activation(activation="softmax")(blstm)
-    optimizer = RMSprop(learning_rate=4e-4)
+    optimizer = RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
 
 
-def puigcerver(input_size, output_size):
+def puigcerver(input_size, output_size, learning_rate=3e-4):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
         Reference:
@@ -86,29 +86,29 @@ def puigcerver(input_size, output_size):
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -123,12 +123,12 @@ def puigcerver(input_size, output_size):
     blstm = Dense(units=output_size)(blstm)
 
     output_data = Activation(activation="softmax")(blstm)
-    optimizer = RMSprop(learning_rate=3e-4)
+    optimizer = RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
 
 
-def flor(input_size, output_size):
+def flor(input_size, output_size, learning_rate=5e-4):
     """Gated Convolucional Recurrent Neural Network by Flor."""
 
     input_data = Input(name="input", shape=input_size)
@@ -139,27 +139,27 @@ def flor(input_size, output_size):
 
     cnn = FullGatedConv2D(filters=16, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,2), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=32, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,2), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,2), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,2), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
@@ -182,7 +182,6 @@ def flor(input_size, output_size):
     blstm = Dense(units=output_size)(blstm)
 
     output_data = Activation(activation="softmax")(blstm)
-
-    optimizer = RMSprop(learning_rate=5e-4)
+    optimizer = RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)

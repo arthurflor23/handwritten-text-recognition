@@ -56,8 +56,9 @@ if __name__ == "__main__":
         dataset = dtgen.get_partitions(source=raw_path)
 
         for i in dtgen.partitions:
-            dataset[i]["gt"] = pp.standardize_texts(dataset[i]["gt"])
-            dataset[i]["gt"] = pp.encode_ctc(dataset[i]["gt"], charset_base, max_text_length)
+            dataset[i]["gt_sparse"] = pp.standardize_texts(dataset[i]["gt_sparse"])
+            dataset[i]["gt_bytes"] = [x.encode() for x in dataset[i]["gt_sparse"]]
+            dataset[i]["gt_sparse"] = pp.encode_ctc(dataset[i]["gt_sparse"], charset_base, max_text_length)
 
             pool = Pool()
             dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=input_size), dataset[i]["dt"])
@@ -65,8 +66,9 @@ if __name__ == "__main__":
             pool.join()
 
             with h5py.File(hdf5_src, "a") as hf:
-                hf.create_dataset(f"{i}/gt", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
                 hf.create_dataset(f"{i}/dt", data=dataset[i]["dt"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/gt_bytes", data=dataset[i]["gt_bytes"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/gt_sparse", data=dataset[i]["gt_sparse"], compression="gzip", compression_opts=9)
                 dataset[i] = None
                 print(f"[OK] {i} partition.")
 
@@ -75,12 +77,13 @@ if __name__ == "__main__":
     elif args.cv2:
         with h5py.File(hdf5_src, "r") as hf:
             dt = hf["train"]["dt"][:]
-            gt = hf["train"]["gt"][:]
+            gt_bytes = hf["train"]["gt_bytes"][:]
+            gt_sparse = hf["train"]["gt_sparse"][:]
 
         for x in range(len(dt)):
             print(f"Image shape: {dt[x].shape}")
-            print(f"Ground truth: {pp.decode_ctc([gt[x]], charset_base)[0]}")
-            print(f"Ground truth sparsed:\n{gt[x]}\n")
+            print(f"Ground truth: {gt_bytes[x].decode()}")
+            print(f"Ground truth sparsed:\n{gt_sparse[x]}\n")
 
             cv2.imshow("img", pp.adjust_to_see(dt[x]))
             cv2.waitKey(0)
@@ -93,7 +96,10 @@ if __name__ == "__main__":
                               max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
-        ioo = network_func(input_size=input_size, output_size=len(charset_base) + 1)
+
+        ioo = network_func(input_size=input_size,
+                           output_size=len(charset_base) + 1,
+                           learning_rate=0.001)
 
         model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset_base)
         model.compile(optimizer=ioo[2])
@@ -128,7 +134,7 @@ if __name__ == "__main__":
             train_corpus = "\n".join([
                 f"Total train images:      {dtgen.total_train}",
                 f"Total validation images: {dtgen.total_valid}",
-                f"Batch:                   {args.batch_size}\n",
+                f"Batch:                   {dtgen.batch_size}\n",
                 f"Total time:              {total_time:.8f} sec",
                 f"Time per epoch:          {time_epoch:.8f} sec",
                 f"Time per item:           {(time_epoch / total_item):.8f} sec\n",
@@ -152,18 +158,15 @@ if __name__ == "__main__":
             predicts = pp.decode_ctc(predicts, charset_base)
             total_time = time.time() - start_time
 
-            ground_truth = pp.decode_ctc(dtgen.dataset["test"]["gt"], charset_base)
-            pred_corpus = []
-
-            for pd, gt in zip(predicts, ground_truth):
-                pred_corpus.append(f"TE_L {gt}\nTE_P {pd}\n")
+            labels = [x.decode() for x in dtgen.dataset["test"]["gt_bytes"]]
+            pred_corpus = [f"TE_L {gt}\nTE_P {pd}\n" for pd, gt in zip(predicts, labels)]
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
                 lg.write("\n".join(pred_corpus))
                 print("\n".join(pred_corpus))
 
             evaluate = evaluation.ocr_metrics(predicts=predicts,
-                                              ground_truth=ground_truth,
+                                              ground_truth=labels,
                                               norm_accentuation=False,
                                               norm_punctuation=False)
 

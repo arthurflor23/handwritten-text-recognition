@@ -34,11 +34,11 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
+            dataset[i] = {"dt": [], "gt_bytes": [], "gt_sparse": []}
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 3:
                     dataset[i]["dt"].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt"].append(gt_dict[line])
+                    dataset[i]["gt_sparse"].append(gt_dict[line])
 
         return dataset

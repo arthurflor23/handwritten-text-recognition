@@ -28,9 +28,9 @@ class DataGenerator():
         self.full_fill_partition("valid")
         self.full_fill_partition("test")
 
-        self.total_train = len(self.dataset["train"]["gt"])
-        self.total_valid = len(self.dataset["valid"]["gt"])
-        self.total_test = len(self.dataset["test"]["gt"])
+        self.total_train = len(self.dataset["train"]["gt_sparse"])
+        self.total_valid = len(self.dataset["valid"]["gt_sparse"])
+        self.total_test = len(self.dataset["test"]["gt_sparse"])
 
         self.train_steps = np.maximum(self.total_train // self.batch_size, 1)
         self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
@@ -44,8 +44,8 @@ class DataGenerator():
         while len(self.dataset[pt]["dt"]) % self.batch_size:
             i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
 
-            self.dataset[pt]["dt"] = np.append(self.dataset[pt]["dt"], [self.dataset[pt]["dt"][i]], axis=0)
-            self.dataset[pt]["gt"] = np.append(self.dataset[pt]["gt"], [self.dataset[pt]["gt"][i]], axis=0)
+            for x in ["dt", "gt_sparse", "gt_bytes"]:
+                self.dataset[pt][x] = np.append(self.dataset[pt][x], [self.dataset[pt][x][i]], axis=0)
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -59,7 +59,7 @@ class DataGenerator():
             self.train_index += self.batch_size
 
             x_train = self.dataset["train"]["dt"][index:until]
-            y_train = self.dataset["train"]["gt"][index:until]
+            y_train = self.dataset["train"]["gt_sparse"][index:until]
 
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
@@ -95,7 +95,7 @@ class DataGenerator():
             self.valid_index += self.batch_size
 
             x_valid = self.dataset["valid"]["dt"][index:until]
-            y_valid = self.dataset["valid"]["gt"][index:until]
+            y_valid = self.dataset["valid"]["gt_sparse"][index:until]
 
             x_valid = pp.normalization(x_valid)
 
