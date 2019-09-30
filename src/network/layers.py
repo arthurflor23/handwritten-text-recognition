@@ -1,8 +1,8 @@
 """
 Gated implementations
-    GatedConv: Introduce a Conv2D layer (same number of filters) to multiply with its sigmoid activation.
-    Gated: Introduce a Conv2D to extract features (linear and sigmoid), making a full gated process.
-           This process will double number of filters to optimize convolutional process.
+    GatedConv2D: Introduce a Conv2D layer (same number of filters) to multiply with its sigmoid activation.
+    FullGatedConv2D: Introduce a Conv2D to extract features (linear and sigmoid), making a full gated process.
+                     This process will double number of filters to make one convolutional process.
 """
 
 from tensorflow.keras.layers import Conv2D, Multiply, Activation
@@ -46,7 +46,7 @@ Tensorflow Keras layer implementation of the gated convolution.
     Args:
         filters (int): Number of output filters.
         kwargs: Other Conv2D keyword arguments.
-    Reference:
+    Reference (based):
         Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier,
         Language modeling with gated convolutional networks, in
         Proc. 34th Int. Conf. Mach. Learn. (ICML), vol. 70,
@@ -69,10 +69,10 @@ class FullGatedConv2D(Conv2D):
         """Apply gated convolution"""
 
         output = super(FullGatedConv2D, self).call(inputs)
-        tanh = Activation("tanh")(output[:, :, :, :self.nb_filters])
+        linear = Activation("linear")(output[:, :, :, :self.nb_filters])
         sigmoid = Activation("sigmoid")(output[:, :, :, self.nb_filters:])
 
-        return Multiply()([tanh, sigmoid])
+        return Multiply()([linear, sigmoid])
 
     def compute_output_shape(self, input_shape):
         """Compute shape of layer output"""

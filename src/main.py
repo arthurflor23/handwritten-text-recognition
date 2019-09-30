@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
         if args.train:
             model.summary(output_path, "summary.txt")
-            callbacks = model.get_callbacks(logdir=output_path, hdf5=checkpoint)
+            callbacks = model.get_callbacks(logdir=output_path, hdf5=checkpoint, verbose=1)
 
             start_time = time.time()
             h = model.fit_generator(generator=dtgen.next_train_batch(),
@@ -122,16 +122,20 @@ if __name__ == "__main__":
             min_val_loss = min(val_loss)
             min_val_loss_i = val_loss.index(min_val_loss)
 
+            time_epoch = (total_time / len(loss))
+            total_item = (dtgen.total_train + dtgen.total_valid)
+
             train_corpus = "\n".join([
-                f"Total train images:       {dtgen.total_train}",
-                f"Total validation images:  {dtgen.total_valid}",
-                f"Batch:                    {args.batch_size}\n",
-                f"Total time:               {total_time:.8f} sec",
-                f"Average time per epoch:   {(total_time / len(loss)):.8f} sec\n",
-                f"Total epochs:             {len(loss)}",
-                f"Best epoch                {min_val_loss_i + 1}\n",
-                f"Training loss:            {loss[min_val_loss_i]:.8f}",
-                f"Validation loss:          {min_val_loss:.8f}"
+                f"Total train images:      {dtgen.total_train}",
+                f"Total validation images: {dtgen.total_valid}",
+                f"Batch:                   {args.batch_size}\n",
+                f"Total time:              {total_time:.8f} sec",
+                f"Time per epoch:          {time_epoch:.8f} sec",
+                f"Time per item:           {(time_epoch / total_item):.8f} sec\n",
+                f"Total epochs:            {len(loss)}",
+                f"Best epoch               {min_val_loss_i + 1}\n",
+                f"Training loss:           {loss[min_val_loss_i]:.8f}",
+                f"Validation loss:         {min_val_loss:.8f}"
             ])
 
             with open(os.path.join(output_path, "train.txt"), "w") as lg:

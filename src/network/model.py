@@ -86,7 +86,7 @@ class HTRModel:
             self.model_train.load_weights(target)
             self.model_pred.set_weights(self.model_train.get_weights())
 
-    def get_callbacks(self, logdir, hdf5, monitor="val_loss"):
+    def get_callbacks(self, logdir, hdf5, monitor="val_loss", verbose=0):
         """Setup the list of callbacks for the model"""
 
         callbacks = [
@@ -106,19 +106,19 @@ class HTRModel:
                 monitor=monitor,
                 save_best_only=True,
                 save_weights_only=True,
-                verbose=1),
+                verbose=verbose),
             EarlyStopping(
                 monitor=monitor,
-                min_delta=1e-4,
+                min_delta=1e-8,
                 patience=20,
                 restore_best_weights=True,
-                verbose=1),
+                verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
-                min_delta=1e-4,
+                min_delta=1e-8,
                 factor=0.2,
                 patience=10,
-                verbose=1)
+                verbose=verbose)
         ]
 
         return callbacks
@@ -161,7 +161,7 @@ class HTRModel:
         self.model_train.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
         self.model_pred.compile(loss={"CTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
 
-   def fit_generator(self,
+    def fit_generator(self,
                       generator,
                       steps_per_epoch,
                       epochs=1,
