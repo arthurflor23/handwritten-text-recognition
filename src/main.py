@@ -101,7 +101,7 @@ if __name__ == "__main__":
                            output_size=len(charset_base) + 1,
                            learning_rate=0.001)
 
-        model = HTRModel(inputs=ioo[0], outputs=ioo[1], charset=charset_base)
+        model = HTRModel(inputs=ioo[0], outputs=ioo[1])
         model.compile(optimizer=ioo[2])
 
         checkpoint = "checkpoint_weights.hdf5"

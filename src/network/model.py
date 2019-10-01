@@ -1,7 +1,6 @@
 """Handwritten Text Recognition Neural Network"""
 
 import os
-import pickle
 import numpy as np
 import tensorflow as tf
 
@@ -9,9 +8,10 @@ from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.layers import Input, Dense, Lambda, TimeDistributed, Activation
-from tensorflow.keras.models import model_from_json, Model
-from tensorflow.keras.utils import Sequence, GeneratorEnqueuer, OrderedEnqueuer, Progbar
+from tensorflow.keras.layers import Input, Lambda
+from tensorflow.keras.models import Model
+from tensorflow.keras.utils import OrderedEnqueuer, Progbar
+from tensorflow.keras.utils import Sequence, GeneratorEnqueuer
 
 """
 HTRModel class:
@@ -40,13 +40,12 @@ the labeling is given in the x data structure).
 
 class HTRModel:
 
-    def __init__(self, inputs, outputs, charset, greedy=False, beam_width=100, top_paths=1):
+    def __init__(self, inputs, outputs, greedy=False, beam_width=100, top_paths=1):
         """
         Initialization of a HTR Model.
         :param inputs: Input layer of the neural network
             outputs: Last layer of the neural network before CTC (e.g. a TimeDistributed Dense)
             greedy, beam_width, top_paths: Parameters of the CTC decoding (see ctc decoding tensorflow for more details)
-            charset: labels related to the input of the CTC approach
         """
         self.model_train = None
         self.model_pred = None
@@ -60,7 +59,6 @@ class HTRModel:
         else:
             self.outputs = outputs
 
-        self.charset = charset
         self.greedy = greedy
         self.beam_width = beam_width
         self.top_paths = top_paths
