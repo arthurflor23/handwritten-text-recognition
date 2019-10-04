@@ -151,7 +151,6 @@ class HTRModel:
                                    dtype="float32")(self.outputs + [input_length])
 
         # create Tensorflow Keras models
-        self.model_init = Model(inputs=self.inputs, outputs=self.outputs)
         self.model_train = Model(inputs=self.inputs + [labels, input_length, label_length], outputs=loss_out)
         self.model_pred = Model(inputs=self.inputs + [input_length], outputs=out_decoded_dense)
 
