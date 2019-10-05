@@ -30,29 +30,24 @@ def bluche(input_size, output_size, learning_rate=4e-4):
 
     cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
-    cnn = Dropout(rate=0.5)(cnn)
 
     cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
-    cnn = Dropout(rate=0.5)(cnn)
 
     cnn = GatedConv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
-    cnn = Dropout(rate=0.5)(cnn)
 
     cnn = GatedConv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
-    cnn = Dropout(rate=0.5)(cnn)
 
     cnn = GatedConv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
 
     cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = Activation(activation="tanh")(cnn)
-    cnn = Dropout(rate=0.5)(cnn)
 
     cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
 
