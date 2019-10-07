@@ -91,11 +91,8 @@ def normalization(imgs):
 def decode_ctc(texts, charset):
     """Decode sparse array (sparse to text)"""
 
-    decoded = []
-
-    for i in range(len(texts)):
-        text = "".join([charset[int(c)] for c in texts[i]])
-        decoded.append(" ".join(text.split()))
+    decoded = ["".join([charset[int(c)] for c in x]) for x in texts]
+    decoded = standardize_texts(decoded)
 
     return decoded
 

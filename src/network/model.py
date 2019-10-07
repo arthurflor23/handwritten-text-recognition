@@ -81,8 +81,8 @@ class HTRModel:
             if self.model_train is None:
                 self.compile()
 
-            self.model_train.load_weights(target)
-            self.model_pred.set_weights(self.model_train.get_weights())
+            self.model_train.load_weights(target, by_name=True)
+            self.model_pred.load_weights(target, by_name=True)
 
     def get_callbacks(self, logdir, hdf5, monitor="val_loss", verbose=0):
         """Setup the list of callbacks for the model"""
