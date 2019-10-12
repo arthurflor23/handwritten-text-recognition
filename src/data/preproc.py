@@ -118,11 +118,10 @@ def standardize_texts(texts):
     """Organize/add spaces around punctuation marks"""
 
     for i in range(len(texts)):
-        texts[i] = " ".join(texts[i].split()).replace(" '", "'").replace("' ", "'")
         texts[i] = texts[i].replace("«", "").replace("»", "")
 
         for y in texts[i]:
-            if y in string.punctuation.replace("'", ""):
+            if y in string.punctuation:
                 texts[i] = texts[i].replace(y, f" {y} ")
 
         texts[i] = " ".join(texts[i].split())
