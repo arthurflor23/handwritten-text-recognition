@@ -56,7 +56,9 @@ if __name__ == "__main__":
         dataset = dtgen.get_partitions(source=raw_path)
 
         for i in dtgen.partitions:
-            dataset[i]["gt_sparse"] = pp.standardize_texts(dataset[i]["gt_sparse"])
+            # temporally variable setting
+            dataset[i]["gt_sparse"] = [pp.text_standardize(x) for x in dataset[i]["gt_sparse"]]
+            # set texts in bytes and sparse types
             dataset[i]["gt_bytes"] = [x.encode() for x in dataset[i]["gt_sparse"]]
             dataset[i]["gt_sparse"] = pp.encode_ctc(dataset[i]["gt_sparse"], charset_base, max_text_length)
 

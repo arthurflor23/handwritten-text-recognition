@@ -4,7 +4,7 @@ Data preproc functions:
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
     encode_ctc: encode batch of texts in sparse array with padding
-    standardize_texts: standardize batch of texts
+    text_standardize: preprocess and standardize sentence
     preproc: main function to the preprocess.
         Make the image:
             illumination_compensation: apply illumination regularitation
@@ -12,10 +12,10 @@ Data preproc functions:
             sauvola: apply sauvola binarization
 """
 
+import re
+import cv2
 import unicodedata
 import numpy as np
-import string
-import cv2
 
 
 def adjust_to_see(img):
@@ -92,7 +92,7 @@ def decode_ctc(texts, charset):
     """Decode sparse array (sparse to text)"""
 
     decoded = ["".join([charset[int(c)] for c in x]) for x in texts]
-    decoded = standardize_texts(decoded)
+    decoded = [text_standardize(x) for x in decoded]
 
     return decoded
 
@@ -114,19 +114,31 @@ def encode_ctc(texts, charset, max_text_length):
     return pad_encoded
 
 
-def standardize_texts(texts):
+def text_standardize(sentence):
     """Organize/add spaces around punctuation marks"""
 
-    for i in range(len(texts)):
-        texts[i] = texts[i].replace("«", "").replace("»", "")
+    # replace default SOS / EOS
+    sentence = sentence.replace("«", "").replace("»", "")
 
-        for y in texts[i]:
-            if y in string.punctuation:
-                texts[i] = texts[i].replace(y, f" {y} ")
+    # replace contractions
+    sentence = sentence.replace("s ' ", "s' ").replace(" 's", "'s")
+    sentence = sentence.replace(" n't", "n't").replace(" 'd", "'d")
 
-        texts[i] = " ".join(texts[i].split())
+    sentence = sentence.replace(" 'm", "'m").replace(" 're", "'re")
+    sentence = sentence.replace(" 'll", "'ll").replace(" 've", "'ve")
 
-    return texts
+    sentence = sentence.replace("o ' ", "o'")
+
+    # add space around punctuation marks
+    sentence = re.sub(r"([\w/'+$\s-]+|[^\w/'+$\s-]+)\s*", r"\1 ", sentence)
+
+    # replace simple quotes
+    sentence = sentence.replace("''", "'").replace(" ' ", "")
+    sentence = sentence.replace(" '", "").replace("' ", "")
+
+    sentence = " ".join(sentence.split())
+
+    return sentence
 
 
 """
