@@ -1,10 +1,9 @@
 """
 Data preproc functions:
+    text_standardize: preprocess and standardize sentence
     adjust_to_see: adjust image to better visualize (rotate and transpose)
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
-    encode_ctc: encode batch of texts in sparse array with padding
-    text_standardize: preprocess and standardize sentence
     preproc: main function to the preprocess.
         Make the image:
             illumination_compensation: apply illumination regularitation
@@ -14,8 +13,37 @@ Data preproc functions:
 
 import re
 import cv2
-import unicodedata
 import numpy as np
+
+
+def text_standardize(sentence):
+    """Organize/add spaces around punctuation marks"""
+
+    if sentence is None:
+        return ""
+
+    # replace default SOS / EOS
+    sentence = sentence.replace("«", "").replace("»", "")
+
+    # replace contractions
+    sentence = sentence.replace("s ' ", "s' ").replace(" 's", "'s")
+    sentence = sentence.replace(" n't", "n't").replace(" 'd", "'d")
+
+    sentence = sentence.replace(" 'm", "'m").replace(" 're", "'re")
+    sentence = sentence.replace(" 'll", "'ll").replace(" 've", "'ve")
+
+    sentence = sentence.replace("o ' ", "o'")
+
+    # add space around punctuation marks
+    sentence = re.sub(r"([\w/'+$\s-]+|[^\w/'+$\s-]+)\s*", r"\1 ", sentence)
+
+    # replace simple quotes
+    sentence = sentence.replace("''", "'").replace(" ' ", "")
+    sentence = sentence.replace(" '", "").replace("' ", "")
+
+    sentence = " ".join(sentence.split())
+
+    return sentence
 
 
 def adjust_to_see(img):
@@ -86,59 +114,6 @@ def normalization(imgs):
         imgs[i] = imgs[i] / s[0][0] if s[0][0] > 0 else imgs[i]
 
     return np.expand_dims(imgs, axis=-1)
-
-
-def decode_ctc(texts, charset):
-    """Decode sparse array (sparse to text)"""
-
-    decoded = ["".join([charset[int(c)] for c in x]) for x in texts]
-    decoded = [text_standardize(x) for x in decoded]
-
-    return decoded
-
-
-def encode_ctc(texts, charset, max_text_length):
-    """Encode text array (text to sparse)"""
-
-    pad_encoded = np.zeros((len(texts), max_text_length))
-
-    for i in range(len(texts)):
-        texts[i] = unicodedata.normalize("NFKD", texts[i]).encode("ASCII", "ignore").decode("ASCII")
-        texts[i] = " ".join(texts[i].split())
-
-        encoded = [float(charset.find(x)) for x in texts[i] if charset.find(x) > -1]
-        encoded = [float(charset.find("&"))] if len(encoded) == 0 else encoded
-
-        pad_encoded[i, 0:len(encoded)] = encoded
-
-    return pad_encoded
-
-
-def text_standardize(sentence):
-    """Organize/add spaces around punctuation marks"""
-
-    # replace default SOS / EOS
-    sentence = sentence.replace("«", "").replace("»", "")
-
-    # replace contractions
-    sentence = sentence.replace("s ' ", "s' ").replace(" 's", "'s")
-    sentence = sentence.replace(" n't", "n't").replace(" 'd", "'d")
-
-    sentence = sentence.replace(" 'm", "'m").replace(" 're", "'re")
-    sentence = sentence.replace(" 'll", "'ll").replace(" 've", "'ve")
-
-    sentence = sentence.replace("o ' ", "o'")
-
-    # add space around punctuation marks
-    sentence = re.sub(r"([\w/'+$\s-]+|[^\w/'+$\s-]+)\s*", r"\1 ", sentence)
-
-    # replace simple quotes
-    sentence = sentence.replace("''", "'").replace(" ' ", "")
-    sentence = sentence.replace(" '", "").replace("' ", "")
-
-    sentence = " ".join(sentence.split())
-
-    return sentence
 
 
 """

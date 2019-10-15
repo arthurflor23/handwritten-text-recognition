@@ -56,11 +56,7 @@ if __name__ == "__main__":
         dataset = dtgen.get_partitions(source=raw_path)
 
         for i in dtgen.partitions:
-            # temporally variable setting
-            dataset[i]["gt_sparse"] = [pp.text_standardize(x) for x in dataset[i]["gt_sparse"]]
-            # set texts in bytes and sparse types
-            dataset[i]["gt_bytes"] = [x.encode() for x in dataset[i]["gt_sparse"]]
-            dataset[i]["gt_sparse"] = pp.encode_ctc(dataset[i]["gt_sparse"], charset_base, max_text_length)
+            dataset[i]["gt"] = [pp.text_standardize(x).encode() for x in dataset[i]["gt"]]
 
             pool = Pool()
             dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=input_size), dataset[i]["dt"])
@@ -69,9 +65,7 @@ if __name__ == "__main__":
 
             with h5py.File(hdf5_src, "a") as hf:
                 hf.create_dataset(f"{i}/dt", data=dataset[i]["dt"], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt_bytes", data=dataset[i]["gt_bytes"], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt_sparse", data=dataset[i]["gt_sparse"], compression="gzip", compression_opts=9)
-                dataset[i] = None
+                hf.create_dataset(f"{i}/gt", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
                 print(f"[OK] {i} partition.")
 
         print(f"Transformation finished.")
@@ -79,13 +73,11 @@ if __name__ == "__main__":
     elif args.cv2:
         with h5py.File(hdf5_src, "r") as hf:
             dt = hf["train"]["dt"][:]
-            gt_bytes = hf["train"]["gt_bytes"][:]
-            gt_sparse = hf["train"]["gt_sparse"][:]
+            gt = hf["train"]["gt"][:]
 
         for x in range(len(dt)):
             print(f"Image shape: {dt[x].shape}")
-            print(f"Ground truth: {gt_bytes[x].decode()}")
-            print(f"Ground truth sparsed:\n{gt_sparse[x]}\n")
+            print(f"Ground truth: {gt[x].decode()}\n")
 
             cv2.imshow("img", pp.adjust_to_see(dt[x]))
             cv2.waitKey(0)
@@ -95,12 +87,13 @@ if __name__ == "__main__":
 
         dtgen = DataGenerator(hdf5_src=hdf5_src,
                               batch_size=args.batch_size,
+                              charset=charset_base,
                               max_text_length=max_text_length)
 
         network_func = getattr(architecture, args.arch)
 
         ioo = network_func(input_size=input_size,
-                           output_size=len(charset_base) + 1,
+                           output_size=(dtgen.tokenizer.vocab_size + 1),
                            learning_rate=0.001)
 
         model = HTRModel(inputs=ioo[0], outputs=ioo[1])
@@ -137,8 +130,8 @@ if __name__ == "__main__":
                 f"Total train images:      {dtgen.total_train}",
                 f"Total validation images: {dtgen.total_valid}",
                 f"Batch:                   {dtgen.batch_size}\n",
-                f"Total time:              {total_time:.8f} sec",
-                f"Time per epoch:          {time_epoch:.8f} sec",
+                f"Total time:              {(total_time / 60):.2f} min",
+                f"Time per epoch:          {(time_epoch / 60):.2f} min",
                 f"Time per item:           {(time_epoch / total_item):.8f} sec\n",
                 f"Total epochs:            {len(loss)}",
                 f"Best epoch               {min_val_loss_i + 1}\n",
@@ -157,24 +150,21 @@ if __name__ == "__main__":
                                                use_multiprocessing=True,
                                                verbose=1)
 
-            predicts = pp.decode_ctc(predicts, charset_base)
+            predicts = [dtgen.tokenizer.decode(x) for x in predicts]
             total_time = time.time() - start_time
 
-            labels = [x.decode() for x in dtgen.dataset["test"]["gt_bytes"]]
-            pred_corpus = [f"TE_L {gt}\nTE_P {pd}\n" for pd, gt in zip(predicts, labels)]
-
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
-                lg.write("\n".join(pred_corpus))
-                print("\n".join(pred_corpus))
+                for pd, gt in zip(predicts, dtgen.dataset["test"]["gt"]):
+                    lg.write(f"TE_L {gt}\nTE_P {pd}\n")
 
             evaluate = evaluation.ocr_metrics(predicts=predicts,
-                                              ground_truth=labels,
+                                              ground_truth=dtgen.dataset["test"]["gt"],
                                               norm_accentuation=False,
                                               norm_punctuation=False)
 
             eval_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}",
-                f"Total time:           {total_time:.8f} sec",
+                f"Total time:           {(total_time / 60):.2f} min",
                 f"Time per item:        {(total_time / dtgen.total_test):.8f} sec\n",
                 f"Metrics:",
                 f"Character Error Rate: {evaluate[0]:.8f}",

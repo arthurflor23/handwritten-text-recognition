@@ -15,9 +15,11 @@ class Dataset():
 
         source = os.path.join(source, "BenthamDatasetR0-GT")
         pt_path = os.path.join(source, "Partitions")
-        paths = {"train": open(os.path.join(pt_path, "TrainLines.lst")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
-                 "test": open(os.path.join(pt_path, "TestLines.lst")).read().splitlines()}
+        paths = {
+            "train": open(os.path.join(pt_path, "TrainLines.lst")).read().splitlines(),
+            "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
+            "test": open(os.path.join(pt_path, "TestLines.lst")).read().splitlines()
+        }
 
         transcriptions = os.path.join(source, "Transcriptions")
         gt = os.listdir(transcriptions)
@@ -32,11 +34,11 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt_bytes": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if len(gt_dict[line]) > 3:
+                if len(gt_dict[line]) > 5:
                     dataset[i]["dt"].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt_sparse"].append(gt_dict[line])
+                    dataset[i]["gt"].append(gt_dict[line])
 
         return dataset

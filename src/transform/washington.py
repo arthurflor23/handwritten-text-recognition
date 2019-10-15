@@ -13,9 +13,11 @@ class Dataset():
         """Process of read partitions data/ground truth"""
 
         pt_path = os.path.join(source, "sets", "cv1")
-        paths = {"train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
-                 "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
+        paths = {
+            "train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
+            "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
+            "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()
+        }
 
         lines = open(os.path.join(source, "ground_truth", "transcription.txt")).read().splitlines()
         gt_dict = dict()
@@ -34,11 +36,11 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt_bytes": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if len(gt_dict[line]) > 3:
+                if len(gt_dict[line]) > 5:
                     dataset[i]["dt"].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt_sparse"].append(gt_dict[line])
+                    dataset[i]["gt"].append(gt_dict[line])
 
         return dataset

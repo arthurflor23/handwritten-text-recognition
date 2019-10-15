@@ -3,34 +3,33 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 import data.preproc as pp
-import numpy as np
 import h5py
+import numpy as np
+import unicodedata
 
 
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, hdf5_src, batch_size, max_text_length):
+    def __init__(self, hdf5_src, batch_size, charset, max_text_length):
+        self.tokenizer = Tokenizer(charset, max_text_length)
         self.batch_size = batch_size
-        self.max_text_length = max_text_length
 
-        with h5py.File(hdf5_src, "r") as hf:
-            self.dataset = dict()
+        self.dataset = dict()
 
-            for partition in hf.keys():
-                self.dataset[partition] = dict()
+        with h5py.File(hdf5_src, "r") as f:
+            for pt in f.keys():
+                self.dataset[pt] = dict()
+                self.dataset[pt]["dt"] = f[pt]["dt"][:]
+                self.dataset[pt]["gt"] = f[pt]["gt"][:]
 
-                for data_type in hf[partition]:
-                    self.dataset[partition][data_type] = hf[partition][data_type][:]
+        self._prepare_dataset()
 
-        self.full_fill_partition("train")
-        self.full_fill_partition("valid")
-        self.full_fill_partition("test")
-
-        self.total_train = len(self.dataset["train"]["gt_sparse"])
-        self.total_valid = len(self.dataset["valid"]["gt_sparse"])
-        self.total_test = len(self.dataset["test"]["gt_sparse"])
+        self.total_train = len(self.dataset["train"]["gt"])
+        self.total_valid = len(self.dataset["valid"]["gt"])
+        self.total_test = len(self.dataset["test"]["gt"])
 
         self.train_steps = np.maximum(self.total_train // self.batch_size, 1)
         self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
@@ -38,14 +37,17 @@ class DataGenerator():
 
         self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
-    def full_fill_partition(self, pt):
-        """Make full fill partition up to batch size and steps"""
+    def _prepare_dataset(self):
+        """Prepare (full fill) dataset up"""
 
-        while len(self.dataset[pt]["dt"]) % self.batch_size:
-            i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
+        for pt in ["train", "valid", "test"]:
+            self.dataset[pt]["gt"] = [x.decode() for x in self.dataset[pt]["gt"]]
 
-            for x in ["dt", "gt_sparse", "gt_bytes"]:
-                self.dataset[pt][x] = np.append(self.dataset[pt][x], [self.dataset[pt][x][i]], axis=0)
+            while len(self.dataset[pt]["dt"]) % self.batch_size:
+                i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
+
+                self.dataset[pt]["dt"] = np.append(self.dataset[pt]["dt"], [self.dataset[pt]["dt"][i]], axis=0)
+                self.dataset[pt]["gt"] = np.append(self.dataset[pt]["gt"], [self.dataset[pt]["gt"][i]], axis=0)
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -59,7 +61,10 @@ class DataGenerator():
             self.train_index += self.batch_size
 
             x_train = self.dataset["train"]["dt"][index:until]
-            y_train = self.dataset["train"]["gt_sparse"][index:until]
+            y_train = self.dataset["train"]["gt"][index:until]
+
+            x_train_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
+            y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
@@ -68,10 +73,11 @@ class DataGenerator():
                                       width_shift_range=0.05,
                                       erode_range=5,
                                       dilate_range=3)
+
             x_train = pp.normalization(x_train)
 
-            x_train_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
-            y_train_len = np.asarray([len(np.trim_zeros(y_train[i])) for i in range(self.batch_size)])
+            y_train = [self.tokenizer.encode(y) for y in y_train]
+            y_train = pad_sequences(y_train, maxlen=self.tokenizer.maxlen, padding="post")
 
             inputs = {
                 "input": x_train,
@@ -95,12 +101,15 @@ class DataGenerator():
             self.valid_index += self.batch_size
 
             x_valid = self.dataset["valid"]["dt"][index:until]
-            y_valid = self.dataset["valid"]["gt_sparse"][index:until]
+            y_valid = self.dataset["valid"]["gt"][index:until]
+
+            x_valid_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
+            y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
 
             x_valid = pp.normalization(x_valid)
 
-            x_valid_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
-            y_valid_len = np.asarray([len(np.trim_zeros(y_valid[i])) for i in range(self.batch_size)])
+            y_valid = [self.tokenizer.encode(y) for y in y_valid]
+            y_valid = pad_sequences(y_valid, maxlen=self.tokenizer.maxlen, padding="post")
 
             inputs = {
                 "input": x_valid,
@@ -126,6 +135,46 @@ class DataGenerator():
             x_test = self.dataset["test"]["dt"][index:until]
             x_test = pp.normalization(x_test)
 
-            x_test_len = np.asarray([self.max_text_length for _ in range(self.batch_size)])
+            x_test_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
 
             yield (x_test, x_test_len)
+
+
+class Tokenizer():
+    """Manager tokens functions and charset/dictionary properties"""
+
+    def __init__(self, chars, max_text_length=128):
+        self.PAD_TK, self.UNK_TK = "¶", "¥"
+        self.chars = (self.PAD_TK + self.UNK_TK + chars)
+
+        self.PAD = self.chars.find(self.PAD_TK)
+        self.UNK = self.chars.find(self.UNK_TK)
+
+        self.vocab_size = len(self.chars)
+        self.maxlen = max_text_length
+
+    def encode(self, text):
+        """Encode text to vector"""
+
+        text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
+        text = " ".join(text.split())
+        encoded = []
+
+        for item in text:
+            index = self.chars.find(item)
+            index = self.UNK if index == -1 else index
+            encoded.append(index)
+
+        return np.array(encoded)
+
+    def decode(self, text):
+        """Decode vector to text"""
+
+        decoded = "".join([self.chars[int(x)] for x in text])
+
+        return self.remove_tokens(decoded)
+
+    def remove_tokens(self, text):
+        """Remove tokens (PAD) from text"""
+
+        return text.replace(self.PAD_TK, "")

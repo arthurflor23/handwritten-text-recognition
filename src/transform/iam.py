@@ -13,9 +13,11 @@ class Dataset():
         """Process of read partitions data/ground truth"""
 
         pt_path = os.path.join(source, "largeWriterIndependentTextLineRecognitionTask")
-        paths = {"train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
-                 "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
+        paths = {
+            "train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
+            "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
+            "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()
+        }
 
         lines = open(os.path.join(source, "ascii", "lines.txt")).read().splitlines()
         gt_dict = dict()
@@ -30,15 +32,15 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt_bytes": [], "gt_sparse": []}
+            dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
                 split = line.split("-")
                 img_path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
                 img_path = os.path.join(source, "lines", img_path)
 
-                if len(gt_dict[line]) > 3:
+                if len(gt_dict[line]) > 5:
                     dataset[i]["dt"].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt_sparse"].append(gt_dict[line])
+                    dataset[i]["gt"].append(gt_dict[line])
 
         return dataset
