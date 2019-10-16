@@ -1,6 +1,7 @@
 # Project stuffs
 /raw/*/
 /data/
+/src/data/predicts/
 /output/
 /tensorboard/
 
