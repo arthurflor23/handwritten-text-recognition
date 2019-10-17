@@ -15,7 +15,8 @@ class Dataset():
         pt_path = os.path.join(source, "largeWriterIndependentTextLineRecognitionTask")
         paths = {
             "train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
-            "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
+            "valid": (open(os.path.join(pt_path, "validationset1.txt")).read().splitlines() +
+                      open(os.path.join(pt_path, "validationset2.txt")).read().splitlines()),
             "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()
         }
 
@@ -27,7 +28,9 @@ class Dataset():
                 continue
 
             splitted = line.split()
-            gt_dict[splitted[0]] = splitted[-1].replace("|", " ")
+
+            if splitted[1] == "ok":
+                gt_dict[splitted[0]] = " ".join(splitted[8::]).replace("|", " ")
 
         dataset = dict()
 
@@ -39,8 +42,11 @@ class Dataset():
                 img_path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
                 img_path = os.path.join(source, "lines", img_path)
 
-                if len(gt_dict[line]) > 5:
-                    dataset[i]["dt"].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt"].append(gt_dict[line])
+                try:
+                    if len(gt_dict[line]) > 5:
+                        dataset[i]["dt"].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
+                        dataset[i]["gt"].append(gt_dict[line])
+                except KeyError:
+                    pass
 
         return dataset

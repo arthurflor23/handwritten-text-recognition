@@ -11,39 +11,42 @@ Data preproc functions:
             sauvola: apply sauvola binarization
 """
 
-import re
 import cv2
+import html
+import string
 import numpy as np
 
 
-def text_standardize(sentence):
+def text_standardize(txt):
     """Organize/add spaces around punctuation marks"""
 
-    if sentence is None:
+    if txt is None:
         return ""
 
-    # replace default SOS / EOS
-    sentence = sentence.replace("«", "").replace("»", "")
+    txt = html.unescape(txt).replace("\\n", "").replace("\\t", "")
+    txt = txt.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
+    txt = " " + " ".join(txt.split()) + " "
 
-    # replace contractions
-    sentence = sentence.replace("s ' ", "s' ").replace(" 's", "'s")
-    sentence = sentence.replace(" n't", "n't").replace(" 'd", "'d")
+    # replace contractions and simple quotes (preserve order)
+    keys = [["«", ""], ["»", ""],
+            [" ' ' ", " ' "], [". '", ".  '"],
+            ["' s ", "'s "], [" 's", "'s"],
+            ["' d ", "'d "], [" 'd", "'d"],
+            ["' m ", "'m "], [" 'm", "'m"],
+            ["' ll ", "'ll "], [" 'll", "'ll"],
+            ["' ve ", "'ve "], [" 've", "'ve"],
+            ["' re ", "'re "], [" 're", "'re"],
+            ["n ' t ", "n't "], [" n't", "n't"],
+            ["o ' c ", "o'c "], [" o'c", "o'c"],
+            [" ' ", " "], ["''", "'"],
+            [" '", ""], ["' ", ""]]
 
-    sentence = sentence.replace(" 'm", "'m").replace(" 're", "'re")
-    sentence = sentence.replace(" 'll", "'ll").replace(" 've", "'ve")
+    for i in range(len(keys)):
+        txt = txt.replace(keys[i][0], keys[i][1])
 
-    sentence = sentence.replace("o ' ", "o'")
+    txt = " ".join(txt.strip("'").split())
 
-    # add space around punctuation marks
-    sentence = re.sub(r"([\w/'+$\s-]+|[^\w/'+$\s-]+)\s*", r"\1 ", sentence)
-
-    # replace simple quotes
-    sentence = sentence.replace("''", "'").replace(" ' ", "")
-    sentence = sentence.replace(" '", "").replace("' ", "")
-
-    sentence = " ".join(sentence.split())
-
-    return sentence
+    return txt
 
 
 def adjust_to_see(img):

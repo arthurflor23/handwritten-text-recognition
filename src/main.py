@@ -72,8 +72,8 @@ if __name__ == "__main__":
 
     elif args.cv2:
         with h5py.File(hdf5_src, "r") as hf:
-            dt = hf["train"]["dt"][:]
-            gt = hf["train"]["gt"][:]
+            dt = hf["test"]["dt"][:]
+            gt = hf["test"]["gt"][:]
 
         for x in range(len(dt)):
             print(f"Image shape: {dt[x].shape}")
