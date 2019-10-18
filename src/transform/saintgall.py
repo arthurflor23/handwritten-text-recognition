@@ -42,7 +42,8 @@ class Dataset():
                     line = os.path.splitext(os.path.basename(line))[0]
 
                     if len(gt_dict[line]) > 5:
-                        dataset[i]["dt"].append(cv2.imread(line, cv2.IMREAD_GRAYSCALE))
+                        f_path = os.path.join(img_path, f"{line}.png")
+                        dataset[i]["dt"].append(cv2.imread(f_path, cv2.IMREAD_GRAYSCALE))
                         dataset[i]["gt"].append(gt_dict[line])
 
         return dataset
