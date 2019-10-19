@@ -29,7 +29,8 @@ def text_standardize(txt):
     txt = " " + " ".join(txt.split()) + " "
 
     # replace contractions and simple quotes (preserve order)
-    keys = [["«", ""], ["»", ""],
+    keys = [["«", ""], ["»", ""], ["�", ""],
+            ["”", " \" "], ["“", " \" "],
             [" ' ' ", " ' "], [". '", ".  '"],
             ["' s ", "'s "], [" 's", "'s"],
             ["' d ", "'d "], [" 'd", "'d"],

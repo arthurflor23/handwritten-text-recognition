@@ -77,17 +77,15 @@ for x in char_dict:
 similarity_list = sorted(similarity_list, key=lambda x:x[1], reverse=True)
 token_list = []
 
-for y in similarity_list:
-    print(f"{y[0]} = {y[1]} occurrences.\nTokens: {y[2]}\n")
-    y_ = y[0].lower()
+for index, w in enumerate(similarity_list):
+    print(f"{w[0]} = {w[1]} occurrences.\nTokens: {w[2]}\n")
+    y = w[0]
 
-    for x in y[2]:
-        x_ = x.lower()
-
-        if y_ == x_ or [y_, x_] in token_list or [x_, y_] in token_list:
+    for x in w[2]:
+        if y.lower() == x.lower() or [y, x] in token_list:
             continue
 
-        token_list.append([y_, x_])
+        token_list.append([y, x])
 
 print("Similarity list:", sorted(token_list), "\n")
 print("Items:", len(token_list))
