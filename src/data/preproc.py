@@ -11,11 +11,31 @@ Data preproc functions:
             sauvola: apply sauvola binarization
 """
 
+import re
 import cv2
 import html
 import string
 import numpy as np
 import numba as nb
+
+
+"""
+DeepSpell based text cleaning process.
+    Tal Weiss.
+    Deep Spelling.
+    Medium: https://machinelearnings.co/deep-spelling-9ffef96a24f6#.2c9pu8nlm
+    Github: https://github.com/MajorTal/DeepSpell
+"""
+NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
+RE_DASH_FILTER = re.compile(r'[\-\˗\֊\‐\‑\‒\–\—\⁻\₋\−\﹣\－]', re.UNICODE)
+RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{}{}{}{}{}{}{}{}{}]'.format(chr(768), chr(769),
+                                                                                      chr(832), chr(833),
+                                                                                      chr(2387), chr(5151),
+                                                                                      chr(5152), chr(65344),
+                                                                                      chr(8242)), re.UNICODE)
+RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
+RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
+RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
 
 
 def text_standardize(txt):
@@ -25,28 +45,15 @@ def text_standardize(txt):
         return ""
 
     txt = html.unescape(txt).replace("\\n", "").replace("\\t", "")
+
+    txt = RE_DASH_FILTER.sub("-", txt)
+    txt = RE_APOSTROPHE_FILTER.sub("'", txt)
+    txt = RE_LEFT_PARENTH_FILTER.sub("(", txt)
+    txt = RE_RIGHT_PARENTH_FILTER.sub(")", txt)
+    txt = RE_BASIC_CLEANER.sub("", txt)
+
     txt = txt.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
-    txt = " " + " ".join(txt.split()) + " "
-
-    # replace contractions and simple quotes (preserve order)
-    keys = [["«", ""], ["»", ""], ["�", ""],
-            ["”", " \" "], ["“", " \" "],
-            [" ' ' ", " ' "], [". '", ".  '"],
-            ["' s ", "'s "], [" 's", "'s"],
-            ["' d ", "'d "], [" 'd", "'d"],
-            ["' m ", "'m "], [" 'm", "'m"],
-            ["' ll ", "'ll "], [" 'll", "'ll"],
-            ["' ve ", "'ve "], [" 've", "'ve"],
-            ["' re ", "'re "], [" 're", "'re"],
-            ["n ' t ", "n't "], [" n't", "n't"],
-            ["o ' c ", "o'c "], [" o'c", "o'c"],
-            [" ' ", " "], ["''", "'"],
-            [" '", ""], ["' ", ""]]
-
-    for i in range(len(keys)):
-        txt = txt.replace(keys[i][0], keys[i][1])
-
-    txt = " ".join(txt.strip("'").split())
+    txt = NORMALIZE_WHITESPACE_REGEX.sub(" ", txt.strip())
 
     return txt
 
