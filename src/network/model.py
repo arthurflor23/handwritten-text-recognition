@@ -261,8 +261,7 @@ class HTRModel:
                     outs = [outs]
 
                 for i, out in enumerate(outs):
-                    encode = [valab_out for valab_out in out if valab_out != -1]
-                    allab_outs.append([int(c) for c in encode])
+                    allab_outs.append([int(c) for c in out])
 
                 steps_done += 1
                 if verbose == 1:
