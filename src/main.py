@@ -126,7 +126,7 @@ if __name__ == "__main__":
             time_epoch = (total_time / len(loss))
             total_item = (dtgen.total_train + dtgen.total_valid)
 
-            train_corpus = "\n".join([
+            t_corpus = "\n".join([
                 f"Total train images:      {dtgen.total_train}",
                 f"Total validation images: {dtgen.total_valid}",
                 f"Batch:                   {dtgen.batch_size}\n",
@@ -140,8 +140,8 @@ if __name__ == "__main__":
             ])
 
             with open(os.path.join(output_path, "train.txt"), "w") as lg:
-                lg.write(train_corpus)
-                print(train_corpus)
+                lg.write(t_corpus)
+                print(t_corpus)
 
         elif args.test:
             start_time = time.time()
@@ -162,7 +162,7 @@ if __name__ == "__main__":
                                               norm_accentuation=False,
                                               norm_punctuation=False)
 
-            eval_corpus = "\n".join([
+            e_corpus = "\n".join([
                 f"Total test images:    {dtgen.total_test}",
                 f"Total time:           {(total_time / 60):.2f} min",
                 f"Time per item:        {(total_time / dtgen.total_test):.8f} sec\n",
@@ -172,5 +172,5 @@ if __name__ == "__main__":
             ])
 
             with open(os.path.join(output_path, "evaluate.txt"), "w") as lg:
-                lg.write(eval_corpus)
-                print(eval_corpus)
+                lg.write(e_corpus)
+                print(e_corpus)
