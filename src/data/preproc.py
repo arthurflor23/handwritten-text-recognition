@@ -33,6 +33,7 @@ RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{
                                                                                       chr(2387), chr(5151),
                                                                                       chr(5152), chr(65344),
                                                                                       chr(8242)), re.UNICODE)
+RE_RESERVED_CHAR_FILTER = re.compile(r'[·¶«œ»]', re.UNICODE)
 RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
 RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
 RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
@@ -46,6 +47,7 @@ def text_standardize(txt):
 
     txt = html.unescape(txt).replace("\\n", "").replace("\\t", "")
 
+    txt = RE_RESERVED_CHAR_FILTER.sub("", txt)
     txt = RE_DASH_FILTER.sub("-", txt)
     txt = RE_APOSTROPHE_FILTER.sub("'", txt)
     txt = RE_LEFT_PARENTH_FILTER.sub("(", txt)

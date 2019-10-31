@@ -114,7 +114,7 @@ class HTRModel:
             ReduceLROnPlateau(
                 monitor=monitor,
                 min_delta=0,
-                factor=0.2,
+                factor=0.5,
                 patience=10,
                 verbose=verbose)
         ]
