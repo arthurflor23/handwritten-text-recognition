@@ -11,16 +11,14 @@ Provides options via the command line to perform project tasks.
 """
 
 import os
-import importlib
 import argparse
 import h5py
 import cv2
 import time
 
-from multiprocessing import Pool
-from functools import partial
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator
+from data.reader import Dataset
 from network import architecture
 from network.model import HTRModel
 
@@ -49,23 +47,16 @@ if __name__ == "__main__":
         assert os.path.exists(raw_path)
         print(f"The {args.dataset} dataset will be transformed...")
 
-        mod = importlib.import_module(f"transform.{args.dataset}")
+        ds = Dataset(source=raw_path, name=args.dataset)
+        ds.read_partitions()
+        ds.preprocess_partitions(image_input_size=input_size)
+
         os.makedirs(os.path.dirname(hdf5_src), exist_ok=True)
 
-        dtgen = mod.Dataset(partitions=["train", "valid", "test"])
-        dataset = dtgen.get_partitions(source=raw_path)
-
-        for i in dtgen.partitions:
-            dataset[i]["gt"] = [pp.text_standardize(x).encode() for x in dataset[i]["gt"]]
-
-            pool = Pool()
-            dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=input_size), dataset[i]["dt"])
-            pool.close()
-            pool.join()
-
+        for i in ds.partitions:
             with h5py.File(hdf5_src, "a") as hf:
-                hf.create_dataset(f"{i}/dt", data=dataset[i]["dt"], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt", data=dataset[i]["gt"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/dt", data=ds.dataset[i]["dt"], compression="gzip", compression_opts=9)
+                hf.create_dataset(f"{i}/gt", data=ds.dataset[i]["gt"], compression="gzip", compression_opts=9)
                 print(f"[OK] {i} partition.")
 
         print(f"Transformation finished.")
