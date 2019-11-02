@@ -144,10 +144,15 @@ def preproc(img, img_size):
     wt, ht, _ = img_size
     h, w = np.array(img).shape
     f = max((w / wt), (h / ht))
+
     new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
     img = cv2.resize(img, new_size)
 
-    img = illumination_compensation(img)
+    _, binary = cv2.threshold(img, 254, 255, cv2.THRESH_BINARY)
+
+    if np.sum(img) * 0.8 > np.sum(binary):
+        img = illumination_compensation(img)
+
     img = remove_cursive_style(img)
 
     target = np.ones([ht, wt], dtype=np.uint8) * 255
@@ -163,33 +168,6 @@ Illumination Compensation based in:
     Efficient illumination compensation techniques for text images, in
     Digital Signal Processing, 22(5), pp. 726-733, 2012.
 """
-
-
-@nb.jit(nopython=True)
-def estimate_light_distribution(width, height, erosion, cei, int_img):
-    """Light distribution performed by numba (thanks @Sundrops !)"""
-
-    for y in range(width):
-        for x in range(height):
-            if erosion[x][y] == 0:
-                i = x
-                while i < erosion.shape[0] and erosion[i][y] == 0:
-                    i += 1
-                end = i - 1
-                n = end - x + 1
-                if n <= 30:
-                    h, e = [], []
-                    for k in range(5):
-                        if x - k >= 0:
-                            h.append(cei[x - k][y])
-                        if end + k < cei.shape[0]:
-                            e.append(cei[end + k][y])
-                    # mpv_h, mpv_e = np.max(h), np.max(e)
-                    mpv_h, mpv_e = max(h), max(e)
-                    for m in range(n):
-                        int_img[x + m][y] = mpv_h + (m + 1) * ((mpv_e - mpv_h) / n)
-                x = end
-                break
 
 
 def illumination_compensation(img):
@@ -259,6 +237,40 @@ def illumination_compensation(img):
     result[result > 255] = 255
 
     return np.array(result, dtype=np.uint8)
+
+
+@nb.jit(nopython=True)
+def estimate_light_distribution(width, height, erosion, cei, int_img):
+    """Light distribution performed by numba (thanks @Sundrops)"""
+
+    for y in range(width):
+        for x in range(height):
+            if erosion[x][y] == 0:
+                i = x
+
+                while i < erosion.shape[0] and erosion[i][y] == 0:
+                    i += 1
+
+                end = i - 1
+                n = end - x + 1
+
+                if n <= 30:
+                    h, e = [], []
+
+                    for k in range(5):
+                        if x - k >= 0:
+                            h.append(cei[x - k][y])
+
+                        if end + k < cei.shape[0]:
+                            e.append(cei[end + k][y])
+
+                    mpv_h, mpv_e = max(h), max(e)
+
+                    for m in range(n):
+                        int_img[x + m][y] = mpv_h + (m + 1) * ((mpv_e - mpv_h) / n)
+
+                x = end
+                break
 
 
 """
