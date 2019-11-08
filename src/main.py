@@ -159,7 +159,8 @@ if __name__ == "__main__":
                 f"Time per item:        {(total_time / dtgen.total_test):.8f} sec\n",
                 f"Metrics:",
                 f"Character Error Rate: {evaluate[0]:.8f}",
-                f"Word Error Rate:      {evaluate[1]:.8f}"
+                f"Word Error Rate:      {evaluate[1]:.8f}",
+                f"Sequence Error Rate:  {evaluate[2]:.8f}"
             ])
 
             with open(os.path.join(output_path, "evaluate.txt"), "w") as lg:

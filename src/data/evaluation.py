@@ -1,5 +1,5 @@
 """
-Tool to metrics calculation through data and label (string | string).
+Tool to metrics calculation through data and label (string and string).
  * Calculation from Optical Character Recognition (OCR) metrics with editdistance.
 """
 
@@ -9,9 +9,9 @@ import editdistance
 
 
 def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuation=False):
-    """Calculate Character Error Rate (CER) and Word Error Rate (WER)"""
+    """Calculate Character Error Rate (CER), Word Error Rate (WER) and Sequence Error Rate (SER)"""
 
-    cer, wer = [], []
+    cer, wer, ser = [], [], []
 
     for (pd, gt) in zip(predicts, ground_truth):
 
@@ -31,7 +31,12 @@ def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuatio
         dist = editdistance.eval(pd_wer, gt_wer)
         wer.append(dist / (max(len(pd_wer), len(gt_wer))))
 
+        pd_ser, gt_ser = [pd], [gt]
+        dist = editdistance.eval(pd_ser, gt_ser)
+        ser.append(dist / (max(len(pd_ser), len(gt_ser))))
+
     cer_f = sum(cer) / len(cer)
     wer_f = sum(wer) / len(wer)
+    ser_f = sum(ser) / len(ser)
 
-    return (cer_f, wer_f)
+    return (cer_f, wer_f, ser_f)
