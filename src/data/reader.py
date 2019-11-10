@@ -46,6 +46,7 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "TestLines.lst")).read().splitlines()}
 
+        [np.random.shuffle(paths[i]) for i in self.partitions]
         transcriptions = os.path.join(source, "Transcriptions")
         gt = os.listdir(transcriptions)
         gt_dict = dict()
@@ -77,6 +78,7 @@ class Dataset():
                            open(os.path.join(pt_path, "validationset2.txt")).read().splitlines()),
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
+        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
         gt_dict = dict()
 
@@ -111,7 +113,7 @@ class Dataset():
     def _rimes(self):
         """Rimes dataset reader"""
 
-        def generate(xml, subpath, partition, validation=False):
+        def generate(xml, subpath, paths, validation=False):
             xml = ET.parse(os.path.join(self.source, xml)).getroot()
             dt = []
 
@@ -129,19 +131,20 @@ class Dataset():
 
             if validation:
                 index = int(len(dt) * 0.9)
-                partition["valid"] = dt[index:]
-                partition["train"] = dt[:index]
+                paths["valid"] = dt[index:]
+                paths["train"] = dt[:index]
             else:
-                partition["test"] = dt
+                paths["test"] = dt
 
-        dataset, partition = dict(), dict()
-        generate("training_2011.xml", "training_2011", partition, validation=True)
-        generate("eval_2011_annotated.xml", "eval_2011", partition, validation=False)
+        dataset, paths = dict(), dict()
+        generate("training_2011.xml", "training_2011", paths, validation=True)
+        generate("eval_2011_annotated.xml", "eval_2011", paths, validation=False)
+        [np.random.shuffle(paths[i]) for i in self.partitions]
 
         for i in self.partitions:
             dataset[i] = {"dt": [], "gt": []}
 
-            for item in partition[i]:
+            for item in paths[i]:
                 img = cv2.imread(os.path.join(self.source, item[0]), cv2.IMREAD_GRAYSCALE)
                 img = np.array(img[item[2][0]:item[2][1], item[2][2]:item[2][3]], dtype=np.uint8)
 
@@ -158,6 +161,7 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
 
+        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ground_truth", "transcription.txt")).read().splitlines()
         gt_dict = dict()
 
@@ -194,6 +198,7 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
 
+        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ground_truth", "transcription.txt")).read().splitlines()
         gt_dict = dict()
 
