@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
         print("\n####################################")
 
-        cv2.imshow("img2", pp.adjust_to_see(image))
+        cv2.imshow("Image", pp.adjust_to_see(image))
         cv2.waitKey(0)
 
     else:
