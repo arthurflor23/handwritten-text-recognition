@@ -119,7 +119,7 @@ def augmentation(imgs,
 def normalization(imgs):
     """Normalize list of images"""
 
-    imgs = imgs.astype(np.float32)
+    imgs = np.asarray(imgs).astype(np.float32)
     _, h, w = imgs.shape
 
     for i in range(len(imgs)):

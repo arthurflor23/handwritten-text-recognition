@@ -13,55 +13,53 @@ import unicodedata
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, hdf5_src, batch_size, charset, max_text_length):
+    def __init__(self, source, batch_size, charset, max_text_length, predict=False):
         self.tokenizer = Tokenizer(charset, max_text_length)
         self.batch_size = batch_size
+        self.partitions = ["test"] if predict else ["train", "valid", "test"]
 
         self.dataset = dict()
+        self.size = dict()
+        self.steps = dict()
+        self.index = dict()
 
-        with h5py.File(hdf5_src, "r") as f:
-            for pt in f.keys():
+        with h5py.File(source, "r") as f:
+            for pt in self.partitions:
                 self.dataset[pt] = dict()
-                self.dataset[pt]["dt"] = f[pt]["dt"][:]
-                self.dataset[pt]["gt"] = f[pt]["gt"][:]
+                self.dataset[pt]['dt'] = f[pt]['dt'][:]
+                self.dataset[pt]['gt'] = f[pt]['gt'][:]
+
+                self.size[pt] = len(self.dataset[pt]['gt'])
+                self.steps[pt] = np.maximum(self.size[pt] // self.batch_size, 1)
+                self.index[pt] = 0
 
         self._prepare_dataset()
-
-        self.total_train = len(self.dataset["train"]["gt"])
-        self.total_valid = len(self.dataset["valid"]["gt"])
-        self.total_test = len(self.dataset["test"]["gt"])
-
-        self.train_steps = np.maximum(self.total_train // self.batch_size, 1)
-        self.valid_steps = np.maximum(self.total_valid // self.batch_size, 1)
-        self.test_steps = np.maximum(self.total_test // self.batch_size, 1)
-
-        self.train_index, self.valid_index, self.test_index = 0, 0, 0
 
     def _prepare_dataset(self):
         """Prepare (full fill) dataset up"""
 
-        for pt in ["train", "valid", "test"]:
-            self.dataset[pt]["gt"] = [x.decode() for x in self.dataset[pt]["gt"]]
+        for pt in self.partitions:
+            self.dataset[pt]['gt'] = [x.decode() for x in self.dataset[pt]['gt']]
 
-            while len(self.dataset[pt]["dt"]) % self.batch_size:
-                i = np.random.choice(np.arange(0, len(self.dataset[pt]["dt"])), 1)[0]
+            while len(self.dataset[pt]['dt']) % self.batch_size:
+                i = np.random.choice(np.arange(0, len(self.dataset[pt]['dt'])), 1)[0]
 
-                self.dataset[pt]["dt"] = np.append(self.dataset[pt]["dt"], [self.dataset[pt]["dt"][i]], axis=0)
-                self.dataset[pt]["gt"] = np.append(self.dataset[pt]["gt"], [self.dataset[pt]["gt"][i]], axis=0)
+                self.dataset[pt]['dt'] = np.append(self.dataset[pt]['dt'], [self.dataset[pt]['dt'][i]], axis=0)
+                self.dataset[pt]['gt'] = np.append(self.dataset[pt]['gt'], [self.dataset[pt]['gt'][i]], axis=0)
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
 
         while True:
-            if self.train_index >= self.total_train:
-                self.train_index = 0
+            if self.index['train'] >= self.size['train']:
+                self.index['train'] = 0
 
-            index = self.train_index
-            until = self.train_index + self.batch_size
-            self.train_index += self.batch_size
+            index = self.index['train']
+            until = self.index['train'] + self.batch_size
+            self.index['train'] += self.batch_size
 
-            x_train = self.dataset["train"]["dt"][index:until]
-            y_train = self.dataset["train"]["gt"][index:until]
+            x_train = self.dataset['train']['dt'][index:until]
+            y_train = self.dataset['train']['gt'][index:until]
 
             x_train_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
             y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
@@ -93,15 +91,15 @@ class DataGenerator():
         """Get the next batch from validation partition (yield)"""
 
         while True:
-            if self.valid_index >= self.total_valid:
-                self.valid_index = 0
+            if self.index['valid'] >= self.size['valid']:
+                self.index['valid'] = 0
 
-            index = self.valid_index
-            until = self.valid_index + self.batch_size
-            self.valid_index += self.batch_size
+            index = self.index['valid']
+            until = self.index['valid'] + self.batch_size
+            self.index['valid'] += self.batch_size
 
-            x_valid = self.dataset["valid"]["dt"][index:until]
-            y_valid = self.dataset["valid"]["gt"][index:until]
+            x_valid = self.dataset['valid']['dt'][index:until]
+            y_valid = self.dataset['valid']['gt'][index:until]
 
             x_valid_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
             y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
@@ -125,14 +123,14 @@ class DataGenerator():
         """Return model predict parameters"""
 
         while True:
-            if self.test_index >= self.total_test:
-                self.test_index = 0
+            if self.index['test'] >= self.size['test']:
+                self.index['test'] = 0
 
-            index = self.test_index
-            until = self.test_index + self.batch_size
-            self.test_index += self.batch_size
+            index = self.index['test']
+            until = self.index['test'] + self.batch_size
+            self.index['test'] += self.batch_size
 
-            x_test = self.dataset["test"]["dt"][index:until]
+            x_test = self.dataset['test']['dt'][index:until]
             x_test = pp.normalization(x_test)
 
             x_test_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])

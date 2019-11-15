@@ -30,10 +30,10 @@ class Dataset():
         """Preprocess images and sentences from partitions"""
 
         for i in self.partitions:
-            self.dataset[i]["gt"] = [pp.text_standardize(x).encode() for x in self.dataset[i]["gt"]]
+            self.dataset[i]['gt'] = [pp.text_standardize(x).encode() for x in self.dataset[i]['gt']]
 
             pool = Pool()
-            self.dataset[i]["dt"] = pool.map(partial(pp.preproc, img_size=image_input_size), self.dataset[i]["dt"])
+            self.dataset[i]['dt'] = pool.map(partial(pp.preproc, img_size=image_input_size), self.dataset[i]['dt'])
             pool.close()
             pool.join()
 
@@ -64,8 +64,8 @@ class Dataset():
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 5:
-                    dataset[i]["dt"].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt"].append(gt_dict[line])
+                    dataset[i]['dt'].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
+                    dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
 
@@ -103,8 +103,8 @@ class Dataset():
 
                 try:
                     if len(gt_dict[line]) > 5:
-                        dataset[i]["dt"].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
-                        dataset[i]["gt"].append(gt_dict[line])
+                        dataset[i]['dt'].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
+                        dataset[i]['gt'].append(gt_dict[line])
                 except KeyError:
                     pass
 
@@ -118,23 +118,23 @@ class Dataset():
             dt = []
 
             for page_tag in xml:
-                page_path = page_tag.attrib["FileName"]
+                page_path = page_tag.attrib['FileName']
 
                 for i, line_tag in enumerate(page_tag.iter("Line")):
-                    text = html.unescape(line_tag.attrib["Value"])
+                    text = html.unescape(line_tag.attrib['Value'])
                     text = " ".join(text.split())
 
                     if len(text) > 5:
-                        bound = [abs(int(line_tag.attrib["Top"])), abs(int(line_tag.attrib["Bottom"])),
-                                 abs(int(line_tag.attrib["Left"])), abs(int(line_tag.attrib["Right"]))]
+                        bound = [abs(int(line_tag.attrib['Top'])), abs(int(line_tag.attrib['Bottom'])),
+                                 abs(int(line_tag.attrib['Left'])), abs(int(line_tag.attrib['Right']))]
                         dt.append([os.path.join(subpath, page_path), text, bound])
 
             if validation:
                 index = int(len(dt) * 0.9)
-                paths["valid"] = dt[index:]
-                paths["train"] = dt[:index]
+                paths['valid'] = dt[index:]
+                paths['train'] = dt[:index]
             else:
-                paths["test"] = dt
+                paths['test'] = dt
 
         dataset, paths = dict(), dict()
         generate("training_2011.xml", "training_2011", paths, validation=True)
@@ -148,8 +148,8 @@ class Dataset():
                 img = cv2.imread(os.path.join(self.source, item[0]), cv2.IMREAD_GRAYSCALE)
                 img = np.array(img[item[2][0]:item[2][1], item[2][2]:item[2][3]], dtype=np.uint8)
 
-                dataset[i]["dt"].append(img)
-                dataset[i]["gt"].append(item[1])
+                dataset[i]['dt'].append(img)
+                dataset[i]['gt'].append(item[1])
 
         return dataset
 
@@ -185,8 +185,8 @@ class Dataset():
 
                     if len(gt_dict[line]) > 5:
                         f_path = os.path.join(img_path, f"{line}.png")
-                        dataset[i]["dt"].append(cv2.imread(f_path, cv2.IMREAD_GRAYSCALE))
-                        dataset[i]["gt"].append(gt_dict[line])
+                        dataset[i]['dt'].append(cv2.imread(f_path, cv2.IMREAD_GRAYSCALE))
+                        dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
 
@@ -220,7 +220,7 @@ class Dataset():
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 5:
-                    dataset[i]["dt"].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
-                    dataset[i]["gt"].append(gt_dict[line])
+                    dataset[i]['dt'].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
+                    dataset[i]['gt'].append(gt_dict[line])
 
         return dataset

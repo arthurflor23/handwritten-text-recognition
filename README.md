@@ -31,12 +31,14 @@ e. [Washington](http://www.fki.inf.unibe.ch/databases/iam-historical-document-da
 
 ## Command line arguments
 
-* `--dataset`: dataset name (bentham, iam, rimes, saintgall, washington)
+* `--source`: dataset/model name (bentham, iam, rimes, saintgall, washington)
 * `--arch`: network to be used (puigcerver, bluche, flor)
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
-* `--train`: train model using the dataset argument
-* `--test`: evaluate and predict model using the dataset argument
+* `--train`: train model using the source argument
+* `--test`: evaluate and predict model using the source argument
+* `--image`: predict a single image with the source parameter
+* `--kaldi_assets`: save all assets for use with kaldi
 * `--epochs`: number of epochs
 * `--batch_size`: number of the size of each batch
 
