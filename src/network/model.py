@@ -46,6 +46,7 @@ class HTRModel:
             outputs: Last layer of the neural network before CTC (e.g. a TimeDistributed Dense)
             greedy, beam_width, top_paths: Parameters of the CTC decoding (see ctc decoding tensorflow for more details)
         """
+
         self.model_train = None
         self.model_pred = None
 
@@ -60,7 +61,7 @@ class HTRModel:
 
         self.greedy = greedy
         self.beam_width = beam_width
-        self.top_paths = top_paths
+        self.top_paths = max(1, top_paths)
 
     def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
@@ -80,9 +81,9 @@ class HTRModel:
             if self.model_train is None:
                 self.compile()
 
-            self.model_train.load_weights(target, by_name=True)
-            self.model_pred.load_weights(target, by_name=True)
-            self.model_raw_pred.load_weights(target, by_name=True)
+            self.model_train.load_weights(target)
+            self.model_pred.load_weights(target)
+            self.model_raw_pred.load_weights(target)
 
     def get_callbacks(self, logdir, hdf5, monitor="val_loss", verbose=0):
         """Setup the list of callbacks for the model"""
@@ -238,12 +239,10 @@ class HTRModel:
             ValueError: In case the generator yields data in an invalid format.
         """
 
-        self.model_pred._make_predict_function()
         self.model_raw_pred._make_predict_function()
+        self.model_pred._make_predict_function()
 
         is_sequence = isinstance(generator, Sequence)
-        allab_outs = []
-        steps_done = 0
         enqueuer = None
 
         try:
@@ -255,6 +254,9 @@ class HTRModel:
             enqueuer.start(workers=workers, max_queue_size=max_queue_size)
             output_generator = enqueuer.get()
 
+            predicts = [[]] * self.top_paths
+            steps_done = 0
+
             if verbose == 1:
                 progbar = Progbar(target=steps)
 
@@ -262,23 +264,25 @@ class HTRModel:
                 x = next(output_generator)
 
                 if raw_returns:
-                    pred = self.model_raw_pred.predict_on_batch(x)
-                    allab_outs.extend(pred)
+                    pred = [self.model_raw_pred.predict_on_batch(x)]
                 else:
                     pred, _ = self.predict_on_batch(x)
-                    allab_outs.extend(pred)
+
+                for i, x in enumerate(pred):
+                    predicts[i].extend(x)
+                    break
 
                 steps_done += 1
                 if verbose == 1:
                     progbar.update(steps_done)
 
         finally:
-            allab_outs = np.asarray(allab_outs)
+            predicts = np.asarray(predicts)
 
             if enqueuer is not None:
                 enqueuer.stop()
 
-        return allab_outs
+        return predicts
 
     def predict_on_batch(self, x):
         """
@@ -293,18 +297,14 @@ class HTRModel:
         self.model_pred._make_predict_function()
 
         out = self.model_pred.predict_on_batch(x)
-        pred, prob = [], []
 
-        for x in range(len(out[:-1])):
-            pred.append([[int(p) for p in pre if p != -1] for pre in out[x]])
+        probabilities = np.asarray([np.exp(x) for x in out[-1]])
+        predicts = []
 
-        for x in range(len(out[-1])):
-            prob.append(np.exp(out[-1][x]))
+        for pred in out[:-1]:
+            predicts.append([[int(p) for p in pd if p != -1] for pd in pred])
 
-        pred = np.transpose(pred)
-        prob = np.asarray(prob)
-
-        return pred, prob
+        return predicts, probabilities
 
     def get_loss_on_batch(self, inputs, verbose=0):
         """

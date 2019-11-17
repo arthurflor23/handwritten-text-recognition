@@ -1,7 +1,6 @@
 """Dataset reader and process"""
 
 import os
-import cv2
 import html
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -64,7 +63,7 @@ class Dataset():
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 5:
-                    dataset[i]['dt'].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
+                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                     dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
@@ -97,14 +96,18 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                split = line.split("-")
-                img_path = os.path.join(split[0], f"{split[0]}-{split[1]}", f"{split[0]}-{split[1]}-{split[2]}.png")
-                img_path = os.path.join(self.source, "lines", img_path)
-
                 try:
-                    if len(gt_dict[line]) > 5:
-                        dataset[i]['dt'].append(cv2.imread(img_path, cv2.IMREAD_GRAYSCALE))
-                        dataset[i]['gt'].append(gt_dict[line])
+                    if len(gt_dict[line]) < 5:
+                        continue
+
+                    split = line.split("-")
+
+                    folder = f"{split[0]}-{split[1]}"
+                    img_file = f"{split[0]}-{split[1]}-{split[2]}.png"
+                    img_path = os.path.join(self.source, "lines", split[0], folder, img_file)
+
+                    dataset[i]['dt'].append(img_path)
+                    dataset[i]['gt'].append(gt_dict[line])
                 except KeyError:
                     pass
 
@@ -145,10 +148,8 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for item in paths[i]:
-                img = cv2.imread(os.path.join(self.source, item[0]), cv2.IMREAD_GRAYSCALE)
-                img = np.array(img[item[2][0]:item[2][1], item[2][2]:item[2][3]], dtype=np.uint8)
-
-                dataset[i]['dt'].append(img)
+                boundbox = [item[2][0], item[2][1], item[2][2], item[2][3]]
+                dataset[i]['dt'].append((os.path.join(self.source, item[0]), boundbox))
                 dataset[i]['gt'].append(item[1])
 
         return dataset
@@ -184,8 +185,7 @@ class Dataset():
                     line = os.path.splitext(os.path.basename(line))[0]
 
                     if len(gt_dict[line]) > 5:
-                        f_path = os.path.join(img_path, f"{line}.png")
-                        dataset[i]['dt'].append(cv2.imread(f_path, cv2.IMREAD_GRAYSCALE))
+                        dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                         dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
@@ -220,7 +220,7 @@ class Dataset():
 
             for line in paths[i]:
                 if len(gt_dict[line]) > 5:
-                    dataset[i]['dt'].append(cv2.imread(os.path.join(img_path, f"{line}.png"), cv2.IMREAD_GRAYSCALE))
+                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                     dataset[i]['gt'].append(gt_dict[line])
 
         return dataset

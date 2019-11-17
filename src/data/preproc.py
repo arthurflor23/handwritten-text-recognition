@@ -33,7 +33,7 @@ RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{
                                                                                       chr(2387), chr(5151),
                                                                                       chr(5152), chr(65344),
                                                                                       chr(8242)), re.UNICODE)
-RE_RESERVED_CHAR_FILTER = re.compile(r'[¶¤«œ»]', re.UNICODE)
+RE_RESERVED_CHAR_FILTER = re.compile(r'[¶¤«»]', re.UNICODE)
 RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
 RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
 RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
@@ -140,6 +140,20 @@ Preprocess metodology based in:
 
 def preproc(img, img_size):
     """Make the process with the `img_size` to the scale resize"""
+
+    if isinstance(img, str):
+        img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+
+    if isinstance(img, tuple):
+        image, boundbox = img
+        img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+
+        for i in range(len(boundbox)):
+            if isinstance(boundbox[i], float):
+                total = len(img) if i < 2 else len(img[0])
+                boundbox[i] = int(total * boundbox[i])
+
+        img = np.array(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
 
     wt, ht, _ = img_size
     h, w = np.array(img).shape

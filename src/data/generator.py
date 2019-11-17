@@ -29,10 +29,6 @@ class DataGenerator():
                 self.dataset[pt]['dt'] = f[pt]['dt'][:]
                 self.dataset[pt]['gt'] = f[pt]['gt'][:]
 
-                self.size[pt] = len(self.dataset[pt]['gt'])
-                self.steps[pt] = np.maximum(self.size[pt] // self.batch_size, 1)
-                self.index[pt] = 0
-
         self._prepare_dataset()
 
     def _prepare_dataset(self):
@@ -41,11 +37,16 @@ class DataGenerator():
         for pt in self.partitions:
             self.dataset[pt]['gt'] = [x.decode() for x in self.dataset[pt]['gt']]
 
+            # full fill process to make up batch_size and steps
             while len(self.dataset[pt]['dt']) % self.batch_size:
                 i = np.random.choice(np.arange(0, len(self.dataset[pt]['dt'])), 1)[0]
 
                 self.dataset[pt]['dt'] = np.append(self.dataset[pt]['dt'], [self.dataset[pt]['dt'][i]], axis=0)
                 self.dataset[pt]['gt'] = np.append(self.dataset[pt]['gt'], [self.dataset[pt]['gt'][i]], axis=0)
+
+            self.size[pt] = len(self.dataset[pt]['gt'])
+            self.steps[pt] = max(1, self.size[pt] // self.batch_size)
+            self.index[pt] = 0
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -168,7 +169,7 @@ class Tokenizer():
     def decode(self, text):
         """Decode vector to text"""
 
-        decoded = "".join([self.chars[int(x)] for x in text])
+        decoded = "".join([self.chars[int(x)] for x in text if x > -1])
 
         return self.remove_tokens(decoded)
 

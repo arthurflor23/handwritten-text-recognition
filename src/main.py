@@ -12,12 +12,13 @@ Provides options via the command line to perform project tasks.
 * `--batch_size`: number of batches
 """
 
-import os
 import argparse
-import h5py
 import cv2
-import time
+import h5py
 import numpy as np
+import os
+import string
+import time
 
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
@@ -45,12 +46,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     raw_path = os.path.join("..", "raw", args.source)
-    source = os.path.join("..", "data", f"{args.source}.hdf5")
+    source_path = os.path.join("..", "data", f"{args.source}.hdf5")
     output_path = os.path.join("..", "output", args.source, args.arch)
 
     input_size = (1024, 128, 1)
     max_text_length = 128
-    charset_base = "".join([chr(i) for i in range(32, 127)])
+    charset_base = string.printable[:95]
 
     if args.transform:
         assert os.path.exists(raw_path)
@@ -58,12 +59,15 @@ if __name__ == "__main__":
 
         ds = Dataset(source=raw_path, name=args.source)
         ds.read_partitions()
+
+        print("Partitions will be preprocessed...")
         ds.preprocess_partitions(image_input_size=input_size)
 
-        os.makedirs(os.path.dirname(source), exist_ok=True)
+        print("Partitions will be saved...")
+        os.makedirs(os.path.dirname(source_path), exist_ok=True)
 
         for i in ds.partitions:
-            with h5py.File(source, "a") as hf:
+            with h5py.File(source_path, "a") as hf:
                 hf.create_dataset(f"{i}/dt", data=ds.dataset[i]['dt'], compression="gzip", compression_opts=9)
                 hf.create_dataset(f"{i}/gt", data=ds.dataset[i]['gt'], compression="gzip", compression_opts=9)
                 print(f"[OK] {i} partition.")
@@ -71,9 +75,9 @@ if __name__ == "__main__":
         print(f"Transformation finished.")
 
     elif args.cv2:
-        with h5py.File(source, "r") as hf:
-            dt = hf['test']['dt'][:]
-            gt = hf['test']['gt'][:]
+        with h5py.File(source_path, "r") as hf:
+            dt = hf['test']['dt'][:256]
+            gt = hf['test']['gt'][:256]
 
         predict_file = os.path.join(output_path, "predict.txt")
         predicts = [""] * len(dt)
@@ -91,10 +95,9 @@ if __name__ == "__main__":
             cv2.waitKey(0)
 
     elif args.image:
-        image = cv2.imread(args.image, cv2.IMREAD_GRAYSCALE)
-        image = pp.preproc(image, img_size=input_size)
+        img = pp.preproc(args.image, img_size=input_size)
 
-        x_test = pp.normalization([image])
+        x_test = pp.normalization([img])
         x_test_len = np.asarray([max_text_length])
 
         network_func = getattr(architecture, args.arch)
@@ -108,25 +111,27 @@ if __name__ == "__main__":
         model.load_checkpoint(target=os.path.join(output_path, "checkpoint_weights.hdf5"))
 
         predicts, probabilities = model.predict_on_batch([x_test, x_test_len])
+
+        predicts = np.swapaxes(predicts, axis1=0, axis2=1)
         predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
         print("\n####################################")
 
-        for (pd1, pb1) in zip(predicts, probabilities):
+        for (pred, prob) in zip(predicts, probabilities):
             print("\nProb.  - Predict")
 
-            for (pd2, pb2) in zip(pd1, pb1):
-                print(f"{pb2:.4f} - {pd2}")
+            for (pd, pb) in zip(pred, prob):
+                print(f"{pb:.4f} - {pd}")
 
         print("\n####################################")
 
-        cv2.imshow("Image", pp.adjust_to_see(image))
+        cv2.imshow("Image", pp.adjust_to_see(img))
         cv2.waitKey(0)
 
     else:
         os.makedirs(output_path, exist_ok=True)
 
-        dtgen = DataGenerator(source=source,
+        dtgen = DataGenerator(source=source_path,
                               batch_size=args.batch_size,
                               charset=charset_base,
                               max_text_length=max_text_length,
@@ -192,7 +197,7 @@ if __name__ == "__main__":
                                                use_multiprocessing=True,
                                                verbose=1)
 
-            predicts = [dtgen.tokenizer.decode(x) for x in predicts[:,0]]
+            predicts = [dtgen.tokenizer.decode(x) for x in predicts[0]]
             total_time = time.time() - start_time
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
@@ -232,7 +237,7 @@ if __name__ == "__main__":
             scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
 
             with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
-                for i in range(len(predicts)):
-                    writer(str(i), predicts[i])
+                for i, item in enumerate(predicts[0]):
+                    writer(str(i), item)
 
             # soon...
