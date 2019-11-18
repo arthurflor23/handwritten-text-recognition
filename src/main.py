@@ -224,6 +224,7 @@ if __name__ == "__main__":
                 print(e_corpus)
 
         elif args.kaldi_assets:
+            # predict from model_raw_pred() with the raw_returns=True
             predicts = model.predict_generator(generator=dtgen.next_test_batch(),
                                                steps=dtgen.steps['test'],
                                                use_multiprocessing=True,
@@ -236,8 +237,38 @@ if __name__ == "__main__":
             ark_file_name = os.path.join(kaldi_path, "conf_mats.ark")
             scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
 
+            # define train range and default tokens
+            train_rg = dtgen.size["train"] + dtgen.size["valid"]
+            ctc_TK, space_TK = "<ctc>", "<space>"
+            gt = []
+
+            # save ark and scp file (laia output/kaldi input format)
             with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
                 for i, item in enumerate(predicts[0]):
-                    writer(str(i), item)
+                    writer(str(i + train_rg), item)
 
-            # soon...
+            # get chars and ground truth lists
+            for pt in dtgen.partitions:
+                for x in dtgen.dataset[pt]["gt"]:
+                    gt.append([space_TK if y == " " else y for y in list(f" {x} ")])
+
+            # save ground_truth.lst file with sparse sentences
+            with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
+                for i, item in enumerate(gt):
+                    lg.write(f"{i} {' '.join(item)}\n")
+
+            # get chars list and save with the ctc and space tokens
+            chars = list(dtgen.tokenizer.chars) + [ctc_TK]
+            chars[chars.index(" ")] = space_TK
+
+            with open(os.path.join(kaldi_path, "chars.lst"), "w") as lg:
+                lg.write("\n".join(chars))
+
+            # save indexes of the train/valid and test partitions
+            with open(os.path.join(kaldi_path, "ID_train.lst"), "w") as lg:
+                range_index = [str(i) for i in range(0, train_rg)]
+                lg.write("\n".join(range_index))
+
+            with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
+                range_index = [str(i) for i in range(train_rg, train_rg + dtgen.size["test"])]
+                lg.write("\n".join(range_index))
