@@ -83,12 +83,12 @@ def adjust_to_see(img):
 
 
 def augmentation(imgs,
-                 dilate_range=1,
-                 erode_range=1,
-                 height_shift_range=0,
                  rotation_range=0,
                  scale_range=0,
-                 width_shift_range=0):
+                 height_shift_range=0,
+                 width_shift_range=0,
+                 dilate_range=1,
+                 erode_range=1):
     """Apply variations to a list of images (rotate, width and height shift, scale, erode, dilate)"""
 
     imgs = imgs.astype(np.float32)

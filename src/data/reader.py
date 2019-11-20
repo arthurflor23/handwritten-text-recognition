@@ -2,7 +2,6 @@
 
 import os
 import html
-import numpy as np
 import xml.etree.ElementTree as ET
 
 from data import preproc as pp
@@ -45,7 +44,6 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "TestLines.lst")).read().splitlines()}
 
-        [np.random.shuffle(paths[i]) for i in self.partitions]
         transcriptions = os.path.join(source, "Transcriptions")
         gt = os.listdir(transcriptions)
         gt_dict = dict()
@@ -77,7 +75,6 @@ class Dataset():
                            open(os.path.join(pt_path, "validationset2.txt")).read().splitlines()),
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
-        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
         gt_dict = dict()
 
@@ -142,7 +139,6 @@ class Dataset():
         dataset, paths = dict(), dict()
         generate("training_2011.xml", "training_2011", paths, validation=True)
         generate("eval_2011_annotated.xml", "eval_2011", paths, validation=False)
-        [np.random.shuffle(paths[i]) for i in self.partitions]
 
         for i in self.partitions:
             dataset[i] = {"dt": [], "gt": []}
@@ -162,7 +158,6 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
 
-        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ground_truth", "transcription.txt")).read().splitlines()
         gt_dict = dict()
 
@@ -198,7 +193,6 @@ class Dataset():
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
 
-        [np.random.shuffle(paths[i]) for i in self.partitions]
         lines = open(os.path.join(self.source, "ground_truth", "transcription.txt")).read().splitlines()
         gt_dict = dict()
 

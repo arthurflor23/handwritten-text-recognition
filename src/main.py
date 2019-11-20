@@ -24,7 +24,6 @@ from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
 from data.reader import Dataset
 from kaldiio import WriteHelper
-from network import architecture
 from network.model import HTRModel
 
 
@@ -48,6 +47,7 @@ if __name__ == "__main__":
     raw_path = os.path.join("..", "raw", args.source)
     source_path = os.path.join("..", "data", f"{args.source}.hdf5")
     output_path = os.path.join("..", "output", args.source, args.arch)
+    target_path = os.path.join(output_path, "checkpoint_weights.hdf5")
 
     input_size = (1024, 128, 1)
     max_text_length = 128
@@ -96,39 +96,35 @@ if __name__ == "__main__":
 
     elif args.image:
         img = pp.preproc(args.image, img_size=input_size)
+        tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
 
         x_test = pp.normalization([img])
         x_test_len = np.asarray([max_text_length])
 
-        network_func = getattr(architecture, args.arch)
+        model = HTRModel(architecture=args.arch,
+                         input_size=input_size,
+                         vocab_size=tokenizer.vocab_size,
+                         top_paths=10)
 
-        tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
-        ioo = network_func(input_size=input_size, output_size=(tokenizer.vocab_size + 1))
+        model.compile()
+        model.load_checkpoint(target=target_path)
 
-        model = HTRModel(inputs=ioo[0], outputs=ioo[1], top_paths=10)
-        model.compile(optimizer=ioo[2])
-
-        model.load_checkpoint(target=os.path.join(output_path, "checkpoint_weights.hdf5"))
-
-        predicts, probabilities = model.predict_on_batch([x_test, x_test_len])
-
-        predicts = np.swapaxes(predicts, axis1=0, axis2=1)
+        predicts, probabilities = model.predict([x_test, x_test_len], ctc_decode=True, verbose=0)
         predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
         print("\n####################################")
-
-        for (pred, prob) in zip(predicts, probabilities):
+        for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
             print("\nProb.  - Predict")
 
             for (pd, pb) in zip(pred, prob):
                 print(f"{pb:.4f} - {pd}")
 
+            cv2.imshow(f"Image {i + 1}", pp.adjust_to_see(img))
         print("\n####################################")
-
-        cv2.imshow("Image", pp.adjust_to_see(img))
         cv2.waitKey(0)
 
     else:
+        assert os.path.isfile(source_path) or os.path.isfile(target_path)
         os.makedirs(output_path, exist_ok=True)
 
         dtgen = DataGenerator(source=source_path,
@@ -137,31 +133,26 @@ if __name__ == "__main__":
                               max_text_length=max_text_length,
                               predict=args.test)
 
-        network_func = getattr(architecture, args.arch)
+        model = HTRModel(architecture=args.arch,
+                         input_size=input_size,
+                         vocab_size=dtgen.tokenizer.vocab_size)
 
-        ioo = network_func(input_size=input_size,
-                           output_size=(dtgen.tokenizer.vocab_size + 1),
-                           learning_rate=0.001)
-
-        model = HTRModel(inputs=ioo[0], outputs=ioo[1])
-        model.compile(optimizer=ioo[2])
-
-        checkpoint = "checkpoint_weights.hdf5"
-        model.load_checkpoint(target=os.path.join(output_path, checkpoint))
+        model.compile(learning_rate=0.001)
+        model.load_checkpoint(target=target_path)
 
         if args.train:
             model.summary(output_path, "summary.txt")
-            callbacks = model.get_callbacks(logdir=output_path, hdf5=checkpoint, verbose=1)
+            callbacks = model.get_callbacks(logdir=output_path, checkpoint=target_path, verbose=1)
 
             start_time = time.time()
-            h = model.fit_generator(generator=dtgen.next_train_batch(),
-                                    epochs=args.epochs,
-                                    steps_per_epoch=dtgen.steps['train'],
-                                    validation_data=dtgen.next_valid_batch(),
-                                    validation_steps=dtgen.steps['valid'],
-                                    callbacks=callbacks,
-                                    shuffle=True,
-                                    verbose=1)
+            h = model.fit(x=dtgen.next_train_batch(),
+                          epochs=args.epochs,
+                          steps_per_epoch=dtgen.steps['train'],
+                          validation_data=dtgen.next_valid_batch(),
+                          validation_steps=dtgen.steps['valid'],
+                          callbacks=callbacks,
+                          shuffle=True,
+                          verbose=1)
             total_time = time.time() - start_time
 
             loss = h.history['loss']
@@ -192,12 +183,12 @@ if __name__ == "__main__":
 
         elif args.test:
             start_time = time.time()
-            predicts = model.predict_generator(generator=dtgen.next_test_batch(),
-                                               steps=dtgen.steps['test'],
-                                               use_multiprocessing=True,
-                                               verbose=1)
+            predicts, _ = model.predict(x=dtgen.next_test_batch(),
+                                        steps=dtgen.steps['test'],
+                                        ctc_decode=True,
+                                        verbose=1)
 
-            predicts = [dtgen.tokenizer.decode(x) for x in predicts[0]]
+            predicts = [dtgen.tokenizer.decode(x[0]) for x in predicts]
             total_time = time.time() - start_time
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
@@ -224,12 +215,10 @@ if __name__ == "__main__":
                 print(e_corpus)
 
         elif args.kaldi_assets:
-            # predict from model_raw_pred() with the raw_returns=True
-            predicts = model.predict_generator(generator=dtgen.next_test_batch(),
-                                               steps=dtgen.steps['test'],
-                                               use_multiprocessing=True,
-                                               raw_returns=True,
-                                               verbose=1)
+            predicts = model.predict(x=dtgen.next_test_batch(),
+                                     steps=dtgen.steps['test'],
+                                     ctc_decode=False,
+                                     verbose=1)
 
             kaldi_path = os.path.join(output_path, "kaldi")
             os.makedirs(kaldi_path, exist_ok=True)

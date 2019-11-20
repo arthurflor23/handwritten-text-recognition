@@ -84,9 +84,10 @@ class DataGenerator():
                 "input_length": x_train_len,
                 "label_length": y_train_len
             }
-            output = {"CTCloss": np.zeros(self.batch_size)}
+            output = {"CTCloss": np.zeros(self.batch_size, dtype=int)}
 
-            yield (inputs, output)
+            # x, y and sample_weight
+            yield (inputs, output, [])
 
     def next_valid_batch(self):
         """Get the next batch from validation partition (yield)"""
@@ -116,16 +117,17 @@ class DataGenerator():
                 "input_length": x_valid_len,
                 "label_length": y_valid_len
             }
-            output = {"CTCloss": np.zeros(self.batch_size)}
+            output = {"CTCloss": np.zeros(self.batch_size, dtype=int)}
 
-            yield (inputs, output)
+            # x, y and sample_weight
+            yield (inputs, output, [])
 
     def next_test_batch(self):
         """Return model predict parameters"""
 
         while True:
             if self.index['test'] >= self.size['test']:
-                self.index['test'] = 0
+                break
 
             index = self.index['test']
             until = self.index['test'] + self.batch_size
@@ -136,7 +138,7 @@ class DataGenerator():
 
             x_test_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
 
-            yield (x_test, x_test_len)
+            yield [x_test, x_test_len]
 
 
 class Tokenizer():
