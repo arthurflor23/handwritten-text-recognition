@@ -172,8 +172,10 @@ class Tokenizer():
         """Decode vector to text"""
 
         decoded = "".join([self.chars[int(x)] for x in text if x > -1])
+        decoded = self.remove_tokens(decoded)
+        decoded = pp.text_standardize(decoded)
 
-        return self.remove_tokens(decoded)
+        return decoded
 
     def remove_tokens(self, text):
         """Remove tokens (PAD) from text"""
