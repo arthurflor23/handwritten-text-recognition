@@ -116,14 +116,14 @@ class HTRModel:
             EarlyStopping(
                 monitor=monitor,
                 min_delta=1e-8,
-                patience=40,
+                patience=20,
                 restore_best_weights=True,
                 verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
                 min_delta=1e-8,
                 factor=0.2,
-                patience=20,
+                patience=12,
                 verbose=verbose)
         ]
 
@@ -254,32 +254,35 @@ class HTRModel:
         if not ctc_decode:
             return out
 
-        batch_size = len(out)
-        max_text_length = len(max(out, key=len))
-
         steps_done = 0
         if verbose == 1:
             print("CTC Decode")
-            progbar = Progbar(target=batch_size)
+            progbar = Progbar(target=steps)
 
+        batch_size = len(out) // steps
+        max_text_length = len(max(out, key=len))
+
+        x_test_len = np.asarray([max_text_length for _ in range(batch_size)])
         predicts, probabilities = [], []
 
-        for i in range(batch_size):
-            decode, log = K.ctc_decode(np.asarray([out[i]]),
-                                       np.asarray([max_text_length]),
+        while steps_done < steps:
+            current_index = steps_done * batch_size
+            until_index = current_index + batch_size
+            x_test = np.asarray(out[current_index:until_index])
+
+            decode, log = K.ctc_decode(x_test,
+                                       x_test_len,
                                        greedy=self.greedy,
                                        beam_width=self.beam_width,
                                        top_paths=self.top_paths)
 
-            probabilities.extend(log)
-            predicts.append(decode)
+            probabilities.extend([np.exp(x) for x in log])
+            decode = [[[int(p) for p in x if p != -1] for x in y] for y in decode]
+            predicts.extend(np.swapaxes(decode, 0, 1))
 
             steps_done += 1
             if verbose == 1:
                 progbar.update(steps_done)
-
-        probabilities = [np.exp(x) for x in probabilities]
-        predicts = [[[int(p) for p in x[0] if p != -1] for x in y] for y in predicts]
 
         return (predicts, probabilities)
 
@@ -427,27 +430,27 @@ def flor(input_size, output_size, learning_rate):
 
     cnn = FullGatedConv2D(filters=16, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(2,2), padding="same")(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=32, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,2), padding="same")(cnn)
+    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,2), padding="same")(cnn)
+    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
     cnn = FullGatedConv2D(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(1,2), padding="same")(cnn)
+    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
