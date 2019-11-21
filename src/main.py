@@ -80,7 +80,7 @@ if __name__ == "__main__":
             gt = hf['test']['gt'][:256]
 
         predict_file = os.path.join(output_path, "predict.txt")
-        predicts = [""] * len(dt)
+        predicts = [''] * len(dt)
 
         if os.path.isfile(predict_file):
             with open(predict_file, "r") as lg:
@@ -227,7 +227,7 @@ if __name__ == "__main__":
             scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
 
             # define train range and default tokens
-            train_rg = dtgen.size["train"] + dtgen.size["valid"]
+            train_rg = dtgen.size['train'] + dtgen.size['valid']
             ctc_TK, space_TK = "<ctc>", "<space>"
             gt = []
 
@@ -238,7 +238,7 @@ if __name__ == "__main__":
 
             # get chars and ground truth lists
             for pt in dtgen.partitions:
-                for x in dtgen.dataset[pt]["gt"]:
+                for x in dtgen.dataset[pt]['gt']:
                     gt.append([space_TK if y == " " else y for y in list(f" {x} ")])
 
             # save ground_truth.lst file with sparse sentences
@@ -259,5 +259,5 @@ if __name__ == "__main__":
                 lg.write("\n".join(range_index))
 
             with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
-                range_index = [str(i) for i in range(train_rg, train_rg + dtgen.size["test"])]
+                range_index = [str(i) for i in range(train_rg, train_rg + dtgen.size['test'])]
                 lg.write("\n".join(range_index))

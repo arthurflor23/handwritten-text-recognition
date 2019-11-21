@@ -17,7 +17,7 @@ class Dataset():
         self.source = source
         self.name = name
         self.dataset = None
-        self.partitions = ["train", "valid", "test"]
+        self.partitions = ['train', 'valid', 'test']
 
     def read_partitions(self):
         """Read images and sentences from dataset"""

@@ -16,12 +16,12 @@ class DataGenerator():
     def __init__(self, source, batch_size, charset, max_text_length, predict=False):
         self.tokenizer = Tokenizer(charset, max_text_length)
         self.batch_size = batch_size
-        self.partitions = ["test"] if predict else ["train", "valid", "test"]
+        self.partitions = ['test'] if predict else ['train', 'valid', 'test']
 
-        self.dataset = dict()
         self.size = dict()
         self.steps = dict()
         self.index = dict()
+        self.dataset = dict()
 
         with h5py.File(source, "r") as f:
             for pt in self.partitions:
