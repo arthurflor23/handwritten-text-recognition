@@ -5,17 +5,18 @@ import numpy as np
 
 from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.utils import Progbar
+
 from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.models import Model
+from tensorflow.keras.constraints import MaxNorm
 
 from network.layers import FullGatedConv2D, GatedConv2D
-from tensorflow.keras.constraints import MaxNorm
 from tensorflow.keras.layers import Dropout, BatchNormalization, LeakyReLU, PReLU
 from tensorflow.keras.layers import Input, MaxPooling2D, Reshape, TimeDistributed
 from tensorflow.keras.layers import Lambda, Conv2D, Bidirectional, LSTM, GRU, Dense
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.utils import Progbar
 
 
 """
@@ -54,7 +55,8 @@ class HTRModel:
 
         :param
             architecture: option of the architecture model to build and compile
-            greedy, beam_width, top_paths: Parameters of the CTC decoding (see ctc decoding tensorflow for more details)
+            greedy, beam_width, top_paths: Parameters of the CTC decoding
+            (see ctc decoding tensorflow for more details)
         """
 
         self.architecture = globals()[architecture]
@@ -231,7 +233,7 @@ class HTRModel:
                 ctc_decode=True):
         """
         Model predicting on data yielded (predict function has support to generator).
-        A predict() abstration function of TensorFlow 2 using the model_raw_pred or model_pred.
+        A predict() abstration function of TensorFlow 2 using the model_infer.
 
         Provide x parameter of the form: [x_test, x_test_len]
 
@@ -255,10 +257,9 @@ class HTRModel:
         batch_size = len(out)
         max_text_length = len(max(out, key=len))
 
+        steps_done = 0
         if verbose == 1:
             print("CTC Decode")
-
-            steps_done = 0
             progbar = Progbar(target=batch_size)
 
         predicts, probabilities = [], []
@@ -273,11 +274,9 @@ class HTRModel:
             probabilities.extend(log)
             predicts.append(decode)
 
+            steps_done += 1
             if verbose == 1:
-                steps_done += 1
                 progbar.update(steps_done)
-
-        print(probabilities)
 
         probabilities = [np.exp(x) for x in probabilities]
         predicts = [[[int(p) for p in x[0] if p != -1] for x in y] for y in predicts]
