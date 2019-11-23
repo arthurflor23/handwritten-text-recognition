@@ -1,7 +1,9 @@
 """Dataset reader and process"""
 
 import os
+import re
 import html
+import string
 import xml.etree.ElementTree as ET
 
 from data import preproc as pp
@@ -35,6 +37,14 @@ class Dataset():
             pool.close()
             pool.join()
 
+    def check_text(self, text):
+        """Make sure text has more characters instead of punctuation marks"""
+
+        x = text.translate(str.maketrans("", "", string.punctuation))
+        x = re.compile(r'[^\S\n]+', re.UNICODE).sub(" ", x.strip())
+
+        return len(x) > 2 and len(x) > len(text) * 0.5
+
     def _bentham(self):
         """Bentham dataset reader"""
 
@@ -60,9 +70,11 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if len(gt_dict[line]) > 5:
-                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
-                    dataset[i]['gt'].append(gt_dict[line])
+                if not self.check_text(gt_dict[line]):
+                    continue
+
+                dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
+                dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
 
@@ -94,7 +106,7 @@ class Dataset():
 
             for line in paths[i]:
                 try:
-                    if len(gt_dict[line]) < 5:
+                    if not self.check_text(gt_dict[line]):
                         continue
 
                     split = line.split("-")
@@ -124,10 +136,12 @@ class Dataset():
                     text = html.unescape(line_tag.attrib['Value'])
                     text = " ".join(text.split())
 
-                    if len(text) > 5:
-                        bound = [abs(int(line_tag.attrib['Top'])), abs(int(line_tag.attrib['Bottom'])),
-                                 abs(int(line_tag.attrib['Left'])), abs(int(line_tag.attrib['Right']))]
-                        dt.append([os.path.join(subpath, page_path), text, bound])
+                    if not self.check_text(text):
+                        continue
+
+                    bound = [abs(int(line_tag.attrib['Top'])), abs(int(line_tag.attrib['Bottom'])),
+                             abs(int(line_tag.attrib['Left'])), abs(int(line_tag.attrib['Right']))]
+                    dt.append([os.path.join(subpath, page_path), text, bound])
 
             if validation:
                 index = int(len(dt) * 0.9)
@@ -179,9 +193,11 @@ class Dataset():
                 for line in img_list:
                     line = os.path.splitext(os.path.basename(line))[0]
 
-                    if len(gt_dict[line]) > 5:
-                        dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
-                        dataset[i]['gt'].append(gt_dict[line])
+                    if not self.check_text(gt_dict[line]):
+                        continue
+
+                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
+                    dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
 
@@ -213,8 +229,10 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if len(gt_dict[line]) > 5:
-                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
-                    dataset[i]['gt'].append(gt_dict[line])
+                if not self.check_text(gt_dict[line]):
+                    continue
+
+                dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
+                dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
