@@ -26,38 +26,42 @@ DeepSpell based text cleaning process.
     Medium: https://machinelearnings.co/deep-spelling-9ffef96a24f6#.2c9pu8nlm
     Github: https://github.com/MajorTal/DeepSpell
 """
-NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
+
 RE_DASH_FILTER = re.compile(r'[\-\˗\֊\‐\‑\‒\–\—\⁻\₋\−\﹣\－]', re.UNICODE)
-RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{}{}{}{}{}{}{}{}{}]'.format(chr(768), chr(769),
-                                                                                      chr(832), chr(833),
-                                                                                      chr(2387), chr(5151),
-                                                                                      chr(5152), chr(65344),
-                                                                                      chr(8242)), re.UNICODE)
+RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{}{}{}{}{}{}{}{}{}]'.format(
+    chr(768), chr(769), chr(832), chr(833), chr(2387),
+    chr(5151), chr(5152), chr(65344), chr(8242)), re.UNICODE)
 RE_RESERVED_CHAR_FILTER = re.compile(r'[¶¤«»]', re.UNICODE)
 RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
 RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
 RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
 
+LEFT_PUNCTUATION_FILTER = """!%&),.:;<=>?@\\]^_`|}~"""
+RIGHT_PUNCTUATION_FILTER = """"(/<=>@[\\^_`{|~"""
+NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
 
-def text_standardize(txt):
+
+def text_standardize(text):
     """Organize/add spaces around punctuation marks"""
 
-    if txt is None:
+    if text is None:
         return ""
 
-    txt = html.unescape(txt).replace("\\n", "").replace("\\t", "")
+    text = html.unescape(text).replace("\\n", "").replace("\\t", "")
 
-    txt = RE_RESERVED_CHAR_FILTER.sub("", txt)
-    txt = RE_DASH_FILTER.sub("-", txt)
-    txt = RE_APOSTROPHE_FILTER.sub("'", txt)
-    txt = RE_LEFT_PARENTH_FILTER.sub("(", txt)
-    txt = RE_RIGHT_PARENTH_FILTER.sub(")", txt)
-    txt = RE_BASIC_CLEANER.sub("", txt)
+    text = RE_RESERVED_CHAR_FILTER.sub("", text)
+    text = RE_DASH_FILTER.sub("-", text)
+    text = RE_APOSTROPHE_FILTER.sub("'", text)
+    text = RE_LEFT_PARENTH_FILTER.sub("(", text)
+    text = RE_RIGHT_PARENTH_FILTER.sub(")", text)
+    text = RE_BASIC_CLEANER.sub("", text)
 
-    txt = txt.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
-    txt = NORMALIZE_WHITESPACE_REGEX.sub(" ", txt.strip())
+    text = text.lstrip(LEFT_PUNCTUATION_FILTER)
+    text = text.rstrip(RIGHT_PUNCTUATION_FILTER)
+    text = text.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
+    text = NORMALIZE_WHITESPACE_REGEX.sub(" ", text.strip())
 
-    return txt
+    return text
 
 
 def adjust_to_see(img):
@@ -138,8 +142,8 @@ Preprocess metodology based in:
 """
 
 
-def preproc(img, img_size):
-    """Make the process with the `img_size` to the scale resize"""
+def preproc(img, input_size):
+    """Make the process with the `input_size` to the scale resize"""
 
     if isinstance(img, str):
         img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
@@ -153,10 +157,10 @@ def preproc(img, img_size):
                 total = len(img) if i < 2 else len(img[0])
                 boundbox[i] = int(total * boundbox[i])
 
-        img = np.array(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
+        img = np.asarray(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
 
-    wt, ht, _ = img_size
-    h, w = np.array(img).shape
+    wt, ht, _ = input_size
+    h, w = np.asarray(img).shape
     f = max((w / wt), (h / ht))
 
     new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
@@ -211,10 +215,10 @@ def illumination_compensation(img):
     cei[cei > 255] = 255
     cei[cei < 0] = 0
 
-    m1 = np.array([-1, 0, 1, -2, 0, 2, -1, 0, 1]).reshape((3, 3))
-    m2 = np.array([-2, -1, 0, -1, 0, 1, 0, 1, 2]).reshape((3, 3))
-    m3 = np.array([-1, -2, -1, 0, 0, 0, 1, 2, 1]).reshape((3, 3))
-    m4 = np.array([0, 1, 2, -1, 0, 1, -2, -1, 0]).reshape((3, 3))
+    m1 = np.asarray([-1, 0, 1, -2, 0, 2, -1, 0, 1]).reshape((3, 3))
+    m2 = np.asarray([-2, -1, 0, -1, 0, 1, 0, 1, 2]).reshape((3, 3))
+    m3 = np.asarray([-1, -2, -1, 0, 0, 0, 1, 2, 1]).reshape((3, 3))
+    m4 = np.asarray([0, 1, 2, -1, 0, 1, -2, -1, 0]).reshape((3, 3))
 
     eg1 = np.abs(cv2.filter2D(img, -1, m1))
     eg2 = np.abs(cv2.filter2D(img, -1, m2))
@@ -238,7 +242,7 @@ def illumination_compensation(img):
 
     kernel = np.ones((3, 3), np.uint8)
     erosion = cv2.erode(tli, kernel, iterations=1)
-    int_img = np.array(cei)
+    int_img = np.asarray(cei)
 
     estimate_light_distribution(width, height, erosion, cei, int_img)
 
@@ -250,7 +254,7 @@ def illumination_compensation(img):
     result[result < 0] = 0
     result[result > 255] = 255
 
-    return np.array(result, dtype=np.uint8)
+    return np.asarray(result, dtype=np.uint8)
 
 
 @nb.jit(nopython=True)
@@ -319,7 +323,7 @@ def remove_cursive_style(img):
     for alpha in alpha_vals:
         shift_x = max(-alpha * rows, 0.)
         size = (cols + int(np.ceil(abs(alpha * rows))), rows)
-        transform = np.array([[1, alpha, shift_x], [0, 1, 0]], dtype=np.float)
+        transform = np.asarray([[1, alpha, shift_x], [0, 1, 0]], dtype=np.float)
 
         shear_img = cv2.warpAffine(binary, transform, size, cv2.INTER_NEAREST)
         sum_alpha = 0
@@ -362,4 +366,4 @@ def sauvola(img, window, thresh, k):
     std = (((isqsum / ksize) - (mean**2) / ksize) / ksize) ** 0.5
     threshold = (mean * (1 + k * (std / thresh - 1))) * (mean >= 100)
 
-    return np.array(255 * (img >= threshold), 'uint8')
+    return np.asarray(255 * (img >= threshold), 'uint8')

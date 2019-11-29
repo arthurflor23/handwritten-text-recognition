@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+import tensorflow as tf
 
 from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
@@ -14,9 +15,9 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.constraints import MaxNorm
 
 from network.layers import FullGatedConv2D, GatedConv2D
+from tensorflow.keras.layers import Conv2D, Bidirectional, LSTM, GRU, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, LeakyReLU, PReLU
 from tensorflow.keras.layers import Input, MaxPooling2D, Reshape, TimeDistributed
-from tensorflow.keras.layers import Lambda, Conv2D, Bidirectional, LSTM, GRU, Dense
 
 
 """
@@ -30,14 +31,7 @@ HTRModel Class based on:
 The HTRModel class use Tensorflow 2 Keras module for the use of the
 Connectionist Temporal Classification (CTC) with the Hadwritten Text Recognition (HTR).
 
-The HTRModel structure is composed of 2 branches. Each branch is a Tensorflow Keras Model:
-    - One for computing the CTC loss (model)
-    - One for predicting using the ctc_decode method (model_infer) or just returning the raw data.
-
 In a Tensorflow Keras Model, x is the input features and y the labels.
-Here, x data are of the form [input_sequences, label_sequences, inputs_lengths, labels_length]
-and y are not used as in a Tensorflow Keras Model (this is an array which is not considered,
-the labeling is given in the x data structure).
 """
 
 
@@ -63,12 +57,10 @@ class HTRModel:
         self.input_size = input_size
         self.vocab_size = vocab_size
 
+        self.model = None
         self.greedy = greedy
         self.beam_width = beam_width
         self.top_paths = max(1, top_paths)
-
-        self.model = None
-        self.model_infer = None
 
     def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
@@ -90,7 +82,6 @@ class HTRModel:
                 self.compile()
 
             self.model.load_weights(target)
-            self.model_infer.load_weights(target)
 
     def get_callbacks(self, logdir, checkpoint, monitor="val_loss", verbose=0):
         """Setup the list of callbacks for the model"""
@@ -116,14 +107,14 @@ class HTRModel:
             EarlyStopping(
                 monitor=monitor,
                 min_delta=1e-8,
-                patience=20,
+                patience=40,
                 restore_best_weights=True,
                 verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
                 min_delta=1e-8,
                 factor=0.2,
-                patience=12,
+                patience=20,
                 verbose=verbose)
         ]
 
@@ -133,41 +124,16 @@ class HTRModel:
         """
         Configures the HTR Model for training/predict.
 
-        There are 2 Tensorflow Keras models:
-            - one for training
-            - one for predicting (with/without CTC decode)
-
-        Lambda layers are used to compute:
-            - the CTC loss function
-            - the CTC decoding
-
-        :param optimizer: The optimizer used during training
+        :param optimizer: optimizer for training
         """
 
         # define inputs, outputs and optimizer of the chosen architecture
         outs = self.architecture(self.input_size, self.vocab_size + 1, learning_rate)
         inputs, outputs, optimizer = outs
 
-        # others inputs for the CTC approach
-        labels = Input(name="labels", shape=[None])
-        input_length = Input(name="input_length", shape=[1])
-        label_length = Input(name="label_length", shape=[1])
-
-        # lambda layer for computing the loss function
-        loss_out = Lambda(self.ctc_loss_lambda_func, output_shape=(1,),
-                          name="CTCloss")([outputs, labels, input_length, label_length])
-
-        # lambda layer for the raw data function
-        out_raw_dense = Lambda(lambda y_pred: y_pred[0], output_shape=(None, None), name="NoCTCdecode",
-                               dtype="float32")([outputs, input_length])
-
-        # create Tensorflow Keras models
-        self.model = Model(inputs=[inputs, labels, input_length, label_length], outputs=loss_out)
-        self.model_infer = Model(inputs=[inputs, input_length], outputs=out_raw_dense)
-
-        # compile models
-        self.model.compile(loss={"CTCloss": lambda yt, yp: yp}, optimizer=optimizer)
-        self.model_infer.compile(loss={"NoCTCdecode": lambda yt, yp: yp}, optimizer=optimizer)
+        # create and compile
+        self.model = Model(inputs=inputs, outputs=outputs)
+        self.model.compile(optimizer=optimizer, loss=self.ctc_loss_lambda_func)
 
     def fit(self,
             x=None,
@@ -191,21 +157,9 @@ class HTRModel:
             **kwargs):
         """
         Model training on data yielded (fit function has support to generator).
-        A fit() abstration function of TensorFlow 2 using the model_train.
+        A fit() abstration function of TensorFlow 2.
 
-        Provide x parameter of the form: (x, y, sample_weight), where:
-            x:  inputs = {
-                    "input": x_valid,
-                    "labels": y_valid,
-                    "input_length": x_valid_len,
-                    "label_length": y_valid_len
-                }
-            y:  output = {
-                    "CTCloss": np.zeros(self.batch_size, dtype=int)
-                }
-            sample_weight: []
-
-        yielding: (inputs, output, [])
+        Provide x parameter of the form: yielding (x, y, sample_weight).
 
         :param: See tensorflow.keras.Model.fit()
         :return: A history object
@@ -233,23 +187,23 @@ class HTRModel:
                 ctc_decode=True):
         """
         Model predicting on data yielded (predict function has support to generator).
-        A predict() abstration function of TensorFlow 2 using the model_infer.
+        A predict() abstration function of TensorFlow 2.
 
-        Provide x parameter of the form: [x_test, x_test_len]
+        Provide x parameter of the form: yielding [x].
 
         :param: See tensorflow.keras.Model.predict()
         :return: raw data on `ctc_decode=False` or CTC decode on `ctc_decode=True` (both with probabilities)
         """
 
-        self.model_infer._make_predict_function()
+        self.model._make_predict_function()
 
         if verbose == 1:
             print("Model Predict")
 
-        out = self.model_infer.predict(x=x, batch_size=batch_size, verbose=verbose,
-                                       steps=steps, callbacks=callbacks,
-                                       max_queue_size=max_queue_size, workers=workers,
-                                       use_multiprocessing=use_multiprocessing)
+        out = self.model.predict(x=x, batch_size=batch_size, verbose=verbose,
+                                 steps=steps, callbacks=callbacks,
+                                 max_queue_size=max_queue_size, workers=workers,
+                                 use_multiprocessing=use_multiprocessing)
 
         if not ctc_decode:
             return out
@@ -287,17 +241,20 @@ class HTRModel:
         return (predicts, probabilities)
 
     @staticmethod
-    def ctc_loss_lambda_func(args):
-        """
-        Function for computing the ctc loss (can be put in a Lambda layer)
-        :param args:
-            y_pred, labels, input_length, label_length
-        :return: CTC loss
-        """
+    def ctc_loss_lambda_func(y_true, y_pred):
+        """Function for computing the CTC loss"""
 
-        y_pred, labels, input_length, label_length = args
+        if len(y_true.shape) > 2:
+            y_true = tf.squeeze(y_true)
 
-        return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
+        input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
+        input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype="int64")
+
+        loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+        loss = tf.reduce_mean(loss)
+
+        return loss
 
 
 """
@@ -424,40 +381,35 @@ def flor(input_size, output_size, learning_rate):
 
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same")(input_data)
+    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same", kernel_initializer="he_uniform")(input_data)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-
     cnn = FullGatedConv2D(filters=16, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-
     cnn = FullGatedConv2D(filters=32, kernel_size=(3,3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-
     cnn = FullGatedConv2D(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-
     cnn = FullGatedConv2D(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same")(cnn)
+    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-
     cnn = FullGatedConv2D(filters=56, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1,2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 

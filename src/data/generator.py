@@ -4,6 +4,7 @@ Image renderings and text are created on the fly each time.
 """
 
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+
 import data.preproc as pp
 import h5py
 import numpy as np
@@ -29,23 +30,13 @@ class DataGenerator():
                 self.dataset[pt]['dt'] = f[pt]['dt'][:]
                 self.dataset[pt]['gt'] = f[pt]['gt'][:]
 
-        self._prepare_dataset()
-
-    def _prepare_dataset(self):
-        """Prepare (full fill) dataset up"""
-
         for pt in self.partitions:
+            # decode sentences from byte
             self.dataset[pt]['gt'] = [x.decode() for x in self.dataset[pt]['gt']]
 
-            # full fill process to make up batch_size and steps
-            while len(self.dataset[pt]['dt']) % self.batch_size:
-                i = np.random.choice(np.arange(0, len(self.dataset[pt]['dt'])), 1)[0]
-
-                self.dataset[pt]['dt'] = np.append(self.dataset[pt]['dt'], [self.dataset[pt]['dt'][i]], axis=0)
-                self.dataset[pt]['gt'] = np.append(self.dataset[pt]['gt'], [self.dataset[pt]['gt'][i]], axis=0)
-
+            # set size and setps
             self.size[pt] = len(self.dataset[pt]['gt'])
-            self.steps[pt] = max(1, self.size[pt] // self.batch_size)
+            self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
             self.index[pt] = 0
 
     def next_train_batch(self):
@@ -57,13 +48,10 @@ class DataGenerator():
 
             index = self.index['train']
             until = self.index['train'] + self.batch_size
-            self.index['train'] += self.batch_size
+            self.index['train'] = until
 
             x_train = self.dataset['train']['dt'][index:until]
             y_train = self.dataset['train']['gt'][index:until]
-
-            x_train_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
-            y_train_len = np.asarray([len(y_train[i]) for i in range(self.batch_size)])
 
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
@@ -78,16 +66,7 @@ class DataGenerator():
             y_train = [self.tokenizer.encode(y) for y in y_train]
             y_train = pad_sequences(y_train, maxlen=self.tokenizer.maxlen, padding="post")
 
-            inputs = {
-                "input": x_train,
-                "labels": y_train,
-                "input_length": x_train_len,
-                "label_length": y_train_len
-            }
-            output = {"CTCloss": np.zeros(self.batch_size, dtype=int)}
-
-            # x, y and sample_weight
-            yield (inputs, output, [])
+            yield (x_train, y_train, [])
 
     def next_valid_batch(self):
         """Get the next batch from validation partition (yield)"""
@@ -98,29 +77,17 @@ class DataGenerator():
 
             index = self.index['valid']
             until = self.index['valid'] + self.batch_size
-            self.index['valid'] += self.batch_size
+            self.index['valid'] = until
 
             x_valid = self.dataset['valid']['dt'][index:until]
             y_valid = self.dataset['valid']['gt'][index:until]
-
-            x_valid_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
-            y_valid_len = np.asarray([len(y_valid[i]) for i in range(self.batch_size)])
 
             x_valid = pp.normalization(x_valid)
 
             y_valid = [self.tokenizer.encode(y) for y in y_valid]
             y_valid = pad_sequences(y_valid, maxlen=self.tokenizer.maxlen, padding="post")
 
-            inputs = {
-                "input": x_valid,
-                "labels": y_valid,
-                "input_length": x_valid_len,
-                "label_length": y_valid_len
-            }
-            output = {"CTCloss": np.zeros(self.batch_size, dtype=int)}
-
-            # x, y and sample_weight
-            yield (inputs, output, [])
+            yield (x_valid, y_valid, [])
 
     def next_test_batch(self):
         """Return model predict parameters"""
@@ -131,14 +98,12 @@ class DataGenerator():
 
             index = self.index['test']
             until = self.index['test'] + self.batch_size
-            self.index['test'] += self.batch_size
+            self.index['test'] = until
 
             x_test = self.dataset['test']['dt'][index:until]
             x_test = pp.normalization(x_test)
 
-            x_test_len = np.asarray([self.tokenizer.maxlen for _ in range(self.batch_size)])
-
-            yield [x_test, x_test_len]
+            yield x_test
 
 
 class Tokenizer():
@@ -166,7 +131,7 @@ class Tokenizer():
             index = self.UNK if index == -1 else index
             encoded.append(index)
 
-        return np.array(encoded)
+        return np.asarray(encoded)
 
     def decode(self, text):
         """Decode vector to text"""

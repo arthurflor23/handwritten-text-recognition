@@ -1,7 +1,6 @@
 """Dataset reader and process"""
 
 import os
-import re
 import html
 import string
 import xml.etree.ElementTree as ET
@@ -26,24 +25,39 @@ class Dataset():
 
         self.dataset = getattr(self, f"_{self.name}")()
 
-    def preprocess_partitions(self, image_input_size):
+    def preprocess_partitions(self, input_size):
         """Preprocess images and sentences from partitions"""
 
-        for i in self.partitions:
-            self.dataset[i]['gt'] = [pp.text_standardize(x).encode() for x in self.dataset[i]['gt']]
+        for y in self.partitions:
+            arange = range(len(self.dataset[y]['gt']))
+
+            for i in reversed(arange):
+                text = pp.text_standardize(self.dataset[y]['gt'][i])
+
+                if not self.check_text(text):
+                    self.dataset[y]['gt'].pop(i)
+                    self.dataset[y]['dt'].pop(i)
+                    continue
+
+                self.dataset[y]['gt'][i] = text.encode()
 
             pool = Pool()
-            self.dataset[i]['dt'] = pool.map(partial(pp.preproc, img_size=image_input_size), self.dataset[i]['dt'])
+            self.dataset[y]['dt'] = pool.map(partial(pp.preproc, input_size=input_size), self.dataset[y]['dt'])
             pool.close()
             pool.join()
 
     def check_text(self, text):
         """Make sure text has more characters instead of punctuation marks"""
 
-        x = text.translate(str.maketrans("", "", string.punctuation))
-        x = re.compile(r'[^\S\n]+', re.UNICODE).sub(" ", x.strip())
+        strip_punc = text.strip(string.punctuation).strip()
+        no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
 
-        return len(x) > 2 and len(x) > len(text) * 0.5
+        if len(text) == 0 or len(strip_punc) == 0 or len(no_punc) == 0:
+            return False
+
+        punc_percent = (len(strip_punc) - len(no_punc)) / len(strip_punc)
+
+        return len(no_punc) >= 2 and punc_percent <= 0.1
 
     def _bentham(self):
         """Bentham dataset reader"""
@@ -70,9 +84,6 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if not self.check_text(gt_dict[line]):
-                    continue
-
                 dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                 dataset[i]['gt'].append(gt_dict[line])
 
@@ -83,8 +94,7 @@ class Dataset():
 
         pt_path = os.path.join(self.source, "largeWriterIndependentTextLineRecognitionTask")
         paths = {"train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
-                 "valid": (open(os.path.join(pt_path, "validationset1.txt")).read().splitlines() +
-                           open(os.path.join(pt_path, "validationset2.txt")).read().splitlines()),
+                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
@@ -106,12 +116,9 @@ class Dataset():
 
             for line in paths[i]:
                 try:
-                    if not self.check_text(gt_dict[line]):
-                        continue
-
                     split = line.split("-")
-
                     folder = f"{split[0]}-{split[1]}"
+
                     img_file = f"{split[0]}-{split[1]}-{split[2]}.png"
                     img_path = os.path.join(self.source, "lines", split[0], folder, img_file)
 
@@ -135,9 +142,6 @@ class Dataset():
                 for i, line_tag in enumerate(page_tag.iter("Line")):
                     text = html.unescape(line_tag.attrib['Value'])
                     text = " ".join(text.split())
-
-                    if not self.check_text(text):
-                        continue
 
                     bound = [abs(int(line_tag.attrib['Top'])), abs(int(line_tag.attrib['Bottom'])),
                              abs(int(line_tag.attrib['Left'])), abs(int(line_tag.attrib['Right']))]
@@ -192,10 +196,6 @@ class Dataset():
 
                 for line in img_list:
                     line = os.path.splitext(os.path.basename(line))[0]
-
-                    if not self.check_text(gt_dict[line]):
-                        continue
-
                     dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                     dataset[i]['gt'].append(gt_dict[line])
 
@@ -219,7 +219,8 @@ class Dataset():
             splitted[1] = splitted[1].replace("s_mi", "-").replace("s_qo", ":")
             splitted[1] = splitted[1].replace("s_sq", ";").replace("s_et", "V")
             splitted[1] = splitted[1].replace("s_bl", "(").replace("s_br", ")")
-            splitted[1] = splitted[1].replace("s_qt", "'").replace("s_", "")
+            splitted[1] = splitted[1].replace("s_qt", "'").replace("s_GW", "G.W.")
+            splitted[1] = splitted[1].replace("s_", "")
             gt_dict[splitted[0]] = splitted[1]
 
         img_path = os.path.join(self.source, "data", "line_images_normalized")
@@ -229,9 +230,6 @@ class Dataset():
             dataset[i] = {"dt": [], "gt": []}
 
             for line in paths[i]:
-                if not self.check_text(gt_dict[line]):
-                    continue
-
                 dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                 dataset[i]['gt'].append(gt_dict[line])
 

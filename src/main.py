@@ -15,7 +15,6 @@ Provides options via the command line to perform project tasks.
 import argparse
 import cv2
 import h5py
-import numpy as np
 import os
 import string
 import time
@@ -61,7 +60,7 @@ if __name__ == "__main__":
         ds.read_partitions()
 
         print("Partitions will be preprocessed...")
-        ds.preprocess_partitions(image_input_size=input_size)
+        ds.preprocess_partitions(input_size=input_size)
 
         print("Partitions will be saved...")
         os.makedirs(os.path.dirname(source_path), exist_ok=True)
@@ -95,11 +94,10 @@ if __name__ == "__main__":
             cv2.waitKey(0)
 
     elif args.image:
-        img = pp.preproc(args.image, img_size=input_size)
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
 
+        img = pp.preproc(args.image, input_size=input_size)
         x_test = pp.normalization([img])
-        x_test_len = np.asarray([max_text_length])
 
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
@@ -109,7 +107,7 @@ if __name__ == "__main__":
         model.compile()
         model.load_checkpoint(target=target_path)
 
-        predicts, probabilities = model.predict([x_test, x_test_len], ctc_decode=True, verbose=0)
+        predicts, probabilities = model.predict(x_test, ctc_decode=True)
         predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
         print("\n####################################")
