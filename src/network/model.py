@@ -213,16 +213,17 @@ class HTRModel:
             print("CTC Decode")
             progbar = Progbar(target=steps)
 
-        batch_size = len(out) // steps
-        max_text_length = len(max(out, key=len))
+        batch_size = int(np.ceil(len(out) / steps))
+        input_length = len(max(out, key=len))
 
-        x_test_len = np.asarray([max_text_length for _ in range(batch_size)])
         predicts, probabilities = [], []
 
         while steps_done < steps:
-            current_index = steps_done * batch_size
-            until_index = current_index + batch_size
-            x_test = np.asarray(out[current_index:until_index])
+            index = steps_done * batch_size
+            until = index + batch_size
+
+            x_test = np.asarray(out[index:until])
+            x_test_len = np.asarray([input_length for _ in range(len(x_test))])
 
             decode, log = K.ctc_decode(x_test,
                                        x_test_len,
