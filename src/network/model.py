@@ -42,7 +42,7 @@ class HTRModel:
                  input_size,
                  vocab_size,
                  greedy=False,
-                 beam_width=100,
+                 beam_width=10,
                  top_paths=1):
         """
         Initialization of a HTR Model.
@@ -107,14 +107,14 @@ class HTRModel:
             EarlyStopping(
                 monitor=monitor,
                 min_delta=1e-8,
-                patience=40,
+                patience=30,
                 restore_best_weights=True,
                 verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
                 min_delta=1e-8,
                 factor=0.2,
-                patience=20,
+                patience=15,
                 verbose=verbose)
         ]
 
