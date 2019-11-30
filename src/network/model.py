@@ -200,13 +200,12 @@ class HTRModel:
         if verbose == 1:
             print("Model Predict")
 
-        out = self.model.predict(x=x, batch_size=batch_size, verbose=verbose,
-                                 steps=steps, callbacks=callbacks,
-                                 max_queue_size=max_queue_size, workers=workers,
-                                 use_multiprocessing=use_multiprocessing)
+        out = self.model.predict(x=x, batch_size=batch_size, verbose=verbose, steps=steps,
+                                 callbacks=callbacks, max_queue_size=max_queue_size,
+                                 workers=workers, use_multiprocessing=use_multiprocessing)
 
         if not ctc_decode:
-            return out
+            return np.log(out)
 
         steps_done = 0
         if verbose == 1:

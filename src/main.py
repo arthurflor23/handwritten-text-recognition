@@ -231,7 +231,7 @@ if __name__ == "__main__":
 
             # save ark and scp file (laia output/kaldi input format)
             with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
-                for i, item in enumerate(predicts[0]):
+                for i, item in enumerate(predicts):
                     writer(str(i + train_rg), item)
 
             # get chars and ground truth lists
