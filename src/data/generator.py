@@ -94,6 +94,7 @@ class DataGenerator():
 
         while True:
             if self.index['test'] >= self.size['test']:
+                self.index['test'] = 0
                 break
 
             index = self.index['test']

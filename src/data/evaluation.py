@@ -11,6 +11,9 @@ import editdistance
 def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuation=False):
     """Calculate Character Error Rate (CER), Word Error Rate (WER) and Sequence Error Rate (SER)"""
 
+    if len(predicts) == 0 or len(ground_truth) == 0:
+        return (1, 1, 1)
+
     cer, wer, ser = [], [], []
 
     for (pd, gt) in zip(predicts, ground_truth):
