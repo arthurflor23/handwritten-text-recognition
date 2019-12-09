@@ -218,44 +218,56 @@ if __name__ == "__main__":
                                      ctc_decode=False,
                                      verbose=1)
 
-            kaldi_path = os.path.join(output_path, "kaldi")
-            os.makedirs(kaldi_path, exist_ok=True)
-
-            ark_file_name = os.path.join(kaldi_path, "conf_mats.ark")
-            scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
-
-            # define train range and default tokens
-            train_rg = dtgen.size['train'] + dtgen.size['valid']
+            # get data and ground truth lists
             ctc_TK, space_TK = "<ctc>", "<space>"
-            gt = []
+            multigrams, multigrams_size = dict(), 0
+            ground_truth = []
 
-            # save ark and scp file (laia output/kaldi input format)
-            with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
-                for i, item in enumerate(predicts):
-                    writer(str(i + train_rg), item)
-
-            # get chars and ground truth lists
+            # generate multigrams to compose the dataset
             for pt in dtgen.partitions:
-                for x in dtgen.dataset[pt]['gt']:
-                    gt.append([space_TK if y == " " else y for y in list(f" {x} ")])
+                multigrams[pt] = [pp.generate_multigrams(x) for x in dtgen.dataset[pt]['gt']]
+                multigrams[pt] = list(set([pp.text_standardize(y) for x in multigrams[pt] for y in x]))
 
-            # save ground_truth.lst file with sparse sentences
-            with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
-                for i, item in enumerate(gt):
-                    lg.write(f"{i} {' '.join(item)}\n")
+                multigrams[pt] = [x for x in multigrams[pt] if Dataset.check_text(x)]
+                multigrams_size += len(multigrams[pt])
+
+                for x in multigrams[pt]:
+                    ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
+
+                for x in dtgen.dataset[pt]:
+                    ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
+
+            # define dataset size and default tokens
+            train_size = dtgen.size['train'] + dtgen.size['valid'] + multigrams_size
 
             # get chars list and save with the ctc and space tokens
             chars = list(dtgen.tokenizer.chars) + [ctc_TK]
             chars[chars.index(" ")] = space_TK
 
+            kaldi_path = os.path.join(output_path, "kaldi")
+            os.makedirs(kaldi_path, exist_ok=True)
+
             with open(os.path.join(kaldi_path, "chars.lst"), "w") as lg:
                 lg.write("\n".join(chars))
 
+            ark_file_name = os.path.join(kaldi_path, "conf_mats.ark")
+            scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
+
+            # save ark and scp file (laia output/kaldi input format)
+            with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
+                for i, item in enumerate(predicts):
+                    writer(str(i + train_size), item)
+
+            # save ground_truth.lst file with sparse sentences
+            with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
+                for i, item in enumerate(ground_truth):
+                    lg.write(f"{i} {' '.join(item)}\n")
+
             # save indexes of the train/valid and test partitions
             with open(os.path.join(kaldi_path, "ID_train.lst"), "w") as lg:
-                range_index = [str(i) for i in range(0, train_rg)]
+                range_index = [str(i) for i in range(0, train_size)]
                 lg.write("\n".join(range_index))
 
             with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
-                range_index = [str(i) for i in range(train_rg, train_rg + dtgen.size['test'])]
+                range_index = [str(i) for i in range(train_size, train_size + dtgen.size['test'])]
                 lg.write("\n".join(range_index))

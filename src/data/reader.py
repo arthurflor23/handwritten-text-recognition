@@ -46,24 +46,12 @@ class Dataset():
             pool.close()
             pool.join()
 
-    def check_text(self, text):
-        """Make sure text has more characters instead of punctuation marks"""
-
-        strip_punc = text.strip(string.punctuation).strip()
-        no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
-
-        if len(text) == 0 or len(strip_punc) == 0 or len(no_punc) == 0:
-            return False
-
-        punc_percent = (len(strip_punc) - len(no_punc)) / len(strip_punc)
-
-        return len(no_punc) >= 2 and punc_percent <= 0.1
-
     def _bentham(self):
         """Bentham dataset reader"""
 
         source = os.path.join(self.source, "BenthamDatasetR0-GT")
         pt_path = os.path.join(source, "Partitions")
+
         paths = {"train": open(os.path.join(pt_path, "TrainLines.lst")).read().splitlines(),
                  "valid": open(os.path.join(pt_path, "ValidationLines.lst")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "TestLines.lst")).read().splitlines()}
@@ -172,6 +160,7 @@ class Dataset():
         """Saint Gall dataset reader"""
 
         pt_path = os.path.join(self.source, "sets")
+
         paths = {"train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
@@ -205,6 +194,7 @@ class Dataset():
         """Washington dataset reader"""
 
         pt_path = os.path.join(self.source, "sets", "cv1")
+
         paths = {"train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
                  "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
@@ -234,3 +224,17 @@ class Dataset():
                 dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
+
+    @staticmethod
+    def check_text(text):
+        """Make sure text has more characters instead of punctuation marks"""
+
+        strip_punc = text.strip(string.punctuation).strip()
+        no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
+
+        if len(text) == 0 or len(strip_punc) == 0 or len(no_punc) == 0:
+            return False
+
+        punc_percent = (len(strip_punc) - len(no_punc)) / len(strip_punc)
+
+        return len(no_punc) >= 2 and punc_percent <= 0.1

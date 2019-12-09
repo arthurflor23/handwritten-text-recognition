@@ -19,51 +19,6 @@ import numpy as np
 import numba as nb
 
 
-"""
-DeepSpell based text cleaning process.
-    Tal Weiss.
-    Deep Spelling.
-    Medium: https://machinelearnings.co/deep-spelling-9ffef96a24f6#.2c9pu8nlm
-    Github: https://github.com/MajorTal/DeepSpell
-"""
-
-RE_DASH_FILTER = re.compile(r'[\-\˗\֊\‐\‑\‒\–\—\⁻\₋\−\﹣\－]', re.UNICODE)
-RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{}{}{}{}{}{}{}{}{}]'.format(
-    chr(768), chr(769), chr(832), chr(833), chr(2387),
-    chr(5151), chr(5152), chr(65344), chr(8242)), re.UNICODE)
-RE_RESERVED_CHAR_FILTER = re.compile(r'[¶¤«»]', re.UNICODE)
-RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
-RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
-RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
-
-LEFT_PUNCTUATION_FILTER = """!%&),.:;<=>?@\\]^_`|}~"""
-RIGHT_PUNCTUATION_FILTER = """"(/<=>@[\\^_`{|~"""
-NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
-
-
-def text_standardize(text):
-    """Organize/add spaces around punctuation marks"""
-
-    if text is None:
-        return ""
-
-    text = html.unescape(text).replace("\\n", "").replace("\\t", "")
-
-    text = RE_RESERVED_CHAR_FILTER.sub("", text)
-    text = RE_DASH_FILTER.sub("-", text)
-    text = RE_APOSTROPHE_FILTER.sub("'", text)
-    text = RE_LEFT_PARENTH_FILTER.sub("(", text)
-    text = RE_RIGHT_PARENTH_FILTER.sub(")", text)
-    text = RE_BASIC_CLEANER.sub("", text)
-
-    text = text.lstrip(LEFT_PUNCTUATION_FILTER)
-    text = text.rstrip(RIGHT_PUNCTUATION_FILTER)
-    text = text.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
-    text = NORMALIZE_WHITESPACE_REGEX.sub(" ", text.strip())
-
-    return text
-
-
 def adjust_to_see(img):
     """Rotate and transpose to image visualize (cv2 method or jupyter notebook)"""
 
@@ -367,3 +322,87 @@ def sauvola(img, window, thresh, k):
     threshold = (mean * (1 + k * (std / thresh - 1))) * (mean >= 100)
 
     return np.asarray(255 * (img >= threshold), 'uint8')
+
+
+"""
+DeepSpell based text cleaning process.
+    Tal Weiss.
+    Deep Spelling.
+    Medium: https://machinelearnings.co/deep-spelling-9ffef96a24f6#.2c9pu8nlm
+    Github: https://github.com/MajorTal/DeepSpell
+"""
+
+RE_DASH_FILTER = re.compile(r'[\-\˗\֊\‐\‑\‒\–\—\⁻\₋\−\﹣\－]', re.UNICODE)
+RE_APOSTROPHE_FILTER = re.compile(r'&#39;|[ʼ՚＇‘’‛❛❜ߴߵ`‵´ˊˋ{}{}{}{}{}{}{}{}{}]'.format(
+    chr(768), chr(769), chr(832), chr(833), chr(2387),
+    chr(5151), chr(5152), chr(65344), chr(8242)), re.UNICODE)
+RE_RESERVED_CHAR_FILTER = re.compile(r'[¶¤«»]', re.UNICODE)
+RE_LEFT_PARENTH_FILTER = re.compile(r'[\(\[\{\⁽\₍\❨\❪\﹙\（]', re.UNICODE)
+RE_RIGHT_PARENTH_FILTER = re.compile(r'[\)\]\}\⁾\₎\❩\❫\﹚\）]', re.UNICODE)
+RE_BASIC_CLEANER = re.compile(r'[^\w\s{}]'.format(re.escape(string.punctuation)), re.UNICODE)
+
+LEFT_PUNCTUATION_FILTER = """!%&),.:;<=>?@\\]^_`|}~"""
+RIGHT_PUNCTUATION_FILTER = """"(/<=>@[\\^_`{|~"""
+NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
+
+
+def text_standardize(text):
+    """Organize/add spaces around punctuation marks"""
+
+    if text is None:
+        return ""
+
+    text = html.unescape(text).replace("\\n", "").replace("\\t", "")
+
+    text = RE_RESERVED_CHAR_FILTER.sub("", text)
+    text = RE_DASH_FILTER.sub("-", text)
+    text = RE_APOSTROPHE_FILTER.sub("'", text)
+    text = RE_LEFT_PARENTH_FILTER.sub("(", text)
+    text = RE_RIGHT_PARENTH_FILTER.sub(")", text)
+    text = RE_BASIC_CLEANER.sub("", text)
+
+    text = text.lstrip(LEFT_PUNCTUATION_FILTER)
+    text = text.rstrip(RIGHT_PUNCTUATION_FILTER)
+    text = text.translate(str.maketrans({c: f" {c} " for c in string.punctuation}))
+    text = NORMALIZE_WHITESPACE_REGEX.sub(" ", text.strip())
+
+    return text
+
+
+def generate_multigrams(sentence):
+    """
+    Generate n-grams of the sentence.
+    i.e.:
+    original sentence: I like code .
+        > sentence 1 : I like
+        > sentence 2 : I like code .
+        > sentence 3 : like
+        > sentence 4 : like code .
+        > sentence 5 : code .
+    """
+
+    tokens = sentence.split()
+    tk_length = len(tokens)
+    ngrams = []
+
+    for y in range(tk_length):
+        new_sentence = True
+        support_text = ""
+
+        for x in range(y, tk_length):
+            if y == 0 and tk_length > 2 and x == (tk_length - 1):
+                continue
+
+            if len(tokens[x]) <= 2 and tokens[x] != tokens[-1]:
+                support_text += f" {tokens[x]}"
+                continue
+
+            last = ""
+            if x > y and len(ngrams) > 0 and not new_sentence:
+                last = ngrams[-1]
+
+            ngrams.append(f"{last}{support_text} {tokens[x]}".strip())
+            new_sentence = False
+            support_text = ""
+
+    return ngrams

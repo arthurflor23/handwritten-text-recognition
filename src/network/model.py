@@ -114,7 +114,7 @@ class HTRModel:
                 monitor=monitor,
                 min_delta=1e-8,
                 factor=0.2,
-                patience=10,
+                patience=15,
                 verbose=verbose)
         ]
 
