@@ -110,8 +110,8 @@ class Dataset():
                     img_file = f"{split[0]}-{split[1]}-{split[2]}.png"
                     img_path = os.path.join(self.source, "lines", split[0], folder, img_file)
 
-                    dataset[i]['dt'].append(img_path)
                     dataset[i]['gt'].append(gt_dict[line])
+                    dataset[i]['dt'].append(img_path)
                 except KeyError:
                     pass
 

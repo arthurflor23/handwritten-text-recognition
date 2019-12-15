@@ -383,7 +383,7 @@ def generate_multigrams(sentence):
 
     tokens = sentence.split()
     tk_length = len(tokens)
-    ngrams = []
+    multigrams = []
 
     for y in range(tk_length):
         new_sentence = True
@@ -398,11 +398,11 @@ def generate_multigrams(sentence):
                 continue
 
             last = ""
-            if x > y and len(ngrams) > 0 and not new_sentence:
-                last = ngrams[-1]
+            if x > y and len(multigrams) > 0 and not new_sentence:
+                last = multigrams[-1]
 
-            ngrams.append(f"{last}{support_text} {tokens[x]}".strip())
+            multigrams.append(f"{last}{support_text} {tokens[x]}".strip())
             new_sentence = False
             support_text = ""
 
-    return ngrams
+    return multigrams
