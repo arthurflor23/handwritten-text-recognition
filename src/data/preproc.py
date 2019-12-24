@@ -1,6 +1,5 @@
 """
 Data preproc functions:
-    text_standardize: preprocess and standardize sentence
     adjust_to_see: adjust image to better visualize (rotate and transpose)
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
@@ -9,6 +8,8 @@ Data preproc functions:
             illumination_compensation: apply illumination regularitation
             remove_cursive_style: remove cursive style from image (if necessary)
             sauvola: apply sauvola binarization
+    text_standardize: preprocess and standardize sentence
+    generate_multigrams: generate n-grams of the sentence
 """
 
 import re

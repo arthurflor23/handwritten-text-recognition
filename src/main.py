@@ -17,7 +17,7 @@ import cv2
 import h5py
 import os
 import string
-import time
+import datetime
 
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
@@ -135,6 +135,7 @@ if __name__ == "__main__":
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size)
 
+        # set `learning_rate` parameter or get architecture default value
         model.compile(learning_rate=0.001)
         model.load_checkpoint(target=target_path)
 
@@ -142,7 +143,8 @@ if __name__ == "__main__":
             model.summary(output_path, "summary.txt")
             callbacks = model.get_callbacks(logdir=output_path, checkpoint=target_path, verbose=1)
 
-            start_time = time.time()
+            start_time = datetime.datetime.now()
+
             h = model.fit(x=dtgen.next_train_batch(),
                           epochs=args.epochs,
                           steps_per_epoch=dtgen.steps['train'],
@@ -151,7 +153,8 @@ if __name__ == "__main__":
                           callbacks=callbacks,
                           shuffle=True,
                           verbose=1)
-            total_time = time.time() - start_time
+
+            total_time = datetime.datetime.now() - start_time
 
             loss = h.history['loss']
             val_loss = h.history['val_loss']
@@ -166,9 +169,9 @@ if __name__ == "__main__":
                 f"Total train images:      {dtgen.size['train']}",
                 f"Total validation images: {dtgen.size['valid']}",
                 f"Batch:                   {dtgen.batch_size}\n",
-                f"Total time:              {(total_time / 60):.2f} min",
-                f"Time per epoch:          {(time_epoch / 60):.2f} min",
-                f"Time per item:           {(time_epoch / total_item):.8f} sec\n",
+                f"Total time:              {total_time}",
+                f"Time per epoch:          {time_epoch}",
+                f"Time per item:           {time_epoch / total_item}\n",
                 f"Total epochs:            {len(loss)}",
                 f"Best epoch               {min_val_loss_i + 1}\n",
                 f"Training loss:           {loss[min_val_loss_i]:.8f}",
@@ -180,14 +183,16 @@ if __name__ == "__main__":
                 print(t_corpus)
 
         elif args.test:
-            start_time = time.time()
+            start_time = datetime.datetime.now()
+
             predicts, _ = model.predict(x=dtgen.next_test_batch(),
                                         steps=dtgen.steps['test'],
                                         ctc_decode=True,
                                         verbose=1)
 
             predicts = [dtgen.tokenizer.decode(x[0]) for x in predicts]
-            total_time = time.time() - start_time
+
+            total_time = datetime.datetime.now() - start_time
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
                 for pd, gt in zip(predicts, dtgen.dataset['test']['gt']):
@@ -200,8 +205,8 @@ if __name__ == "__main__":
 
             e_corpus = "\n".join([
                 f"Total test images:    {dtgen.size['test']}",
-                f"Total time:           {(total_time / 60):.2f} min",
-                f"Time per item:        {(total_time / dtgen.size['test']):.8f} sec\n",
+                f"Total time:           {total_time}",
+                f"Time per item:        {total_time / dtgen.size['test']}\n",
                 f"Metrics:",
                 f"Character Error Rate: {evaluate[0]:.8f}",
                 f"Word Error Rate:      {evaluate[1]:.8f}",
