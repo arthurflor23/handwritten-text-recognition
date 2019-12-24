@@ -17,7 +17,7 @@ from tensorflow.keras.constraints import MaxNorm
 from network.layers import FullGatedConv2D, GatedConv2D
 from tensorflow.keras.layers import Conv2D, Bidirectional, LSTM, GRU, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, LeakyReLU, PReLU
-from tensorflow.keras.layers import Input, MaxPooling2D, Reshape, TimeDistributed
+from tensorflow.keras.layers import Input, MaxPooling2D, Reshape
 
 
 """
@@ -269,7 +269,7 @@ Reference:
 """
 
 
-def bluche(input_size, output_size, learning_rate):
+def bluche(input_size, d_model, learning_rate):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
 
@@ -305,7 +305,7 @@ def bluche(input_size, output_size, learning_rate):
     blstm = Dense(units=128, activation="tanh")(blstm)
 
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
-    output_data = Dense(units=output_size, activation="softmax")(blstm)
+    output_data = Dense(units=d_model, activation="softmax")(blstm)
 
     if learning_rate is None:
         learning_rate = 4e-4
@@ -315,44 +315,48 @@ def bluche(input_size, output_size, learning_rate):
     return (input_data, output_data, optimizer)
 
 
-def puigcerver(input_size, output_size, learning_rate):
+def puigcerver(input_size, d_model, learning_rate):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
 
     Reference:
-        Puigcerver, J.: Are multidimensional recurrent layers really
-        necessary for handwritten text recognition? In: Document
-        Analysis and Recognition (ICDAR), 2017 14th
+        Joan Puigcerver.
+        Are multidimensional recurrent layers really necessary for handwritten text recognition?
+        In: Document Analysis and Recognition (ICDAR), 2017 14th
         IAPR International Conference on, vol. 1, pp. 67–72. IEEE (2017)
+
+        Carlos Mocholí Calvo and Enrique Vidal Ruiz.
+        Development and experimentation of a deep learning system for convolutional and recurrent neural networks
+        Escola Tècnica Superior d’Enginyeria Informàtica, Universitat Politècnica de València, 2018
     """
 
     input_data = Input(name="input", shape=input_size)
 
     cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
     cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -364,7 +368,7 @@ def puigcerver(input_size, output_size, learning_rate):
     blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
 
     blstm = Dropout(rate=0.5)(blstm)
-    output_data = Dense(units=output_size, activation="softmax")(blstm)
+    output_data = Dense(units=d_model, activation="softmax")(blstm)
 
     if learning_rate is None:
         learning_rate = 3e-4
@@ -374,7 +378,7 @@ def puigcerver(input_size, output_size, learning_rate):
     return (input_data, output_data, optimizer)
 
 
-def flor(input_size, output_size, learning_rate):
+def flor(input_size, d_model, learning_rate):
     """
     Gated Convolucional Recurrent Neural Network by Flor et al.
     """
@@ -416,13 +420,15 @@ def flor(input_size, output_size, learning_rate):
     cnn = MaxPooling2D(pool_size=(1,2), strides=(1,2), padding="valid")(cnn)
 
     shape = cnn.get_shape()
-    bgru = Reshape((shape[1], shape[2] * shape[3]))(cnn)
+    nb_units = shape[2] * shape[3]
 
-    bgru = Bidirectional(GRU(units=128, return_sequences=True, dropout=0.5))(bgru)
-    bgru = TimeDistributed(Dense(units=128))(bgru)
+    bgru = Reshape((shape[1], nb_units))(cnn)
 
-    bgru = Bidirectional(GRU(units=128, return_sequences=True, dropout=0.5))(bgru)
-    output_data = TimeDistributed(Dense(units=output_size, activation="softmax"))(bgru)
+    bgru = Bidirectional(GRU(units=nb_units, return_sequences=True, dropout=0.5))(bgru)
+    bgru = Dense(units=nb_units * 2)(bgru)
+
+    bgru = Bidirectional(GRU(units=nb_units, return_sequences=True, dropout=0.5))(bgru)
+    output_data = Dense(units=d_model, activation="softmax")(bgru)
 
     if learning_rate is None:
         learning_rate = 5e-4
