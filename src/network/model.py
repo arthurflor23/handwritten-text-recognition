@@ -4,6 +4,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
+from tensorflow.keras import layers
 from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
 from tensorflow.keras import Model
@@ -14,7 +15,7 @@ from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.constraints import MaxNorm
 
-from network.layers import FullGatedConv2D, GatedConv2D
+from network.layers import FullGatedConv2D, GatedConv2D, OctConv2D
 from tensorflow.keras.layers import Conv2D, Bidirectional, LSTM, GRU, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, LeakyReLU, PReLU
 from tensorflow.keras.layers import Input, MaxPooling2D, Reshape
@@ -436,3 +437,98 @@ def flor(input_size, d_model, learning_rate):
     optimizer = RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
+
+
+def puigcerver_octconv(input_size, d_model, learning_rate):
+    """octave cnn by khinggan, architecture is same as puigcerver"""
+    alpha = 0.25
+    input_data = Input(name="input", shape=input_size)
+    high = input_data
+    low = tf.keras.layers.AveragePooling2D(2)(input_data)
+
+    high, low = OctConv2D(filters=16, alpha=alpha)([high, low])
+    high = BatchNormalization()(high)
+    low = BatchNormalization()(low)
+    high = LeakyReLU(alpha=0.01)(high)
+    low = LeakyReLU(alpha=0.01)(low)
+    high = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(high)
+    low = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(low)
+
+    high, low = OctConv2D(filters=32, alpha=alpha)([high, low])
+    high = BatchNormalization()(high)
+    low = BatchNormalization()(low)
+    high = LeakyReLU(alpha=0.01)(high)
+    low = LeakyReLU(alpha=0.01)(low)
+    high = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(high)
+    low = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(low)
+
+    high = Dropout(rate=0.2)(high)
+    low = Dropout(rate=0.2)(low)
+    high = Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding="same")(high)
+    low = Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding="same")(low)
+    high = BatchNormalization()(high)
+    low = BatchNormalization()(low)
+    high = LeakyReLU(alpha=0.01)(high)
+    low = LeakyReLU(alpha=0.01)(low)
+    high = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(high)
+    low = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(low)
+
+    high = Dropout(rate=0.2)(high)
+    low = Dropout(rate=0.2)(low)
+    high = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(high)
+    low = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(low)
+    high = BatchNormalization()(high)
+    low = BatchNormalization()(low)
+    high = LeakyReLU(alpha=0.01)(high)
+    low = LeakyReLU(alpha=0.01)(low)
+
+    high = Dropout(rate=0.2)(high)
+    low = Dropout(rate=0.2)(low)
+    high = Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding="same")(high)
+    low = Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding="same")(low)
+    high = BatchNormalization()(high)
+    low = BatchNormalization()(low)
+    high = LeakyReLU(alpha=0.01)(high)
+    low = LeakyReLU(alpha=0.01)(low)
+
+    x = _create_octconv_last_block([high, low], 80, alpha)
+
+    shape = x.get_shape()
+    blstm = Reshape((shape[1], shape[2] * shape[3]))(x)
+
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = Bidirectional(LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+
+    blstm = Dropout(rate=0.5)(blstm)
+    output_data = Dense(units=d_model, activation="softmax")(blstm)
+
+    if learning_rate is None:
+        learning_rate = 3e-4
+
+    optimizer = RMSprop(learning_rate=learning_rate)
+    #
+    return (input_data, output_data, optimizer)
+
+
+def _create_octconv_last_block(inputs, ch, alpha):
+    high, low = inputs
+
+    high, low = OctConv2D(filters=ch, alpha=alpha)([high, low])
+    high = layers.BatchNormalization()(high)
+    high = layers.Activation("relu")(high)
+
+    low = layers.BatchNormalization()(low)
+    low = layers.Activation("relu")(low)
+
+    high_to_high = layers.Conv2D(ch, 3, padding="same")(high)
+    low_to_high = layers.Conv2D(ch, 3, padding="same")(low)
+    low_to_high = layers.Lambda(lambda x:
+                                K.repeat_elements(K.repeat_elements(x, 2, axis=1), 2, axis=2))(low_to_high)
+    x = layers.Add()([high_to_high, low_to_high])
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+
+    return x
