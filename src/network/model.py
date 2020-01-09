@@ -4,12 +4,9 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras import layers
 from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
 from tensorflow.keras import Model
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.utils import Progbar
 
 from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -18,7 +15,7 @@ from tensorflow.keras.constraints import MaxNorm
 from network.layers import FullGatedConv2D, GatedConv2D, OctConv2D
 from tensorflow.keras.layers import Conv2D, Bidirectional, LSTM, GRU, Dense
 from tensorflow.keras.layers import Dropout, BatchNormalization, LeakyReLU, PReLU
-from tensorflow.keras.layers import Input, MaxPooling2D, Reshape
+from tensorflow.keras.layers import Input, Add, Activation, Lambda, MaxPooling2D, Reshape
 
 
 """
@@ -211,7 +208,7 @@ class HTRModel:
         steps_done = 0
         if verbose == 1:
             print("CTC Decode")
-            progbar = Progbar(target=steps)
+            progbar = tf.keras.utils.Progbar(target=steps)
 
         batch_size = int(np.ceil(len(out) / steps))
         input_length = len(max(out, key=len))
@@ -248,11 +245,20 @@ class HTRModel:
         if len(y_true.shape) > 2:
             y_true = tf.squeeze(y_true)
 
+        # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
+        # output of every model is softmax
+        # so sum across alphabet_size_1_hot_encoded give 1
+        #               string_length give string length
         input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
         input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+
+        # y_true strings are padded with 0
+        # so sum of non-zero gives number of characters in this string
         label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype="int64")
 
         loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+
+        # average loss across all entries in the batch
         loss = tf.reduce_mean(loss)
 
         return loss
@@ -311,7 +317,7 @@ def bluche(input_size, d_model, learning_rate):
     if learning_rate is None:
         learning_rate = 4e-4
 
-    optimizer = RMSprop(learning_rate=learning_rate)
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
 
@@ -374,7 +380,7 @@ def puigcerver(input_size, d_model, learning_rate):
     if learning_rate is None:
         learning_rate = 3e-4
 
-    optimizer = RMSprop(learning_rate=learning_rate)
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
 
@@ -434,13 +440,16 @@ def flor(input_size, d_model, learning_rate):
     if learning_rate is None:
         learning_rate = 5e-4
 
-    optimizer = RMSprop(learning_rate=learning_rate)
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
     return (input_data, output_data, optimizer)
 
 
 def puigcerver_octconv(input_size, d_model, learning_rate):
-    """octave cnn by khinggan, architecture is same as puigcerver"""
+    """
+    Octave CNN by khinggan, architecture is same as puigcerver
+    """
+
     alpha = 0.25
     input_data = Input(name="input", shape=input_size)
     high = input_data
@@ -508,8 +517,8 @@ def puigcerver_octconv(input_size, d_model, learning_rate):
     if learning_rate is None:
         learning_rate = 3e-4
 
-    optimizer = RMSprop(learning_rate=learning_rate)
-    #
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+
     return (input_data, output_data, optimizer)
 
 
@@ -517,18 +526,18 @@ def _create_octconv_last_block(inputs, ch, alpha):
     high, low = inputs
 
     high, low = OctConv2D(filters=ch, alpha=alpha)([high, low])
-    high = layers.BatchNormalization()(high)
-    high = layers.Activation("relu")(high)
+    high = BatchNormalization()(high)
+    high = Activation("relu")(high)
 
-    low = layers.BatchNormalization()(low)
-    low = layers.Activation("relu")(low)
+    low = BatchNormalization()(low)
+    low = Activation("relu")(low)
 
-    high_to_high = layers.Conv2D(ch, 3, padding="same")(high)
-    low_to_high = layers.Conv2D(ch, 3, padding="same")(low)
-    low_to_high = layers.Lambda(lambda x:
-                                K.repeat_elements(K.repeat_elements(x, 2, axis=1), 2, axis=2))(low_to_high)
-    x = layers.Add()([high_to_high, low_to_high])
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
+    high_to_high = Conv2D(ch, 3, padding="same")(high)
+    low_to_high = Conv2D(ch, 3, padding="same")(low)
+    low_to_high = Lambda(lambda x: K.repeat_elements(K.repeat_elements(x, 2, axis=1), 2, axis=2))(low_to_high)
+
+    x = Add()([high_to_high, low_to_high])
+    x = BatchNormalization()(x)
+    x = Activation("relu")(x)
 
     return x

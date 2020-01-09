@@ -6,6 +6,7 @@ Tool to metrics calculation through data and label (string and string).
 import string
 import unicodedata
 import editdistance
+import numpy as np
 
 
 def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuation=False):
@@ -17,6 +18,7 @@ def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuatio
     cer, wer, ser = [], [], []
 
     for (pd, gt) in zip(predicts, ground_truth):
+        pd, gt = pd.lower(), gt.lower()
 
         if norm_accentuation:
             pd = unicodedata.normalize("NFKD", pd).encode("ASCII", "ignore").decode("ASCII")
@@ -26,11 +28,11 @@ def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuatio
             pd = pd.translate(str.maketrans("", "", string.punctuation))
             gt = gt.translate(str.maketrans("", "", string.punctuation))
 
-        pd_cer, gt_cer = list(pd.lower()), list(gt.lower())
+        pd_cer, gt_cer = list(pd), list(gt)
         dist = editdistance.eval(pd_cer, gt_cer)
         cer.append(dist / (max(len(pd_cer), len(gt_cer))))
 
-        pd_wer, gt_wer = pd.lower().split(), gt.lower().split()
+        pd_wer, gt_wer = pd.split(), gt.split()
         dist = editdistance.eval(pd_wer, gt_wer)
         wer.append(dist / (max(len(pd_wer), len(gt_wer))))
 
@@ -38,8 +40,7 @@ def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuatio
         dist = editdistance.eval(pd_ser, gt_ser)
         ser.append(dist / (max(len(pd_ser), len(gt_ser))))
 
-    cer_f = sum(cer) / len(cer)
-    wer_f = sum(wer) / len(wer)
-    ser_f = sum(ser) / len(ser)
+    metrics = [cer, wer, ser]
+    metrics = np.mean(metrics, axis=1)
 
-    return (cer_f, wer_f, ser_f)
+    return metrics

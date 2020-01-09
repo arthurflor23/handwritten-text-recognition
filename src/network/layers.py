@@ -5,10 +5,8 @@ Gated implementations
                      This process will double number of filters to make one convolutional process.
 """
 
-from tensorflow.keras.layers import Conv2D, Multiply, Activation
-import tensorflow as tf
-from tensorflow.keras import layers, Model
-import tensorflow.keras.backend as K
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer, Conv2D, Multiply, Activation
 
 """
 Tensorflow Keras layer implementation of the gated convolution.
@@ -92,11 +90,31 @@ class FullGatedConv2D(Conv2D):
         return config
 
 
-# reference from https://github.com/koshian2/OctConv-TFKeras
-# define OctConv2D
-class OctConv2D(layers.Layer):
-    def __init__(self, filters, alpha, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                 kernel_initializer='glorot_uniform', kernel_regularizer=None, kernel_constraint=None, **kwargs):
+"""
+Tensorflow Keras layer implementation of the octave convolution.
+
+Reference (based):
+    Yunpeng Chen, Haoqi Fan, Bing Xu, Zhicheng Yan, Yannis Kalantidis, Marcus Rohrbach, Shuicheng Yan, Jiashi Feng.
+    Drop an Octave: Reducing Spatial Redundancy in Convolutional Neural Networks with Octave Convolution.
+
+    OctConv-TFKeras
+    Github: https://github.com/koshian2/OctConv-TFKeras
+"""
+
+
+class OctConv2D(Layer):
+    """Octave Convolutional Class"""
+
+    def __init__(self,
+                 filters,
+                 alpha,
+                 kernel_size=(3,3),
+                 strides=(1,1),
+                 padding="same",
+                 kernel_initializer="glorot_uniform",
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 **kwargs):
         assert alpha >= 0 and alpha <= 1
         assert filters > 0 and isinstance(filters, int)
 
@@ -167,7 +185,7 @@ class OctConv2D(layers.Layer):
                                 strides=self.strides, padding=self.padding,
                                 data_format="channels_last")
         # High -> low conv
-        high_to_low = K.pool2d(high_input, (2, 2), strides=(2, 2), pool_mode='avg')
+        high_to_low = K.pool2d(high_input, (2, 2), strides=(2, 2), pool_mode="avg")
         high_to_low = K.conv2d(high_to_low, self.high_to_low_kernel, strides=self.strides,
                                padding=self.padding, data_format="channels_last")
 
