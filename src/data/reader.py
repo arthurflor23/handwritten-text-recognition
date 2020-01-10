@@ -42,7 +42,7 @@ class Dataset():
                 self.dataset[y]['gt'][i] = text.encode()
 
             pool = Pool()
-            self.dataset[y]['dt'] = pool.map(partial(pp.preproc, input_size=input_size), self.dataset[y]['dt'])
+            self.dataset[y]['dt'] = pool.map(partial(pp.preprocess, input_size=input_size), self.dataset[y]['dt'])
             pool.close()
             pool.join()
 

@@ -96,7 +96,7 @@ if __name__ == "__main__":
     elif args.image:
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
 
-        img = pp.preproc(args.image, input_size=input_size)
+        img = pp.preprocess(args.image, input_size=input_size)
         x_test = pp.normalization([img])
 
         model = HTRModel(architecture=args.arch,

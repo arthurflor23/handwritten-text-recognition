@@ -3,7 +3,7 @@ Data preproc functions:
     adjust_to_see: adjust image to better visualize (rotate and transpose)
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
-    preproc: main function to the preprocess.
+    preprocess: main function for preprocess.
         Make the image:
             illumination_compensation: apply illumination regularitation
             remove_cursive_style: remove cursive style from image (if necessary)
@@ -98,7 +98,7 @@ Preprocess metodology based in:
 """
 
 
-def preproc(img, input_size):
+def preprocess(img, input_size):
     """Make the process with the `input_size` to the scale resize"""
 
     if isinstance(img, str):
