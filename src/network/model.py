@@ -203,7 +203,7 @@ class HTRModel:
                                  workers=workers, use_multiprocessing=use_multiprocessing)
 
         if not ctc_decode:
-            return np.log(out)
+            return np.log(out.clip(min=1e-8))
 
         steps_done = 0
         if verbose == 1:

@@ -239,7 +239,7 @@ if __name__ == "__main__":
                 for x in multigrams[pt]:
                     ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
 
-                for x in dtgen.dataset[pt]:
+                for x in dtgen.dataset[pt]['gt']:
                     ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
 
             # define dataset size and default tokens
