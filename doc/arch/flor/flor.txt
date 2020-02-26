@@ -30,12 +30,12 @@
     BatchRenormalization         (None, 128, 4, 64)     386   
     MaxPooling2D                 (None, 128, 2, 64)     0     
     Tiling                       (None, 128, 128)       0     
-    Bidirectional                (None, 128, 256)       263168
-    Dense                        (None, 128, 128)       32896 
-    Bidirectional                (None, 128, 256)       263168
-    Dense                        (None, 128, 96)        24672 
+    Bidirectional                (None, 128, 256)       198144
+    Dense                        (None, 128, 256)       65792 
+    Bidirectional                (None, 128, 256)       296448
+    Dense                        (None, 128, 96)        25186 
     Softmax                      (None, 128, 96)        0     
     ==============================================================
-    Total params: 822,140
-    Trainable params: 821,104
-    Non-trainable params: 1,036
+	Total params: 824,050
+	Trainable params: 822,770
+	Non-trainable params: 1,280
