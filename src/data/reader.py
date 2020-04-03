@@ -92,10 +92,10 @@ class Dataset():
             if (not line or line[0] == "#"):
                 continue
 
-            splitted = line.split()
+            split = line.split()
 
-            if splitted[1] == "ok":
-                gt_dict[splitted[0]] = " ".join(splitted[8::]).replace("|", " ")
+            if split[1] == "ok":
+                gt_dict[split[0]] = " ".join(split[8::]).replace("|", " ")
 
         dataset = dict()
 
@@ -169,9 +169,9 @@ class Dataset():
         gt_dict = dict()
 
         for line in lines:
-            splitted = line.split()
-            splitted[1] = splitted[1].replace("-", "").replace("|", " ")
-            gt_dict[splitted[0]] = splitted[1]
+            split = line.split()
+            split[1] = split[1].replace("-", "").replace("|", " ")
+            gt_dict[split[0]] = split[1]
 
         img_path = os.path.join(self.source, "data", "line_images_normalized")
         dataset = dict()
@@ -203,15 +203,15 @@ class Dataset():
         gt_dict = dict()
 
         for line in lines:
-            splitted = line.split()
-            splitted[1] = splitted[1].replace("-", "").replace("|", " ")
-            splitted[1] = splitted[1].replace("s_pt", ".").replace("s_cm", ",")
-            splitted[1] = splitted[1].replace("s_mi", "-").replace("s_qo", ":")
-            splitted[1] = splitted[1].replace("s_sq", ";").replace("s_et", "V")
-            splitted[1] = splitted[1].replace("s_bl", "(").replace("s_br", ")")
-            splitted[1] = splitted[1].replace("s_qt", "'").replace("s_GW", "G.W.")
-            splitted[1] = splitted[1].replace("s_", "")
-            gt_dict[splitted[0]] = splitted[1]
+            split = line.split()
+            split[1] = split[1].replace("-", "").replace("|", " ")
+            split[1] = split[1].replace("s_pt", ".").replace("s_cm", ",")
+            split[1] = split[1].replace("s_mi", "-").replace("s_qo", ":")
+            split[1] = split[1].replace("s_sq", ";").replace("s_et", "V")
+            split[1] = split[1].replace("s_bl", "(").replace("s_br", ")")
+            split[1] = split[1].replace("s_qt", "'").replace("s_GW", "G.W.")
+            split[1] = split[1].replace("s_", "")
+            gt_dict[split[0]] = split[1]
 
         img_path = os.path.join(self.source, "data", "line_images_normalized")
         dataset = dict()
