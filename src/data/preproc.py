@@ -101,12 +101,24 @@ Preprocess metodology based in:
 def preprocess(img, input_size):
     """Make the process with the `input_size` to the scale resize"""
 
+    def imread(path):
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+
+        if len(img.shape) == 3:
+            if img.shape[2] == 4:
+                trans_mask = img[:, :, 3] == 0
+                img[trans_mask] = [255, 255, 255, 255]
+
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        return img
+
     if isinstance(img, str):
-        img = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+        img = imread(img)
 
     if isinstance(img, tuple):
         image, boundbox = img
-        img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+        img = imread(image)
 
         for i in range(len(boundbox)):
             if isinstance(boundbox[i], float):
@@ -144,7 +156,7 @@ Illumination Compensation based in:
 """
 
 
-def illumination_compensation(img):
+def illumination_compensation(img, only_cei=False):
     """Illumination compensation technique for text image"""
 
     def scale(img):
@@ -161,6 +173,7 @@ def illumination_compensation(img):
     bins = np.arange(0, 300, 10)
     bins[26] = 255
     hp = np.histogram(img, bins)
+
     for i in range(len(hp[0])):
         if hp[0][i] > sqrt_hw:
             hr = i * 10
@@ -170,6 +183,9 @@ def illumination_compensation(img):
     cei = (img - (hr + 50 * 0.3)) * 2
     cei[cei > 255] = 255
     cei[cei < 0] = 0
+
+    if only_cei:
+        return np.asarray(cei, dtype=np.uint8)
 
     m1 = np.asarray([-1, 0, 1, -2, 0, 2, -1, 0, 1]).reshape((3, 3))
     m2 = np.asarray([-2, -1, 0, -1, 0, 1, 0, 1, 2]).reshape((3, 3))
