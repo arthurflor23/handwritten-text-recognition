@@ -3,6 +3,7 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
+from itertools import groupby
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 import data.preproc as pp
@@ -125,6 +126,9 @@ class Tokenizer():
 
         text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
         text = " ".join(text.split())
+
+        groups = ["".join(group) for _, group in groupby(text)]
+        text = "".join([self.UNK_TK.join(list(x)) if len(x) > 1 else x for x in groups])
         encoded = []
 
         for item in text:
@@ -146,4 +150,4 @@ class Tokenizer():
     def remove_tokens(self, text):
         """Remove tokens (PAD) from text"""
 
-        return text.replace(self.PAD_TK, "")
+        return text.replace(self.PAD_TK, "").replace(self.UNK_TK, "")
