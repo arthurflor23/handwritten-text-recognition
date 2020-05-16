@@ -118,7 +118,7 @@ class HTRModel:
 
         return callbacks
 
-    def compile(self, learning_rate=None):
+    def compile(self, learning_rate=0.001):
         """
         Configures the HTR Model for training/predict.
 
@@ -126,8 +126,8 @@ class HTRModel:
         """
 
         # define inputs, outputs and optimizer of the chosen architecture
-        outs = self.architecture(self.input_size, self.vocab_size + 1, learning_rate)
-        inputs, outputs, optimizer = outs
+        inputs, outputs = self.architecture(self.input_size, self.vocab_size + 1)
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
         # create and compile
         self.model = Model(inputs=inputs, outputs=outputs)
@@ -193,8 +193,6 @@ class HTRModel:
         :return: raw data on `ctc_decode=False` or CTC decode on `ctc_decode=True` (both with probabilities)
         """
 
-        self.model._make_predict_function()
-
         if verbose == 1:
             print("Model Predict")
 
@@ -203,7 +201,7 @@ class HTRModel:
                                  workers=workers, use_multiprocessing=use_multiprocessing)
 
         if not ctc_decode:
-            return np.log(out.clip(min=1e-8))
+            return np.log(out.clip(min=1e-8)), []
 
         steps_done = 0
         if verbose == 1:
@@ -276,7 +274,7 @@ Reference:
 """
 
 
-def bluche(input_size, d_model, learning_rate):
+def bluche(input_size, d_model):
     """
     Gated Convolucional Recurrent Neural Network by Bluche et al.
 
@@ -291,19 +289,19 @@ def bluche(input_size, d_model, learning_rate):
     input_data = Input(name="input", shape=input_size)
     cnn = Reshape((input_size[0] // 2, input_size[1] // 2, input_size[2] * 4))(input_data)
 
-    cnn = Conv2D(filters=8, kernel_size=(3,3), strides=(1,1), padding="same", activation="tanh")(cnn)
+    cnn = Conv2D(filters=8, kernel_size=(3, 3), strides=(1, 1), padding="same", activation="tanh")(cnn)
 
-    cnn = Conv2D(filters=16, kernel_size=(2,4), strides=(2,4), padding="same", activation="tanh")(cnn)
-    cnn = GatedConv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=16, kernel_size=(2, 4), strides=(2, 4), padding="same", activation="tanh")(cnn)
+    cnn = GatedConv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same", activation="tanh")(cnn)
-    cnn = GatedConv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same", activation="tanh")(cnn)
+    cnn = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
 
-    cnn = Conv2D(filters=64, kernel_size=(2,4), strides=(2,4), padding="same", activation="tanh")(cnn)
-    cnn = GatedConv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(2, 4), strides=(2, 4), padding="same", activation="tanh")(cnn)
+    cnn = GatedConv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
 
-    cnn = Conv2D(filters=128, kernel_size=(3,3), strides=(1,1), padding="same", activation="tanh")(cnn)
-    cnn = MaxPooling2D(pool_size=(1,4), strides=(1,4), padding="valid")(cnn)
+    cnn = Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding="same", activation="tanh")(cnn)
+    cnn = MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     blstm = Reshape((shape[1], shape[2] * shape[3]))(cnn)
@@ -314,15 +312,10 @@ def bluche(input_size, d_model, learning_rate):
     blstm = Bidirectional(LSTM(units=128, return_sequences=True))(blstm)
     output_data = Dense(units=d_model, activation="softmax")(blstm)
 
-    if learning_rate is None:
-        learning_rate = 4e-4
-
-    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-
-    return (input_data, output_data, optimizer)
+    return (input_data, output_data)
 
 
-def puigcerver(input_size, d_model, learning_rate):
+def puigcerver(input_size, d_model):
     """
     Convolucional Recurrent Neural Network by Puigcerver et al.
 
@@ -339,29 +332,29 @@ def puigcerver(input_size, d_model, learning_rate):
 
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(1,1), padding="same")(input_data)
+    cnn = Conv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding="same")(input_data)
     cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU(alpha=0.01)(cnn)
-    cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
+    cnn = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU(alpha=0.01)(cnn)
-    cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
-
-    cnn = Dropout(rate=0.2)(cnn)
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
-    cnn = BatchNormalization()(cnn)
-    cnn = LeakyReLU(alpha=0.01)(cnn)
-    cnn = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(cnn)
+    cnn = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
-    cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
+    cnn = BatchNormalization()(cnn)
+    cnn = LeakyReLU(alpha=0.01)(cnn)
+    cnn = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(cnn)
+
+    cnn = Dropout(rate=0.2)(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU(alpha=0.01)(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
-    cnn = Conv2D(filters=80, kernel_size=(3,3), strides=(1,1), padding="same")(cnn)
+    cnn = Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU(alpha=0.01)(cnn)
 
@@ -377,54 +370,49 @@ def puigcerver(input_size, d_model, learning_rate):
     blstm = Dropout(rate=0.5)(blstm)
     output_data = Dense(units=d_model, activation="softmax")(blstm)
 
-    if learning_rate is None:
-        learning_rate = 3e-4
-
-    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-
-    return (input_data, output_data, optimizer)
+    return (input_data, output_data)
 
 
-def flor(input_size, d_model, learning_rate):
+def flor(input_size, d_model):
     """
     Gated Convolucional Recurrent Neural Network by Flor et al.
     """
 
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=16, kernel_size=(3,3), strides=(2,2), padding="same", kernel_initializer="he_uniform")(input_data)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), padding="same", kernel_initializer="he_uniform")(input_data)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-    cnn = FullGatedConv2D(filters=16, kernel_size=(3,3), padding="same")(cnn)
+    cnn = FullGatedConv2D(filters=16, kernel_size=(3, 3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-    cnn = FullGatedConv2D(filters=32, kernel_size=(3,3), padding="same")(cnn)
+    cnn = FullGatedConv2D(filters=32, kernel_size=(3, 3), padding="same")(cnn)
 
-    cnn = Conv2D(filters=40, kernel_size=(2,4), strides=(2,4), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=40, kernel_size=(2, 4), strides=(2, 4), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-    cnn = FullGatedConv2D(filters=40, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=40, kernel_size=(3, 3), padding="same", kernel_constraint=MaxNorm(4, [0, 1, 2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-    cnn = FullGatedConv2D(filters=48, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=48, kernel_size=(3, 3), padding="same", kernel_constraint=MaxNorm(4, [0, 1, 2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=56, kernel_size=(2,4), strides=(2,4), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=56, kernel_size=(2, 4), strides=(2, 4), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
-    cnn = FullGatedConv2D(filters=56, kernel_size=(3,3), padding="same", kernel_constraint=MaxNorm(4, [0,1,2]))(cnn)
+    cnn = FullGatedConv2D(filters=56, kernel_size=(3, 3), padding="same", kernel_constraint=MaxNorm(4, [0, 1, 2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="same", kernel_initializer="he_uniform")(cnn)
-    cnn = PReLU(shared_axes=[1,2])(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
 
-    cnn = MaxPooling2D(pool_size=(1,2), strides=(1,2), padding="valid")(cnn)
+    cnn = MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding="valid")(cnn)
 
     shape = cnn.get_shape()
     nb_units = shape[2] * shape[3]
@@ -437,15 +425,10 @@ def flor(input_size, d_model, learning_rate):
     bgru = Bidirectional(GRU(units=nb_units, return_sequences=True, dropout=0.5))(bgru)
     output_data = Dense(units=d_model, activation="softmax")(bgru)
 
-    if learning_rate is None:
-        learning_rate = 5e-4
-
-    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-
-    return (input_data, output_data, optimizer)
+    return (input_data, output_data)
 
 
-def puigcerver_octconv(input_size, d_model, learning_rate):
+def puigcerver_octconv(input_size, d_model):
     """
     Octave CNN by khinggan, architecture is same as puigcerver
     """
@@ -514,12 +497,7 @@ def puigcerver_octconv(input_size, d_model, learning_rate):
     blstm = Dropout(rate=0.5)(blstm)
     output_data = Dense(units=d_model, activation="softmax")(blstm)
 
-    if learning_rate is None:
-        learning_rate = 3e-4
-
-    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-
-    return (input_data, output_data, optimizer)
+    return (input_data, output_data)
 
 
 def _create_octconv_last_block(inputs, ch, alpha):
