@@ -1,13 +1,20 @@
 # Project stuffs
 /raw/*
 /data/
-/src/data/predicts/
 /output/
+/backup/
 /tensorboard/
+
+/src/lib/
+/src/data/predicts/
 
 # Hidden files
 .vscode
 .directory
+
+# Compact files
+*.tar.gz
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -25,8 +32,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
