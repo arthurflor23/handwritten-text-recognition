@@ -4,10 +4,12 @@ Provides options via the command line to perform project tasks.
 * `--arch`: network to be used (puigcerver, bluche, flor)
 * `--transform`: transform dataset to the HDF5 file
 * `--cv2`: visualize sample from transformed dataset
+* `--kaldi_assets`: save all assets for use with kaldi
 * `--image`: predict a single image with the source parameter
 * `--train`: train model with the source argument
 * `--test`: evaluate and predict model with the source argument
-* `--kaldi_assets`: save all assets for use with kaldi
+* `--norm_accentuation`: discard accentuation marks in the evaluation
+* `--norm_punctuation`: discard punctuation marks in the evaluation
 * `--epochs`: number of epochs
 * `--batch_size`: number of batches
 """
@@ -22,7 +24,6 @@ import datetime
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
 from data.reader import Dataset
-from kaldiio import WriteHelper
 from network.model import HTRModel
 
 
@@ -34,10 +35,13 @@ if __name__ == "__main__":
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--image", type=str, default="")
+    parser.add_argument("--kaldi_assets", action="store_true", default=False)
 
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
-    parser.add_argument("--kaldi_assets", action="store_true", default=False)
+
+    parser.add_argument("--norm_accentuation", action="store_true", default=False)
+    parser.add_argument("--norm_punctuation", action="store_true", default=False)
 
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=16)
@@ -53,8 +57,7 @@ if __name__ == "__main__":
     charset_base = string.printable[:95]
 
     if args.transform:
-        assert os.path.exists(raw_path)
-        print(f"The {args.source} dataset will be transformed...")
+        print(f"{args.source} dataset will be transformed...")
 
         ds = Dataset(source=raw_path, name=args.source)
         ds.read_partitions()
@@ -117,7 +120,7 @@ if __name__ == "__main__":
             for (pd, pb) in zip(pred, prob):
                 print(f"{pb:.4f} - {pd}")
 
-            cv2.imshow(f"Image {i + 1}", pp.adjust_to_see(img))
+            cv2.imshow(f"Image {i + 1}", cv2.imread(args.image))
         print("\n####################################")
         cv2.waitKey(0)
 
@@ -129,17 +132,20 @@ if __name__ == "__main__":
                               batch_size=args.batch_size,
                               charset=charset_base,
                               max_text_length=max_text_length,
-                              predict=args.test)
+                              predict=(not args.kaldi_assets) and args.test)
 
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size)
 
-        # set `learning_rate` parameter or get architecture default value
         model.compile(learning_rate=0.001)
         model.load_checkpoint(target=target_path)
 
-        if args.train:
+        if args.kaldi_assets:
+            predicts, _ = model.predict(x=dtgen.next_test_batch(), steps=dtgen.steps['test'], ctc_decode=False)
+            pp.generate_kaldi_assets(output_path, dtgen, predicts)
+
+        elif args.train:
             model.summary(output_path, "summary.txt")
             callbacks = model.get_callbacks(logdir=output_path, checkpoint=target_path, verbose=1)
 
@@ -200,8 +206,8 @@ if __name__ == "__main__":
 
             evaluate = evaluation.ocr_metrics(predicts=predicts,
                                               ground_truth=dtgen.dataset['test']['gt'],
-                                              norm_accentuation=False,
-                                              norm_punctuation=False)
+                                              norm_accentuation=args.norm_accentuation,
+                                              norm_punctuation=args.norm_punctuation)
 
             e_corpus = "\n".join([
                 f"Total test images:    {dtgen.size['test']}",
@@ -213,66 +219,10 @@ if __name__ == "__main__":
                 f"Sequence Error Rate:  {evaluate[2]:.8f}"
             ])
 
-            with open(os.path.join(output_path, "evaluate.txt"), "w") as lg:
+            sufix = ("_norm" if args.norm_accentuation or args.norm_punctuation else "") + \
+                    ("_accentuation" if args.norm_accentuation else "") + \
+                    ("_punctuation" if args.norm_punctuation else "")
+
+            with open(os.path.join(output_path, f"evaluate{sufix}.txt"), "w") as lg:
                 lg.write(e_corpus)
                 print(e_corpus)
-
-        elif args.kaldi_assets:
-            predicts = model.predict(x=dtgen.next_test_batch(),
-                                     steps=dtgen.steps['test'],
-                                     ctc_decode=False,
-                                     verbose=1)
-
-            # get data and ground truth lists
-            ctc_TK, space_TK = "<ctc>", "<space>"
-            multigrams, multigrams_size = dict(), 0
-            ground_truth = []
-
-            # generate multigrams to compose the dataset
-            for pt in dtgen.partitions:
-                multigrams[pt] = [pp.generate_multigrams(x) for x in dtgen.dataset[pt]['gt']]
-                multigrams[pt] = list(set([pp.text_standardize(y) for x in multigrams[pt] for y in x]))
-
-                multigrams[pt] = [x for x in multigrams[pt] if Dataset.check_text(x)]
-                multigrams_size += len(multigrams[pt])
-
-                for x in multigrams[pt]:
-                    ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
-
-                for x in dtgen.dataset[pt]['gt']:
-                    ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
-
-            # define dataset size and default tokens
-            train_size = dtgen.size['train'] + dtgen.size['valid'] + multigrams_size
-
-            # get chars list and save with the ctc and space tokens
-            chars = list(dtgen.tokenizer.chars) + [ctc_TK]
-            chars[chars.index(" ")] = space_TK
-
-            kaldi_path = os.path.join(output_path, "kaldi")
-            os.makedirs(kaldi_path, exist_ok=True)
-
-            with open(os.path.join(kaldi_path, "chars.lst"), "w") as lg:
-                lg.write("\n".join(chars))
-
-            ark_file_name = os.path.join(kaldi_path, "conf_mats.ark")
-            scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
-
-            # save ark and scp file (laia output/kaldi input format)
-            with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
-                for i, item in enumerate(predicts):
-                    writer(str(i + train_size), item)
-
-            # save ground_truth.lst file with sparse sentences
-            with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
-                for i, item in enumerate(ground_truth):
-                    lg.write(f"{i} {' '.join(item)}\n")
-
-            # save indexes of the train/valid and test partitions
-            with open(os.path.join(kaldi_path, "ID_train.lst"), "w") as lg:
-                range_index = [str(i) for i in range(0, train_size)]
-                lg.write("\n".join(range_index))
-
-            with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
-                range_index = [str(i) for i in range(train_size, train_size + dtgen.size['test'])]
-                lg.write("\n".join(range_index))
