@@ -4,7 +4,6 @@ Image renderings and text are created on the fly each time.
 """
 
 from itertools import groupby
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 import data.preproc as pp
 import h5py
@@ -28,8 +27,16 @@ class DataGenerator():
         with h5py.File(source, "r") as f:
             for pt in self.partitions:
                 self.dataset[pt] = dict()
-                self.dataset[pt]['dt'] = f[pt]['dt'][:]
-                self.dataset[pt]['gt'] = f[pt]['gt'][:]
+
+                self.dataset[pt]['dt'] = np.array(f[pt]['dt'])
+                self.dataset[pt]['gt'] = np.array(f[pt]['gt'])
+
+                randomize = np.arange(len(self.dataset[pt]['gt']))
+                np.random.seed(42)
+                np.random.shuffle(randomize)
+
+                self.dataset[pt]['dt'] = self.dataset[pt]['dt'][randomize]
+                self.dataset[pt]['gt'] = self.dataset[pt]['gt'][randomize]
 
         for pt in self.partitions:
             # decode sentences from byte
@@ -52,8 +59,6 @@ class DataGenerator():
             self.index['train'] = until
 
             x_train = self.dataset['train']['dt'][index:until]
-            y_train = self.dataset['train']['gt'][index:until]
-
             x_train = pp.augmentation(x_train,
                                       rotation_range=1.5,
                                       scale_range=0.05,
@@ -61,13 +66,13 @@ class DataGenerator():
                                       width_shift_range=0.05,
                                       erode_range=5,
                                       dilate_range=3)
-
             x_train = pp.normalization(x_train)
 
-            y_train = [self.tokenizer.encode(y) for y in y_train]
-            y_train = pad_sequences(y_train, maxlen=self.tokenizer.maxlen, padding="post")
+            y_train = [self.tokenizer.encode(y) for y in self.dataset['train']['gt'][index:until]]
+            y_train = [np.pad(y, (0, self.tokenizer.maxlen - len(y))) for y in y_train]
+            y_train = np.asarray(y_train, dtype=np.int16)
 
-            yield (x_train, y_train, [])
+            yield (x_train, y_train)
 
     def next_valid_batch(self):
         """Get the next batch from validation partition (yield)"""
@@ -81,14 +86,13 @@ class DataGenerator():
             self.index['valid'] = until
 
             x_valid = self.dataset['valid']['dt'][index:until]
-            y_valid = self.dataset['valid']['gt'][index:until]
-
             x_valid = pp.normalization(x_valid)
 
-            y_valid = [self.tokenizer.encode(y) for y in y_valid]
-            y_valid = pad_sequences(y_valid, maxlen=self.tokenizer.maxlen, padding="post")
+            y_valid = [self.tokenizer.encode(y) for y in self.dataset['valid']['gt'][index:until]]
+            y_valid = [np.pad(y, (0, self.tokenizer.maxlen - len(y))) for y in y_valid]
+            y_valid = np.asarray(y_valid, dtype=np.int16)
 
-            yield (x_valid, y_valid, [])
+            yield (x_valid, y_valid)
 
     def next_test_batch(self):
         """Return model predict parameters"""
