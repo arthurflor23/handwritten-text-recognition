@@ -9,10 +9,10 @@ Data preproc functions:
             remove_cursive_style: remove cursive style from image (if necessary)
             sauvola: apply sauvola binarization
     text_standardize: preprocess and standardize sentence
-    generate_multigrams: generate n-grams of the sentence
 """
 
 import re
+import os
 import cv2
 import html
 import string
@@ -130,16 +130,11 @@ def preprocess(img, input_size):
     wt, ht, _ = input_size
     h, w = np.asarray(img).shape
     f = max((w / wt), (h / ht))
-
     new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
-    img = cv2.resize(img, new_size)
 
-    _, binary = cv2.threshold(img, 254, 255, cv2.THRESH_BINARY)
-
-    if np.sum(img) * 0.8 > np.sum(binary):
-        img = illumination_compensation(img)
-
+    img = illumination_compensation(img)
     img = remove_cursive_style(img)
+    img = cv2.resize(img, new_size)
 
     target = np.ones([ht, wt], dtype=np.uint8) * 255
     target[0:new_size[1], 0:new_size[0]] = img
@@ -158,6 +153,11 @@ Illumination Compensation based in:
 
 def illumination_compensation(img, only_cei=False):
     """Illumination compensation technique for text image"""
+
+    _, binary = cv2.threshold(img, 254, 255, cv2.THRESH_BINARY)
+
+    if np.sum(binary) > np.sum(img) * 0.8:
+        return np.asarray(img, dtype=np.uint8)
 
     def scale(img):
         s = np.max(img) - np.min(img)
@@ -303,9 +303,10 @@ def remove_cursive_style(img):
         results.append([np.sum(sum_alpha), size, transform])
 
     result = sorted(results, key=lambda x: x[0], reverse=True)[0]
-    warp = cv2.warpAffine(img, result[2], result[1], borderValue=255)
+    result = cv2.warpAffine(img, result[2], result[1], borderValue=255)
+    result = cv2.resize(result, dsize=(cols, rows))
 
-    return cv2.resize(warp, dsize=(cols, rows))
+    return np.asarray(result, dtype=np.uint8)
 
 
 """
@@ -386,40 +387,47 @@ def text_standardize(text):
     return text
 
 
-def generate_multigrams(sentence):
-    """
-    Generate n-grams of the sentence.
-    i.e.:
-    original sentence: I like code .
-        > sentence 1 : I like
-        > sentence 2 : I like code .
-        > sentence 3 : like
-        > sentence 4 : like code .
-        > sentence 5 : code .
-    """
+def generate_kaldi_assets(output_path, dtgen, predicts):
+    from kaldiio import WriteHelper
 
-    tokens = sentence.split()
-    tk_length = len(tokens)
-    multigrams = []
+    # get data and ground truth lists
+    ctc_TK, space_TK, ground_truth = "<ctc>", "<space>", []
 
-    for y in range(tk_length):
-        new_sentence = True
-        support_text = ""
+    for pt in dtgen.partitions + ['test']:
+        for x in dtgen.dataset[pt]['gt']:
+            ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
 
-        for x in range(y, tk_length):
-            if y == 0 and tk_length > 2 and x == (tk_length - 1):
-                continue
+    # define dataset size and default tokens
+    train_size = dtgen.size['train'] + dtgen.size['valid'] + dtgen.size['test']
 
-            if len(tokens[x]) <= 2 and tokens[x] != tokens[-1]:
-                support_text += f" {tokens[x]}"
-                continue
+    # get chars list and save with the ctc and space tokens
+    chars = list(dtgen.tokenizer.chars) + [ctc_TK]
+    chars[chars.index(" ")] = space_TK
 
-            last = ""
-            if x > y and len(multigrams) > 0 and not new_sentence:
-                last = multigrams[-1]
+    kaldi_path = os.path.join(output_path, "kaldi")
+    os.makedirs(kaldi_path, exist_ok=True)
 
-            multigrams.append(f"{last}{support_text} {tokens[x]}".strip())
-            new_sentence = False
-            support_text = ""
+    with open(os.path.join(kaldi_path, "chars.lst"), "w") as lg:
+        lg.write("\n".join(chars))
 
-    return multigrams
+    ark_file_name = os.path.join(kaldi_path, "conf_mats.ark")
+    scp_file_name = os.path.join(kaldi_path, "conf_mats.scp")
+
+    # save ark and scp file (laia output/kaldi input format)
+    with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
+        for i, item in enumerate(predicts):
+            writer(str(i + train_size), item)
+
+    # save ground_truth.lst file with sparse sentences
+    with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
+        for i, item in enumerate(ground_truth):
+            lg.write(f"{i} {' '.join(item)}\n")
+
+    # save indexes of the train/valid and test partitions
+    with open(os.path.join(kaldi_path, "ID_train.lst"), "w") as lg:
+        range_index = [str(i) for i in range(0, train_size)]
+        lg.write("\n".join(range_index))
+
+    with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
+        range_index = [str(i) for i in range(train_size, train_size + dtgen.size['test'])]
+        lg.write("\n".join(range_index))
