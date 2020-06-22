@@ -45,17 +45,18 @@ class DataGenerator():
             # set size and setps
             self.size[pt] = len(self.dataset[pt]['gt'])
             self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
-            self.index[pt] = 0
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
+
+        self.index['train'] = 0
 
         while True:
             if self.index['train'] >= self.size['train']:
                 self.index['train'] = 0
 
             index = self.index['train']
-            until = self.index['train'] + self.batch_size
+            until = index + self.batch_size
             self.index['train'] = until
 
             x_train = self.dataset['train']['dt'][index:until]
@@ -77,12 +78,14 @@ class DataGenerator():
     def next_valid_batch(self):
         """Get the next batch from validation partition (yield)"""
 
+        self.index['valid'] = 0
+
         while True:
             if self.index['valid'] >= self.size['valid']:
                 self.index['valid'] = 0
 
             index = self.index['valid']
-            until = self.index['valid'] + self.batch_size
+            until = index + self.batch_size
             self.index['valid'] = until
 
             x_valid = self.dataset['valid']['dt'][index:until]
@@ -97,13 +100,15 @@ class DataGenerator():
     def next_test_batch(self):
         """Return model predict parameters"""
 
+        self.index['test'] = 0
+
         while True:
             if self.index['test'] >= self.size['test']:
                 self.index['test'] = 0
                 break
 
             index = self.index['test']
-            until = self.index['test'] + self.batch_size
+            until = index + self.batch_size
             self.index['test'] = until
 
             x_test = self.dataset['test']['dt'][index:until]
