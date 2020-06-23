@@ -105,9 +105,10 @@ if __name__ == "__main__":
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
                          vocab_size=tokenizer.vocab_size,
+                         beam_width=10,
                          top_paths=10)
 
-        model.compile()
+        model.compile(learning_rate=0.001)
         model.load_checkpoint(target=target_path)
 
         predicts, probabilities = model.predict(x_test, ctc_decode=True)
@@ -136,7 +137,10 @@ if __name__ == "__main__":
 
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
-                         vocab_size=dtgen.tokenizer.vocab_size)
+                         vocab_size=dtgen.tokenizer.vocab_size,
+                         beam_width=10,
+                         stop_tolerance=20,
+                         reduce_tolerance=15)
 
         model.compile(learning_rate=0.001)
         model.load_checkpoint(target=target_path)

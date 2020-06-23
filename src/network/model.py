@@ -41,7 +41,9 @@ class HTRModel:
                  vocab_size,
                  greedy=False,
                  beam_width=10,
-                 top_paths=1):
+                 top_paths=1,
+                 stop_tolerance=20,
+                 reduce_tolerance=15):
         """
         Initialization of a HTR Model.
 
@@ -59,6 +61,9 @@ class HTRModel:
         self.greedy = greedy
         self.beam_width = beam_width
         self.top_paths = max(1, top_paths)
+
+        self.stop_tolerance = stop_tolerance
+        self.reduce_tolerance = reduce_tolerance
 
     def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
@@ -105,20 +110,20 @@ class HTRModel:
             EarlyStopping(
                 monitor=monitor,
                 min_delta=1e-8,
-                patience=20,
+                patience=self.stop_tolerance,
                 restore_best_weights=True,
                 verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
                 min_delta=1e-8,
                 factor=0.2,
-                patience=15,
+                patience=self.reduce_tolerance,
                 verbose=verbose)
         ]
 
         return callbacks
 
-    def compile(self, learning_rate=0.001):
+    def compile(self, learning_rate=None, initial_step=0):
         """
         Configures the HTR Model for training/predict.
 
@@ -127,6 +132,13 @@ class HTRModel:
 
         # define inputs, outputs and optimizer of the chosen architecture
         inputs, outputs = self.architecture(self.input_size, self.vocab_size + 1)
+
+        if learning_rate is None:
+            learning_rate = CustomSchedule(d_model=self.vocab_size + 1, initial_step=initial_step)
+            self.learning_schedule = True
+        else:
+            self.learning_schedule = False
+
         optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
         # create and compile
@@ -162,6 +174,10 @@ class HTRModel:
         :param: See tensorflow.keras.Model.fit()
         :return: A history object
         """
+
+        # remove ReduceLROnPlateau (if exist) when use schedule learning rate
+        if callbacks and self.learning_schedule:
+            callbacks = [x for x in callbacks if not isinstance(x, ReduceLROnPlateau)]
 
         out = self.model.fit(x=x, y=y, batch_size=batch_size, epochs=epochs, verbose=verbose,
                              callbacks=callbacks, validation_split=validation_split,
@@ -260,6 +276,38 @@ class HTRModel:
         loss = tf.reduce_mean(loss)
 
         return loss
+
+
+"""
+Custom Schedule
+
+Reference:
+    Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and
+    Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin.
+    "Attention Is All You Need", 2017
+    arXiv, URL: https://arxiv.org/abs/1706.03762
+"""
+
+
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+    """
+    Custom schedule of the learning rate with warmup_steps.
+    From original paper "Attention is all you need".
+    """
+
+    def __init__(self, d_model, initial_step=0, warmup_steps=4000):
+        super(CustomSchedule, self).__init__()
+
+        self.d_model = d_model
+        self.d_model = tf.cast(self.d_model, dtype="float32")
+        self.initial_step = initial_step
+        self.warmup_steps = warmup_steps
+
+    def __call__(self, step):
+        arg1 = tf.math.rsqrt(step + self.initial_step)
+        arg2 = step * (self.warmup_steps**-1.5)
+
+        return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
 
 """
