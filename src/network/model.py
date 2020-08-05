@@ -463,14 +463,12 @@ def flor(input_size, d_model):
     cnn = MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding="valid")(cnn)
 
     shape = cnn.get_shape()
-    nb_units = shape[2] * shape[3]
+    bgru = Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
-    bgru = Reshape((shape[1], nb_units))(cnn)
+    bgru = Bidirectional(GRU(units=128, return_sequences=True, dropout=0.5))(bgru)
+    bgru = Dense(units=256)(bgru)
 
-    bgru = Bidirectional(GRU(units=nb_units, return_sequences=True, dropout=0.5))(bgru)
-    bgru = Dense(units=nb_units * 2)(bgru)
-
-    bgru = Bidirectional(GRU(units=nb_units, return_sequences=True, dropout=0.5))(bgru)
+    bgru = Bidirectional(GRU(units=128, return_sequences=True, dropout=0.5))(bgru)
     output_data = Dense(units=d_model, activation="softmax")(bgru)
 
     return (input_data, output_data)
