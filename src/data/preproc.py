@@ -124,6 +124,8 @@ def preprocess(img, input_size):
             if isinstance(boundbox[i], float):
                 total = len(img) if i < 2 else len(img[0])
                 boundbox[i] = int(total * boundbox[i])
+            else:
+                boundbox[i] = int(boundbox[i])
 
         img = np.asarray(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
 
