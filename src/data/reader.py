@@ -3,6 +3,7 @@
 import os
 import html
 import string
+import random
 import multiprocessing
 import xml.etree.ElementTree as ET
 
@@ -43,7 +44,8 @@ class Dataset():
             arange = range(len(self.dataset[y]['gt']))
 
             for i in reversed(arange):
-                text = pp.text_standardize(self.dataset[y]['gt'][i])
+                # text = pp.text_standardize(self.dataset[y]['gt'][i])
+                text = " ".join(list("".join(self.dataset[y]['gt'][i].split())))
 
                 if not self.check_text(text):
                     self.dataset[y]['gt'].pop(i)
@@ -62,6 +64,26 @@ class Dataset():
                 pool.join()
 
             self.dataset[y]['dt'] = results
+
+    def _init_dataset(self):
+        dataset = dict()
+
+        for i in self.partitions:
+            dataset[i] = {"dt": [], "gt": []}
+
+        return dataset
+
+    def _shuffle(self, *ls):
+        random.seed(42)
+
+        if len(ls) == 1:
+            li = list(*ls)
+            random.shuffle(li)
+            return li
+
+        li = list(zip(*ls))
+        random.shuffle(li)
+        return zip(*li)
 
     def _bentham(self):
         """Bentham dataset reader"""
@@ -83,11 +105,9 @@ class Dataset():
             gt_dict[os.path.splitext(x)[0]] = " ".join(text.split())
 
         img_path = os.path.join(source, "Images", "Lines")
-        dataset = dict()
+        dataset = self._init_dataset()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
-
             for line in paths[i]:
                 dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                 dataset[i]['gt'].append(gt_dict[line])
@@ -103,6 +123,7 @@ class Dataset():
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
+        dataset = self._init_dataset()
         gt_dict = dict()
 
         for line in lines:
@@ -114,11 +135,7 @@ class Dataset():
             if split[1] == "ok":
                 gt_dict[split[0]] = " ".join(split[8::]).replace("|", " ")
 
-        dataset = dict()
-
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
-
             for line in paths[i]:
                 try:
                     split = line.split("-")
@@ -159,13 +176,13 @@ class Dataset():
             else:
                 paths['test'] = dt
 
-        dataset, paths = dict(), dict()
+        dataset = self._init_dataset()
+        paths = dict()
+
         generate("training_2011.xml", "training_2011", paths, validation=True)
         generate("eval_2011_annotated.xml", "eval_2011", paths, validation=False)
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
-
             for item in paths[i]:
                 boundbox = [item[2][0], item[2][1], item[2][2], item[2][3]]
                 dataset[i]['dt'].append((os.path.join(self.source, item[0]), boundbox))
@@ -191,11 +208,9 @@ class Dataset():
             gt_dict[split[0]] = split[1]
 
         img_path = os.path.join(self.source, "data", "line_images_normalized")
-        dataset = dict()
+        dataset = self._init_dataset()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
-
             for line in paths[i]:
                 glob_filter = os.path.join(img_path, f"{line}*")
                 img_list = [x for x in glob(glob_filter, recursive=True)]
@@ -231,11 +246,9 @@ class Dataset():
             gt_dict[split[0]] = split[1]
 
         img_path = os.path.join(self.source, "data", "line_images_normalized")
-        dataset = dict()
+        dataset = self._init_dataset()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
-
             for line in paths[i]:
                 dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
                 dataset[i]['gt'].append(gt_dict[line])
@@ -254,4 +267,4 @@ class Dataset():
 
         punc_percent = (len(strip_punc) - len(no_punc)) / len(strip_punc)
 
-        return len(no_punc) > 2 and punc_percent <= 0.1
+        return len(no_punc) > 2 and punc_percent <= 0.2
