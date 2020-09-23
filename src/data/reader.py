@@ -44,8 +44,7 @@ class Dataset():
             arange = range(len(self.dataset[y]['gt']))
 
             for i in reversed(arange):
-                # text = pp.text_standardize(self.dataset[y]['gt'][i])
-                text = " ".join(list("".join(self.dataset[y]['gt'][i].split())))
+                text = pp.text_standardize(self.dataset[y]['gt'][i])
 
                 if not self.check_text(text):
                     self.dataset[y]['gt'].pop(i)
