@@ -152,7 +152,6 @@ class Tokenizer():
 
         decoded = "".join([self.chars[int(x)] for x in text if x > -1])
         decoded = self.remove_tokens(decoded)
-        decoded = pp.text_standardize(decoded)
 
         return decoded
 
