@@ -134,8 +134,10 @@ def preprocess(img, input_size):
     f = max((w / wt), (h / ht))
     new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
 
-    img = illumination_compensation(img)
-    img = remove_cursive_style(img)
+    # ### Only if you need ###
+    # img = illumination_compensation(img)
+    # img = remove_cursive_style(img)
+
     img = cv2.resize(img, new_size)
 
     target = np.ones([ht, wt], dtype=np.uint8) * 255
