@@ -58,3 +58,23 @@ Bentham sample with default parameters in the **[tutorial](https://github.com/ar
 3. TE_P: Predicted text (network output)
 
 <img src="https://github.com/arthurflor23/handwritten-text-recognition/blob/master/doc/image/bentham_sample.png?raw=true">
+
+## Citation
+
+If this project helped in any way in your research work, feel free to cite the following paper:
+
+```
+@inproceedings{10.1145/3395027.3419603,
+    author      = {de Sousa Neto, Arthur Flor and Bezerra, Byron Leite Dantas and Toselli, Alejandro H\'{e}ctor and Lima, Estanislau Baptista},
+    title       = {HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models},
+    booktitle   = {Proceedings of the ACM Symposium on Document Engineering 2020},
+    year        = {2020},
+    publisher   = {Association for Computing Machinery},
+    address     = {New York, NY, USA},
+    location    = {Virtual Event, CA, USA},
+    series      = {DocEng '20},
+    isbn        = {9781450380003},
+    url         = {https://doi.org/10.1145/3395027.3419603},
+    doi         = {10.1145/3395027.3419603},
+}
+```
