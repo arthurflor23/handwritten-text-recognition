@@ -65,8 +65,8 @@ If this project helped in any way in your research work, feel free to cite the f
 
 ```
 @inproceedings{10.1145/3395027.3419603,
-    author      = {de Sousa Neto, Arthur Flor and Bezerra, Byron Leite Dantas and Toselli, Alejandro H\'{e}ctor and Lima, Estanislau Baptista},
-    title       = {HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models},
+    author      = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B.},
+    title       = {{HTR-Flor++:} A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models},
     booktitle   = {Proceedings of the ACM Symposium on Document Engineering 2020},
     year        = {2020},
     publisher   = {Association for Computing Machinery},
