@@ -256,14 +256,12 @@ class Dataset():
 
     @staticmethod
     def check_text(text):
-        """Make sure text has more characters instead of punctuation marks"""
+        """Checks if the text has more characters instead of punctuation marks"""
 
         strip_punc = text.strip(string.punctuation).strip()
         no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
 
-        if len(text) == 0 or len(strip_punc) == 0 or len(no_punc) == 0:
+        if len(text) <= 1 or len(strip_punc) <= 1 or len(no_punc) <= 1:
             return False
 
-        punc_percent = (len(strip_punc) - len(no_punc)) / len(strip_punc)
-
-        return len(no_punc) > 2 and punc_percent <= 0.2
+        return True
