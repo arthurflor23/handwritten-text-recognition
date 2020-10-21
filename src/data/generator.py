@@ -27,24 +27,18 @@ class DataGenerator():
         with h5py.File(source, "r") as f:
             for pt in self.partitions:
                 self.dataset[pt] = dict()
-
                 self.dataset[pt]['dt'] = np.array(f[pt]['dt'])
-                self.dataset[pt]['gt'] = np.array(f[pt]['gt'])
+                self.dataset[pt]['gt'] = np.array([x.decode() for x in f[pt]['gt']])
 
-                randomize = np.arange(len(self.dataset[pt]['gt']))
-                np.random.seed(42)
-                np.random.shuffle(randomize)
+                self.size[pt] = len(self.dataset[pt]['gt'])
+                self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
 
-                self.dataset[pt]['dt'] = self.dataset[pt]['dt'][randomize]
-                self.dataset[pt]['gt'] = self.dataset[pt]['gt'][randomize]
+            randomize = np.arange(len(self.dataset['train']['gt']))
+            np.random.seed(42)
+            np.random.shuffle(randomize)
 
-        for pt in self.partitions:
-            # decode sentences from byte
-            self.dataset[pt]['gt'] = [x.decode() for x in self.dataset[pt]['gt']]
-
-            # set size and setps
-            self.size[pt] = len(self.dataset[pt]['gt'])
-            self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
+            self.dataset['train']['dt'] = self.dataset['train']['dt'][randomize]
+            self.dataset['train']['gt'] = self.dataset['train']['gt'][randomize]
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
