@@ -61,7 +61,7 @@ Bentham sample with default parameters in the **[tutorial](https://github.com/ar
 
 ## Citation
 
-If this project helped in any way in your research work, feel free to cite the following paper:
+If this project helped in any way in your research work, feel free to cite the following papers:
 
 ```
 @inproceedings{10.1145/3395027.3419603,
@@ -76,5 +76,20 @@ If this project helped in any way in your research work, feel free to cite the f
     isbn        = {9781450380003},
     url         = {https://doi.org/10.1145/3395027.3419603},
     doi         = {10.1145/3395027.3419603},
+}
+```
+
+```
+@article{10.3390/app10217711,
+    author  = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H.},
+    title   = {Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems},
+    journal = {Applied Sciences},
+    pages   = {1-29},
+    month   = {10},
+    year    = {2020},
+    volume  = {10},
+    number  = {21},
+    url     = {https://doi.org/10.3390/app10217711},
+    doi     = {10.3390/app10217711},
 }
 ```
