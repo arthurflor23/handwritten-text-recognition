@@ -58,23 +58,9 @@ if __name__ == "__main__":
 
     if args.transform:
         print(f"{args.source} dataset will be transformed...")
-
         ds = Dataset(source=raw_path, name=args.source)
         ds.read_partitions()
-
-        print("Partitions will be preprocessed...")
-        ds.preprocess_partitions(input_size=input_size)
-
-        print("Partitions will be saved...")
-        os.makedirs(os.path.dirname(source_path), exist_ok=True)
-
-        for i in ds.partitions:
-            with h5py.File(source_path, "a") as hf:
-                hf.create_dataset(f"{i}/dt", data=ds.dataset[i]['dt'], compression="gzip", compression_opts=9)
-                hf.create_dataset(f"{i}/gt", data=ds.dataset[i]['gt'], compression="gzip", compression_opts=9)
-                print(f"[OK] {i} partition.")
-
-        print(f"Transformation finished.")
+        ds.save_partitions(source_path, input_size, max_text_length)
 
     elif args.cv2:
         with h5py.File(source_path, "r") as hf:
