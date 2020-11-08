@@ -1,9 +1,11 @@
 """Handwritten Text Recognition Neural Network"""
 
 import os
+import logging
 
 try:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
+    logging.disable(logging.WARNING)
 except AttributeError:
     pass
 

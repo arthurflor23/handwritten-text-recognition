@@ -17,28 +17,15 @@ class DataGenerator():
     def __init__(self, source, batch_size, charset, max_text_length, predict=False):
         self.tokenizer = Tokenizer(charset, max_text_length)
         self.batch_size = batch_size
-        self.partitions = ['test'] if predict else ['train', 'valid', 'test']
 
         self.size = dict()
         self.steps = dict()
         self.index = dict()
-        self.dataset = dict()
+        self.dataset = h5py.File(source, "r")
 
-        with h5py.File(source, "r") as f:
-            for pt in self.partitions:
-                self.dataset[pt] = dict()
-                self.dataset[pt]['dt'] = np.array(f[pt]['dt'])
-                self.dataset[pt]['gt'] = np.array([x.decode() for x in f[pt]['gt']])
-
-                self.size[pt] = len(self.dataset[pt]['gt'])
-                self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
-
-            randomize = np.arange(len(self.dataset['train']['gt']))
-            np.random.seed(42)
-            np.random.shuffle(randomize)
-
-            self.dataset['train']['dt'] = self.dataset['train']['dt'][randomize]
-            self.dataset['train']['gt'] = self.dataset['train']['gt'][randomize]
+        for pt in ['train', 'valid', 'test']:
+            self.size[pt] = self.dataset[pt]['gt'][:].shape[0]
+            self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
@@ -126,6 +113,9 @@ class Tokenizer():
 
     def encode(self, text):
         """Encode text to vector"""
+
+        if isinstance(text, bytes):
+            text = text.decode()
 
         text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
         text = " ".join(text.split())

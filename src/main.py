@@ -187,15 +187,16 @@ if __name__ == "__main__":
                                         verbose=1)
 
             predicts = [dtgen.tokenizer.decode(x[0]) for x in predicts]
+            ground_truth = [x.decode() for x in dtgen.dataset['test']['gt']]
 
             total_time = datetime.datetime.now() - start_time
 
             with open(os.path.join(output_path, "predict.txt"), "w") as lg:
-                for pd, gt in zip(predicts, dtgen.dataset['test']['gt']):
+                for pd, gt in zip(predicts, ground_truth):
                     lg.write(f"TE_L {gt}\nTE_P {pd}\n")
 
             evaluate = evaluation.ocr_metrics(predicts=predicts,
-                                              ground_truth=dtgen.dataset['test']['gt'],
+                                              ground_truth=ground_truth,
                                               norm_accentuation=args.norm_accentuation,
                                               norm_punctuation=args.norm_punctuation)
 
