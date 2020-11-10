@@ -3,11 +3,7 @@ Data preproc functions:
     adjust_to_see: adjust image to better visualize (rotate and transpose)
     augmentation: apply variations to a list of images
     normalization: apply normalization and variations on images (if required)
-    preprocess: main function for preprocess.
-        Make the image:
-            illumination_compensation: apply illumination regularitation
-            remove_cursive_style: remove cursive style from image (if necessary)
-            sauvola: apply sauvola binarization
+    preprocess: main function for preprocess
     text_standardize: preprocess and standardize sentence
 """
 
