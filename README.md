@@ -61,7 +61,11 @@ Bentham sample with default parameters in the **[tutorial](https://github.com/ar
 
 ## Citation
 
-If this project helped in any way in your research work, feel free to cite the following papers:
+If this project helped in any way in your research work, feel free to cite the following papers.
+
+### HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models ([here](https://doi.org/10.1145/3395027.3419603))
+
+This work aimed to propose a different pipeline for Handwritten Text Recognition (HTR) systems in post-processing, using two steps to correct the output text. The first step aimed to correct the text at the character level (using N-gram model). The second step had the objective of correcting the text at the word level (using a word frequency dictionary). The experiment was validated in the IAM dataset and compared to the best works proposed within this data scenario.
 
 ```
 @inproceedings{10.1145/3395027.3419603,
@@ -79,6 +83,10 @@ If this project helped in any way in your research work, feel free to cite the f
 }
 ```
 
+### Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems ([here](https://doi.org/10.3390/app10217711))
+
+This work aimed a deep study within the research field of Natural Language Processing (NLP), and to bring its approaches to the research field of Handwritten Text Recognition (HTR). Thus, for the experiment and validation, we used 5 datasets (Bentham, IAM, RIMES, Saint Gall and Washington), 3 optical models (Bluche, Puigcerver, Flor), and 8 techniques for text correction in post-processing, including approaches statistics and neural networks, such as encoder-decoder models (seq2seq and Transformers).
+
 ```
 @article{10.3390/app10217711,
     author  = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H.},
@@ -91,5 +99,23 @@ If this project helped in any way in your research work, feel free to cite the f
     number  = {21},
     url     = {https://doi.org/10.3390/app10217711},
     doi     = {10.3390/app10217711},
+}
+```
+
+### HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios ([here](https://doi.org/10.1109/ACCESS.2020.3039003))
+
+This work aimed to propose the optical model for Handwritten Digit String Recognition (HDSR) and compare it with the state-of-the-art models. The International Conference on Frontiers of Handwriting Recognition (ICFHR) 2014 competition on HDSR were used as baselines toevaluate the effectiveness of our proposal, whose metrics, datasets and recognition methods were adopted for fair comparison. Furthermore, we also use a private dataset (Brazilian Bank Check - Courtesy Amount Recognition), and 11 different approaches from the state-of-the-art in HDSR, as well as 2 optical models from the state-of-the-art in Handwritten Text Recognition (HTR).
+
+```
+@article{10.1109/ACCESS.2020.3039003,
+    author  = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H.},
+    title   = {{HDSR-Flor:} A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios},
+    journal = {IEEE Access},
+    pages   = {1-11},
+    month   = {11},
+    year    = {2020},
+    isbn    = {2169-3536},
+    url     = {https://doi.org/10.1109/ACCESS.2020.3039003},
+    doi     = {10.1109/ACCESS.2020.3039003},
 }
 ```
