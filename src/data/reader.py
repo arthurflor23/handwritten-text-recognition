@@ -44,7 +44,7 @@ class Dataset():
 
         with h5py.File(target, "w") as hf:
             for pt in self.partitions:
-                self.dataset[pt] = self.check_text(self.dataset[pt])
+                self.dataset[pt] = self.check_text(self.dataset[pt], max_text_length)
                 size = (len(self.dataset[pt]['dt']),) + image_input_size[:2]
                 total += size[0]
 
@@ -91,6 +91,81 @@ class Dataset():
         li = list(zip(*ls))
         random.shuffle(li)
         return zip(*li)
+
+    def _hdsr14_car_a(self):
+        """ICFHR 2014 Competition on Handwritten Digit String Recognition in Challenging Datasets dataset reader"""
+
+        dataset = self._init_dataset()
+        partition = self._read_orand_partitions(os.path.join(self.source, "ORAND-CAR-2014"), 'a')
+
+        for pt in self.partitions:
+            for item in partition[pt]:
+                text = " ".join(list(item[1]))
+                dataset[pt]['dt'].append(item[0])
+                dataset[pt]['gt'].append(text)
+
+        return dataset
+
+    def _hdsr14_car_b(self):
+        """ICFHR 2014 Competition on Handwritten Digit String Recognition in Challenging Datasets dataset reader"""
+
+        dataset = self._init_dataset()
+        partition = self._read_orand_partitions(os.path.join(self.source, "ORAND-CAR-2014"), 'b')
+
+        for pt in self.partitions:
+            for item in partition[pt]:
+                text = " ".join(list(item[1]))
+                dataset[pt]['dt'].append(item[0])
+                dataset[pt]['gt'].append(text)
+
+        return dataset
+
+    def _read_orand_partitions(self, basedir, type_f):
+        """ICFHR 2014 Competition on Handwritten Digit String Recognition in Challenging Datasets dataset reader"""
+
+        partition = {"train": [], "valid": [], "test": []}
+        folder = f"CAR-{type_f.upper()}"
+
+        for i in ['train', 'test']:
+            img_path = os.path.join(basedir, folder, f"{type_f.lower()}_{i}_images")
+            txt_file = os.path.join(basedir, folder, f"{type_f.lower()}_{i}_gt.txt")
+
+            with open(txt_file) as f:
+                lines = [line.replace("\n", "").split("\t") for line in f]
+                lines = [[os.path.join(img_path, x[0]), x[1]] for x in lines]
+
+            partition[i] = lines
+
+        sub_partition = int(len(partition['train']) * 0.1)
+        partition['valid'] = partition['train'][:sub_partition]
+        partition['train'] = partition['train'][sub_partition:]
+
+        return partition
+
+    def _hdsr14_cvl(self):
+        """ICFHR 2014 Competition on Handwritten Digit String Recognition in Challenging Datasets dataset reader"""
+
+        dataset = self._init_dataset()
+        partition = {"train": [], "valid": [], "test": []}
+
+        glob_filter = os.path.join(self.source, "cvl-strings", "**", "*.png")
+        train_list = [x for x in glob(glob_filter, recursive=True)]
+
+        glob_filter = os.path.join(self.source, "cvl-strings-eval", "**", "*.png")
+        test_list = [x for x in glob(glob_filter, recursive=True)]
+
+        sub_partition = int(len(train_list) * 0.1)
+        partition['valid'].extend(train_list[:sub_partition])
+        partition['train'].extend(train_list[sub_partition:])
+        partition['test'].extend(test_list[:])
+
+        for pt in self.partitions:
+            for item in partition[pt]:
+                text = " ".join(list(os.path.basename(item).split("-")[0]))
+                dataset[pt]['dt'].append(item)
+                dataset[pt]['gt'].append(text)
+
+        return dataset
 
     def _bentham(self):
         """Bentham dataset reader"""
@@ -263,7 +338,7 @@ class Dataset():
         return dataset
 
     @staticmethod
-    def check_text(data):
+    def check_text(data, max_text_length=128):
         """Checks if the text has more characters instead of punctuation marks"""
 
         for i in reversed(range(len(data['gt']))):
@@ -271,7 +346,10 @@ class Dataset():
             strip_punc = text.strip(string.punctuation).strip()
             no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
 
-            if len(text) <= 1 or len(strip_punc) <= 1 or len(no_punc) <= 1:
+            length_valid = (len(text) > 1) and (len(text) < max_text_length)
+            text_valid = (len(strip_punc) > 1) or (len(no_punc) > 1)
+
+            if (not length_valid) or (not text_valid):
                 data['gt'].pop(i)
                 data['dt'].pop(i)
                 continue
