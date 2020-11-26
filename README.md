@@ -119,3 +119,24 @@ This work aimed to propose the optical model for Handwritten Digit String Recogn
     doi     = {10.1109/ACCESS.2020.3039003},
 }
 ```
+
+### HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition ([here](https://doi.org/10.1109/SIBGRAPI51738.2020.00016))
+
+This work aimed to propose the optical model for Handwritten Text Recognition (HTR) and compare it with the state-of-the-art models. The performance comparison was validated in 5 different datasets (Bentham, IAM, RIMES, Saint Gall and Washington). In addition, it was considered one of the best papers in the 33rd SIBGRAPI (2020).
+
+```
+@inproceedings{10.1109/SIBGRAPI51738.2020.00016,
+    author      = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B.},
+    title       = {{HTR-Flor:} A Deep Learning System for Offline Handwritten Text Recognition},
+    booktitle   = {2020 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI)},
+    pages       = {54-61},
+    month       = {11},
+    year        = {2020},
+    location    = {Recife/Porto de Galinhas, PE, Brazil},
+    series      = {SIBGRAPI' 33},
+    publisher   = {IEEE Computer Society},
+    address     = {Los Alamitos, CA, USA},
+    url         = {https://doi.org/10.1109/SIBGRAPI51738.2020.00016},
+    doi         = {10.1109/SIBGRAPI51738.2020.00016},
+}
+```
