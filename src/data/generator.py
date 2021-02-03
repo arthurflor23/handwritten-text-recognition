@@ -14,18 +14,31 @@ import unicodedata
 class DataGenerator():
     """Generator class with data streaming"""
 
-    def __init__(self, source, batch_size, charset, max_text_length, predict=False):
+    def __init__(self, source, batch_size, charset, max_text_length, predict=False, stream=False):
         self.tokenizer = Tokenizer(charset, max_text_length)
         self.batch_size = batch_size
 
         self.size = dict()
         self.steps = dict()
         self.index = dict()
-        self.dataset = h5py.File(source, "r")
 
-        for pt in ['train', 'valid', 'test']:
-            self.size[pt] = self.dataset[pt]['gt'][:].shape[0]
-            self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
+        if stream:
+            self.dataset = h5py.File(source, "r")
+
+            for pt in ['train', 'valid', 'test']:
+                self.size[pt] = self.dataset[pt]['gt'][:].shape[0]
+                self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
+        else:
+            self.dataset = dict()
+
+            with h5py.File(source, "r") as f:
+                for pt in ['train', 'valid', 'test']:
+                    self.dataset[pt] = dict()
+                    self.dataset[pt]['dt'] = np.array(f[pt]['dt'])
+                    self.dataset[pt]['gt'] = np.array(f[pt]['gt'])
+
+                    self.size[pt] = len(self.dataset[pt]['gt'])
+                    self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
 
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
