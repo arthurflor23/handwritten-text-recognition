@@ -350,8 +350,8 @@ class Dataset():
             text_valid = (len(strip_punc) > 1) or (len(no_punc) > 1)
 
             if (not length_valid) or (not text_valid):
-                data['gt'].pop(i)
-                data['dt'].pop(i)
+                list(data['gt']).pop(i)
+                list(data['dt']).pop(i)
                 continue
 
         return data
