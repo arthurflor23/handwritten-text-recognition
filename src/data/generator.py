@@ -40,6 +40,10 @@ class DataGenerator():
                     self.size[pt] = len(self.dataset[pt]['gt'])
                     self.steps[pt] = int(np.ceil(self.size[pt] / self.batch_size))
 
+        self.stream = stream
+        self.arange = np.arange(len(self.dataset['train']['gt']))
+        np.random.seed(42)
+
     def next_train_batch(self):
         """Get the next batch from train partition (yield)"""
 
@@ -48,6 +52,11 @@ class DataGenerator():
         while True:
             if self.index['train'] >= self.size['train']:
                 self.index['train'] = 0
+
+                if not self.stream:
+                    np.random.shuffle(self.arange)
+                    self.dataset['train']['dt'] = self.dataset['train']['dt'][self.arange]
+                    self.dataset['train']['gt'] = self.dataset['train']['gt'][self.arange]
 
             index = self.index['train']
             until = index + self.batch_size
