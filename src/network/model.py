@@ -51,7 +51,8 @@ class HTRModel:
                  beam_width=10,
                  top_paths=1,
                  stop_tolerance=20,
-                 reduce_tolerance=15):
+                 reduce_tolerance=15,
+                 cooldown=0):
         """
         Initialization of a HTR Model.
 
@@ -72,6 +73,7 @@ class HTRModel:
 
         self.stop_tolerance = stop_tolerance
         self.reduce_tolerance = reduce_tolerance
+        self.cooldown = cooldown
 
     def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
@@ -126,6 +128,7 @@ class HTRModel:
                 min_delta=1e-8,
                 factor=0.2,
                 patience=self.reduce_tolerance,
+                cooldown=self.cooldown,
                 verbose=verbose)
         ]
 
