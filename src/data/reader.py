@@ -201,7 +201,8 @@ class Dataset():
 
         pt_path = os.path.join(self.source, "largeWriterIndependentTextLineRecognitionTask")
         paths = {"train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines(),
+                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines() + 
+                            open(os.path.join(pt_path, "validationset2.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
@@ -214,8 +215,7 @@ class Dataset():
 
             split = line.split()
 
-            if split[1] == "ok":
-                gt_dict[split[0]] = " ".join(split[8::]).replace("|", " ")
+            gt_dict[split[0]] = " ".join(split[8::]).replace("|", " ")
 
         for i in self.partitions:
             for line in paths[i]:
