@@ -62,14 +62,16 @@ class Dataset():
                 images = []
 
                 with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-                    r = pool.map(partial(pp.preprocess, input_size=image_input_size), self.dataset[pt]['dt'][batch:batch + batch_size])
+                    r = pool.map(partial(pp.preprocess, input_size=image_input_size),
+                                 self.dataset[pt]['dt'][batch:batch + batch_size])
                     images.append(r)
                     pool.close()
                     pool.join()
 
                 with h5py.File(target, "a") as hf:
                     hf[f"{pt}/dt"][batch:batch + batch_size] = images
-                    hf[f"{pt}/gt"][batch:batch + batch_size] = [s.encode() for s in self.dataset[pt]['gt'][batch:batch + batch_size]]
+                    hf[f"{pt}/gt"][batch:batch + batch_size] = [s.encode() for s in self.dataset[pt]
+                                                                ['gt'][batch:batch + batch_size]]
                     pbar.update(batch_size)
 
     def _init_dataset(self):
@@ -201,8 +203,8 @@ class Dataset():
 
         pt_path = os.path.join(self.source, "largeWriterIndependentTextLineRecognitionTask")
         paths = {"train": open(os.path.join(pt_path, "trainset.txt")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines() + 
-                            open(os.path.join(pt_path, "validationset2.txt")).read().splitlines(),
+                 "valid": open(os.path.join(pt_path, "validationset1.txt")).read().splitlines() +
+                 open(os.path.join(pt_path, "validationset2.txt")).read().splitlines(),
                  "test": open(os.path.join(pt_path, "testset.txt")).read().splitlines()}
 
         lines = open(os.path.join(self.source, "ascii", "lines.txt")).read().splitlines()
@@ -214,7 +216,6 @@ class Dataset():
                 continue
 
             split = line.split()
-
             gt_dict[split[0]] = " ".join(split[8::]).replace("|", " ")
 
         for i in self.partitions:
@@ -341,17 +342,19 @@ class Dataset():
     def check_text(data, max_text_length=128):
         """Checks if the text has more characters instead of punctuation marks"""
 
-        for i in reversed(range(len(data['gt']))):
-            text = pp.text_standardize(data['gt'][i])
+        dt = {'gt': list(data['gt']), 'dt': list(data['dt'])}
+
+        for i in reversed(range(len(dt['gt']))):
+            text = pp.text_standardize(dt['gt'][i])
             strip_punc = text.strip(string.punctuation).strip()
             no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
 
             length_valid = (len(text) > 1) and (len(text) < max_text_length)
-            text_valid = (len(strip_punc) > 1) or (len(no_punc) > 1)
+            text_valid = (len(strip_punc) > 1) and (len(no_punc) > 1)
 
             if (not length_valid) or (not text_valid):
-                list(data['gt']).pop(i)
-                list(data['dt']).pop(i)
+                dt['gt'].pop(i)
+                dt['dt'].pop(i)
                 continue
 
-        return data
+        return dt
