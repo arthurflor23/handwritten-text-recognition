@@ -177,12 +177,12 @@ def generate_kaldi_assets(output_path, dtgen, predicts):
     # get data and ground truth lists
     ctc_TK, space_TK, ground_truth = "<ctc>", "<space>", []
 
-    for pt in dtgen.partitions + ['test']:
+    for pt in ['train', 'valid', 'test']:
         for x in dtgen.dataset[pt]['gt']:
             ground_truth.append([space_TK if y == " " else y for y in list(f" {x} ")])
 
     # define dataset size and default tokens
-    train_size = dtgen.size['train'] + dtgen.size['valid'] + dtgen.size['test']
+    ds_size = dtgen.size['train'] + dtgen.size['valid'] + dtgen.size['test']
 
     # get chars list and save with the ctc and space tokens
     chars = list(dtgen.tokenizer.chars) + [ctc_TK]
@@ -200,7 +200,7 @@ def generate_kaldi_assets(output_path, dtgen, predicts):
     # save ark and scp file (laia output/kaldi input format)
     with WriteHelper(f"ark,scp:{ark_file_name},{scp_file_name}") as writer:
         for i, item in enumerate(predicts):
-            writer(str(i + train_size), item)
+            writer(str(i + ds_size), item)
 
     # save ground_truth.lst file with sparse sentences
     with open(os.path.join(kaldi_path, "ground_truth.lst"), "w") as lg:
@@ -209,9 +209,9 @@ def generate_kaldi_assets(output_path, dtgen, predicts):
 
     # save indexes of the train/valid and test partitions
     with open(os.path.join(kaldi_path, "ID_train.lst"), "w") as lg:
-        range_index = [str(i) for i in range(0, train_size)]
+        range_index = [str(i) for i in range(0, ds_size - dtgen.size['test'])]
         lg.write("\n".join(range_index))
 
     with open(os.path.join(kaldi_path, "ID_test.lst"), "w") as lg:
-        range_index = [str(i) for i in range(train_size, train_size + dtgen.size['test'])]
+        range_index = [str(i) for i in range(ds_size - dtgen.size['test'], ds_size)]
         lg.write("\n".join(range_index))
