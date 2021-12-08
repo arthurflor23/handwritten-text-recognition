@@ -24,7 +24,9 @@ import datetime
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
 from data.reader import Dataset
+
 from network.model import HTRModel
+from language.model import LanguageModel
 
 
 if __name__ == "__main__":
@@ -35,10 +37,13 @@ if __name__ == "__main__":
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--cv2", action="store_true", default=False)
     parser.add_argument("--image", type=str, default="")
-    parser.add_argument("--kaldi_assets", action="store_true", default=False)
 
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
+
+    parser.add_argument("--kaldi_assets", action="store_true", default=False)
+    parser.add_argument("--lm", action="store_true", default=False)
+    parser.add_argument("--N", type=int, default=2)
 
     parser.add_argument("--norm_accentuation", action="store_true", default=False)
     parser.add_argument("--norm_punctuation", action="store_true", default=False)
@@ -133,7 +138,51 @@ if __name__ == "__main__":
 
         if args.kaldi_assets:
             predicts, _ = model.predict(x=dtgen.next_test_batch(), steps=dtgen.steps['test'], ctc_decode=False)
-            pp.generate_kaldi_assets(output_path, dtgen, predicts)
+
+            lm = LanguageModel(output_path, args.N)
+            lm.generate_kaldi_assets(dtgen, predicts)
+
+        elif args.lm:
+            lm = LanguageModel(output_path, args.N)
+            ground_truth = [x.decode() for x in dtgen.dataset['test']['gt']]
+
+            start_time = datetime.datetime.now()
+
+            predicts, _ = model.predict(x=dtgen.next_test_batch(), steps=dtgen.steps['test'], ctc_decode=False)
+            lm.generate_kaldi_assets(dtgen, predicts)
+
+            lm.kaldi(predict=False)
+            predicts = lm.kaldi(predict=True)
+            predicts = [pp.text_standardize(x) for x in predicts]
+
+            total_time = datetime.datetime.now() - start_time
+
+            with open(os.path.join(output_path, "predict_kaldi.txt"), "w") as lg:
+                for pd, gt in zip(predicts, ground_truth):
+                    lg.write(f"TE_L {gt}\nTE_P {pd}\n")
+
+            evaluate = evaluation.ocr_metrics(predicts=predicts,
+                                              ground_truth=ground_truth,
+                                              norm_accentuation=args.norm_accentuation,
+                                              norm_punctuation=args.norm_punctuation)
+
+            e_corpus = "\n".join([
+                f"Total test images:    {dtgen.size['test']}",
+                f"Total time:           {total_time}",
+                f"Time per item:        {total_time / dtgen.size['test']}\n",
+                f"Metrics:",
+                f"Character Error Rate: {evaluate[0]:.8f}",
+                f"Word Error Rate:      {evaluate[1]:.8f}",
+                f"Sequence Error Rate:  {evaluate[2]:.8f}"
+            ])
+
+            sufix = ("_norm" if args.norm_accentuation or args.norm_punctuation else "") + \
+                    ("_accentuation" if args.norm_accentuation else "") + \
+                    ("_punctuation" if args.norm_punctuation else "")
+
+            with open(os.path.join(output_path, f"evaluate_kaldi{sufix}.txt"), "w") as lg:
+                lg.write(e_corpus)
+                print(e_corpus)
 
         elif args.train:
             model.summary(output_path, "summary.txt")
