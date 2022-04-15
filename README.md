@@ -141,3 +141,23 @@ This work aimed to propose the optical model for Handwritten Text Recognition (H
     doi         = {10.1109/SIBGRAPI51738.2020.00016},
 }
 ```
+
+### A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios ([here](https://doi.org/10.1016/j.patrec.2022.04.009))
+
+In this paper, we present the Gated-CNN-BGRU optical model dealing with different data constraint scenarios, putting the model's robustness to the test.
+
+```
+@article{10.1016/j.patrec.2022.04.009,
+    author  = {Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B.},
+    title   = {A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios},
+    journal = {Pattern Recognition Letters},
+    pages   = {1-7},
+    month   = {4},
+    year    = {2022},
+    volume  = {1},
+    isbn    = {0167-8655},
+    url     = {https://doi.org/10.1016/j.patrec.2022.04.009},
+    doi     = {10.1016/j.patrec.2022.04.009},
+}
+```
+
