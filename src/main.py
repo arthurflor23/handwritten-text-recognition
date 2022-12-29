@@ -1,19 +1,3 @@
-"""
-Provides options via the command line to perform project tasks.
-* `--source`: dataset/model name (bentham, iam, rimes, saintgall, washington)
-* `--arch`: network to be used (puigcerver, bluche, flor)
-* `--transform`: transform dataset to the HDF5 file
-* `--cv2`: visualize sample from transformed dataset
-* `--kaldi_assets`: save all assets for use with kaldi
-* `--image`: predict a single image with the source parameter
-* `--train`: train model with the source argument
-* `--test`: evaluate and predict model with the source argument
-* `--norm_accentuation`: discard accentuation marks in the evaluation
-* `--norm_punctuation`: discard punctuation marks in the evaluation
-* `--epochs`: number of epochs
-* `--batch_size`: number of batches
-"""
-
 import argparse
 import cv2
 import os
