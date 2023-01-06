@@ -2,6 +2,9 @@ import argparse
 import time
 import os
 import string
+import tarfile
+
+from zipfile import Zipfile
 
 from data import preproc as pp
 from data.generator import Tokenizer
@@ -29,7 +32,25 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
-    if args.source and not args.archive:
+    if args.source:
+
+        if args.archive:
+            # Slurm allocates storage space for a job that isn't subject to the same file size and count restrictions
+            # as the rest of the storage, so we will unpack the archive onto the tmp folder created.
+            archive_path = args.source
+            archive_file_type = archive_path.split(".", 1)[1]
+            folder_path = "tmp"
+            if archive_file_type == "zip":
+                Zipfile(archive_path).extractall(folder_path)
+
+            elif archive_file_type == "tar" or archive_file_type == "tar.gz":
+                tarfile.open(archive_path).extractall(folder_path)
+
+            else:
+                print("Invalid File type, accepted file types are zip, tar, and tar.gz")
+
+        else:
+            folder_path = args.source
 
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
         model = HTRModel(architecture=args.arch,
@@ -40,61 +61,17 @@ if __name__ == "__main__":
         model.compile()
         model.load_checkpoint(target=weights_path)
 
-        images = [x for x in os.listdir(args.source) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
+        images = [os.path.join(folder_path, x) for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
         for image_name in images:
-            img = pp.preprocess(os.path.join(args.source, image_name), input_size=input_size)
+            img = pp.preprocess(image_name, input_size=input_size)
             x_test = pp.normalization([img])
 
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-        # batches = pp.divide_chunks(images, 8)
-        # for batch in batches:
-        #     pp_images = [pp.preprocess(os.path.join(args.source, x), input_size=input_size) for x in batch]
-        #     x_test = pp.normalization(pp_images)
-        #
-        #     predicts, probabilities = model.predict(x_test, ctc_decode=True)
-        #     predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
-
-            # for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
-            #
-            #     for (pd, pb) in zip(pred, prob):
-            #         print(f"{pb:.4f} - {pd}")
 
         finish_time = time.time()
         total_time = finish_time - start_time
         print("Images Processed: ", len(images))
         print("Total Time elapsed: ", total_time / 60, " minutes")
         print("Time per image: ", total_time / len(images), "seconds")
-
-    else:
-        # tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
-
-        # img = pp.preprocess(args.image, input_size=input_size)
-        # x_test = pp.normalization([img])
-
-        # model = HTRModel(architecture=args.arch,
-        #                     input_size=input_size,
-        #                     vocab_size=tokenizer.vocab_size,
-        #                     beam_width=10,
-        #                     top_paths=10)
-
-        # model.compile(learning_rate=0.001)
-        # model.load_checkpoint(target=target_path)
-
-        # predicts, probabilities = model.predict(x_test, ctc_decode=True)
-        # predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
-
-        # print("\n####################################")
-        # for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
-        #     print("\nProb.  - Predict")
-
-        #     for (pd, pb) in zip(pred, prob):
-        #         print(f"{pb:.4f} - {pd}")
-
-        #     cv2.imshow(f"Image {i + 1}", cv2.imread(args.image))
-        # print("\n####################################")
-        # cv2.waitKey(0)
-        pass
-
-
