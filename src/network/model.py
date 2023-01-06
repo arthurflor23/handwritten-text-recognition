@@ -263,7 +263,7 @@ class HTRModel:
             if verbose == 1:
                 progbar.update(steps_done)
 
-        return (predicts, probabilities)
+        return predicts, probabilities
 
     @staticmethod
     def ctc_loss_lambda_func(y_true, y_pred):

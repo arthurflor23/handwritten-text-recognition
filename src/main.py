@@ -117,6 +117,7 @@ if __name__ == "__main__":
         cv2.waitKey(0)
 
     else:
+        print(os.listdir())
         assert os.path.isfile(source_path) or os.path.isfile(target_path)
         os.makedirs(output_path, exist_ok=True)
 
@@ -189,6 +190,7 @@ if __name__ == "__main__":
             callbacks = model.get_callbacks(logdir=output_path, checkpoint=target_path, verbose=1)
 
             start_time = datetime.datetime.now()
+            model = model
 
             h = model.fit(x=dtgen.next_train_batch(),
                           epochs=args.epochs,
