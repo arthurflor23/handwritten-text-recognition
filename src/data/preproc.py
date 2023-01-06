@@ -14,6 +14,12 @@ import string
 import numpy as np
 
 
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
 def adjust_to_see(img):
     """Rotate and transpose to image visualize (cv2 method or jupyter notebook)"""
 
