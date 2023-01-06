@@ -1,4 +1,4 @@
-name: inference
+name: FlorHTR
 channels:
   - pytorch
   - conda-forge
@@ -8,7 +8,7 @@ dependencies:
   - editdistance=0.6.0
   - kaldiio=2.17.2
   - opencv
-  - tensorflow-cpu
+  - tensorflow
   - tqdm=4.64.0
   - pip
   - fastparquet
