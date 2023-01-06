@@ -257,7 +257,9 @@ class HTRModel:
 
             probabilities.extend([np.exp(x) for x in log])
             decode = [[[int(p) for p in x if p != -1] for x in y] for y in decode]
+
             predicts.extend(np.swapaxes(decode, 0, 1))
+
 
             steps_done += 1
             if verbose == 1:

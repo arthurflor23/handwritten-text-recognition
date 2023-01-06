@@ -8,11 +8,16 @@ Data preproc functions:
 """
 
 import re
-import os
 import cv2
 import html
 import string
 import numpy as np
+
+
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 
 def adjust_to_see(img):
@@ -146,19 +151,6 @@ def preprocess(img, input_size):
 
     if isinstance(img, str):
         img, bg = imread(img)
-
-    if isinstance(img, tuple):
-        image, boundbox = img
-        img, bg = imread(image)
-
-        for i in range(len(boundbox)):
-            if isinstance(boundbox[i], float):
-                total = len(img) if i < 2 else len(img[0])
-                boundbox[i] = int(total * boundbox[i])
-            else:
-                boundbox[i] = int(boundbox[i])
-
-        img = np.asarray(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
 
     wt, ht, _ = input_size
     h, w = np.asarray(img).shape

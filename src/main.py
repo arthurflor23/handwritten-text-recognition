@@ -1,270 +1,100 @@
-"""
-Provides options via the command line to perform project tasks.
-* `--source`: dataset/model name (bentham, iam, rimes, saintgall, washington)
-* `--arch`: network to be used (puigcerver, bluche, flor)
-* `--transform`: transform dataset to the HDF5 file
-* `--cv2`: visualize sample from transformed dataset
-* `--kaldi_assets`: save all assets for use with kaldi
-* `--image`: predict a single image with the source parameter
-* `--train`: train model with the source argument
-* `--test`: evaluate and predict model with the source argument
-* `--norm_accentuation`: discard accentuation marks in the evaluation
-* `--norm_punctuation`: discard punctuation marks in the evaluation
-* `--epochs`: number of epochs
-* `--batch_size`: number of batches
-"""
-
 import argparse
-import cv2
-import h5py
+import time
 import os
 import string
-import datetime
 
-from data import preproc as pp, evaluation
-from data.generator import DataGenerator, Tokenizer
-from data.reader import Dataset
+from data import preproc as pp
+from data.generator import Tokenizer
 
 from network.model import HTRModel
-from language.model import LanguageModel
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=str, required=True)
+    parser.add_argument("--weights", type=str, required=True)
     parser.add_argument("--arch", type=str, default="flor")
 
-    parser.add_argument("--transform", action="store_true", default=False)
-    parser.add_argument("--cv2", action="store_true", default=False)
-    parser.add_argument("--image", type=str, default="")
+    parser.add_argument("--archive", type=bool, default=False)
+    parser.add_argument("--csv", type=str, default="")
+    parser.add_argument("--parquet", type=str, default="")
 
-    parser.add_argument("--train", action="store_true", default=False)
-    parser.add_argument("--test", action="store_true", default=False)
-
-    parser.add_argument("--kaldi_assets", action="store_true", default=False)
-    parser.add_argument("--lm", action="store_true", default=False)
-    parser.add_argument("--N", type=int, default=2)
-
-    parser.add_argument("--norm_accentuation", action="store_true", default=False)
-    parser.add_argument("--norm_punctuation", action="store_true", default=False)
-
-    parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
-    raw_path = os.path.join("..", "raw", args.source)
-    source_path = os.path.join("..", "data", f"{args.source}.hdf5")
-    output_path = os.path.join("..", "output", args.source, args.arch)
-    target_path = os.path.join(output_path, "checkpoint_weights.hdf5")
+    source_path = args.source
+    weights_path = args.weights
 
     input_size = (1024, 128, 1)
-    max_text_length = 128
+    max_text_length = 50
     charset_base = string.printable[:95]
 
-    if args.transform:
-        print(f"{args.source} dataset will be transformed...")
-        ds = Dataset(source=raw_path, name=args.source)
-        ds.read_partitions()
-        ds.save_partitions(source_path, input_size, max_text_length)
+    start_time = time.time()
 
-    elif args.cv2:
-        with h5py.File(source_path, "r") as hf:
-            dt = hf['test']['dt'][:256]
-            gt = hf['test']['gt'][:256]
+    if args.source and not args.archive:
 
-        predict_file = os.path.join(output_path, "predict.txt")
-        predicts = [''] * len(dt)
-
-        if os.path.isfile(predict_file):
-            with open(predict_file, "r") as lg:
-                predicts = [line[5:] for line in lg if line.startswith("TE_P")]
-
-        for x in range(len(dt)):
-            print(f"Image shape:\t{dt[x].shape}")
-            print(f"Ground truth:\t{gt[x].decode()}")
-            print(f"Predict:\t{predicts[x]}\n")
-
-            cv2.imshow("img", pp.adjust_to_see(dt[x]))
-            cv2.waitKey(0)
-
-    elif args.image:
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
-
-        img = pp.preprocess(args.image, input_size=input_size)
-        x_test = pp.normalization([img])
-
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
                          vocab_size=tokenizer.vocab_size,
-                         beam_width=10,
-                         top_paths=10)
+                         beam_width=10)
 
-        model.compile(learning_rate=0.001)
-        model.load_checkpoint(target=target_path)
+        model.compile()
+        model.load_checkpoint(target=weights_path)
 
-        predicts, probabilities = model.predict(x_test, ctc_decode=True)
-        predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
+        images = [x for x in os.listdir(args.source) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
+        for image_name in images:
+            img = pp.preprocess(os.path.join(args.source, image_name), input_size=input_size)
+            x_test = pp.normalization([img])
 
-        print("\n####################################")
-        for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
-            print("\nProb.  - Predict")
+            predicts, probabilities = model.predict(x_test, ctc_decode=True)
+            predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-            for (pd, pb) in zip(pred, prob):
-                print(f"{pb:.4f} - {pd}")
+        # batches = pp.divide_chunks(images, 8)
+        # for batch in batches:
+        #     pp_images = [pp.preprocess(os.path.join(args.source, x), input_size=input_size) for x in batch]
+        #     x_test = pp.normalization(pp_images)
+        #
+        #     predicts, probabilities = model.predict(x_test, ctc_decode=True)
+        #     predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-            cv2.imshow(f"Image {i + 1}", cv2.imread(args.image))
-        print("\n####################################")
-        cv2.waitKey(0)
+            # for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
+            #
+            #     for (pd, pb) in zip(pred, prob):
+            #         print(f"{pb:.4f} - {pd}")
+
+        finish_time = time.time()
+        total_time = finish_time - start_time
+        print("Images Processed: ", len(images))
+        print("Total Time elapsed: ", total_time / 60, " minutes")
+        print("Time per image: ", total_time / len(images), "seconds")
 
     else:
-        print(os.listdir())
-        assert os.path.isfile(source_path) or os.path.isfile(target_path)
-        os.makedirs(output_path, exist_ok=True)
+        # tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
 
-        dtgen = DataGenerator(source=source_path,
-                              batch_size=args.batch_size,
-                              charset=charset_base,
-                              max_text_length=max_text_length,
-                              predict=(not args.kaldi_assets) and args.test)
+        # img = pp.preprocess(args.image, input_size=input_size)
+        # x_test = pp.normalization([img])
 
-        model = HTRModel(architecture=args.arch,
-                         input_size=input_size,
-                         vocab_size=dtgen.tokenizer.vocab_size,
-                         beam_width=10,
-                         stop_tolerance=20,
-                         reduce_tolerance=15)
+        # model = HTRModel(architecture=args.arch,
+        #                     input_size=input_size,
+        #                     vocab_size=tokenizer.vocab_size,
+        #                     beam_width=10,
+        #                     top_paths=10)
 
-        model.compile(learning_rate=0.001)
-        model.load_checkpoint(target=target_path)
+        # model.compile(learning_rate=0.001)
+        # model.load_checkpoint(target=target_path)
 
-        if args.kaldi_assets:
-            predicts, _ = model.predict(x=dtgen.next_test_batch(), steps=dtgen.steps['test'], ctc_decode=False)
+        # predicts, probabilities = model.predict(x_test, ctc_decode=True)
+        # predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-            lm = LanguageModel(output_path, args.N)
-            lm.generate_kaldi_assets(dtgen, predicts)
+        # print("\n####################################")
+        # for i, (pred, prob) in enumerate(zip(predicts, probabilities)):
+        #     print("\nProb.  - Predict")
 
-        elif args.lm:
-            lm = LanguageModel(output_path, args.N)
-            ground_truth = [x.decode() for x in dtgen.dataset['test']['gt']]
+        #     for (pd, pb) in zip(pred, prob):
+        #         print(f"{pb:.4f} - {pd}")
 
-            start_time = datetime.datetime.now()
+        #     cv2.imshow(f"Image {i + 1}", cv2.imread(args.image))
+        # print("\n####################################")
+        # cv2.waitKey(0)
+        pass
 
-            predicts, _ = model.predict(x=dtgen.next_test_batch(), steps=dtgen.steps['test'], ctc_decode=False)
-            lm.generate_kaldi_assets(dtgen, predicts)
 
-            lm.kaldi(predict=False)
-            predicts = lm.kaldi(predict=True)
-            predicts = [pp.text_standardize(x) for x in predicts]
-
-            total_time = datetime.datetime.now() - start_time
-
-            with open(os.path.join(output_path, "predict_kaldi.txt"), "w") as lg:
-                for pd, gt in zip(predicts, ground_truth):
-                    lg.write(f"TE_L {gt}\nTE_P {pd}\n")
-
-            evaluate = evaluation.ocr_metrics(predicts=predicts,
-                                              ground_truth=ground_truth,
-                                              norm_accentuation=args.norm_accentuation,
-                                              norm_punctuation=args.norm_punctuation)
-
-            e_corpus = "\n".join([
-                f"Total test images:    {dtgen.size['test']}",
-                f"Total time:           {total_time}",
-                f"Time per item:        {total_time / dtgen.size['test']}\n",
-                f"Metrics:",
-                f"Character Error Rate: {evaluate[0]:.8f}",
-                f"Word Error Rate:      {evaluate[1]:.8f}",
-                f"Sequence Error Rate:  {evaluate[2]:.8f}"
-            ])
-
-            sufix = ("_norm" if args.norm_accentuation or args.norm_punctuation else "") + \
-                    ("_accentuation" if args.norm_accentuation else "") + \
-                    ("_punctuation" if args.norm_punctuation else "")
-
-            with open(os.path.join(output_path, f"evaluate_kaldi{sufix}.txt"), "w") as lg:
-                lg.write(e_corpus)
-                print(e_corpus)
-
-        elif args.train:
-            model.summary(output_path, "summary.txt")
-            callbacks = model.get_callbacks(logdir=output_path, checkpoint=target_path, verbose=1)
-
-            start_time = datetime.datetime.now()
-            model = model
-
-            h = model.fit(x=dtgen.next_train_batch(),
-                          epochs=args.epochs,
-                          steps_per_epoch=dtgen.steps['train'],
-                          validation_data=dtgen.next_valid_batch(),
-                          validation_steps=dtgen.steps['valid'],
-                          callbacks=callbacks,
-                          shuffle=True,
-                          verbose=1)
-
-            total_time = datetime.datetime.now() - start_time
-
-            loss = h.history['loss']
-            val_loss = h.history['val_loss']
-
-            min_val_loss = min(val_loss)
-            min_val_loss_i = val_loss.index(min_val_loss)
-
-            time_epoch = (total_time / len(loss))
-            total_item = (dtgen.size['train'] + dtgen.size['valid'])
-
-            t_corpus = "\n".join([
-                f"Total train images:      {dtgen.size['train']}",
-                f"Total validation images: {dtgen.size['valid']}",
-                f"Batch:                   {dtgen.batch_size}\n",
-                f"Total time:              {total_time}",
-                f"Time per epoch:          {time_epoch}",
-                f"Time per item:           {time_epoch / total_item}\n",
-                f"Total epochs:            {len(loss)}",
-                f"Best epoch               {min_val_loss_i + 1}\n",
-                f"Training loss:           {loss[min_val_loss_i]:.8f}",
-                f"Validation loss:         {min_val_loss:.8f}"
-            ])
-
-            with open(os.path.join(output_path, "train.txt"), "w") as lg:
-                lg.write(t_corpus)
-                print(t_corpus)
-
-        elif args.test:
-            start_time = datetime.datetime.now()
-
-            predicts, _ = model.predict(x=dtgen.next_test_batch(),
-                                        steps=dtgen.steps['test'],
-                                        ctc_decode=True,
-                                        verbose=1)
-
-            predicts = [dtgen.tokenizer.decode(x[0]) for x in predicts]
-            ground_truth = [x.decode() for x in dtgen.dataset['test']['gt']]
-
-            total_time = datetime.datetime.now() - start_time
-
-            with open(os.path.join(output_path, "predict.txt"), "w") as lg:
-                for pd, gt in zip(predicts, ground_truth):
-                    lg.write(f"TE_L {gt}\nTE_P {pd}\n")
-
-            evaluate = evaluation.ocr_metrics(predicts=predicts,
-                                              ground_truth=ground_truth,
-                                              norm_accentuation=args.norm_accentuation,
-                                              norm_punctuation=args.norm_punctuation)
-
-            e_corpus = "\n".join([
-                f"Total test images:    {dtgen.size['test']}",
-                f"Total time:           {total_time}",
-                f"Time per item:        {total_time / dtgen.size['test']}\n",
-                f"Metrics:",
-                f"Character Error Rate: {evaluate[0]:.8f}",
-                f"Word Error Rate:      {evaluate[1]:.8f}",
-                f"Sequence Error Rate:  {evaluate[2]:.8f}"
-            ])
-
-            sufix = ("_norm" if args.norm_accentuation or args.norm_punctuation else "") + \
-                    ("_accentuation" if args.norm_accentuation else "") + \
-                    ("_punctuation" if args.norm_punctuation else "")
-
-            with open(os.path.join(output_path, f"evaluate{sufix}.txt"), "w") as lg:
-                lg.write(e_corpus)
-                print(e_corpus)
