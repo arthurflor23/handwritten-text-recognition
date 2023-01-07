@@ -121,3 +121,6 @@ venv.bak/
 .mypy_cache/
 
 /.idea
+*.iml
+*.jpg
+*.csv
