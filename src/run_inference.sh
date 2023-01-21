@@ -25,5 +25,6 @@ sorted_snippets=${snippets_path%/*/*}"/sorted_snippets"\"
 echo ${snippets_path}
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
+column_directory=${column_directory//\"}
 
 find "${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path}" \;
