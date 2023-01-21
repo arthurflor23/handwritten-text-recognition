@@ -7,8 +7,8 @@
 #SBATCH --mail-user=lparrish@worldarchives.com
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
-#SBATCH -e ../err/slurm-%j-err.txt
-#SBATCH -o ../out/slurm-%j-out.txt
+#SBATCH -e ../../flor_out/%j-err.txt
+#SBATCH -o ../../flor_out/%j-out.txt
 
 
 module load python/3.6.9
