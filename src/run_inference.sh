@@ -19,7 +19,7 @@ config_name=$1
 column=$2
 weights=$3
 csv_path=$4
-job_config_path="../../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
+job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
 sorted_snippets=$(grep "SORTED_SNIPPETS" "${job_config_path}" | awk '{print $2}')
 column_directory="$sorted_snippets/$column"
 
