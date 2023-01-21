@@ -63,7 +63,11 @@ if __name__ == "__main__":
                             shutil.copyfileobj(source, target)
 
             elif archive_file_type == "tar" or archive_file_type == "tar.gz":
-                tarfile.open(archive_path).extractall(folder_path)
+                tar = tarfile.open(archive_path)
+                for member in tar.getmembers():
+                    if member.isreg():  # skip if the TarInfo is not files
+                        member.name = os.path.basename(member.name)  # remove the path by reset it
+                        tar.extract(member, folder_path)  # extract 
 
             else:
                 print("Invalid File type, accepted file types are zip, tar, and tar.gz")
