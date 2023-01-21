@@ -14,4 +14,4 @@
 module load python/3.6
 source /fslgroup/fslg_census/compute/projects/FlorHTR_env/bin/activate
 
-python "main.py --source $1 --weights $2 --arch flor --archive True --csv $3"
+python3 main.py "--source $1 --weights $2 --arch flor --archive True --csv $3"
