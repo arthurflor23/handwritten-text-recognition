@@ -6,6 +6,7 @@ import tarfile
 import fastparquet
 import shutil
 import csv
+import sys
 
 from zipfile import ZipFile
 
@@ -15,6 +16,9 @@ from data.generator import Tokenizer
 from network.model import HTRModel
 
 if __name__ == "__main__":
+
+    print(sys.argv)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=str, required=True)
     parser.add_argument("--weights", type=str, required=True)
