@@ -22,7 +22,7 @@ csv_path=$4
 job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
 snippets_path=$(grep "HEADER_SNIPPETS" "${job_config_path}" | awk '{print $2}')
 sorted_snippets=${snippets_path%/*/*}"/sorted_snippets"
-
+echo"${snippets_path}"
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 
