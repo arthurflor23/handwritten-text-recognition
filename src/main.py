@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
         model.compile()
         model.load_checkpoint(target=weights_path)
-
+        print(os.listdir(folder_path))
         images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
         for image_name in images:
             img = pp.preprocess(os.path.join(folder_path, image_name), input_size=input_size)
