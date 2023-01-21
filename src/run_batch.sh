@@ -11,7 +11,7 @@
 #SBATCH -o ../../flor_out/%j-out.txt
 
 
-module load python/3.6.9
+module load python/3.6
 source /fslgroup/fslg_census/compute/projects/FlorHTR_env/bin/activate
 
-python main.py "--source $1 --weights $2 --arch flor --archive True --csv $3"
+python main.py "--source $1" "--weights $2" "--arch flor" "--archive True" "--csv $3"
