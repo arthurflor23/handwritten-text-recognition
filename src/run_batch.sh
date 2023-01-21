@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --time=72:00:00   # walltime
+#SBATCH --ntasks=8   # number of processor cores (i.e. tasks)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --mem-per-cpu=2048M   # memory per CPU core
+#SBATCH -J "Flor-HTR"   # job name
+#SBATCH --mail-user=lparrish@worldarchives.com
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+#SBATCH -e ../err/slurm-%j-err.txt
+#SBATCH -o ../out/slurm-%j-out.txt
+
+
+module load python/3.8
+source /fslgroup/fslg_census/compute/projects/segment_env/bin/activate
+
+python "main.py" "--source $1" "--weights $2" "--arch flor" "--archive True" "--csv $3"
