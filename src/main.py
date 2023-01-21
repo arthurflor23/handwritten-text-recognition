@@ -17,8 +17,6 @@ from network.model import HTRModel
 
 if __name__ == "__main__":
 
-    print(sys.argv)
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=str, required=True)
     parser.add_argument("--weights", type=str, required=True)
@@ -91,6 +89,7 @@ if __name__ == "__main__":
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
             final_predicts.append([predicts[0][0], image_name])
+        print(final_predicts)
 
         if args.csv:
             csv_path = os.path.join(args.csv, 'predicts.csv')
