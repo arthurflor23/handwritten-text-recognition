@@ -14,5 +14,6 @@ dependencies:
   - fastparquet
   - pyarrow
   - yaml
+  - h5py
   - numpy
   - pandas
