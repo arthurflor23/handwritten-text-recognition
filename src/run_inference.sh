@@ -23,7 +23,7 @@ job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml
 snippets_path=$(grep "SNIPPETS" "${job_config_path}" | awk '{print $2}')
 sorted_snippets="${snippets_path%/*}/sorted_snippets"
 
-echo sorted_snippets
+echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 
 find"${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path}" \;
