@@ -86,11 +86,13 @@ if __name__ == "__main__":
             final_predicts.append([predicts[0][0], image_name])
 
         if args.csv:
-            with open('predicts.csv', 'w', newline='') as csvfile:
+            csv_path = os.path.join(args.csv, 'predicts.csv')
+            with open(csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
         elif args.parquet:
-            fastparquet.write('predicts.parquet', final_predicts)
+            parquet_path = os.path.join(args.csv, 'predicts.parquet')
+            fastparquet.write(parquet_path, final_predicts)
 
         finish_time = time.time()
         total_time = finish_time - start_time
