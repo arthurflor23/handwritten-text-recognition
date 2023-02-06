@@ -181,23 +181,21 @@ if __name__ == "__main__":
             total_pixels = closing.shape[0] * closing.shape[1]
             white_percent = (white_pixels / total_pixels) * 100
 
-            if white_percent > 85:
+            if white_percent > 92:
                 final_predicts.append([image_name, "<BLANK>"])
                 pbar.update(1)
                 continue
+
+            img = pp.preprocess(image_path, input_size=input_size)
+            x_test = pp.normalization([img])
+
+            predicts, probabilities = model.predict(x_test, ctc_decode=True)
+            predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
+
+            if white_percent > 90:
+                final_predicts.append([image_name, predicts[0][0] + "<BORDERLINE>", probabilities[0][0]])
             else:
-                final_predicts.append([image_name, "Not Blank"])
-
-            # img = pp.preprocess(image_path, input_size=input_size)
-            # x_test = pp.normalization([img])
-            #
-            # predicts, probabilities = model.predict(x_test, ctc_decode=True)
-            # predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
-
-            # if white_percent > 90:
-            #     final_predicts.append([image_name, predicts[0][0] + "<BORDERLINE>", probabilities[0][0]])
-            # else:
-            #     final_predicts.append([image_name, predicts[0][0], probabilities[0][0]])
+                final_predicts.append([image_name, predicts[0][0], probabilities[0][0]])
             pbar.update(1)
 
         if args.csv:
