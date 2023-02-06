@@ -19,9 +19,11 @@ from functools import partial
 class Dataset():
     """Dataset class to read images and sentences from base (raw files)"""
 
-    def __init__(self, source, name):
+    def __init__(self, source, name, images=None, labels=None):
         self.source = source
         self.name = name
+        self.images = images
+        self.labels = labels
         self.dataset = None
         self.partitions = ['train', 'valid', 'test']
 
@@ -62,7 +64,7 @@ class Dataset():
             for batch in range(0, len(self.dataset[pt]['gt']), batch_size):
                 images = []
 
-                with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
+                with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as pool:
                     r = pool.map(partial(pp.preprocess, input_size=image_input_size),
                                  self.dataset[pt]['dt'][batch:batch + batch_size])
                     images.append(r)
@@ -72,7 +74,7 @@ class Dataset():
                 with h5py.File(target, "a") as hf:
                     hf[f"{pt}/dt"][batch:batch + batch_size] = images
                     hf[f"{pt}/gt"][batch:batch + batch_size] = [s.encode() for s in self.dataset[pt]
-                                                                ['gt'][batch:batch + batch_size]]
+                                                                                    ['gt'][batch:batch + batch_size]]
                     pbar.update(batch_size)
 
     def _init_dataset(self):
@@ -95,49 +97,16 @@ class Dataset():
         random.shuffle(li)
         return zip(*li)
 
-
-    def _saintgall(self):
-        """Saint Gall dataset reader"""
-
-        pt_path = os.path.join(self.source, "sets")
-
-        paths = {"train": open(os.path.join(pt_path, "train.txt")).read().splitlines(),
-                 "valid": open(os.path.join(pt_path, "valid.txt")).read().splitlines(),
-                 "test": open(os.path.join(pt_path, "test.txt")).read().splitlines()}
-
-        lines = open(os.path.join(self.source, "ground_truth", "transcription.txt")).read().splitlines()
-        gt_dict = dict()
-
-        for line in lines:
-            split = line.split()
-            split[1] = split[1].replace("-", "").replace("|", " ")
-            gt_dict[split[0]] = split[1]
-
-        img_path = os.path.join(self.source, "data", "line_images_normalized")
-        dataset = self._init_dataset()
-
-        for i in self.partitions:
-            for line in paths[i]:
-                glob_filter = os.path.join(img_path, f"{line}*")
-                img_list = [x for x in glob(glob_filter, recursive=True)]
-
-                for line in img_list:
-                    line = os.path.splitext(os.path.basename(line))[0]
-                    dataset[i]['dt'].append(os.path.join(img_path, f"{line}.png"))
-                    dataset[i]['gt'].append(gt_dict[line])
-
-        return dataset
-
     def _census(self):
 
-        img_path = "E:/Name/images/"
-        labels = pd.read_csv("E:/Name/labels/1910_last_name_detector.csv")
-        labels["filename"] = img_path + labels["filename"].astype(str)
+        img_path = self.images
+        labels_data = pd.read_csv(self.labels)
 
-        labels = labels[labels['filename'].apply(os.path.exists)]
+        labels_data["filename"] = img_path + "/" + labels_data["filename"].astype(str)
+        labels_data = labels_data[labels_data['filename'].apply(os.path.exists)]
 
-        train, valid, test = np.split(labels.sample(frac=1, random_state=42),
-                                      [int(.6 * len(labels)), int(.8 * len(labels))])
+        train, valid, test = np.split(labels_data.sample(frac=1, random_state=42),
+                                      [int(.6 * len(labels_data)), int(.8 * len(labels_data))])
 
         dataset = self._init_dataset()
 
@@ -151,7 +120,6 @@ class Dataset():
         dataset["test"]["gt"] = test.to_numpy()[:, 1].tolist()
 
         return dataset
-
 
     @staticmethod
     def check_text(data, max_text_length=128):
