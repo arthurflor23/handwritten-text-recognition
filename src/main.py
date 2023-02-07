@@ -176,8 +176,7 @@ if __name__ == "__main__":
             cropped_image = img[vertical_crop:-vertical_crop, horizontal_crop:-horizontal_crop]
             gray = cv2.cvtColor(cropped_image, cv2.COLOR_RGB2GRAY)
 
-            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
-                                           19, 5)
+            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 19, 5)
 
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
@@ -204,8 +203,8 @@ if __name__ == "__main__":
             pbar.update(1)
 
         if args.csv:
-            csv_name = os.path.basename(args.source) + ".csv"
-            csv_path = os.path.join(args.csv, csv_name)
+
+            csv_path = os.path.join(args.csv, "predicts.csv")
             with open(csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
