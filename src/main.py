@@ -164,8 +164,6 @@ if __name__ == "__main__":
         for image_name in images[:10]:
             image_path = os.path.join(folder_path, image_name)
 
-            os.environ["OPENCV_IO_ENABLE_JASPER"] = "true"
-
             if cv2.haveImageReader(image_path):
                 img = cv2.imread(image_path)
             else:
