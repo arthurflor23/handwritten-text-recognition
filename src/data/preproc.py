@@ -12,6 +12,7 @@ import cv2
 import html
 import string
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def divide_chunks(l, n):
@@ -144,7 +145,12 @@ def preprocess(img, input_size):
     """Make the process with the `input_size` to the scale resize"""
 
     def imread(path):
-        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        if cv2.haveImageReader(path):
+            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        else:
+            img = plt.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
         u, i = np.unique(np.array(img).flatten(), return_inverse=True)
         background = int(u[np.argmax(np.bincount(i))])
         return img, background

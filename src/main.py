@@ -7,6 +7,7 @@ import fastparquet
 import shutil
 import csv
 import cv2
+import matplotlib.pyplot as plt
 
 from zipfile import ZipFile
 from tqdm import tqdm
@@ -163,8 +164,14 @@ if __name__ == "__main__":
         for image_name in images:
             image_path = os.path.join(folder_path, image_name)
 
+            os.environ["OPENCV_IO_ENABLE_JASPER"] = "true"
+
+            if cv2.haveImageReader(image_path):
+                img = cv2.imread(image_path)
+            else:
+                img = plt.imread(image_path)
+
             # first check if image is a blank snippet
-            img = cv2.imread(image_path)
             vertical_crop = int(img.shape[0] * 0.1375)
             horizontal_crop = int(img.shape[1] * 0.2375)
 
@@ -199,7 +206,8 @@ if __name__ == "__main__":
             pbar.update(1)
 
         if args.csv:
-            csv_path = os.path.join(args.csv, 'predicts.csv')
+            csv_name = os.path.basename(args.source) + ".csv"
+            csv_path = os.path.join(args.csv, csv_name)
             with open(csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
