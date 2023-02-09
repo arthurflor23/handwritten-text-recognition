@@ -10,14 +10,10 @@
 #SBATCH -e ../../flor_out/%j-err.txt
 #SBATCH -o ../../flor_out/%j-out.txt
 
-config_name=$1
-column=$2
-weights=$3
-csv_path=$4
-job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
-snippets_path=$(grep "HEADER_SNIPPETS" "${job_config_path}" | awk '{print $2}')
-sorted_snippets=${snippets_path%/*/*}"/sorted_snippets"\"
-echo ${snippets_path}
+column="POB"
+weights="../weights/1940Birthplace315kSpaceWeight.hdf5"
+csv_path="/home/lanceap/compute/1950_Transcription/POB"
+sorted_snippets="/home/lanceap/compute/sorted_snippets/"
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 column_directory=${column_directory//\"}

@@ -103,6 +103,7 @@ class Dataset():
         labels_data = pd.read_csv(self.labels)
 
         labels_data["filename"] = img_path + "/" + labels_data["filename"].astype(str)
+        labels_data["string"] = labels_data["string"].astype(str)
         labels_data = labels_data[labels_data['filename'].apply(os.path.exists)]
 
         train, valid, test = np.split(labels_data.sample(frac=1, random_state=42),
@@ -132,8 +133,8 @@ class Dataset():
             strip_punc = text.strip(string.punctuation).strip()
             no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
 
-            length_valid = (len(text) > 1) and (len(text) < max_text_length)
-            text_valid = (len(strip_punc) > 1) and (len(no_punc) > 1)
+            length_valid = (len(text) > 0) and (len(text) < max_text_length)
+            text_valid = (len(strip_punc) > 0) and (len(no_punc) > 0)
 
             if (not length_valid) or (not text_valid):
                 dt['gt'].pop(i)

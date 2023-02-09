@@ -102,6 +102,8 @@ NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
 def text_standardize(text):
     """Organize/add spaces around punctuation marks"""
 
+    text = str(text)
+
     text = html.unescape(text).replace("\\n", "").replace("\\t", "")
 
     text = RE_RESERVED_CHAR_FILTER.sub("", text)
