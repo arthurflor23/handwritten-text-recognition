@@ -12,8 +12,8 @@
 
 config_name=$1
 column=$2
-weights=$3
-csv_path=$4
+weights="../weights/$3.hdf5"
+csv_path="/home/lanceap/compute/1950_Transcription/$column"
 job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
 snippets_path=$(grep "HEADER_SNIPPETS" "${job_config_path}" | awk '{print $2}')
 sorted_snippets=${snippets_path%/*/*}"/sorted_snippets"\"
