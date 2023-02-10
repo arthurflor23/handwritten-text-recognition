@@ -158,6 +158,9 @@ if __name__ == "__main__":
                          beam_width=10)
 
         model.compile()
+        if not os.path.exists(weights_path):
+            raise AssertionError("Weights don't exist")
+
         model.load_checkpoint(target=weights_path)
         images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
         if args.test:
