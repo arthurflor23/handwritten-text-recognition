@@ -12,6 +12,7 @@
 
 column=$1
 weights="../weights/$2.hdf5"
+test=${3:-0}
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
 sorted_snippets="/home/lanceap/compute/sorted_snippets/"
 echo "${column}"
@@ -21,4 +22,5 @@ echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 column_directory=${column_directory//\"}
 
-find "${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path}" \;
+find "${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path} ${test}" \;
+

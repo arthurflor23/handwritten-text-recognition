@@ -13,6 +13,7 @@
 config_name=$1
 column=$2
 weights="../weights/$3.hdf5"
+test=${4:-0}
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
 job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
 snippets_path=$(grep "HEADER_SNIPPETS" "${job_config_path}" | awk '{print $2}')
@@ -22,4 +23,4 @@ echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 column_directory=${column_directory//\"}
 
-find "${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path}" \;
+find "${column_directory}" -type f -exec sg fslg_census "sbatch run_batch.sh {} ${weights} ${csv_path} ${test}" \;

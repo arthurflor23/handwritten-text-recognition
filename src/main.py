@@ -33,6 +33,8 @@ if __name__ == "__main__":
     parser.add_argument("--csv", type=str, default="")
     parser.add_argument("--parquet", type=str, default="")
 
+    parser.add_argument("--test", type=int, default=0)
+
     args = parser.parse_args()
 
     source_path = args.source
@@ -158,10 +160,13 @@ if __name__ == "__main__":
         model.compile()
         model.load_checkpoint(target=weights_path)
         images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
+        if args.test:
+            images = images[:args.test]
+
         total = len(images)
         pbar = tqdm(total=total)
 
-        for image_name in images[:10]:
+        for image_name in images:
             image_path = os.path.join(folder_path, image_name)
 
             if cv2.haveImageReader(image_path):
