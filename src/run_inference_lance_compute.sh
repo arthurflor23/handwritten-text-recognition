@@ -10,9 +10,9 @@
 #SBATCH -e ../../flor_out/%j-err.txt
 #SBATCH -o ../../flor_out/%j-out.txt
 
-column="POB"
+column="Age"
 weights="../weights/1940Birthplace315kSpaceWeight.hdf5"
-csv_path="/home/lanceap/compute/1950_Transcription/POB"
+csv_path="/home/lanceap/compute/1950_Transcription/Age"
 sorted_snippets="/home/lanceap/compute/sorted_snippets/"
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
