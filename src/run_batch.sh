@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --time=72:00:00   # walltime
-#SBATCH --ntasks=8   # number of processor cores (i.e. tasks)
+#SBATCH --ntasks=4   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --mem-per-cpu=2048M   # memory per CPU core
+#SBATCH --mem-per-cpu=4096M   # memory per CPU core
 #SBATCH -J "Flor-HTR"   # job name
 #SBATCH --mail-user=lparrish@worldarchives.com
 #SBATCH --mail-type=BEGIN

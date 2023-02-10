@@ -169,6 +169,9 @@ if __name__ == "__main__":
             else:
                 img = plt.imread(image_path)
 
+            if img is None:
+                continue
+
             # first check if image is a blank snippet
             vertical_crop = int(img.shape[0] * 0.1375)
             horizontal_crop = int(img.shape[1] * 0.2375)
