@@ -14,6 +14,9 @@ column=$1
 weights="../weights/$2.hdf5"
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
 sorted_snippets="/home/lanceap/compute/sorted_snippets/"
+echo "${column}"
+echo "${weights}"
+echo "${csv_path}"
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
 column_directory=${column_directory//\"}
