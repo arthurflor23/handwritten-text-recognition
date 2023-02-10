@@ -161,7 +161,7 @@ if __name__ == "__main__":
         total = len(images)
         pbar = tqdm(total=total)
 
-        for image_name in images:
+        for image_name in images[:10]:
             image_path = os.path.join(folder_path, image_name)
 
             if cv2.haveImageReader(image_path):
