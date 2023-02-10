@@ -12,7 +12,7 @@
 
 column=$1
 weights=$2
-csv_path="/home/lanceap/compute/1950_Transcription/Age"
+csv_path="/home/lanceap/compute/1950_Transcription/$column"
 sorted_snippets="/home/lanceap/compute/sorted_snippets/"
 echo "${sorted_snippets}"
 column_directory="$sorted_snippets/$column"
