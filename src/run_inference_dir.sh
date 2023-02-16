@@ -10,13 +10,14 @@
 #SBATCH -e ../../flor_out/%j-err.txt
 #SBATCH -o ../../flor_out/%j-out.txt
 
-config_name=$1
+#Usage sbatch run_inference_job.sh Directory ColumnName WeightsName
+
+
+snippets_path=$1
 column=$2
 weights="../weights/$3.hdf5"
 test=${4:-0}
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
-job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
-snippets_path=$(grep "HEADER_SNIPPETS" "${job_config_path}" | awk '{print $2}')
 sorted_snippets=${snippets_path%/*/*}"/sorted_snippets"\"
 echo ${snippets_path}
 echo "${sorted_snippets}"

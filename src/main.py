@@ -38,8 +38,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-    weights_path = args.weights
-    dataset_path = "../data/" + os.path.basename(source_path) + ".hdf5"
+    weights_path = "../weights/" + args.weights + ".hdf5"
+    dataset_path = "data/" + os.path.basename(source_path) + ".hdf5"
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -162,7 +162,7 @@ if __name__ == "__main__":
             raise AssertionError("Weights don't exist")
 
         model.load_checkpoint(target=weights_path)
-        images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
+        images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"][100000:150000]
         if args.test:
             images = images[:args.test]
 
@@ -214,8 +214,10 @@ if __name__ == "__main__":
             pbar.update(1)
 
         if args.csv:
-
-            csv_path = os.path.join(args.csv, "predicts.csv")
+            if args.csv.split(".")[-1] != "csv":
+                csv_path = os.path.join(args.csv, "predicts.csv")
+            else:
+                csv_path = args.csv
             with open(csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
