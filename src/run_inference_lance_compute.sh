@@ -11,7 +11,7 @@
 #SBATCH -o ../../flor_out/%j-out.txt
 
 column=$1
-weights="../weights/$2.hdf5"
+weights=$2
 test=${3:-0}
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
 sorted_snippets="/home/lanceap/compute/sorted_snippets/"

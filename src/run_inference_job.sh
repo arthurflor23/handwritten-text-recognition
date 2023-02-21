@@ -14,7 +14,7 @@
 
 config_name=$1
 column=$2
-weights="../weights/$3.hdf5"
+weights=$3
 test=${4:-0}
 csv_path="/home/lanceap/compute/1950_Transcription/$column"
 job_config_path="../../CensusSegmenter/config/job_config/job_${config_name}.yaml"
