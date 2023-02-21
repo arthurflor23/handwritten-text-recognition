@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("--labels", type=str)
 
     parser.add_argument("--source", type=str, required=True)
-    parser.add_argument("--weights", type=str)
+    parser.add_argument("--weights", type=str, default="")
     parser.add_argument("--arch", type=str, default="flor")
 
     parser.add_argument("--archive", type=bool, default=False)
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     source_path = args.source
     weights_path = "../weights/" + args.weights + ".hdf5"
-    dataset_path = "data/" + os.path.basename(source_path) + ".hdf5"
+    dataset_path = "../data/" + os.path.basename(source_path) + ".hdf5"
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -162,7 +162,7 @@ if __name__ == "__main__":
             raise AssertionError("Weights don't exist")
 
         model.load_checkpoint(target=weights_path)
-        images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"][100000:150000]
+        images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
         if args.test:
             images = images[:args.test]
 
