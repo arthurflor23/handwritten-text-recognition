@@ -58,7 +58,7 @@ if __name__ == "__main__":
     elif args.train:
         source_path = args.train
         log_path = "E:/WorldArchivesData/HWRTraining/logs"
-        weights_path = "../weights/checkpointWeights.hdf5"
+        weights_path = "E:/WorldArchivesData/HWRTraining/weights/CheckpointWeights.hdf5"
 
         dtgen = DataGenerator(source=source_path,
                               batch_size=32,
