@@ -1,15 +1,16 @@
 name: FlorHTR
 channels:
-  - pytorch
   - conda-forge
   - anaconda
   - defaults
 dependencies:
-  - editdistance=0.6.0
-  - kaldiio=2.17.2
-  - opencv
-  - tensorflow
-  - tqdm=4.64.0
+  - python=3.10
+  - editdistance
+  - kaldiio
+  - opencv>=2.6
+  - symspellpy
+  - tensorflow-gpu=2.6.0
+  - tqdm
   - pip
   - fastparquet
   - pyarrow
@@ -17,3 +18,4 @@ dependencies:
   - h5py
   - numpy
   - pandas
+  - matplotlib
