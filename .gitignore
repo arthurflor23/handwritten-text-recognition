@@ -1,6 +1,7 @@
 # Project artifacts
 artifacts/
-data/
+dataset/
+output/
 
 # Hidden files
 .directory
