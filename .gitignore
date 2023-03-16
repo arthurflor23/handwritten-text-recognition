@@ -1,6 +1,6 @@
 # Project artifacts
 artifacts/
-dataset/
+data/
 output/
 
 # Hidden files
