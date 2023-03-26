@@ -1,3 +1,5 @@
+"""Address tasks based on input parameters"""
+
 import os
 import json
 import tasks
@@ -24,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--infer-metadata', default={}, type=json.loads, help="metadata object for infer module")
 
     parser.add_argument('--check-source', default=False, action='store_true', help="validate source data")
-    parser.add_argument('--check-augmentation', default=False, action='store_true', help="visualize data augmentation")
+    parser.add_argument('--check-images', default=False, action='store_true', help="visualize images")
 
     args = parser.parse_args()
 
@@ -35,10 +37,10 @@ if __name__ == '__main__':
     # setup tasks
     if args.check_source or args.check_augmentation:
         if args.check_source:
-            tasks.check_source(args)
+            tasks.check.source(args)
 
-        if args.check_augmentation:
-            tasks.check_augmentation(args)
+        if args.check_images:
+            tasks.check.images(args)
 
     else:
         if args.train:
