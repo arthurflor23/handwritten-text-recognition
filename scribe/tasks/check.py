@@ -1,9 +1,11 @@
-
-def check_augmentation(args):
-
-    print("check augmentation", args)
+"""Perform validation pipelines on files structure and transformations"""
 
 
-def check_source(args):
+def images(args):
+
+    print("check images", args)
+
+
+def source(args):
 
     print("check source", args)
