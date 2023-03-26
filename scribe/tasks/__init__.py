@@ -1,5 +1,7 @@
-# flake8: noqa
-from .check import check_augmentation, check_source
+from . import check
+
 from .infer import infer
 from .test import test
 from .train import train
+
+__all__ = ['check', 'infer', 'test', 'train']
