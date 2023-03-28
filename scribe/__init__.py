@@ -1,5 +1,5 @@
-from core import Dataset
-from core import Network
-from core import HTRModel
+from dataset import Dataset
+from model import HTRModel
+from network import Network
 
-__all__ = ['Dataset', 'Network', 'HTRModel']
+__all__ = ['Dataset', 'HTRModel', 'Network']
