@@ -4,6 +4,7 @@
 /output/
 /backup/
 /tensorboard/
+/logs
 
 /src/lib/
 /src/data/predicts/

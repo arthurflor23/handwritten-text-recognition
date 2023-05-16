@@ -10,6 +10,7 @@ Data preproc functions:
 import re
 import cv2
 import html
+import os
 import string
 import numpy as np
 import matplotlib.pyplot as plt
@@ -147,11 +148,12 @@ def preprocess(img, input_size):
     """Make the process with the `input_size` to the scale resize"""
 
     def imread(path):
-        if cv2.haveImageReader(path):
-            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-        else:
+
+        if os.name == "nt":
             img = plt.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        else:
+            img = cv2.imread(path)
 
         u, i = np.unique(np.array(img).flatten(), return_inverse=True)
         background = int(u[np.argmax(np.bincount(i))])

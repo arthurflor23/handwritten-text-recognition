@@ -9,9 +9,12 @@ import shutil
 import csv
 import cv2
 import matplotlib.pyplot as plt
+import math
+import numpy as np
 
 from zipfile import ZipFile
 from tqdm import tqdm
+import xgboost as xgb
 
 from data import preproc as pp
 from data.generator import Tokenizer
@@ -34,6 +37,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--archive", type=bool, default=False)
     parser.add_argument("--csv", type=str, default="")
+    parser.add_argument("--append", action="store_true", default=False)
     parser.add_argument("--parquet", type=str, default="")
 
     parser.add_argument("--test", type=int, default=0)
@@ -56,9 +60,10 @@ if __name__ == "__main__":
         ds.save_partitions(dataset_path, input_size, max_text_length)
 
     elif args.train:
+        os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
         source_path = args.train
-        log_path = "E:/WorldArchivesData/HWRTraining/logs"
-        weights_path = "E:/WorldArchivesData/HWRTraining/weights/CheckpointWeights.hdf5"
+        log_path = "../logs"
+        weights_path = "../weights/" + os.path.basename(source_path) + "Weights.hdf5"
 
         dtgen = DataGenerator(source=source_path,
                               batch_size=32,
@@ -174,13 +179,16 @@ if __name__ == "__main__":
         for image_name in images:
             image_path = os.path.join(folder_path, image_name)
 
-            if cv2.haveImageReader(image_path):
-                img = cv2.imread(image_path)
-            else:
-                img = plt.imread(image_path)
+            try:
+                if os.name == "nt":
+                    img = plt.imread(image_path)
+                else:
+                    img = cv2.imread(image_path)
+            except:
+                continue
 
             if img is None:
-                continue
+                    continue
 
             # first check if image is a blank snippet
             vertical_crop = int(img.shape[0] * 0.1375)
@@ -198,8 +206,26 @@ if __name__ == "__main__":
             total_pixels = closing.shape[0] * closing.shape[1]
             white_percent = (white_pixels / total_pixels) * 100
 
-            if white_percent > 92:
-                final_predicts.append([image_name, "<BLANK>"])
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            center_xy = [int(cropped_image.shape[1] / 2), int(cropped_image.shape[0] / 2)]
+            cnt_dist_from_center = []
+            cnt_area = []
+            for cnt in contours:
+                x, y, w, h = cv2.boundingRect(cnt)
+                cnt_dist_from_center.append(math.dist(center_xy, [x, y]) / cropped_image.shape[1])
+                cnt_area.append(w * h)
+            cnt_avg_size = math.fsum(cnt_area) / len(cnt_area) if len(contours) > 0 else 0
+            cnt_avg_dist = math.fsum(cnt_dist_from_center) / len(cnt_dist_from_center) if len(
+                contours) > 0 else 0
+
+            features = np.reshape(np.array((white_percent, len(contours), cnt_avg_size, cnt_avg_dist)), (1, 4))
+            blank_model = xgb.XGBClassifier()
+            blank_model.load_model("./blankDetector.json")
+
+            predicted_blank = blank_model.predict(features)
+
+            if predicted_blank:
+                final_predicts.append([image_name, "<BLANK>", 1])
                 pbar.update(1)
                 continue
 
@@ -209,10 +235,7 @@ if __name__ == "__main__":
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-            if white_percent > 90:
-                final_predicts.append([image_name, predicts[0][0] + "<BORDERLINE>", probabilities[0][0]])
-            else:
-                final_predicts.append([image_name, predicts[0][0], probabilities[0][0]])
+            final_predicts.append([image_name, predicts[0][0], probabilities[0][0]])
             pbar.update(1)
 
         if args.csv:
