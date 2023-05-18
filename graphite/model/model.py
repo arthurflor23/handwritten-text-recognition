@@ -1,5 +1,5 @@
 
-class OpticalModel():
+class Model():
 
     def __init__(self):
-        print("OpticalModel self...")
+        print("Model self...")
