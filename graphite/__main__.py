@@ -1,5 +1,5 @@
 import os
-import tasks
+import task
 import argparse
 
 
@@ -73,16 +73,16 @@ if __name__ == '__main__':
     if args.train or args.test or args.infer:
         assert args.network is not None, "network must be defined"
 
-    # Forward to tasks
+    # Forward to task
     if args.check:
-        tasks.check(args)
+        task.check(args)
 
     else:
         if args.train:
-            tasks.train(args)
+            task.train(args)
 
         if args.test:
-            tasks.test(args)
+            task.test(args)
 
         if args.infer and len(args.images):
-            tasks.infer(args)
+            task.infer(args)
