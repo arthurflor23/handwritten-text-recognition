@@ -1,6 +1,7 @@
 # Project artifacts
 artifacts/
 data/
+mlruns/
 output/
 
 # Hidden files
