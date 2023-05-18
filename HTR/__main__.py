@@ -1,5 +1,4 @@
 import os
-import json
 import tasks
 import argparse
 
@@ -7,58 +6,81 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--source', default=None, help="define source data for training and testing phases")
-    parser.add_argument('--level', default=None, help="define recognition level (character, word, line, paragraph)")
-    # parser.add_argument('--lazy-mode', default=False, action='store_true', help="define data loading on demand")
-    # parser.add_argument('--source-metadata', default={}, type=json.loads, help="metadata object for source module")
+    # Task flags
+    parser.add_argument('--check', default=False, action='store_true',
+                        help="Perform data verification")
+    parser.add_argument('--infer', default=False, action='store_true',
+                        help="Perform inference process")
+    parser.add_argument('--test', default=False, action='store_true',
+                        help="Perform optical model test")
+    parser.add_argument('--train', default=False, action='store_true',
+                        help="Perform optical model training")
 
-    # parser.add_argument('--network', default=None, help="define network architecture")
-    # parser.add_argument('--network-metadata', default={}, type=json.loads, help="metadata object for network module")
+    # Optical Model
+    parser.add_argument('--optical-model', default=None,
+                        help="Define the optical model (bluche, puigcerver, flor)")
 
-    # parser.add_argument('--train', default=False, action='store_true', help="perform source training phase")
-    # parser.add_argument('--train-metadata', default={}, type=json.loads, help="metadata object for train module")
+    # Dataset
+    parser.add_argument('--source', default=None,
+                        help="Define the source data (iam, rimes)")
+    parser.add_argument('--level', default='line',
+                        help="Define the recoginition level (line, paragraph)")
+    parser.add_argument('--lazy-mode', default=False, action='store_true',
+                        help="Enable lazy loading")
+    parser.add_argument('--train-ratio', default=None,
+                        help="Set the training partition ratio")
+    parser.add_argument('--validation-ratio', default=None,
+                        help="Set the validation partition ratio")
+    parser.add_argument('--test-ratio', default=None,
+                        help="Set the test partition ratio")
 
-    # parser.add_argument('--test', default=False, action='store_true', help="perform source test phase")
-    # parser.add_argument('--test-metadata', default={}, type=json.loads, help="metadata object for test module")
+    # Data augmentation
+    parser.add_argument('--disable-aug', default=True, action='store_false',
+                        help="Disable data augmentation completely")
+    parser.add_argument('--aug-rotation', default=[-1.5, 1.5], nargs='+',
+                        help="Set rotation transformation (min_value, max_value)")
 
-    # parser.add_argument('--infer', default=[], nargs='+', help="recognize handwritten text in list of arbitrary images")
-    # parser.add_argument('--infer-metadata', default={}, type=json.loads, help="metadata object for infer module")
+    # Inference
+    parser.add_argument('--images', default=[], nargs='+',
+                        help="Set image path list for handwriting recognition")
+    parser.add_argument('--crop', default=[], nargs='+',
+                        help="Set cropping values (x, y, width, height)")
 
-    # parser.add_argument('--check', default=None, help="validate data (source, images, labels, augmentation, encoding)")
+    # Spell check
+    parser.add_argument('--spell-check', default='openai',
+                        help="Define the spell check (openai)")
+    parser.add_argument('--api-key', default=None,
+                        help="Set the spell check API_KEY")
+
+    # Others
+    parser.add_argument('--id', default=None,
+                        help="Specify running id")
 
     args = parser.parse_args()
 
-    args.data_path = os.path.join(os.path.dirname(__file__), '..', 'data')
-    args.output_path = os.path.join(os.path.dirname(__file__), '..', 'artifacts')
+    # Setup basic paths
+    args.base_path = os.path.join(os.path.dirname(__file__), '..')
+    args.nltk_path = os.path.join(args.base_path, 'mlruns', 'nltk')
+    args.output_path = os.path.join(args.base_path, 'mlruns')
+    args.input_path = os.path.join(args.base_path, 'data')
 
-    # if args.check is not None:
-    #     assert args.source is not None, "source must be defined"
+    # Turn required parameters
+    if args.check or args.train or args.test:
+        assert args.source is not None, "source must be defined"
 
-    #     if args.check == 'augmentation':
-    #         tasks.check.augmentation(args)
+    if args.train or args.test or args.infer:
+        assert args.network is not None, "network must be defined"
 
-    #     elif args.check == 'encoding':
-    #         tasks.check.encoding(args)
+    # Forward to tasks
+    if args.check:
+        tasks.check(args)
 
-    #     elif args.check == 'images':
-    #         tasks.check.images(args)
+    else:
+        if args.train:
+            tasks.train(args)
 
-    #     elif args.check == 'labels':
-    #         tasks.check.labels(args)
+        if args.test:
+            tasks.test(args)
 
-    #     elif args.check == 'source':
-    #         tasks.check.source(args)
-
-    # else:
-    #     assert args.network is not None, "network must be defined"
-
-    #     if args.train:
-    #         assert args.source is not None, "source must be defined"
-    #         tasks.train(args)
-
-    #     if args.test:
-    #         assert args.source is not None, "source must be defined"
-    #         tasks.test(args)
-
-    #     if args.infer and len(args.infer):
-    #         tasks.infer(args)
+        if args.infer and len(args.images):
+            tasks.infer(args)
