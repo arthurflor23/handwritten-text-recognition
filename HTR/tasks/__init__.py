@@ -1,7 +1,6 @@
-from . import check
-
-from .inference import inference
+from .check import check
+from .infer import infer
 from .test import test
-from .training import training
+from .train import train
 
-__all__ = ['check', 'inference', 'test', 'training']
+__all__ = ['check', 'infer', 'test', 'train']
