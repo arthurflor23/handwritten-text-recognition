@@ -60,9 +60,11 @@ if __name__ == '__main__':
 
     # Setup basic paths
     args.base_path = os.path.join(os.path.dirname(__file__), '..')
-    args.nltk_path = os.path.join(args.base_path, 'mlruns', 'nltk')
-    args.output_path = os.path.join(args.base_path, 'mlruns')
+
     args.input_path = os.path.join(args.base_path, 'data')
+    args.output_path = os.path.join(args.base_path, 'mlruns')
+
+    args.nltk_path = os.path.join(args.output_path, 'nltk')
 
     # Turn required parameters
     if args.check or args.train or args.test:
