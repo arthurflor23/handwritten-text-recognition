@@ -1,3 +1,4 @@
-from model import OpticalModel
+from model import Carbon
+from model import Model
 
-__all__ = ['OpticalModel']
+__all__ = ['Carbon', 'Model']
