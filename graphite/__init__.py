@@ -1,5 +1,7 @@
+from core import Augmentation
+from core import Carbon
+
 from dataset import Dataset
-from model import Carbon
 from model import Model
 
-__all__ = ['Dataset', 'Carbon', 'Model']
+__all__ = ['Augmentation', 'Carbon', 'Dataset', 'Model']
