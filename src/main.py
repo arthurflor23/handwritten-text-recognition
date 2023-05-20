@@ -46,7 +46,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-    weights_path = "../weights/" + args.weights + ".hdf5"
+    weights_path = "../weights/" + args.weights
 
     input_size = (1024, 128, 1)
     max_text_length = 50
