@@ -7,6 +7,7 @@ import datetime
 import fastparquet
 import shutil
 import csv
+import statistics
 import cv2
 import matplotlib.pyplot as plt
 import math
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     if args.transform:
-        dataset_path = "../data/" + os.path.basename(source_path) + ".hdf5"
+        dataset_path = "../data/" + str.split(os.path.basename(args.labels), ".")[0] + ".hdf5"
         ds = Dataset(source="census", name="census", images=args.source, labels=args.labels)
         ds.read_partitions()
         ds.save_partitions(dataset_path, input_size, max_text_length)
@@ -63,7 +64,7 @@ if __name__ == "__main__":
         os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
         source_path = args.train
         log_path = "../logs"
-        weights_path = "../weights/" + os.path.basename(source_path) + "Weights.hdf5"
+        weights_path = "../weights/" + str.split(os.path.basename(source_path), ".")[0] + "Weights.hdf5"
 
         dtgen = DataGenerator(source=source_path,
                               batch_size=32,
@@ -167,8 +168,11 @@ if __name__ == "__main__":
         model.compile()
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
-
         model.load_checkpoint(target=weights_path)
+
+        blank_model = xgb.XGBClassifier()
+        blank_model.load_model("./blank_detector.json")
+
         images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
         if args.test:
             images = images[:args.test]
@@ -214,20 +218,21 @@ if __name__ == "__main__":
                 x, y, w, h = cv2.boundingRect(cnt)
                 cnt_dist_from_center.append(math.dist(center_xy, [x, y]) / cropped_image.shape[1])
                 cnt_area.append(w * h)
+
             cnt_avg_size = math.fsum(cnt_area) / len(cnt_area) if len(contours) > 0 else 0
-            cnt_avg_dist = math.fsum(cnt_dist_from_center) / len(cnt_dist_from_center) if len(
-                contours) > 0 else 0
+            largest_cnt = max(cnt_area)
+            smallest_cnt = min(cnt_area)
+            median_cnt = statistics.median(cnt_area)
 
-            features = np.reshape(np.array((white_percent, len(contours), cnt_avg_size, cnt_avg_dist)), (1, 4))
-            blank_model = xgb.XGBClassifier()
-            blank_model.load_model("./blankDetector.json")
+            cnt_avg_dist = math.fsum(cnt_dist_from_center) / len(cnt_dist_from_center) if len(contours) > 0 else 0
+            largest_dist = max(cnt_dist_from_center)
+            smallest_dist = min(cnt_dist_from_center)
+            median_dist = statistics.median(cnt_dist_from_center)
 
-            predicted_blank = blank_model.predict(features)
-
-            if predicted_blank:
-                final_predicts.append([image_name, "<BLANK>", 1])
-                pbar.update(1)
-                continue
+            blank_features = np.reshape(np.array((white_percent, len(contours), cnt_avg_size, median_cnt, largest_cnt,
+                                                  smallest_cnt, cnt_avg_dist, largest_dist, smallest_dist, median_dist))
+                                        , (1, 10))
+            predicted_blank = blank_model.predict_proba(blank_features)[0][0]
 
             img = pp.preprocess(image_path, input_size=input_size)
             x_test = pp.normalization([img])
@@ -235,15 +240,15 @@ if __name__ == "__main__":
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
-            final_predicts.append([image_name, predicts[0][0], probabilities[0][0]])
+            final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             pbar.update(1)
-
+            print([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
         if args.csv:
             if args.csv.split(".")[-1] != "csv":
                 csv_path = os.path.join(args.csv, "predicts.csv")
             else:
                 csv_path = args.csv
-            with open(csv_path, 'a', newline='') as csvfile:
+            with open(csv_path, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
         elif args.parquet:
