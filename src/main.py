@@ -166,6 +166,7 @@ if __name__ == "__main__":
                          beam_width=10)
 
         model.compile()
+        print(weights_path)
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
         model.load_checkpoint(target=weights_path)
