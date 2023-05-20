@@ -154,6 +154,7 @@ def preprocess(img, input_size):
             img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         else:
             img = cv2.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         u, i = np.unique(np.array(img).flatten(), return_inverse=True)
         background = int(u[np.argmax(np.bincount(i))])
