@@ -166,7 +166,6 @@ if __name__ == "__main__":
                          beam_width=10)
 
         model.compile()
-        print(weights_path)
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
         model.load_checkpoint(target=weights_path)
@@ -243,7 +242,7 @@ if __name__ == "__main__":
 
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             pbar.update(1)
-            
+
         if args.csv:
             if args.csv.split(".")[-1] != "csv":
                 csv_path = os.path.join(args.csv, "predicts.csv")
