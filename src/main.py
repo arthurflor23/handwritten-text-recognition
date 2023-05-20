@@ -234,6 +234,7 @@ if __name__ == "__main__":
                                         , (1, 10))
             predicted_blank = blank_model.predict_proba(blank_features)[0][0]
 
+            print(img.shape)
             img = pp.preprocess(image_path, input_size=input_size)
             x_test = pp.normalization([img])
 
