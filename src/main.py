@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             pbar.update(1)
-            print([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
+            
         if args.csv:
             if args.csv.split(".")[-1] != "csv":
                 csv_path = os.path.join(args.csv, "predicts.csv")
