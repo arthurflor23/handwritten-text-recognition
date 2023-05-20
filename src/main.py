@@ -188,7 +188,6 @@ if __name__ == "__main__":
                     img = plt.imread(image_path)
                 else:
                     img = cv2.imread(image_path)
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             except:
                 continue
 
