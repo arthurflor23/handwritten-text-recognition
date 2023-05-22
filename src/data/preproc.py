@@ -8,11 +8,18 @@ Data preproc functions:
 """
 
 import re
-import os
 import cv2
 import html
+import os
 import string
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 
 def adjust_to_see(img):
@@ -96,8 +103,7 @@ NORMALIZE_WHITESPACE_REGEX = re.compile(r'[^\S\n]+', re.UNICODE)
 def text_standardize(text):
     """Organize/add spaces around punctuation marks"""
 
-    if text is None:
-        return ""
+    text = str(text)
 
     text = html.unescape(text).replace("\\n", "").replace("\\t", "")
 
@@ -142,26 +148,20 @@ def preprocess(img, input_size):
     """Make the process with the `input_size` to the scale resize"""
 
     def imread(path):
-        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+
+        if os.name == "nt":
+            img = plt.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        else:
+            img = cv2.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
         u, i = np.unique(np.array(img).flatten(), return_inverse=True)
         background = int(u[np.argmax(np.bincount(i))])
         return img, background
 
     if isinstance(img, str):
         img, bg = imread(img)
-
-    if isinstance(img, tuple):
-        image, boundbox = img
-        img, bg = imread(image)
-
-        for i in range(len(boundbox)):
-            if isinstance(boundbox[i], float):
-                total = len(img) if i < 2 else len(img[0])
-                boundbox[i] = int(total * boundbox[i])
-            else:
-                boundbox[i] = int(boundbox[i])
-
-        img = np.asarray(img[boundbox[0]:boundbox[1], boundbox[2]:boundbox[3]], dtype=np.uint8)
 
     wt, ht, _ = input_size
     h, w = np.asarray(img).shape

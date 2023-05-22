@@ -4,6 +4,7 @@
 /output/
 /backup/
 /tensorboard/
+/logs
 
 /src/lib/
 /src/data/predicts/
@@ -119,3 +120,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+/.idea
+*.iml
+*.jpg
+*.csv
