@@ -248,7 +248,7 @@ if __name__ == "__main__":
                 csv_path = os.path.join(args.csv, "predicts.csv")
             else:
                 csv_path = args.csv
-            with open(csv_path, 'w', newline='') as csvfile:
+            with open(csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
         elif args.parquet:
