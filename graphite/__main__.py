@@ -35,10 +35,10 @@ if __name__ == '__main__':
                         help="Set the test partition ratio")
 
     # Data augmentation
-    parser.add_argument('--disable-aug', default=True, action='store_false',
-                        help="Disable data augmentation completely")
-    parser.add_argument('--aug-rotation', default=[-1.5, 1.5], nargs='+',
-                        help="Set rotation transformation (min_value, max_value)")
+    # parser.add_argument('--disable-aug', default=True, action='store_false',
+    #                     help="Disable data augmentation completely")
+    # parser.add_argument('--aug-rotation', default=[-1.5, 1.5], nargs='+',
+    #                     help="Set rotation transformation (min_value, max_value)")
 
     # Inference
     parser.add_argument('--images', default=[], nargs='+',
