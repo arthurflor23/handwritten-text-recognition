@@ -1,3 +1,3 @@
-from spellcheck import SpellCheck
+from .spellcheck import SpellCheck
 
 __all__ = ['SpellCheck']
