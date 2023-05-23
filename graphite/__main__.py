@@ -27,7 +27,7 @@ if __name__ == '__main__':
                         help="Define the recoginition level (line, paragraph)")
     parser.add_argument('--lazy-mode', default=False, action='store_true',
                         help="Enable lazy loading")
-    parser.add_argument('--train-ratio', default=None,
+    parser.add_argument('--training-ratio', default=None,
                         help="Set the training partition ratio")
     parser.add_argument('--validation-ratio', default=None,
                         help="Set the validation partition ratio")
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # Inference
     parser.add_argument('--images', default=[], nargs='+',
                         help="Set image path list for handwriting recognition")
-    parser.add_argument('--crop', default=[], nargs='+',
+    parser.add_argument('--cropping', default=[], nargs='+',
                         help="Set cropping values (x, y, width, height)")
 
     # Spell check
