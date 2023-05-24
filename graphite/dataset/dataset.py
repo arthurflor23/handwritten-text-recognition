@@ -1,6 +1,8 @@
 import os
+import re
 import cv2
 import json
+import nltk
 import random
 import importlib
 import multiprocessing
@@ -109,7 +111,7 @@ class Dataset():
 
             Dataset Information
             Total Size                {self.size}
-            Charset                   {self.charset}
+            Charset                   {''.join(self.charset)}
             Charset Length            {len(self.charset)}
             Smallest Label            {self.min_label}
             Smallest Label Length     {len(self.min_label)}
@@ -318,10 +320,72 @@ class Dataset():
             str: The standardized label.
         """
 
-        if not label:
-            return label
+        # Dictionary of substitutions
+        substitutions = {
+            r'[ ]': ' ',
+            r'[＿]': '_',
+            r'[，]': ',',
+            r'[；]': ';',
+            r'[：]': ':',
+            r'[！﹗]': '!',
+            r'[？﹖]': '?',
+            r'[．。]': '.',
+            r'[＂“”″‶]': '"',
+            r'[（]': '(',
+            r'[）]': ')',
+            r'[［]': '[',
+            r'[］]': ']',
+            r'[｛]': '}',
+            r'[｝]': '{',
+            r'[＠]': '@',
+            r'[＊]': '*',
+            r'[／]': '/',
+            r'[＼]': '\\\\',
+            r'[＆]': '&',
+            r'[＃]': '#',
+            r'[％]': '%',
+            r'[＾]': '^',
+            r'[˗֊‐‑‒–—－−﹣]': '-',
+            r'[＋]': '+',
+            r'[＜]': '<',
+            r'[＝]': '=',
+            r'[＞]': '>',
+            r'[｜]': '|',
+            r'[～]': '~',
+            r'[⋯]': '...',
+            r'[＄]': '$',
+            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
+        }
 
-        # Perform formatting, normalization, and standardization operations on the label
-        # ...
+        # Compile the regular expressions
+        regexes = {re.compile(k): v for k, v in substitutions.items()}
+
+        # Perform the substitutions using a loop
+        for pattern, replacement in regexes.items():
+            label = pattern.sub(replacement, label)
+
+        # Remove extra spaces around punctuation marks
+        label = re.sub(r'\s+([!?,.;:])', r'\1', label)
+
+        # Fix spacing around contractions
+        label = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', label)
+
+        # Remove spaces before opening single quotes
+        label = re.sub(r'\s+(?=[\'"])', '', label)
+
+        # Remove spaces after closing single quotes
+        label = re.sub(r'(?<=[\'"]) +', '', label)
+
+        # Tokenize text using the Treebank tokenizer
+        tokenizer = nltk.tokenize.treebank.TreebankWordTokenizer()
+        tokens = tokenizer.tokenize(label)
+
+        # Detokenize the tokens
+        detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
+        label = detokenizer.detokenize(tokens)
+
+        # Remove extra spaces and handle quotes
+        label = re.sub(r'\s+', ' ', label.replace('"', ' " ')).strip()
+        label = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label).strip()
 
         return label
