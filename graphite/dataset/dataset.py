@@ -31,30 +31,13 @@ class Dataset():
         if data is None:
             data = self._fetch_data_from_source()
 
-        # Validate data
-        training, validation, test = self._validate_data(data)
+        # Prepare data
+        data = self._prepare_data(data)
 
         # Create partitions
-        self.training = {
-            'index': 0,
-            'labels': training[0],
-            'images': training[1],
-            'cropping': training[2],
-        }
-
-        self.validation = {
-            'index': 0,
-            'labels': validation[0],
-            'images': validation[1],
-            'cropping': validation[2],
-        }
-
-        self.test = {
-            'index': 0,
-            'labels': test[0],
-            'images': test[1],
-            'cropping': test[2],
-        }
+        self.training = self._create_partition_dict(data[0])
+        self.validation = self._create_partition_dict(data[1])
+        self.test = self._create_partition_dict(data[2])
 
         print('\n\n\n')
         print(self.training)
@@ -63,6 +46,15 @@ class Dataset():
 
     def __repr__(self):
         return "TEMP"
+
+    def _create_partition_dict(self, partition_data):
+        # Default particion dict structure
+        return {
+            'index': 0,
+            'labels': partition_data[0],
+            'images': partition_data[1],
+            'cropping': partition_data[2],
+        }
 
     def _fetch_data_from_source(self):
         # Get the module based on the source
@@ -83,13 +75,11 @@ class Dataset():
 
         return data
 
-    def _validate_data(self, data):
+    def _prepare_data(self, data):
         # Perform data validation checks
         assert data is not None and 1 <= len(data) <= 3, "data must have 3 dims (training, validation, test)"
 
-        if isinstance(data, tuple):
-            data = list(data)
-
+        data = list(data)
         data.extend([[[], [], []]] * (3 - len(data)))
 
         for i in range(len(data)):
@@ -128,6 +118,7 @@ class Dataset():
         # Convert data to a list of tuples
         data = [list(zip(x[0], x[1], x[2])) for x in data]
 
+        # Resample data based on aspect ratio
         if isinstance(ratio, float) and ratio == 1.0:
             merged = []
 
@@ -156,33 +147,32 @@ class Dataset():
                         if isinstance(ratio, float) else ratio
                     data[i] = data[i][:index]
 
+        # Filter valid data
         for i in range(len(data)):
-            if len(data[i]) == 0:
-                continue
+            valid_items = []
 
-            for y in range(len(data[i]) - 1, -1, -1):
-                if len(data[i][y]) == 0:
+            for y in range(len(data[i])):
+                item = list(data[i][y])
+                image = None
+
+                file_exists = os.path.exists(item[1]) and os.path.isfile(item[1])
+
+                if file_exists:
+                    try:
+                        image = cv2.imread(item[1], cv2.IMREAD_GRAYSCALE)
+                    except Exception:
+                        pass
+
+                if image is None:
+                    print(f"Image `{os.path.basename(item[1])}` cannot be read.")
                     continue
 
-                if isinstance(data[i][y], tuple):
-                    data[i][y] = list(data[i][y])
+                if not self.lazy_mode:
+                    item[1] = image
 
-                image_path = data[i][y][1]
-                file_exists = os.path.exists(image_path) and os.path.isfile(image_path)
+                valid_items.append(item)
 
-                try:
-                    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                except Exception:
-                    image = None
+            # Unzip the data and convert to lists
+            data[i] = [list(x) for x in zip(*valid_items)] if valid_items else [[], [], []]
 
-                if file_exists and image is not None:
-                    if not self.lazy_mode:
-                        data[i][y][1] = image
-
-                else:
-                    del data[i][y]
-
-        # Unzip the data and convert to lists
-        data = [[list(x) for x in zip(*y)] if y else [[], [], []] for y in data]
-
-        return (data[0], data[1], data[2])
+        return data
