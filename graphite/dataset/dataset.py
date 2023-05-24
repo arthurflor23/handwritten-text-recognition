@@ -12,7 +12,7 @@ class Dataset():
                  validation_ratio=None,
                  test_ratio=None,
                  lazy_mode=True,
-                 input_path=None,
+                 data_path=None,
                  seed=None):
 
         self.source = source
@@ -21,7 +21,7 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.lazy_mode = lazy_mode
-        self.input_path = input_path
+        self.data_path = data_path
         self.seed = seed
 
         # Load the data upon initialization
@@ -70,7 +70,7 @@ class Dataset():
         method = getattr(module, method_name)
 
         # Call the method to get the data
-        data = method(self.input_path)
+        data = method(self.data_path)
 
         return data
 
