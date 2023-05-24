@@ -1,3 +1,5 @@
+import os
+import cv2
 import random
 import importlib
 
@@ -12,8 +14,8 @@ class Dataset():
                  validation_ratio=None,
                  test_ratio=None,
                  lazy_mode=True,
-                 data_path=None,
-                 seed=None):
+                 data_path='data',
+                 seed=42):
 
         self.source = source
         self.level = level
@@ -21,7 +23,8 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.lazy_mode = lazy_mode
-        self.data_path = data_path
+        self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
+        self.data_path = os.path.join(self.base_path, data_path)
         self.seed = seed
 
         # Load the data upon initialization
@@ -29,31 +32,37 @@ class Dataset():
             data = self._fetch_data_from_source()
 
         # Validate data
-        data = self._validate_data_from_source(data)
-        # Setup data
-        self._setup_data(data)
+        training, validation, test = self._validate_data(data)
 
+        # Create partitions
+        self.training = {
+            'index': 0,
+            'labels': training[0],
+            'images': training[1],
+            'cropping': training[2],
+        }
+
+        self.validation = {
+            'index': 0,
+            'labels': validation[0],
+            'images': validation[1],
+            'cropping': validation[2],
+        }
+
+        self.test = {
+            'index': 0,
+            'labels': test[0],
+            'images': test[1],
+            'cropping': test[2],
+        }
+
+        print('\n\n\n')
         print(self.training)
         print(self.validation)
         print(self.test)
 
     def __repr__(self):
         return "TEMP"
-
-    def _setup_data(self, data):
-        # Create a dataset dictionary with index, labels, images, and cropping
-        def create_partition(data):
-            return {
-                'index': 0,
-                'labels': data[0],
-                'images': data[1],
-                'cropping': data[2],
-            }
-
-        # Create the partitions
-        self.training = create_partition(data[0])
-        self.validation = create_partition(data[1])
-        self.test = create_partition(data[2])
 
     def _fetch_data_from_source(self):
         # Get the module based on the source
@@ -74,7 +83,7 @@ class Dataset():
 
         return data
 
-    def _validate_data_from_source(self, data):
+    def _validate_data(self, data):
         # Perform data validation checks
         assert data is not None and 1 <= len(data) <= 3, "data must have 3 dims (training, validation, test)"
 
@@ -147,7 +156,33 @@ class Dataset():
                         if isinstance(ratio, float) else ratio
                     data[i] = data[i][:index]
 
-        # Unzip the data and convert to lists
-        data = [[list(x) for x in zip(*d)] if d else [[], [], []] for d in data]
+        for i in range(len(data)):
+            if len(data[i]) == 0:
+                continue
 
-        return data
+            for y in range(len(data[i]) - 1, -1, -1):
+                if len(data[i][y]) == 0:
+                    continue
+
+                if isinstance(data[i][y], tuple):
+                    data[i][y] = list(data[i][y])
+
+                image_path = data[i][y][1]
+                file_exists = os.path.exists(image_path) and os.path.isfile(image_path)
+
+                try:
+                    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+                except Exception:
+                    image = None
+
+                if file_exists and image is not None:
+                    if not self.lazy_mode:
+                        data[i][y][1] = image
+
+                else:
+                    del data[i][y]
+
+        # Unzip the data and convert to lists
+        data = [[list(x) for x in zip(*y)] if y else [[], [], []] for y in data]
+
+        return (data[0], data[1], data[2])
