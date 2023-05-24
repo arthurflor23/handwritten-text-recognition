@@ -1,5 +1,6 @@
 import os
 import cv2
+import json
 import random
 import importlib
 import multiprocessing
@@ -51,18 +52,44 @@ class Dataset():
         self.max_label = None
 
         # Load data at startup
-        if data is None:
+        if data is None and self.source is not None:
             data = self._fetch_data_from_source()
 
-        # Prepare data
-        data = self._prepare_data(data)
+        if data is not None:
+            # Prepare data
+            data = self._prepare_data(data)
 
-        # Create partitions
-        self.training = self._create_partition_dict(data[0])
-        self.validation = self._create_partition_dict(data[1])
-        self.test = self._create_partition_dict(data[2])
+            # Create partitions
+            self.training = self._create_partition_dict(data[0])
+            self.validation = self._create_partition_dict(data[1])
+            self.test = self._create_partition_dict(data[2])
 
     def __repr__(self):
+        """
+        Returns a JSON-formatted string representation of the Dataset object.
+
+        Returns:
+            str: A JSON-formatted string containing the object's attributes.
+        """
+
+        return json.dumps({
+            'source': self.source,
+            'level': self.level,
+            'training_ratio': self.training_ratio,
+            'validation_ratio': self.validation_ratio,
+            'test_ratio': self.test_ratio,
+            'lazy_mode': self.lazy_mode,
+            'seed': self.seed,
+            'size': self.size,
+            'charset': self.charset,
+            'charset_length': len(self.charset),
+            'min_label': self.min_label,
+            'min_label_length': len(self.min_label),
+            'max_label': self.max_label,
+            'max_label_length': len(self.max_label),
+        })
+
+    def __str__(self):
         """
         Returns a string representation of the Dataset object with useful information.
 
@@ -82,13 +109,10 @@ class Dataset():
 
             Dataset Information
             Total Size                {self.size}
-
             Charset                   {self.charset}
             Charset Length            {len(self.charset)}
-
             Smallest Label            {self.min_label}
             Smallest Label Length     {len(self.min_label)}
-
             Biggest Label             {self.max_label}
             Biggest Label Length      {len(self.max_label)}
         """
@@ -144,11 +168,11 @@ class Dataset():
         """
 
         # Get the module based on the source
-        module_name = f"dataset.source.{self.source}"
+        module_name = importlib.util.resolve_name(f".source.{self.source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "source must be created"
 
-        module = importlib.import_module(module_name)
+        module = importlib.import_module(module_name, __package__)
 
         # Get the method based on the level
         method_name = f"get_{self.level}_data"
