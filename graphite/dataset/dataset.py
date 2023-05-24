@@ -5,8 +5,9 @@ import importlib
 class Dataset():
 
     def __init__(self,
-                 source,
-                 level,
+                 data=None,
+                 source=None,
+                 level=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -16,46 +17,45 @@ class Dataset():
 
         self.source = source
         self.level = level
-
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-
         self.lazy_mode = lazy_mode
         self.input_path = input_path
         self.seed = seed
 
-        data = self._fetch_data()
+        # Load the data upon initialization
+        if data is None:
+            data = self._fetch_data_from_source()
 
-        self.training = {
-            'index': 0,
-            'labels': data[0][0],
-            'images': data[0][1],
-            'cropping': data[0][2],
-        }
-
-        self.validation = {
-            'index': 0,
-            'labels': data[1][0],
-            'images': data[1][1],
-            'cropping': data[1][2],
-        }
-
-        self.test = {
-            'index': 0,
-            'labels': data[2][0],
-            'images': data[2][1],
-            'cropping': data[2][2],
-        }
+        # Validate data
+        data = self._validate_data_from_source(data)
+        # Setup data
+        self._setup_data(data)
 
         print(self.training)
         print(self.validation)
         print(self.test)
 
     def __repr__(self):
-        return "temp 1"
+        return "TEMP"
 
-    def _fetch_data(self):
+    def _setup_data(self, data):
+        # Create a dataset dictionary with index, labels, images, and cropping
+        def create_partition(data):
+            return {
+                'index': 0,
+                'labels': data[0],
+                'images': data[1],
+                'cropping': data[2],
+            }
+
+        # Create the partitions
+        self.training = create_partition(data[0])
+        self.validation = create_partition(data[1])
+        self.test = create_partition(data[2])
+
+    def _fetch_data_from_source(self):
         # Get the module based on the source
         module_name = f"dataset.source.{self.source}"
         module_spec = importlib.util.find_spec(module_name)
@@ -72,6 +72,9 @@ class Dataset():
         # Call the method to get the data
         data = method(self.input_path)
 
+        return data
+
+    def _validate_data_from_source(self, data):
         # Perform data validation checks
         assert data is not None and 1 <= len(data) <= 3, "data must have 3 dims (training, validation, test)"
 
@@ -82,7 +85,7 @@ class Dataset():
 
         for i in range(len(data)):
             data[i] = data[i] or [[], [], []]
-            data[i].extend([[[], [], []]] * (3 - len(data[i])))
+            data[i].extend([[]] * (3 - len(data[i])))
             assert 1 <= len(data[i]) <= 3, "partitions must have 3 dims (labels, images, cropping)"
 
             data[i][2] = data[i][2] or []
@@ -131,7 +134,7 @@ class Dataset():
                 random.shuffle(data[i])
 
                 if ratio is not None:
-                    index = round(ratio * total_merged)
+                    index = round((ratio + 1e-8) * total_merged)
                     data[i] = merged[:index]
                     merged[:index] = []
 
@@ -140,7 +143,8 @@ class Dataset():
                 random.shuffle(data[i])
 
                 if ratio is not None:
-                    index = round(ratio * len(data[i])) if isinstance(ratio, float) else ratio
+                    index = round((ratio + 1e-8) * len(data[i])) \
+                        if isinstance(ratio, float) else ratio
                     data[i] = data[i][:index]
 
         # Unzip the data and convert to lists
