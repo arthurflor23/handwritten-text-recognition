@@ -27,7 +27,12 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.seed = seed
 
-        # Load the data upon initialization
+        self.size = 0
+        self.charset = []
+        self.min_label = None
+        self.max_label = None
+
+        # Load data at startup
         if data is None:
             data = self._fetch_data_from_source()
 
@@ -39,22 +44,62 @@ class Dataset():
         self.validation = self._create_partition_dict(data[1])
         self.test = self._create_partition_dict(data[2])
 
-        print('\n\n\n')
-        print(self.training)
-        print(self.validation)
-        print(self.test)
-
     def __repr__(self):
-        return "TEMP"
+
+        info = f"""
+            Dataset Configuration
+            Source                    {self.source or '-'}
+            Level                     {self.level or '-'}
+            Training Ratio            {self.training_ratio or '-'}
+            Validation Ratio          {self.validation_ratio or '-'}
+            Test Ratio                {self.test_ratio or '-'}
+            Lazy Mode                 {self.lazy_mode}
+            Seed                      {self.seed}
+
+            Dataset Information
+            Total Size                {self.size}
+
+            Charset                   {self.charset}
+            Charset Length            {len(self.charset)}
+
+            Smallest Label            {self.min_label}
+            Smallest Label Length     {len(self.min_label)}
+
+            Biggest Label             {self.max_label}
+            Biggest Label Length      {len(self.max_label)}
+        """
+
+        info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        return info
 
     def _create_partition_dict(self, partition_data):
         # Default particion dict structure
-        return {
+        labels, images, cropping = partition_data
+
+        partition_dict = {
             'index': 0,
-            'labels': partition_data[0],
-            'images': partition_data[1],
-            'cropping': partition_data[2],
+            'labels': labels,
+            'images': images,
+            'cropping': cropping,
+            'size': len(labels),
+            'charset': sorted(set(''.join(labels))) if labels else [],
+            'min_label': min(labels, key=len) if labels else '',
+            'max_label': max(labels, key=len) if labels else '',
         }
+
+        self.size += partition_dict['size']
+        self.charset = sorted(set(self.charset + partition_dict['charset']))
+
+        if partition_dict['min_label']:
+            self.min_label = partition_dict['min_label'] if self.min_label is None else \
+                min(self.min_label, partition_dict['min_label'], key=len)
+
+        if partition_dict['max_label']:
+            self.max_label = partition_dict['max_label'] if self.max_label is None else \
+                max(self.max_label, partition_dict['max_label'], key=len)
+
+        return partition_dict
 
     def _fetch_data_from_source(self):
         # Get the module based on the source
