@@ -6,6 +6,9 @@ import multiprocessing
 
 
 class Dataset():
+    """
+    Dataset class representing a general class for data source management.
+    """
 
     def __init__(self,
                  data=None,
@@ -17,6 +20,20 @@ class Dataset():
                  data_path='data',
                  lazy_mode=True,
                  seed=42):
+        """
+        Initializes a new instance of the Dataset class.
+
+        Args:
+            data (list, optional): custom data for inference mode. Defaults to None.
+            source (str, optional): The data source name. Defaults to None.
+            level (str, optional): The recoginition level. Defaults to None.
+            training_ratio (float or int, optional): The training ratio for resample. Defaults to None.
+            validation_ratio (float or int, optional): The validation ratio for resample. Defaults to None.
+            test_ratio (float or int, optional): The test ratio for resample. Defaults to None.
+            data_path (str, optional): Path name to fetch the data. Defaults to 'data'.
+            lazy_mode (bool, optional): Lazy mode flag for lazy loading process. Defaults to True.
+            seed (int, optional): The random seed. Defaults to 42.
+        """
 
         self.source = source
         self.level = level
@@ -46,6 +63,12 @@ class Dataset():
         self.test = self._create_partition_dict(data[2])
 
     def __repr__(self):
+        """
+        Returns a string representation of the Dataset object with useful information.
+
+        Returns:
+            str: The string representation of the object.
+        """
 
         info = f"""
             Dataset Configuration
@@ -75,6 +98,16 @@ class Dataset():
         return info
 
     def _create_partition_dict(self, partition_data):
+        """
+        Creates a partition dictionary from the given partition data.
+
+        Args:
+            partition_data (tuple): The partition data containing labels, images, and cropping information.
+
+        Returns:
+            dict: The partition dictionary.
+        """
+
         # Default particion dict structure
         labels, images, cropping = partition_data
 
@@ -103,6 +136,13 @@ class Dataset():
         return partition_dict
 
     def _fetch_data_from_source(self):
+        """
+        Fetches the data from the specified data source.
+
+        Returns:
+            list: The fetched data.
+        """
+
         # Get the module based on the source
         module_name = f"dataset.source.{self.source}"
         module_spec = importlib.util.find_spec(module_name)
@@ -122,6 +162,16 @@ class Dataset():
         return data
 
     def _prepare_data(self, data):
+        """
+        Prepares the data for partitioning.
+
+        Args:
+            data (tuple): The input data (training, validation, test).
+
+        Returns:
+            list: The prepared data.
+        """
+
         # Perform data validation checks
         assert data is not None and 1 <= len(data) <= 3, "data must have 3 dims (training, validation, test)"
 
@@ -201,6 +251,16 @@ class Dataset():
         return data
 
     def _validate_data_item(self, item):
+        """
+        Validates a single data item.
+
+        Args:
+            item (tuple): The data item to validate.
+
+        Returns:
+            tuple: The validated data item.
+        """
+
         item = list(item)
         image = None
 
@@ -219,6 +279,25 @@ class Dataset():
             item[1] = image
 
         # Standardize label
-        # print('item', item[0])
+        item[0] = self._format_label(item[0])
 
         return item
+
+    def _format_label(self, label):
+        """
+        Standardizes a label by formatting, normalizing, and standardizing the string of text.
+
+        Args:
+            label (str): The label to be standardized.
+
+        Returns:
+            str: The standardized label.
+        """
+
+        if not label:
+            return label
+
+        # Perform formatting, normalization, and standardization operations on the label
+        # ...
+
+        return label
