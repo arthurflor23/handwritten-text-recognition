@@ -2,6 +2,7 @@ import os
 import cv2
 import random
 import importlib
+import multiprocessing
 
 
 class Dataset():
@@ -190,28 +191,34 @@ class Dataset():
 
         # Filter valid data
         for i in range(len(data)):
-            valid_items = []
-
-            for item in data[i]:
-                item = list(item)
-                image = None
-
-                if os.path.exists(item[1]) and os.path.isfile(item[1]):
-                    try:
-                        image = cv2.imread(item[1], cv2.IMREAD_GRAYSCALE)
-                    except Exception:
-                        pass
-
-                if image is None:
-                    print(f"Image `{os.path.basename(item[1])}` cannot be read.")
-                    continue
-
-                if not self.lazy_mode:
-                    item[1] = image
-
-                valid_items.append(item)
+            # Apply the process_data function to each item in self.data in parallel
+            with multiprocessing.get_context('fork').Pool() as pool:
+                valid_items = [x for x in pool.map(self._validate_data_item, iterable=data[i]) if x]
 
             # Unzip the data and convert to lists
             data[i] = list(map(list, zip(*valid_items))) if valid_items else [[], [], []]
 
         return data
+
+    def _validate_data_item(self, item):
+        item = list(item)
+        image = None
+
+        # Check if the image exist and is readable
+        if os.path.exists(item[1]) and os.path.isfile(item[1]):
+            try:
+                image = cv2.imread(item[1], cv2.IMREAD_GRAYSCALE)
+            except Exception:
+                pass
+
+        if image is None:
+            print(f"Image `{os.path.basename(item[1])}` cannot be read.")
+            return None
+
+        if not self.lazy_mode:
+            item[1] = image
+
+        # Standardize label
+        # print('item', item[0])
+
+        return item
