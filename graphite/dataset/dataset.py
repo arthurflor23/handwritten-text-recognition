@@ -13,8 +13,8 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
-                 lazy_mode=True,
                  data_path='data',
+                 lazy_mode=True,
                  seed=42):
 
         self.source = source
@@ -22,9 +22,9 @@ class Dataset():
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-        self.lazy_mode = lazy_mode
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
+        self.lazy_mode = lazy_mode
         self.seed = seed
 
         # Load the data upon initialization
@@ -123,41 +123,35 @@ class Dataset():
             merged = []
 
             for i, ratio in enumerate(ratios):
-                random.shuffle(data[i])
-
                 if ratio is not None:
                     merged.extend(data[i])
 
-            total_merged = len(merged)
+            if merged:
+                random.shuffle(merged)
+                total_merged = len(merged)
 
-            for i, ratio in enumerate(ratios):
-                random.shuffle(data[i])
-
-                if ratio is not None:
-                    index = round((ratio + 1e-8) * total_merged)
-                    data[i] = merged[:index]
-                    merged[:index] = []
+                for i, ratio in enumerate(ratios):
+                    if ratio is not None:
+                        index = round((ratio + 1e-8) * total_merged)
+                        data[i] = merged[:index]
+                        merged[:index] = []
 
         else:
             for i, ratio in enumerate(ratios):
-                random.shuffle(data[i])
-
                 if ratio is not None:
-                    index = round((ratio + 1e-8) * len(data[i])) \
-                        if isinstance(ratio, float) else ratio
+                    random.shuffle(data[i])
+                    index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
                     data[i] = data[i][:index]
 
         # Filter valid data
         for i in range(len(data)):
             valid_items = []
 
-            for y in range(len(data[i])):
-                item = list(data[i][y])
+            for item in data[i]:
+                item = list(item)
                 image = None
 
-                file_exists = os.path.exists(item[1]) and os.path.isfile(item[1])
-
-                if file_exists:
+                if os.path.exists(item[1]) and os.path.isfile(item[1]):
                     try:
                         image = cv2.imread(item[1], cv2.IMREAD_GRAYSCALE)
                     except Exception:
@@ -173,6 +167,6 @@ class Dataset():
                 valid_items.append(item)
 
             # Unzip the data and convert to lists
-            data[i] = [list(x) for x in zip(*valid_items)] if valid_items else [[], [], []]
+            data[i] = list(map(list, zip(*valid_items))) if valid_items else [[], [], []]
 
         return data
