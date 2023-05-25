@@ -51,8 +51,15 @@ class Dataset():
 
         self.size = 0
         self.charset = []
+
         self.min_label = ''
         self.max_label = ''
+
+        self.min_rows = float('inf')
+        self.max_rows = float('-inf')
+
+        self.min_columns = float('inf')
+        self.max_columns = float('-inf')
 
         # Load data at startup
         if data is None and self.source is not None:
@@ -63,9 +70,9 @@ class Dataset():
             data = self._prepare_data(data)
 
             # Create partitions
-            self.training = self._create_partition_dict(data[0])
-            self.validation = self._create_partition_dict(data[1])
-            self.test = self._create_partition_dict(data[2])
+            self.training = self._create_dct(data[0])
+            self.validation = self._create_dct(data[1])
+            self.test = self._create_dct(data[2])
 
     def __repr__(self):
         """
@@ -90,6 +97,10 @@ class Dataset():
             'min_label_length': len(self.min_label),
             'max_label': self.max_label,
             'max_label_length': len(self.max_label),
+            'min_rows': self.min_rows,
+            'max_rows': self.max_rows,
+            'min_columns': self.min_columns,
+            'max_columns': self.max_columns,
         })
 
     def __str__(self):
@@ -102,65 +113,104 @@ class Dataset():
 
         info = f"""
             Dataset Configuration
-            Source                    {self.source or '-'}
-            Level                     {self.level or '-'}
-            Training Ratio            {self.training_ratio or '-'}
-            Validation Ratio          {self.validation_ratio or '-'}
-            Test Ratio                {self.test_ratio or '-'}
-            Lazy Mode                 {self.lazy_mode}
-            Seed                      {self.seed}
+            Source                  {self.source or '-'}
+            Level                   {self.level or '-'}
+            Training Ratio          {self.training_ratio or '-'}
+            Validation Ratio        {self.validation_ratio or '-'}
+            Test Ratio              {self.test_ratio or '-'}
+            Lazy Mode               {self.lazy_mode}
+            Seed                    {self.seed}
 
             Dataset Information
-            Total Size                {self.size}
-            Charset                   {''.join(self.charset)}
-            Charset Length            {len(self.charset)}
-            Smallest Label            {self.min_label}
-            Smallest Label Length     {len(self.min_label)}
-            Biggest Label             {self.max_label}
-            Biggest Label Length      {len(self.max_label)}
+            Total Size              {self.size}
+
+            Charset                 {''.join(self.charset)}
+            Charset Length          {len(self.charset)}
+
+            Min Label               {self.min_label}
+            Min Label Length        {len(self.min_label)}
+
+            Max Label               {self.max_label}
+            Max Label Length        {len(self.max_label)}
+
+            Min Rows                {self.min_rows}
+            Max Rows                {self.max_rows}
+
+            Min Columns             {self.min_columns}
+            Max Columns             {self.max_columns}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
 
-    def _create_partition_dict(self, partition_data):
+    def _create_dct(self, partition_data):
         """
-        Creates a partition dictionary from the given partition data.
+        Creates a partition dict from the given partition data.
 
         Args:
             partition_data (tuple): The partition data containing labels, images, and cropping information.
 
         Returns:
-            dict: The partition dictionary.
+            dict: The partition dict.
         """
 
-        # Default particion dict structure
         images, cropping, labels = partition_data
 
-        partition_dict = {
+        # Initialize the partition dict with default values
+        dct = {
             'index': 0,
             'labels': labels,
             'images': images,
             'cropping': cropping,
             'size': len(labels),
             'charset': sorted(set(''.join(''.join(x) for x in labels))) if labels else [],
-            'min_label': min([' '.join(sublist) for sublist in labels], key=len) if labels else '',
-            'max_label': max([' '.join(sublist) for sublist in labels], key=len) if labels else '',
+            'min_label': '',
+            'max_label': '',
+            'min_rows': 0,
+            'max_rows': 0,
+            'min_columns': 0,
+            'max_columns': 0,
         }
 
-        self.size += partition_dict['size']
-        self.charset = sorted(set(self.charset + partition_dict['charset']))
+        # Update the partition dict with relevant values if labels exist
+        if labels:
+            dct['min_label'] = min([' '.join(x) for x in labels], key=len)
+            dct['max_label'] = max([' '.join(x) for x in labels], key=len)
+            dct['min_rows'] = min(len(x) for x in labels)
+            dct['max_rows'] = max(len(x) for x in labels)
+            dct['min_columns'] = min(len(y) for x in labels for y in x)
+            dct['max_columns'] = max(len(y) for x in labels for y in x)
 
-        if partition_dict['min_label']:
-            self.min_label = partition_dict['min_label'] if not self.min_label else \
-                min(self.min_label, partition_dict['min_label'], key=len)
+        # Update the object's properties using the partition dict
+        self.size += dct['size']
+        self.charset = sorted(set(self.charset + dct['charset']))
 
-        if partition_dict['max_label']:
-            self.max_label = partition_dict['max_label'] if not self.max_label else \
-                max(self.max_label, partition_dict['max_label'], key=len)
+        if dct['min_label']:
+            # Update the minimum label if it exists
+            self.min_label = min(self.min_label or dct['min_label'], dct['min_label'], key=len)
 
-        return partition_dict
+        if dct['max_label']:
+            # Update the maximum label if it exists
+            self.max_label = max(self.max_label or dct['max_label'], dct['max_label'], key=len)
+
+        if dct['min_rows']:
+            # Update the minimum number of rows if it exists
+            self.min_rows = min(self.min_rows, dct['min_rows'])
+
+        if dct['max_rows']:
+            # Update the maximum number of rows if it exists
+            self.max_rows = max(self.max_rows, dct['max_rows'])
+
+        if dct['min_columns']:
+            # Update the minimum number of columns if it exists
+            self.min_columns = min(self.min_columns, dct['min_columns'])
+
+        if dct['max_columns']:
+            # Update the maximum number of columns if it exists
+            self.max_columns = max(self.max_columns, dct['max_columns'])
+
+        return dct
 
     def _fetch_data_from_source(self):
         """
@@ -402,7 +452,7 @@ class Dataset():
         if isinstance(label, str):
             label = label.split('\n')
 
-        # Dictionary of substitutions
+        # dct of substitutions
         substitutions = {
             r'[ ]': ' ',
             r'[＿]': '_',
