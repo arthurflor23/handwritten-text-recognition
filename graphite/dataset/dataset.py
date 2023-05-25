@@ -135,7 +135,7 @@ class Dataset():
         """
 
         # Default particion dict structure
-        labels, images, cropping = partition_data
+        images, cropping, labels = partition_data
 
         partition_dict = {
             'index': 0,
@@ -198,41 +198,58 @@ class Dataset():
             list: The prepared data.
         """
 
-        # Perform data validation checks
-        assert data is not None and 1 <= len(data) <= 3, "data must have 3 dims (training, validation, test)"
-
         data = list(data)
-        data.extend([[[], [], []]] * (3 - len(data)))
+
+        # Wrap data in a list if it's strings or a list of strings
+        if isinstance(data[0], str) or isinstance(data[0][0], str):
+            data = [[], [], data]
 
         for i in range(len(data)):
-            data[i] = data[i] or [[], [], []]
-            data[i].extend([[]] * (3 - len(data[i])))
-            assert 1 <= len(data[i]) <= 3, "partitions must have 3 dims (labels, images, cropping)"
+            data[i] = data[i] or []
 
-            data[i][2] = data[i][2] or []
+            if not data[i]:
+                continue
+
+            # Wrap data in a list if it's strings
+            if isinstance(data[i][0], str):
+                data[i] = [data[i], [], []]
+
+            if len(data[i]) == 2:
+                if isinstance(data[i][1][0], str):
+                    # Prepare data considering images and labels as input
+                    data[i] = [data[i][0], [], data[i][1]]
+                else:
+                    # Prepare data considering images and cropping as input
+                    data[i] = [data[i][0], data[i][1], []]
+
+            # Replace empty lists with []
+            data[i] = [data[i][y] or [] for y in range(len(data[i]))]
+
+        # Extend data list with empty lists to ensure length of 3
+        data.extend([[]] * (3 - len(data)))
+
+        for i in range(len(data)):
+            # Extend partition list with empty lists to ensure length of 3
+            data[i].extend([[]] * (3 - len(data[i])))
+            assert len(data[i]) == 3, "partitions must have 3 dims (images, cropping, labels)"
+
+            # Prepare cropping and labels values
+            if len(data[i][1]) == 0:
+                data[i][1] = [[]] * len(data[i][0])
+
+            elif len(data[i][1]) == 1:
+                data[i][1] = [data[i][1][0]] * len(data[i][0])
 
             if len(data[i][2]) == 0:
-                data[i][2] = [[]] * len(data[i][1])
-
-            elif len(data[i][2]) == 1:
-                data[i][2] = data[i][2] * len(data[i][1])
+                data[i][2] = [''] * len(data[i][0])
 
             assert len(data[i][0]) == len(data[i][1]) == len(data[i][2]), "dims must have the same length"
 
-            sum_crop = len([x for x in data[i][2] if len(x) > 0])
-            sum_crop_dims = sum(len(x) for x in data[i][2])
+            # Check if the cropping is valid
+            sum_crop = len([x for x in data[i][1] if len(x) > 0])
+            sum_crop_dims = sum(len(x) for x in data[i][1])
 
             assert sum_crop == 0 or sum_crop_dims == (sum_crop * 4), "cropping must have 4 dimensions"
-
-        # Get the training, validation, and test ratios
-        ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
-
-        for i in range(len(ratios)):
-            if ratios[i] is not None:
-                ratios[i] = float(ratios[i]) if '.' in ratios[i] else int(ratios[i])
-
-        # Calculate the total ratio
-        ratio = sum(x for x in ratios if x is not None)
 
         # Set the random seed
         random.seed(self.seed)
@@ -240,39 +257,55 @@ class Dataset():
         # Convert data to a list of tuples
         data = [list(zip(x[0], x[1], x[2])) for x in data]
 
-        # Resample data based on aspect ratio
-        if isinstance(ratio, float) and ratio == 1.0:
-            merged = []
+        # Get the training, validation, and test ratios
+        ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
+        ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
 
-            for i, ratio in enumerate(ratios):
-                if ratio is not None:
-                    merged.extend(data[i])
+        if ratio_is_not_none:
+            for y in range(len(ratios)):
+                if not ratios[y]:
+                    continue
 
-            if merged:
-                random.shuffle(merged)
-                total_merged = len(merged)
+                ratios[y] = float(ratios[y]) if '.' in ratios[y] else int(ratios[y])
 
-                for i, ratio in enumerate(ratios):
+            # Calculate the total ratio
+            ratio = sum(x for x in ratios if x is not None)
+
+            # Resample data based on aspect ratio
+            if isinstance(ratio, float) and ratio == 1.0:
+                merged = []
+
+                for y, ratio in enumerate(ratios):
                     if ratio is not None:
-                        index = round((ratio + 1e-8) * total_merged)
-                        data[i] = merged[:index]
-                        merged[:index] = []
+                        random.shuffle(data[y])
+                        merged.extend(data[y])
 
-        else:
-            for i, ratio in enumerate(ratios):
-                if ratio is not None:
-                    random.shuffle(data[i])
-                    index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
-                    data[i] = data[i][:index]
+                if merged:
+                    total_merged = len(merged)
+
+                    for y, ratio in enumerate(ratios):
+                        if ratio is not None:
+                            random.shuffle(merged)
+                            index = round((ratio + 1e-8) * total_merged)
+                            data[y] = merged[:index]
+                            merged[:index] = []
+
+            else:
+                for y, ratio in enumerate(ratios):
+                    if ratio is not None:
+                        random.shuffle(data[y])
+                        index = round((ratio + 1e-8) * len(data[y])) if isinstance(ratio, float) else ratio
+                        data[y] = data[y][:index]
 
         # Filter valid data
-        for i in range(len(data)):
+        for y in range(len(data)):
             # Apply the process_data function to each item in self.data in parallel
-            with multiprocessing.get_context('fork').Pool() as pool:
-                valid_items = [x for x in pool.map(self._validate_data_item, iterable=data[i]) if x]
+            with multiprocessing.Pool() as pool:
+                random.shuffle(data[y])
+                valid_items = [x for x in pool.map(self._validate_data_item, data[y]) if x]
 
             # Unzip the data and convert to lists
-            data[i] = list(map(list, zip(*valid_items))) if valid_items else [[], [], []]
+            data[y] = list(map(list, zip(*valid_items))) if valid_items else [[], [], []]
 
         return data
 
@@ -287,7 +320,7 @@ class Dataset():
             tuple: The validated data item.
         """
 
-        label, image_path, cropping = item
+        image_path, cropping, label = item
         image = None
 
         # Check if the image exist and is readable
@@ -309,14 +342,10 @@ class Dataset():
         # Standardize label
         label = self._format_label(label)
 
-        if not label:
-            print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
-            return None
-
         # Check lazy mode to determine whether to keep the image loaded
         image = image_path if self.lazy_mode else image
 
-        return label, image, cropping
+        return image, cropping, label
 
     def _read_image(self, image_path, cropping=None):
         """
