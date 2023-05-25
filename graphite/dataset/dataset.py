@@ -2,6 +2,7 @@ import os
 import re
 import cv2
 import json
+import html
 import nltk
 import random
 import importlib
@@ -398,6 +399,9 @@ class Dataset():
             str: The standardized label.
         """
 
+        if isinstance(label, str):
+            label = label.split('\n')
+
         # Dictionary of substitutions
         substitutions = {
             r'[ ]': ' ',
@@ -438,32 +442,38 @@ class Dataset():
         # Compile the regular expressions
         regexes = {re.compile(k): v for k, v in substitutions.items()}
 
-        # Perform the substitutions using a loop
-        for pattern, replacement in regexes.items():
-            label = pattern.sub(replacement, label)
-
-        # Remove extra spaces around punctuation marks
-        label = re.sub(r'\s+([!?,.;:])', r'\1', label)
-
-        # Fix spacing around contractions
-        label = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', label)
-
-        # Remove spaces before opening single quotes
-        label = re.sub(r'\s+(?=[\'"])', '', label)
-
-        # Remove spaces after closing single quotes
-        label = re.sub(r'(?<=[\'"]) +', '', label)
-
-        # Tokenize text using the Treebank tokenizer
+        # Treebank tokenizer
         tokenizer = nltk.tokenize.treebank.TreebankWordTokenizer()
-        tokens = tokenizer.tokenize(label)
-
-        # Detokenize the tokens
+        # Treebank detokenizer
         detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
-        label = detokenizer.detokenize(tokens)
 
-        # Remove extra spaces and handle quotes
-        label = re.sub(r'\s+', ' ', label.replace('"', ' " ')).strip()
-        label = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label).strip()
+        for i in range(len(label)):
+            # Replace HTML entities
+            label[i] = html.unescape(label[i])
+
+            # Perform the substitutions using a loop
+            for pattern, replacement in regexes.items():
+                label[i] = pattern.sub(replacement, label[i])
+
+            # Remove extra spaces around punctuation marks
+            label[i] = re.sub(r'\s+([!?,.;:])', r'\1', label[i])
+
+            # Fix spacing around contractions
+            label[i] = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', label[i])
+
+            # Remove spaces before opening single quotes
+            label[i] = re.sub(r'\s+(?=[\'"])', '', label[i])
+
+            # Remove spaces after closing single quotes
+            label[i] = re.sub(r'(?<=[\'"]) +', '', label[i])
+
+            # Tokenize text
+            tokens = tokenizer.tokenize(label[i])
+            # Detokenize the tokens
+            label[i] = detokenizer.detokenize(tokens)
+
+            # Remove extra spaces and handle quotes
+            label[i] = re.sub(r'\s+', ' ', label[i].replace('"', ' " ')).strip()
+            label[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label[i]).strip()
 
         return label
