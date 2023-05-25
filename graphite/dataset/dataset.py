@@ -144,9 +144,9 @@ class Dataset():
             'images': images,
             'cropping': cropping,
             'size': len(labels),
-            'charset': sorted(set(''.join(labels))) if labels else [],
-            'min_label': min(labels, key=len) if labels else '',
-            'max_label': max(labels, key=len) if labels else '',
+            'charset': sorted(set(''.join(''.join(x) for x in labels))) if labels else [],
+            'min_label': min([' '.join(sublist) for sublist in labels], key=len) if labels else '',
+            'max_label': max([' '.join(sublist) for sublist in labels], key=len) if labels else '',
         }
 
         self.size += partition_dict['size']
