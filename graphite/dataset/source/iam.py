@@ -41,8 +41,8 @@ class Source():
         # labels = [[". . . this is #80 calling . . . '"], [". . . this is #80 calling . . . '"]] * factor
         labels = ["Mon habitation étant assurée par votre\nsociété,\tj&apos;aimerais recevoir une",
                   ". . . this is #80 calling . . . '"] * factor
-        # cropping = [[0, 0, 0, 0]]
-        cropping = []
+        # bbox = [[0, 0, 0, 0]]
+        bbox = []
 
         training = [images, None, labels]
 
@@ -51,6 +51,6 @@ class Source():
 
         # return images
         # return [images, labels]
-        # return [images, cropping, labels]
+        # return [images, bbox, labels]
         # return training
         return training, validation
