@@ -50,8 +50,8 @@ class Dataset():
 
         self.size = 0
         self.charset = []
-        self.min_label = None
-        self.max_label = None
+        self.min_label = ''
+        self.max_label = ''
 
         # Load data at startup
         if data is None and self.source is not None:
@@ -152,11 +152,11 @@ class Dataset():
         self.charset = sorted(set(self.charset + partition_dict['charset']))
 
         if partition_dict['min_label']:
-            self.min_label = partition_dict['min_label'] if self.min_label is None else \
+            self.min_label = partition_dict['min_label'] if not self.min_label else \
                 min(self.min_label, partition_dict['min_label'], key=len)
 
         if partition_dict['max_label']:
-            self.max_label = partition_dict['max_label'] if self.max_label is None else \
+            self.max_label = partition_dict['max_label'] if not self.max_label else \
                 max(self.max_label, partition_dict['max_label'], key=len)
 
         return partition_dict
@@ -287,27 +287,76 @@ class Dataset():
             tuple: The validated data item.
         """
 
-        item = list(item)
+        label, image_path, cropping = item
         image = None
 
         # Check if the image exist and is readable
-        if os.path.exists(item[1]) and os.path.isfile(item[1]):
+        if os.path.exists(image_path) and os.path.isfile(image_path):
             try:
-                image = cv2.imread(item[1], cv2.IMREAD_GRAYSCALE)
-            except Exception:
-                pass
+                image = self._read_image(image_path, cropping)
 
-        if image is None:
-            print(f"Image `{os.path.basename(item[1])}` cannot be read.")
+            except Exception:
+                print(f"Image `{os.path.basename(image_path)}` cannot be read.")
+                return None
+        else:
+            print(f"Image `{os.path.basename(image_path)}` does not exist or is not a file.")
             return None
 
-        if not self.lazy_mode:
-            item[1] = image
+        if image.size == 0:
+            print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
+            return None
 
         # Standardize label
-        item[0] = self._format_label(item[0])
+        label = self._format_label(label)
 
-        return item
+        if not label:
+            print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
+            return None
+
+        # Check lazy mode to determine whether to keep the image loaded
+        image = image_path if self.lazy_mode else image
+
+        return label, image, cropping
+
+    def _read_image(self, image_path, cropping=None):
+        """
+        Read an image from the given file path and perform optional cropping.
+
+        Args:
+            image_path (str): The path to the image file.
+            cropping (tuple, optional): The cropping coordinates (x, y, width, height). Defaults to None.
+
+        Returns:
+            numpy.ndarray: The loaded image as a NumPy array.
+        """
+
+        # Load image in grayscale
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+        if cropping is None or len(cropping) != 4:
+            # Return the entire image
+            return image
+
+        # Extract cropping values
+        x, y, width, height = cropping
+
+        # Convert x, y, width, height to integers if they are floats
+        if isinstance(x, float):
+            x = int(x * image.shape[1])
+
+        if isinstance(y, float):
+            y = int(y * image.shape[0])
+
+        if isinstance(width, float):
+            width = int(width * image.shape[1])
+
+        if isinstance(height, float):
+            height = int(height * image.shape[0])
+
+        # Crop image using pixel-based coordinates
+        image = image[y:y+height, x:x+width]
+
+        return image
 
     def _format_label(self, label):
         """
