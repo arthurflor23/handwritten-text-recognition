@@ -172,7 +172,7 @@ class Dataset():
         Parameters
         ----------
         partition_data : tuple
-            The partition data containing labels, images, and cropping information.
+            The partition data containing labels, images, and bbox information.
 
         Returns
         -------
@@ -180,13 +180,13 @@ class Dataset():
             The partition dict.
         """
 
-        images, cropping, labels = partition_data
+        images, bbox, labels = partition_data
 
         # Initialize the partition dictionary with default values
         dct = {
             'index': 0,
             'images': images,
-            'cropping': cropping,
+            'bbox': bbox,
             'labels': labels,
             'size': len(labels),
             'charset': [],
@@ -311,7 +311,7 @@ class Dataset():
                     # Prepare data considering images and labels as input
                     data[i] = [data[i][0], [], data[i][1]]
                 else:
-                    # Prepare data considering images and cropping as input
+                    # Prepare data considering images and bbox as input
                     data[i] = [data[i][0], data[i][1], []]
 
             # Replace empty lists with []
@@ -323,9 +323,9 @@ class Dataset():
         for i in range(len(data)):
             # Extend partition list with empty lists to ensure length of 3
             data[i].extend([[]] * (3 - len(data[i])))
-            assert len(data[i]) == 3, "partitions must have 3 dims (images, cropping, labels)"
+            assert len(data[i]) == 3, "partitions must have 3 dims (images, bbox, labels)"
 
-            # Prepare cropping and labels values
+            # Prepare bbox and labels values
             if len(data[i][1]) == 0:
                 data[i][1] = [[]] * len(data[i][0])
 
@@ -337,11 +337,11 @@ class Dataset():
 
             assert len(data[i][0]) == len(data[i][1]) == len(data[i][2]), "dims must have the same length"
 
-            # Check if the cropping is valid
+            # Check if the bbox is valid
             sum_crop = len([x for x in data[i][1] if len(x) > 0])
             sum_crop_dims = sum(len(x) for x in data[i][1])
 
-            assert sum_crop == 0 or sum_crop_dims == (sum_crop * 4), "cropping must have 4 dimensions"
+            assert sum_crop == 0 or sum_crop_dims == (sum_crop * 4), "bbox must have 4 dimensions"
 
         # Set the random seed
         random.seed(self.seed)
@@ -416,13 +416,13 @@ class Dataset():
             The validated data item.
         """
 
-        image_path, cropping, label = item
+        image_path, bbox, label = item
         image = None
 
         # Check if the image exist and is readable
         if os.path.exists(image_path) and os.path.isfile(image_path):
             try:
-                image = self._read_image(image_path, cropping)
+                image = self._read_image(image_path, bbox)
 
             except Exception:
                 print(f"Image `{os.path.basename(image_path)}` cannot be read.")
@@ -441,18 +441,18 @@ class Dataset():
         # Check lazy mode to determine whether to keep the image loaded
         image = image_path if self.lazy_mode else image
 
-        return image, cropping, label
+        return image, bbox, label
 
-    def _read_image(self, image_path, cropping=None):
+    def _read_image(self, image_path, bbox=None):
         """
-        Read an image from the given file path and perform optional cropping.
+        Read an image from the given file path and perform optional bbox.
 
         Parameters
         ----------
         image_path : str
             The path to the image file.
-        cropping : tuple, optional
-            The cropping coordinates (x, y, width, height). Defaults to None.
+        bbox : tuple, optional
+            The bbox coordinates (x, y, width, height). Defaults to None.
 
         Returns
         -------
@@ -463,12 +463,12 @@ class Dataset():
         # Load image in grayscale
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-        if cropping is None or len(cropping) != 4:
+        if bbox is None or len(bbox) != 4:
             # Return the entire image
             return image
 
-        # Extract cropping values
-        x, y, width, height = cropping
+        # Extract bbox values
+        x, y, width, height = bbox
 
         # Convert x, y, width, height to integers if they are floats
         if isinstance(x, float):
