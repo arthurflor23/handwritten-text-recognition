@@ -358,7 +358,9 @@ class Dataset():
                 if not ratios[y]:
                     continue
 
-                ratios[y] = float(ratios[y]) if '.' in ratios[y] else int(ratios[y])
+                if isinstance(ratios[y], str):
+                    # Convert the ratio to a float or int
+                    ratios[y] = float(ratios[y]) if '.' in ratios[y] else int(ratios[y])
 
             # Calculate the total ratio
             ratio = sum(x for x in ratios if x is not None)
@@ -547,9 +549,9 @@ class Dataset():
         regexes = {re.compile(k): v for k, v in substitutions.items()}
 
         # Treebank tokenizer
-        tokenizer = nltk.tokenize.treebank.TreebankWordTokenizer()
+        tokenizer = nltk.tokenize.TreebankWordTokenizer()
         # Treebank detokenizer
-        detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
+        detokenizer = nltk.tokenize.TreebankWordDetokenizer()
 
         for i in range(len(label)):
             # Replace HTML entities
