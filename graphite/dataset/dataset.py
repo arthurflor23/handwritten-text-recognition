@@ -66,8 +66,8 @@ class Dataset():
         self.size = 0
         self.charset = []
 
-        self.min_label = ''
-        self.max_label = ''
+        self.min_text = ''
+        self.max_text = ''
 
         self.min_rows = float('inf')
         self.max_rows = float('-inf')
@@ -84,9 +84,9 @@ class Dataset():
             data = self._prepare_data(data)
 
             # Create partitions
-            self.training = self._create_dictionary(data[0])
-            self.validation = self._create_dictionary(data[1])
-            self.test = self._create_dictionary(data[2])
+            self.training = self._create_partition_dictionary(data[0])
+            self.validation = self._create_partition_dictionary(data[1])
+            self.test = self._create_partition_dictionary(data[2])
 
     def __repr__(self):
         """
@@ -109,10 +109,10 @@ class Dataset():
             'size': self.size,
             'charset': self.charset,
             'charset_length': len(self.charset),
-            'min_label': self.min_label,
-            'min_label_length': len(self.min_label),
-            'max_label': self.max_label,
-            'max_label_length': len(self.max_label),
+            'min_text': self.min_text,
+            'min_text_length': len(self.min_text),
+            'max_text': self.max_text,
+            'max_text_length': len(self.max_text),
             'min_rows': self.min_rows,
             'max_rows': self.max_rows,
             'min_columns': self.min_columns,
@@ -132,7 +132,7 @@ class Dataset():
         info = f"""
             Dataset Configuration
             Source                  {self.source or '-'}
-            Level                   {self.level or '-'}
+            Recognition Level       {self.level or '-'}
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
@@ -141,15 +141,18 @@ class Dataset():
 
             Dataset Information
             Total Size              {self.size}
+            Training Size           {self.training['size']}
+            Validation Size         {self.validation['size']}
+            Test Size               {self.test['size']}
 
-            Charset                 {''.join(self.charset)}
             Charset Length          {len(self.charset)}
+            Charset                 {''.join(self.charset)}
 
-            Min Label               {self.min_label}
-            Min Label Length        {len(self.min_label)}
+            Min Text Length         {len(self.min_text)}
+            Min Text                {self.min_text}
 
-            Max Label               {self.max_label}
-            Max Label Length        {len(self.max_label)}
+            Max Text Length         {len(self.max_text)}
+            Max Text                {self.max_text}
 
             Min Rows                {self.min_rows}
             Max Rows                {self.max_rows}
@@ -162,9 +165,9 @@ class Dataset():
 
         return info
 
-    def _create_dictionary(self, partition_data):
+    def _create_partition_dictionary(self, partition_data):
         """
-        Creates a partition dict from the given partition data.
+        Creates a partition dictionary from the given partition data.
 
         Parameters
         ----------
@@ -179,42 +182,43 @@ class Dataset():
 
         images, cropping, labels = partition_data
 
-        # Initialize the partition dict with default values
+        # Initialize the partition dictionary with default values
         dct = {
             'index': 0,
-            'labels': labels,
             'images': images,
             'cropping': cropping,
+            'labels': labels,
             'size': len(labels),
-            'charset': sorted(set(''.join(''.join(x) for x in labels))) if labels else [],
-            'min_label': '',
-            'max_label': '',
+            'charset': [],
+            'min_text': '',
+            'max_text': '',
             'min_rows': 0,
             'max_rows': 0,
             'min_columns': 0,
             'max_columns': 0,
         }
 
-        # Update the partition dict with relevant values if labels exist
+        # Update the partition dictionary with relevant values if labels exist
         if labels:
-            dct['min_label'] = min([' '.join(x) for x in labels], key=len)
-            dct['max_label'] = max([' '.join(x) for x in labels], key=len)
+            dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
+            dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
+            dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
             dct['min_rows'] = min(len(x) for x in labels)
             dct['max_rows'] = max(len(x) for x in labels)
             dct['min_columns'] = min(len(y) for x in labels for y in x)
             dct['max_columns'] = max(len(y) for x in labels for y in x)
 
-        # Update the object's properties using the partition dict
+        # Update the object's properties using the partition dictionary
         self.size += dct['size']
         self.charset = sorted(set(self.charset + dct['charset']))
 
-        if dct['min_label']:
+        if dct['min_text']:
             # Update the minimum label if it exists
-            self.min_label = min(self.min_label or dct['min_label'], dct['min_label'], key=len)
+            self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
 
-        if dct['max_label']:
+        if dct['max_text']:
             # Update the maximum label if it exists
-            self.max_label = max(self.max_label or dct['max_label'], dct['max_label'], key=len)
+            self.max_text = max(self.max_text or dct['max_text'], dct['max_text'], key=len)
 
         if dct['min_rows']:
             # Update the minimum number of rows if it exists
