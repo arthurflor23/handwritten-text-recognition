@@ -564,7 +564,7 @@ class Dataset():
             # Replace HTML entities
             label[i] = html.unescape(label[i])
 
-            # Perform the substitutions using a loop
+            # Perform the substitutions
             for pattern, replacement in regexes.items():
                 label[i] = pattern.sub(replacement, label[i])
 

@@ -128,7 +128,7 @@ class Source():
         """
 
         with open(file_path, 'r') as file:
-            data = [line.strip() for line in file.readlines()]
+            data = [row.strip() for row in file.readlines()]
 
         return data
 
