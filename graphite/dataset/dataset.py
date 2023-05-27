@@ -294,29 +294,23 @@ class Dataset():
 
         data = list(data)
 
-        if 1 > len(data) > 3:
+        if not 1 <= len(data) <= 3:
             raise ValueError("input data must have 1 to 3 partition lists")
 
         if self.inference_mode:
             data = [[], [], data]
 
         for i in range(len(data)):
-            data[i] = data[i] or []
-
-            if not data[i]:
-                continue
-
-            data[i] = list(data[i])
+            data[i] = list(data[i]) or []
+            data[i] = list(map(list, data[i]))
 
             for j in range(len(data[i])):
-                data[i][j] = data[i][j] or []
+                data[i][j] = list(data[i][j]) or []
 
                 if not data[i][j]:
                     continue
 
-                data[i][j] = list(data[i][j])
-
-                if 1 > len(data[i][j]) > 3:
+                if not 1 <= len(data[i][j]) <= 3:
                     raise ValueError("partition item must have 1 to 3 dims [images, bbox (opt), labels (opt)]")
 
                 if len(data[i][j]) == 1:
@@ -382,7 +376,7 @@ class Dataset():
                             random.shuffle(merged)
                             index = round((ratio + 1e-8) * total_merged)
                             data[i] = merged[:index]
-                            merged[:index] = []
+                            merged = merged[index:]
 
             else:
                 for i, ratio in enumerate(ratios):
@@ -395,7 +389,7 @@ class Dataset():
         for i in range(len(data)):
             random.shuffle(data[i])
 
-            # Apply the process_data function to each item in parallel
+            # Apply the process_data function to items in parallel
             with multiprocessing.get_context('fork').Pool() as pool:
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
