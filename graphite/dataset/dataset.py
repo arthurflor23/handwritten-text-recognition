@@ -11,7 +11,7 @@ import multiprocessing
 
 class Dataset():
     """
-    Dataset class representing a general class for data source management.
+    General class for data source management
     """
 
     def __init__(self,
@@ -27,16 +27,30 @@ class Dataset():
         """
         Initializes a new instance of the Dataset class.
 
-        Args:
-            data (list, optional): custom data for inference mode. Defaults to None.
-            source (str, optional): The data source name. Defaults to None.
-            level (str, optional): The recoginition level. Defaults to None.
-            training_ratio (float or int, optional): The training ratio for resample. Defaults to None.
-            validation_ratio (float or int, optional): The validation ratio for resample. Defaults to None.
-            test_ratio (float or int, optional): The test ratio for resample. Defaults to None.
-            data_path (str, optional): Path name to fetch the data. Defaults to 'data'.
-            lazy_mode (bool, optional): Lazy mode flag for lazy loading process. Defaults to True.
-            seed (int, optional): The random seed. Defaults to 42.
+        Parameters
+        ----------
+        data : list, optional
+            Custom data for inference mode. Defaults to None.
+        source : str, optional
+            The data source name. Defaults to None.
+        level : str, optional
+            The recognition level. Defaults to None.
+        training_ratio : float or int, optional
+            The training ratio for resample. Defaults to None.
+        validation_ratio : float or int, optional
+            The validation ratio for resample. Defaults to None.
+        test_ratio : float or int, optional
+            The test ratio for resample. Defaults to None.
+        data_path : str, optional
+            Path name to fetch the data. Defaults to 'data'.
+        lazy_mode : bool, optional
+            Lazy mode flag for lazy loading process. Defaults to True.
+        seed : int, optional
+            The random seed. Defaults to 42.
+
+        Returns
+        -------
+        None
         """
 
         self.source = source
@@ -70,16 +84,18 @@ class Dataset():
             data = self._prepare_data(data)
 
             # Create partitions
-            self.training = self._create_dct(data[0])
-            self.validation = self._create_dct(data[1])
-            self.test = self._create_dct(data[2])
+            self.training = self._create_dictionary(data[0])
+            self.validation = self._create_dictionary(data[1])
+            self.test = self._create_dictionary(data[2])
 
     def __repr__(self):
         """
         Returns a JSON-formatted string representation of the Dataset object.
 
-        Returns:
-            str: A JSON-formatted string containing the object's attributes.
+        Returns
+        -------
+        str
+            A JSON-formatted string containing the object's attributes.
         """
 
         return json.dumps({
@@ -107,8 +123,10 @@ class Dataset():
         """
         Returns a string representation of the Dataset object with useful information.
 
-        Returns:
-            str: The string representation of the object.
+        Returns
+        -------
+        str
+            The string representation of the object.
         """
 
         info = f"""
@@ -144,15 +162,19 @@ class Dataset():
 
         return info
 
-    def _create_dct(self, partition_data):
+    def _create_dictionary(self, partition_data):
         """
         Creates a partition dict from the given partition data.
 
-        Args:
-            partition_data (tuple): The partition data containing labels, images, and cropping information.
+        Parameters
+        ----------
+        partition_data : tuple
+            The partition data containing labels, images, and cropping information.
 
-        Returns:
-            dict: The partition dict.
+        Returns
+        -------
+        dict
+            The partition dict.
         """
 
         images, cropping, labels = partition_data
@@ -216,25 +238,36 @@ class Dataset():
         """
         Fetches the data from the specified data source.
 
-        Returns:
-            list: The fetched data.
+        Returns
+        -------
+        list
+            The fetched data.
         """
 
-        # Get the module based on the source
+        # Check the module based on the source
         module_name = importlib.util.resolve_name(f".source.{self.source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
-        assert module_spec is not None, "source must be created"
+        assert module_spec is not None, "source file must be created"
 
+        # Import the module
         module = importlib.import_module(module_name, __package__)
 
-        # Get the method based on the level
-        method_name = f"get_{self.level}_data"
-        assert hasattr(module, method_name), f"`{method_name}` method must be created"
+        # Check the source class
+        class_name = 'Source'
+        assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        method = getattr(module, method_name)
+        # Create an instance of the class
+        source = getattr(module, class_name)(self.data_path)
+
+        # Check the method based on the level
+        method_name = f"get_{self.level}_data"
+        assert hasattr(source, method_name), f"`{method_name}` method must be created"
+
+        # Get the method
+        method = getattr(source, method_name)
 
         # Call the method to get the data
-        data = method(self.data_path)
+        data = method()
 
         return data
 
@@ -242,11 +275,15 @@ class Dataset():
         """
         Prepares the data for partitioning.
 
-        Args:
-            data (tuple): The input data (training, validation, test).
+        Parameters
+        ----------
+        data : tuple
+            The input data (training, validation, test).
 
-        Returns:
-            list: The prepared data.
+        Returns
+        -------
+        list
+            The prepared data.
         """
 
         data = list(data)
@@ -362,13 +399,17 @@ class Dataset():
 
     def _validate_data_item(self, item):
         """
-        Validates a single data item.
+        Validates a data item.
 
-        Args:
-            item (tuple): The data item to validate.
+        Parameters
+        ----------
+        item : tuple
+            The data item to validate.
 
-        Returns:
-            tuple: The validated data item.
+        Returns
+        -------
+        tuple
+            The validated data item.
         """
 
         image_path, cropping, label = item
@@ -402,12 +443,17 @@ class Dataset():
         """
         Read an image from the given file path and perform optional cropping.
 
-        Args:
-            image_path (str): The path to the image file.
-            cropping (tuple, optional): The cropping coordinates (x, y, width, height). Defaults to None.
+        Parameters
+        ----------
+        image_path : str
+            The path to the image file.
+        cropping : tuple, optional
+            The cropping coordinates (x, y, width, height). Defaults to None.
 
-        Returns:
-            numpy.ndarray: The loaded image as a NumPy array.
+        Returns
+        -------
+        numpy.ndarray
+            The loaded image as a NumPy array.
         """
 
         # Load image in grayscale
@@ -442,11 +488,15 @@ class Dataset():
         """
         Standardizes a label by formatting, normalizing, and standardizing the string of text.
 
-        Args:
-            label (str): The label to be standardized.
+        Parameters
+        ----------
+        label : str
+            The label to be standardized.
 
-        Returns:
-            str: The standardized label.
+        Returns
+        -------
+        str
+            The standardized label.
         """
 
         if isinstance(label, str):
