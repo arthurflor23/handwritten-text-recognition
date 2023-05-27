@@ -301,6 +301,9 @@ class Dataset():
             data = [[], [], data]
 
         for i in range(len(data)):
+            if not data[i]:
+                continue
+
             data[i] = list(data[i]) or []
             data[i] = list(map(list, data[i]))
 
@@ -387,10 +390,12 @@ class Dataset():
 
         # Filter valid data
         for i in range(len(data)):
-            random.shuffle(data[i])
+            if not data[i]:
+                continue
 
             # Apply the process_data function to items in parallel
             with multiprocessing.get_context('fork').Pool() as pool:
+                random.shuffle(data[i])
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
         return data
@@ -425,12 +430,16 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` does not exist or is not a file.")
             return None
 
-        if image.size == 0:
+        if image is None or image.size == 0:
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
         # Standardize label
         label = self._format_label(label)
+
+        if not self.inference_mode and not label:
+            print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
+            return None
 
         # Check lazy mode to determine whether to keep the image loaded
         image = image_path if self.lazy_mode else image
@@ -476,6 +485,12 @@ class Dataset():
 
         if isinstance(height, float):
             height = int(height * image.shape[0])
+
+        # Padding around the box
+        y = max(0, abs(y - 10))
+        x = max(0, abs(x - 10))
+        height = min(image.shape[0], (height + 10))
+        width = min(image.shape[1], (width + 10))
 
         # Crop image using pixel-based coordinates
         image = image[y:y+height, x:x+width]
