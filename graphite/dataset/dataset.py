@@ -61,6 +61,7 @@ class Dataset():
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
         self.lazy_mode = lazy_mode
+        self.inference_mode = data is not None
         self.seed = seed
 
         self.size = 0
@@ -76,17 +77,16 @@ class Dataset():
         self.max_columns = float('-inf')
 
         # Load data at startup
-        if data is None and self.source is not None:
+        if not self.inference_mode:
             data = self._fetch_data_from_source()
 
-        if data is not None:
-            # Prepare data
-            data = self._prepare_data(data)
+        # Prepare data
+        data = self._prepare_data(data)
 
-            # Create partitions
-            self.training = self._create_partition_dictionary(data[0])
-            self.validation = self._create_partition_dictionary(data[1])
-            self.test = self._create_partition_dictionary(data[2])
+        # Create partitions
+        self.training = self._create_partition_dictionary(data[0])
+        self.validation = self._create_partition_dictionary(data[1])
+        self.test = self._create_partition_dictionary(data[2])
 
     def __repr__(self):
         """
@@ -105,6 +105,7 @@ class Dataset():
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
             'lazy_mode': self.lazy_mode,
+            'inference_mode': self.inference_mode,
             'seed': self.seed,
             'size': self.size,
             'charset': self.charset,
@@ -137,10 +138,12 @@ class Dataset():
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
             Lazy Mode               {self.lazy_mode}
+            Inference Mode          {self.inference_mode}
             Seed                    {self.seed}
 
             Dataset Information
             Total Size              {self.size}
+
             Training Size           {self.training['size']}
             Validation Size         {self.validation['size']}
             Test Size               {self.test['size']}
@@ -180,15 +183,11 @@ class Dataset():
             The partition dict.
         """
 
-        images, bbox, labels = partition_data
-
         # Initialize the partition dictionary with default values
         dct = {
             'index': 0,
-            'images': images,
-            'bbox': bbox,
-            'labels': labels,
-            'size': len(labels),
+            'data': partition_data,
+            'size': len(partition_data),
             'charset': [],
             'min_text': '',
             'max_text': '',
@@ -197,6 +196,9 @@ class Dataset():
             'min_columns': 0,
             'max_columns': 0,
         }
+
+        # Get the labels from the partition data
+        labels = [x[2] for x in partition_data if x[2]]
 
         # Update the partition dictionary with relevant values if labels exist
         if labels:
@@ -292,8 +294,10 @@ class Dataset():
 
         data = list(data)
 
-        # Wrap data in a list if it's strings or a list of strings
-        if isinstance(data[0], str) or isinstance(data[0][0], str):
+        if 1 > len(data) > 3:
+            raise ValueError("input data must have 1 to 3 partition lists")
+
+        if self.inference_mode:
             data = [[], [], data]
 
         for i in range(len(data)):
@@ -302,65 +306,61 @@ class Dataset():
             if not data[i]:
                 continue
 
-            # Wrap data in a list if it's strings
-            if isinstance(data[i][0], str):
-                data[i] = [data[i], [], []]
+            data[i] = list(data[i])
 
-            if len(data[i]) == 2:
-                if isinstance(data[i][1][0], str):
-                    # Prepare data considering images and labels as input
-                    data[i] = [data[i][0], [], data[i][1]]
-                else:
-                    # Prepare data considering images and bbox as input
-                    data[i] = [data[i][0], data[i][1], []]
+            for j in range(len(data[i])):
+                data[i][j] = data[i][j] or []
 
-            # Replace empty lists with []
-            data[i] = [data[i][y] or [] for y in range(len(data[i]))]
+                if not data[i][j]:
+                    continue
+
+                data[i][j] = list(data[i][j])
+
+                if 1 > len(data[i][j]) > 3:
+                    raise ValueError("partition item must have 1 to 3 dims [images, bbox (opt), labels (opt)]")
+
+                if len(data[i][j]) == 1:
+                    data[i][j] = [data[i][j][0] or '', [], ['']]
+
+                elif len(data[i][j]) == 2:
+                    if isinstance(data[i][1], str):
+                        # Prepare data considering images and labels as input
+                        data[i][j] = [data[i][j][0] or '', [], data[i][j][1] or '']
+                    else:
+                        # Prepare data considering images and bbox as input
+                        data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], ['']]
+
+                elif len(data[i][j]) == 3:
+                    # Prepare data considering images, bbox, and labels as input
+                    data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], data[i][j][2] or '']
+
+                if len(data[i][j][1]) != 0 and len(data[i][j][1]) != 4:
+                    raise ValueError("bbox value must have 0 or 4 dims [x, y, width, height]")
+
+                # Extend data list with empty lists to ensure length of 3
+                data[i][j].extend([[]] * (3 - len(data[i][j])))
+
+                # Extend data list with empty lists to ensure length of 3
+            data[i].extend([[]] * (3 - len(data[i])))
 
         # Extend data list with empty lists to ensure length of 3
         data.extend([[]] * (3 - len(data)))
 
-        for i in range(len(data)):
-            # Extend partition list with empty lists to ensure length of 3
-            data[i].extend([[]] * (3 - len(data[i])))
-            assert len(data[i]) == 3, "partitions must have 3 dims (images, bbox, labels)"
-
-            # Prepare bbox and labels values
-            if len(data[i][1]) == 0:
-                data[i][1] = [[]] * len(data[i][0])
-
-            elif len(data[i][1]) == 1:
-                data[i][1] = [data[i][1][0]] * len(data[i][0])
-
-            if len(data[i][2]) == 0:
-                data[i][2] = [''] * len(data[i][0])
-
-            assert len(data[i][0]) == len(data[i][1]) == len(data[i][2]), "dims must have the same length"
-
-            # Check if the bbox is valid
-            sum_crop = len([x for x in data[i][1] if len(x) > 0])
-            sum_crop_dims = sum(len(x) for x in data[i][1])
-
-            assert sum_crop == 0 or sum_crop_dims == (sum_crop * 4), "bbox must have 4 dimensions"
-
         # Set the random seed
         random.seed(self.seed)
-
-        # Convert data to a list of tuples
-        data = [list(zip(x[0], x[1], x[2])) for x in data]
 
         # Get the training, validation, and test ratios
         ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
         ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
 
         if ratio_is_not_none:
-            for y in range(len(ratios)):
-                if not ratios[y]:
+            for i in range(len(ratios)):
+                if not ratios[i]:
                     continue
 
-                if isinstance(ratios[y], str):
+                if isinstance(ratios[i], str):
                     # Convert the ratio to a float or int
-                    ratios[y] = float(ratios[y]) if '.' in ratios[y] else int(ratios[y])
+                    ratios[i] = float(ratios[i]) if '.' in ratios[i] else int(ratios[i])
 
             # Calculate the total ratio
             ratio = sum(x for x in ratios if x is not None)
@@ -369,37 +369,35 @@ class Dataset():
             if isinstance(ratio, float) and ratio == 1.0:
                 merged = []
 
-                for y, ratio in enumerate(ratios):
+                for i, ratio in enumerate(ratios):
                     if ratio is not None:
-                        random.shuffle(data[y])
-                        merged.extend(data[y])
+                        random.shuffle(data[i])
+                        merged.extend(data[i])
 
                 if merged:
                     total_merged = len(merged)
 
-                    for y, ratio in enumerate(ratios):
+                    for i, ratio in enumerate(ratios):
                         if ratio is not None:
                             random.shuffle(merged)
                             index = round((ratio + 1e-8) * total_merged)
-                            data[y] = merged[:index]
+                            data[i] = merged[:index]
                             merged[:index] = []
 
             else:
-                for y, ratio in enumerate(ratios):
+                for i, ratio in enumerate(ratios):
                     if ratio is not None:
-                        random.shuffle(data[y])
-                        index = round((ratio + 1e-8) * len(data[y])) if isinstance(ratio, float) else ratio
-                        data[y] = data[y][:index]
+                        random.shuffle(data[i])
+                        index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
+                        data[i] = data[i][:index]
 
         # Filter valid data
-        for y in range(len(data)):
-            # Apply the process_data function to each item in self.data in parallel
-            with multiprocessing.Pool() as pool:
-                random.shuffle(data[y])
-                valid_items = [x for x in pool.map(self._validate_data_item, data[y]) if x]
+        for i in range(len(data)):
+            random.shuffle(data[i])
 
-            # Unzip the data and convert to lists
-            data[y] = list(map(list, zip(*valid_items))) if valid_items else [[], [], []]
+            # Apply the process_data function to each item in parallel
+            with multiprocessing.get_context('fork').Pool() as pool:
+                data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
         return data
 
