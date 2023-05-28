@@ -223,14 +223,14 @@ class Dataset():
             x_data = [self._read_image(x[0], x[1]) if self.lazy_mode else x[0] for x in batch_data]
             y_data = [x[3 if keep_original else 2] for x in batch_data]
 
-            # Perform augmentation operations
-            if not keep_original and augmentor is not None:
-                print('')
-                # ...
-
             if not keep_original:
-                # Apply normalization, padding, rotation
-                print('')
+                # Perform augmentation operations
+                if augmentor is not None:
+                    print('augmentor')
+                    # ...
+
+                # Apply normalization, padding, rotation, etc.
+                print('keep_original')
                 # ...
 
             # Yield the batch of input data and labels as NumPy arrays
