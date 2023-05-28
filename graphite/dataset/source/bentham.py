@@ -215,6 +215,13 @@ class Source():
 
             # Find all TextLine elements and iterate over them
             for text_line in root.findall('.//ns:TextLine', namespace):
+                # Extract the label from the TextEquiv element
+                text_equiv = text_line.find('ns:TextEquiv', namespace)
+                line_label = text_equiv.find('ns:Unicode', namespace).text.strip()
+
+                if not line_label:
+                    continue
+
                 coords = text_line.find('ns:Coords', namespace)
                 points = coords.get('points')
                 x_values, y_values = [], []
@@ -237,9 +244,8 @@ class Source():
                 min_y = min(min_y, min(y_values))
                 max_y = max(max_y, max(y_values))
 
-                # Extract the label from the TextEquiv element
-                text_equiv = text_line.find('ns:TextEquiv', namespace)
-                label.append(text_equiv.find('ns:Unicode', namespace).text.strip())
+                # Get label
+                label.append(line_label)
 
             # Create a paragraph entry with image path, bounding box, and label
             bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
