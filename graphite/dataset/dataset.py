@@ -30,23 +30,23 @@ class Dataset():
         Parameters
         ----------
         data : list, optional
-            Custom data for inference mode. Defaults to None.
+            Custom data for inference mode. Default is None.
         source : str, optional
-            The data source name. Defaults to None.
+            The data source name. Default is None.
         level : str, optional
-            The recognition level. Defaults to None.
+            The recognition level. Default is None.
         training_ratio : float or int, optional
-            The training ratio for resample. Defaults to None.
+            The training ratio for resample. Default is None.
         validation_ratio : float or int, optional
-            The validation ratio for resample. Defaults to None.
+            The validation ratio for resample. Default is None.
         test_ratio : float or int, optional
-            The test ratio for resample. Defaults to None.
+            The test ratio for resample. Default is None.
         data_path : str, optional
-            Path name to fetch the data. Defaults to 'data'.
+            Path name to fetch the data. Default is 'data'.
         lazy_mode : bool, optional
-            Lazy mode flag for lazy loading process. Defaults to True.
+            Lazy mode flag for lazy loading process. Default is True.
         seed : int, optional
-            The random seed. Defaults to 42.
+            The random seed. Default is 42.
 
         Returns
         -------
@@ -461,7 +461,7 @@ class Dataset():
         image_path : str
             The path to the image file.
         bbox : tuple, optional
-            The bbox coordinates (x, y, width, height). Defaults to None.
+            The bbox coordinates (x, y, width, height). Default is None.
 
         Returns
         -------
@@ -602,13 +602,31 @@ class Dataset():
 
 
 class Tokenizer():
+    """
+    Class for tokenizing data using a character set.
+    """
 
     def __init__(self, charset, max_rows=1, max_cols=128):
+        """
+        Initialize the Tokenizer.
+
+        Parameters
+        ----------
+        charset : list
+            List of characters in the character set.
+        max_rows : int, optional
+            Maximum number of rows for each label. Default is 1.
+        max_cols : int, optional
+            Maximum number of columns for each label. Default is 128.
+        """
+
+        # Initialize special tokens
         self.pad_tk = '¶'
         self.sos_tk = '◖'
         self.eos_tk = '◗'
         self.unk_tk = '◬'
 
+        # Create a character set by combining special tokens and charset parameter
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.charset_size = len(self.charset) + 1
 
@@ -616,6 +634,19 @@ class Tokenizer():
         self.max_cols = max_cols + (len(self.charset) - len(charset))
 
     def encode_data(self, data):
+        """
+        Encode the data by mapping labels to their corresponding token indices.
+
+        Parameters
+        ----------
+        data : list
+            List of data to encode, where each element is [image, bbox, label].
+
+        Returns
+        -------
+        list
+            Encoded data with token indices appended to each element.
+        """
 
         with multiprocessing.get_context('fork').Pool() as pool:
             encoded_labels = pool.map(self.encode, [x[-1] for x in data])
@@ -626,6 +657,19 @@ class Tokenizer():
         return data
 
     def encode(self, label):
+        """
+        Encode a single label by mapping characters to their corresponding token indices.
+
+        Parameters
+        ----------
+        label : str
+            Label to encode.
+
+        Returns
+        -------
+        list
+            Encoded label with token indices.
+        """
 
         pad_tk_index = self.charset.index(self.pad_tk)
         unk_tk_index = self.charset.index(self.unk_tk)
@@ -634,15 +678,20 @@ class Tokenizer():
 
         encoded_label = []
 
+        # Encode each row in the label
         for row in label:
+            # Add start of sequence token
             enconded_row = [sos_tk_index]
 
+            # Encode each character in the row
             for char in row:
                 index = self.charset.index(char)
                 index = unk_tk_index if index == -1 else index
                 enconded_row.append(index)
 
+            # Add end of sequence token
             enconded_row += [eos_tk_index]
+            # Add padding tokens to reach the maximum column length
             enconded_row += [pad_tk_index] * max(0, abs(self.max_cols - len(enconded_row)))
 
             encoded_label.append(enconded_row)
@@ -650,6 +699,19 @@ class Tokenizer():
         return encoded_label
 
     def decode_data(self, data):
+        """
+        Decode the data by converting token indices back to their corresponding characters.
+
+        Parameters
+        ----------
+        data : list
+            List of data to decode, where each element is [image, bbox, label].
+
+        Returns
+        -------
+        list
+            Decoded data with labels appended to each element.
+        """
 
         with multiprocessing.get_context('fork').Pool() as pool:
             labels = pool.map(self.decode, [x[-1] for x in data])
@@ -660,18 +722,34 @@ class Tokenizer():
         return data
 
     def decode(self, encoded_label):
+        """
+        Decode a single encoded label by converting token indices back to characters.
+
+        Parameters
+        ----------
+        encoded_label : list
+            Encoded label with token indices.
+
+        Returns
+        -------
+        list
+            Decoded label with characters.
+        """
 
         label = []
 
+        # Decode each encoded row
         for enconded_row in encoded_label:
             row = ''
 
+            # Decode each encoded character
             for enconded_char in enconded_row:
                 if int(enconded_char) == -1:
                     continue
 
                 row += self.charset[int(enconded_char)]
 
+            # Remove special tokens from the decoded row
             row = row.replace(self.pad_tk, '')
             row = row.replace(self.sos_tk, '')
             row = row.replace(self.eos_tk, '')
