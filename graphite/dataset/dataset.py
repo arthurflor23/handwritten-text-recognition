@@ -515,7 +515,10 @@ class Dataset():
         if isinstance(label, str):
             label = label.split('\n')
 
-        # dct of substitutions
+        # Filter out empty strings
+        label = [x.strip() for x in label if x.strip()]
+
+        # Substitutions
         substitutions = {
             r'[ ]': ' ',
             r'[＿]': '_',
