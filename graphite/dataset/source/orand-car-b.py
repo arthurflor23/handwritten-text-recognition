@@ -1,0 +1,52 @@
+import os
+
+
+class Source():
+    """
+    Represents the ORAND-CAR-B-2014 database source.
+    """
+
+    def __init__(self, data_path):
+        """
+        Initializes a new instance of the Source class.
+
+        Parameters
+        ----------
+        data_path : str
+            The path to the data.
+
+        Returns
+        -------
+        None
+        """
+
+        self.data_path = data_path
+        self.base_path = os.path.join(self.data_path, 'orand-car-2014', 'CAR-B')
+
+        self.training_path = os.path.join(self.base_path, 'b_train_images')
+        self.test_path = os.path.join(self.base_path, 'b_test_images')
+
+        self.training_file_path = os.path.join(self.base_path, 'b_train_gt.txt')
+        self.test_file_path = os.path.join(self.base_path, 'b_test_gt.txt')
+
+    def get_line_data(self):
+        """
+        Retrieves the line data for training, validation, and testing.
+
+        Returns
+        -------
+        tuple
+            A tuple containing lists of training, validation, and test lines data.
+        """
+
+        def process_row(row, file_path):
+            row = row.strip().split('\t')
+            return [os.path.join(file_path, row[0]), [], row[1]]
+
+        with open(self.training_file_path, 'r') as training_file:
+            training_data = [process_row(row, self.training_path) for row in training_file.readlines()]
+
+        with open(self.test_file_path, 'r') as test_file:
+            test_data = [process_row(row, self.test_path) for row in test_file.readlines()]
+
+        return training_data, [], test_data
