@@ -18,6 +18,7 @@ class Dataset():
                  data=None,
                  source=None,
                  level=None,
+                 augmentor=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -35,6 +36,8 @@ class Dataset():
             The data source name. Default is None.
         level : str, optional
             The recognition level. Default is None.
+        augmentor : Augmentor, optional
+            The Augmentor class. Default is None.
         training_ratio : float or int, optional
             The training ratio for resample. Default is None.
         validation_ratio : float or int, optional
@@ -55,13 +58,17 @@ class Dataset():
 
         self.source = source
         self.level = level
+        self.augmentor = augmentor
+
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
+
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
-        self.lazy_mode = lazy_mode
+
         self.inference_mode = data is not None
+        self.lazy_mode = lazy_mode
         self.seed = seed
 
         self.size = 0
@@ -69,10 +76,15 @@ class Dataset():
 
         self.min_text = ''
         self.max_text = ''
+
         self.min_rows = float('inf')
         self.max_rows = float('-inf')
+
         self.min_cols = float('inf')
         self.max_cols = float('-inf')
+
+        # Set the random seed
+        random.seed(self.seed)
 
         # Load data at startup
         if not self.inference_mode:
@@ -110,8 +122,8 @@ class Dataset():
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
-            'lazy_mode': self.lazy_mode,
             'inference_mode': self.inference_mode,
+            'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
             'charset': self.charset,
@@ -143,8 +155,8 @@ class Dataset():
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
-            Lazy Mode               {self.lazy_mode}
             Inference Mode          {self.inference_mode}
+            Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
             Dataset Information
@@ -174,6 +186,77 @@ class Dataset():
 
         return info
 
+    def next_batch(self, partition, batch_size=16):
+        """
+        Generates a batch of data samples for the specified partition.
+
+        Parameters
+        ----------
+        partition : str
+            The partition type ('training', 'validation', or 'test').
+        batch_size : int, optional
+            The number of samples in each batch, by default 16.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the input data and corresponding labels as NumPy arrays.
+
+        Raises
+        ------
+        ValueError
+            If an invalid partition type is provided.
+        """
+
+        if 'train' in partition:
+            augmentation = self.augmentor is not None
+            dataset = self.training
+
+        elif 'valid' in partition:
+            augmentation = False
+            dataset = self.validation
+
+        elif 'test' in partition:
+            augmentation = False
+            dataset = self.test
+
+        else:
+            raise ValueError("Invalid dataset type.")
+
+        size = dataset['size']
+        data = dataset['data']
+        index = 0
+
+        while True:
+            # Start from the beginning and shuffle the data if reach the end
+            if index >= size:
+                index = 0
+                random.shuffle(data)
+
+            # Retrieve a batch of data samples
+            batch_data = data[index:index + batch_size]
+            index += batch_size
+
+            # Extract input data and labels from the batch
+            x_train = [x[0] for x in batch_data]
+            y_train = [x[-1] for x in batch_data]
+
+            # Read image data lazily
+            if self.lazy_mode:
+                x_train = [self._read_image(x) for x in x_train]
+
+            # Perform augmentation operations
+            if augmentation:
+                print('augmentation')
+                # ...
+
+            # Apply normalization, padding, rotation
+            print('prepare image')
+            # ...
+
+            # Yield the batch of input data and labels as NumPy arrays
+            yield x_train, y_train
+
     def _create_partition_dictionary(self, partition_data):
         """
         Creates a partition dictionary from the given partition data.
@@ -191,7 +274,6 @@ class Dataset():
 
         # Initialize the partition dictionary with default values
         dct = {
-            'index': 0,
             'data': partition_data,
             'size': len(partition_data),
             'charset': [],
@@ -349,9 +431,6 @@ class Dataset():
         # Extend data list with empty lists to ensure length of 3
         data.extend([[]] * (3 - len(data)))
 
-        # Set the random seed
-        random.seed(self.seed)
-
         # Get the training, validation, and test ratios
         ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
         ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
@@ -468,6 +547,10 @@ class Dataset():
         numpy.ndarray
             The loaded image as a NumPy array.
         """
+
+        if not isinstance(image_path, str):
+            # Return image if it is already a NumPy array
+            return image_path
 
         # Load image in grayscale
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
