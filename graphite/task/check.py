@@ -1,5 +1,6 @@
 import cv2
 
+from dataset import Augmentor
 from dataset import Dataset
 
 
@@ -19,33 +20,42 @@ def check(args):
     """
 
     # Create a dataset object with the specified arguments
-    dataset = Dataset(source=args.source, level=args.level, lazy_mode=True)
+    dataset = Dataset(source=args.source,
+                      level=args.level,
+                      training_ratio=args.training_ratio,
+                      validation_ratio=args.validation_ratio,
+                      test_ratio=args.test_ratio,
+                      lazy_mode=True,
+                      seed=42)
     print(dataset)
 
+    # Create Augmentor instance
+    augmentor = Augmentor()
+
     # Get batches of original and transformed data for training
-    batch_original_data = dataset.next_batch('training', transform=False)
-    batch_transform_data = dataset.next_batch('training', transform=True)
+    src_batch = dataset.next_batch('training', augmentor=None, keep_original=True)
+    aug_batch = dataset.next_batch('training', augmentor=augmentor, keep_original=False)
 
     if args.check_samples:
         print("Checking samples...\n")
 
         while True:
             # Get the next batch of original and transformed images and labels
-            images, labels = next(batch_original_data)
-            images_transform, labels_transform = next(batch_transform_data)
+            src_images, src_labels = next(src_batch)
+            aug_images, aug_labels = next(aug_batch)
 
             # Display images
-            for i in range(len(images)):
-                cv2.imshow("Image", images[i])
-                cv2.imshow("Image Transform", images_transform[i])
+            for i in range(len(src_images)):
+                cv2.imshow("Source Image", src_images[i])
+                cv2.imshow("Augmented Image", aug_images[i])
 
                 print("\nLabel")
-                for j in range(len(labels[i])):
-                    print(labels[i][j])
+                for j in range(len(src_labels[i])):
+                    print(src_labels[i][j])
 
                 print("\nEncoded Label")
-                for j in range(len(labels_transform[i])):
-                    print(labels_transform[i][j])
+                for j in range(len(aug_labels[i])):
+                    print(aug_labels[i][j])
 
                 # Wait for key press
                 print("\nPress Enter to continue or Esc to stop...")
