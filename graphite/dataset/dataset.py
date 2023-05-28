@@ -18,13 +18,12 @@ class Dataset():
                  data=None,
                  source=None,
                  level=None,
-                 augmentor=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
                  data_path='data',
                  lazy_mode=True,
-                 seed=42):
+                 seed=None):
         """
         Initializes a new instance of the Dataset class.
 
@@ -36,8 +35,6 @@ class Dataset():
             The data source name. Default is None.
         level : str, optional
             The recognition level. Default is None.
-        augmentor : Augmentor, optional
-            The Augmentor class. Default is None.
         training_ratio : float or int, optional
             The training ratio for resample. Default is None.
         validation_ratio : float or int, optional
@@ -58,7 +55,6 @@ class Dataset():
 
         self.source = source
         self.level = level
-        self.augmentor = augmentor
 
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
@@ -186,7 +182,7 @@ class Dataset():
 
         return info
 
-    def next_batch(self, partition, batch_size=16):
+    def next_batch(self, partition, batch_size=16, augmentor=None, keep_original=False):
         """
         Generates a batch of data samples for the specified partition.
 
@@ -196,32 +192,18 @@ class Dataset():
             The partition type ('training', 'validation', or 'test').
         batch_size : int, optional
             The number of samples in each batch, by default 16.
+        augmentor : Augmentor, optional
+            The Augmentor class. Default is None.
+        keep_original : bool, optional
+            Whether to include the original samples in the batch, default is False.
 
         Returns
         -------
         tuple
             A tuple containing the input data and corresponding labels as NumPy arrays.
-
-        Raises
-        ------
-        ValueError
-            If an invalid partition type is provided.
         """
 
-        if 'train' in partition:
-            augmentation = self.augmentor is not None
-            dataset = self.training
-
-        elif 'valid' in partition:
-            augmentation = False
-            dataset = self.validation
-
-        elif 'test' in partition:
-            augmentation = False
-            dataset = self.test
-
-        else:
-            raise ValueError("Invalid dataset type.")
+        dataset = getattr(self, partition)
 
         size = dataset['size']
         data = dataset['data']
@@ -238,24 +220,21 @@ class Dataset():
             index += batch_size
 
             # Extract input data and labels from the batch
-            x_train = [x[0] for x in batch_data]
-            y_train = [x[-1] for x in batch_data]
-
-            # Read image data lazily
-            if self.lazy_mode:
-                x_train = [self._read_image(x) for x in x_train]
+            x_data = [self._read_image(x[0], x[1]) if self.lazy_mode else x[0] for x in batch_data]
+            y_data = [x[3 if keep_original else 2] for x in batch_data]
 
             # Perform augmentation operations
-            if augmentation:
-                print('augmentation')
+            if not keep_original and augmentor is not None:
+                print('')
                 # ...
 
-            # Apply normalization, padding, rotation
-            print('prepare image')
-            # ...
+            if not keep_original:
+                # Apply normalization, padding, rotation
+                print('')
+                # ...
 
             # Yield the batch of input data and labels as NumPy arrays
-            yield x_train, y_train
+            yield x_data, y_data
 
     def _create_partition_dictionary(self, partition_data):
         """
