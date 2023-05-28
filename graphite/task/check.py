@@ -33,8 +33,8 @@ def check(args):
     augmentor = Augmentor()
 
     # Get batches of original and transformed data for training
-    src_batch = dataset.next_batch('training', augmentor=None, keep_original=True)
-    aug_batch = dataset.next_batch('training', augmentor=augmentor, keep_original=False)
+    src_batch = dataset.next_batch('training', keep_original=True)
+    aug_batch = dataset.next_batch('training', augmentor=augmentor)
 
     if args.check_samples:
         print("Checking samples...\n")

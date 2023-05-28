@@ -221,7 +221,7 @@ class Dataset():
 
             # Extract input data and labels from the batch
             x_data = [self._read_image(x[0], x[1]) if self.lazy_mode else x[0] for x in batch_data]
-            y_data = [x[3 if keep_original else 2] for x in batch_data]
+            y_data = [x[2 if keep_original else 3] for x in batch_data]
 
             if not keep_original:
                 # Perform augmentation operations
