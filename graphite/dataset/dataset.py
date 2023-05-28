@@ -69,12 +69,10 @@ class Dataset():
 
         self.min_text = ''
         self.max_text = ''
-
         self.min_rows = float('inf')
         self.max_rows = float('-inf')
-
-        self.min_columns = float('inf')
-        self.max_columns = float('-inf')
+        self.min_cols = float('inf')
+        self.max_cols = float('-inf')
 
         # Load data at startup
         if not self.inference_mode:
@@ -87,6 +85,14 @@ class Dataset():
         self.training = self._create_partition_dictionary(data[0])
         self.validation = self._create_partition_dictionary(data[1])
         self.test = self._create_partition_dictionary(data[2])
+
+        # Initialize Tokenizer class
+        self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
+
+        # Encode data
+        self.training['data'] = self.tokenizer.encode_data(self.training['data'])
+        self.validation['data'] = self.tokenizer.encode_data(self.validation['data'])
+        self.test['data'] = self.tokenizer.encode_data(self.test['data'])
 
     def __repr__(self):
         """
@@ -116,8 +122,8 @@ class Dataset():
             'max_text_length': len(self.max_text),
             'min_rows': self.min_rows,
             'max_rows': self.max_rows,
-            'min_columns': self.min_columns,
-            'max_columns': self.max_columns,
+            'min_cols': self.min_cols,
+            'max_cols': self.max_cols,
         })
 
     def __str__(self):
@@ -160,8 +166,8 @@ class Dataset():
             Min Rows                {self.min_rows}
             Max Rows                {self.max_rows}
 
-            Min Columns             {self.min_columns}
-            Max Columns             {self.max_columns}
+            Min Columns             {self.min_cols}
+            Max Columns             {self.max_cols}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -193,8 +199,8 @@ class Dataset():
             'max_text': '',
             'min_rows': 0,
             'max_rows': 0,
-            'min_columns': 0,
-            'max_columns': 0,
+            'min_cols': 0,
+            'max_cols': 0,
         }
 
         # Get the labels from the partition data
@@ -207,8 +213,8 @@ class Dataset():
             dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
             dct['min_rows'] = min(len(x) for x in labels)
             dct['max_rows'] = max(len(x) for x in labels)
-            dct['min_columns'] = min(len(y) for x in labels for y in x)
-            dct['max_columns'] = max(len(y) for x in labels for y in x)
+            dct['min_cols'] = min(len(y) for x in labels for y in x)
+            dct['max_cols'] = max(len(y) for x in labels for y in x)
 
         # Update the object's properties using the partition dictionary
         self.size += dct['size']
@@ -230,13 +236,13 @@ class Dataset():
             # Update the maximum number of rows if it exists
             self.max_rows = max(self.max_rows, dct['max_rows'])
 
-        if dct['min_columns']:
+        if dct['min_cols']:
             # Update the minimum number of columns if it exists
-            self.min_columns = min(self.min_columns, dct['min_columns'])
+            self.min_cols = min(self.min_cols, dct['min_cols'])
 
-        if dct['max_columns']:
+        if dct['max_cols']:
             # Update the maximum number of columns if it exists
-            self.max_columns = max(self.max_columns, dct['max_columns'])
+            self.max_cols = max(self.max_cols, dct['max_cols'])
 
         return dct
 
@@ -591,5 +597,85 @@ class Dataset():
             # Remove extra spaces and handle quotes
             label[i] = re.sub(r'\s+', ' ', label[i].replace('"', ' " ')).strip()
             label[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label[i]).strip()
+
+        return label
+
+
+class Tokenizer():
+
+    def __init__(self, charset, max_rows=1, max_cols=128):
+        self.pad_tk = '¶'
+        self.sos_tk = '◖'
+        self.eos_tk = '◗'
+        self.unk_tk = '◬'
+
+        self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
+        self.charset_size = len(self.charset) + 1
+
+        self.max_rows = max_rows
+        self.max_cols = max_cols + (len(self.charset) - len(charset))
+
+    def encode_data(self, data):
+
+        with multiprocessing.get_context('fork').Pool() as pool:
+            encoded_labels = pool.map(self.encode, [x[-1] for x in data])
+
+            for i in range(len(data)):
+                data[i].append(encoded_labels[i])
+
+        return data
+
+    def encode(self, label):
+
+        pad_tk_index = self.charset.index(self.pad_tk)
+        unk_tk_index = self.charset.index(self.unk_tk)
+        sos_tk_index = self.charset.index(self.sos_tk)
+        eos_tk_index = self.charset.index(self.eos_tk)
+
+        encoded_label = []
+
+        for row in label:
+            enconded_row = [sos_tk_index]
+
+            for char in row:
+                index = self.charset.index(char)
+                index = unk_tk_index if index == -1 else index
+                enconded_row.append(index)
+
+            enconded_row += [eos_tk_index]
+            enconded_row += [pad_tk_index] * max(0, abs(self.max_cols - len(enconded_row)))
+
+            encoded_label.append(enconded_row)
+
+        return encoded_label
+
+    def decode_data(self, data):
+
+        with multiprocessing.get_context('fork').Pool() as pool:
+            labels = pool.map(self.decode, [x[-1] for x in data])
+
+            for i in range(len(data)):
+                data[i].append(labels[i])
+
+        return data
+
+    def decode(self, encoded_label):
+
+        label = []
+
+        for enconded_row in encoded_label:
+            row = ''
+
+            for enconded_char in enconded_row:
+                if int(enconded_char) == -1:
+                    continue
+
+                row += self.charset[int(enconded_char)]
+
+            row = row.replace(self.pad_tk, '')
+            row = row.replace(self.sos_tk, '')
+            row = row.replace(self.eos_tk, '')
+
+            label.append(row)
 
         return label
