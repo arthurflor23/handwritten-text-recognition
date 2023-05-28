@@ -23,13 +23,12 @@ class Source():
         self.data_path = data_path
         self.base_path = os.path.join(self.data_path, 'washington')
 
-        self.transcription_path = os.path.join(self.base_path, 'ground_truth')
         self.partition_path = os.path.join(self.base_path, 'sets', 'cv1')
-
         self.training_file_path = os.path.join(self.partition_path, 'train.txt')
         self.validation_file_path = os.path.join(self.partition_path, 'valid.txt')
         self.test_file_path = os.path.join(self.partition_path, 'test.txt')
 
+        self.transcription_path = os.path.join(self.base_path, 'ground_truth')
         self.words_file_path = os.path.join(self.transcription_path, 'word_labels.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'transcription.txt')
 

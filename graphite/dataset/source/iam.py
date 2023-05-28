@@ -25,13 +25,12 @@ class Source():
         self.data_path = data_path
         self.base_path = os.path.join(self.data_path, 'iam')
 
-        self.transcription_path = os.path.join(self.base_path, 'ascii')
         self.partition_path = os.path.join(self.base_path, 'largeWriterIndependentTextLineRecognitionTask')
-
         self.training_file_path = os.path.join(self.partition_path, 'trainset.txt')
         self.validation_file_path = os.path.join(self.partition_path, 'validationset1.txt')
         self.test_file_path = os.path.join(self.partition_path, 'testset.txt')
 
+        self.transcription_path = os.path.join(self.base_path, 'ascii')
         self.words_file_path = os.path.join(self.transcription_path, 'words.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'lines.txt')
 
