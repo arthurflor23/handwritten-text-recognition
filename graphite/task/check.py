@@ -27,7 +27,7 @@ def check(args):
     batch_transform_data = dataset.next_batch('training', transform=True)
 
     if args.check_samples:
-        print("Checking data...\n")
+        print("Checking samples...\n")
 
         while True:
             # Get the next batch of original and transformed images and labels
