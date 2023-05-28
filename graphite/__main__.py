@@ -1,4 +1,3 @@
-import os
 import task
 import argparse
 
@@ -7,14 +6,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Task flags
-    parser.add_argument('--check', default=False, action='store_true',
-                        help="Perform data verification")
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
     parser.add_argument('--test', default=False, action='store_true',
                         help="Perform optical model test")
     parser.add_argument('--train', default=False, action='store_true',
                         help="Perform optical model training")
+    parser.add_argument('--check', default=False, action='store_true',
+                        help="Perform data verification")
+    parser.add_argument('--check-samples', default=False, action='store_true',
+                        help="View sample data")
 
     # Optical Model
     parser.add_argument('--optical-model', default=None,
@@ -43,8 +44,8 @@ if __name__ == '__main__':
     # Inference
     parser.add_argument('--images', default=[], nargs='+',
                         help="Set image path list for handwriting recognition")
-    parser.add_argument('--cropping', default=[], nargs='+',
-                        help="Set cropping values (x, y, width, height)")
+    parser.add_argument('--bbox', default=[], nargs='+',
+                        help="Set bounding box values (x, y, width, height)")
 
     # Spell check
     parser.add_argument('--spell-check', default='openai',
@@ -57,12 +58,6 @@ if __name__ == '__main__':
                         help="Specify running id")
 
     args = parser.parse_args()
-
-    # Setup basic paths
-    args.base_path = os.path.join(os.path.dirname(__file__), '..')
-    args.data_path = os.path.join(args.base_path, 'data')
-    args.output_path = os.path.join(args.base_path, 'mlruns')
-    args.nltk_path = os.path.join(args.output_path, 'nltk')
 
     # Turn required parameters
     if args.check or args.train or args.test:
