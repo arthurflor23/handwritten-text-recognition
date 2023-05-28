@@ -1,4 +1,5 @@
 import os
+import xml.etree.ElementTree as ET
 
 
 class Source():
@@ -23,8 +24,147 @@ class Source():
         self.data_path = data_path
         self.base_path = os.path.join(self.data_path, 'rimes')
 
-        self.training_path = os.path.join(self.base_path, 'training_2011', 'images')
-        self.test_path = os.path.join(self.base_path, 'eval_2011', 'images')
+        self.training_path = os.path.join(self.base_path, 'training_2011')
+        self.test_path = os.path.join(self.base_path, 'eval_2011')
 
         self.training_file_path = os.path.join(self.base_path, 'training_2011.xml')
         self.test_file_path = os.path.join(self.base_path, 'eval_2011_annotated.xml')
+
+    def get_line_data(self):
+        """
+        Retrieves the line data for training, validation, and testing.
+
+        Returns
+        -------
+        tuple
+            A tuple containing lists of training, validation, and test lines data.
+        """
+
+        # Load the lines data from the files
+        training_lines = self._load_lines_data(self.training_file_path, self.training_path)
+        test_lines = self._load_lines_data(self.test_file_path, self.test_path)
+
+        return training_lines, [], test_lines
+
+    def get_paragraph_data(self):
+        """
+        Retrieves the paragraph data for training, validation, and testing.
+
+        Returns
+        -------
+        tuple
+            A tuple containing lists of training, validation, and test paragraphs data.
+        """
+
+        # Load the paragraphs data from the files
+        training_paragraphs = self._load_paragraphs_data(self.training_file_path, self.training_path)
+        test_paragraphs = self._load_paragraphs_data(self.test_file_path, self.test_path)
+
+        return training_paragraphs, [], test_paragraphs
+
+    def _load_lines_data(self, file_path, partition_path):
+        """
+        Loads the lines data from a file.
+
+        Parameters
+        ----------
+        file_path : str
+            The path to the file containing the lines data.
+
+        Returns
+        -------
+        list
+            A list of lines data.
+        """
+
+        line_data = []
+
+        # Parse the XML file
+        root = ET.parse(file_path).getroot()
+
+        # Iterate over each SinglePage elements
+        for single_page in root.findall('SinglePage'):
+            # Get the FileName attribute and construct the full file path
+            file_name = os.path.join(partition_path, single_page.get('FileName'))
+
+            # Find the Paragraph element within SinglePage
+            paragraph = single_page.find('Paragraph')
+            # Find all Line elements within Paragraph
+            lines = paragraph.findall('Line')
+
+            # Iterate over each Line element
+            for line in lines:
+                # Extract the attributes of each Line element
+                label = line.get('Value').strip()
+
+                if not label:
+                    continue
+
+                x = int(line.get('Left'))
+                y = int(line.get('Top'))
+                width = int(line.get('Right')) - x
+                height = int(line.get('Bottom')) - y
+
+                # Append the line data to lines_data
+                line_data.append([file_name, [x, y, width, height], label])
+
+        return line_data
+
+    def _load_paragraphs_data(self, file_path, partition_path):
+        """
+        Loads the paragraphs data from a file.
+
+        Parameters
+        ----------
+        file_path : str
+            The path to the file containing the lines data.
+
+        Returns
+        -------
+        list
+            A list of paragraphs data.
+        """
+
+        paragraph_data = []
+
+        # Parse the XML file
+        root = ET.parse(file_path).getroot()
+
+        # Iterate over each SinglePage elements
+        for single_page in root.findall('SinglePage'):
+            # Get the FileName attribute and construct the full file path
+            file_name = os.path.join(partition_path, single_page.get('FileName'))
+
+            # Find the Paragraph element within SinglePage
+            paragraph = single_page.find('Paragraph')
+            # Find all Line elements within Paragraph
+            lines = paragraph.findall('Line')
+
+            label = []
+            min_x, max_x = float('inf'), float('-inf')
+            min_y, max_y = float('inf'), float('-inf')
+
+            # Iterate over each Line element
+            for line in lines:
+                # Extract the attributes of each Line element
+                line_label = line.get('Value').strip()
+
+                if not line_label:
+                    continue
+
+                # Get the minimum and maximum coords x and y
+                min_x = min(min_x, int(line.get('Left')))
+                min_y = min(min_y, int(line.get('Top')))
+                max_x = max(max_x, int(line.get('Right')))
+                max_y = max(max_y, int(line.get('Bottom')))
+
+                # Get label
+                label.append(line_label)
+
+            # Concatenate the Value attribute of Line elements
+            bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
+
+            # Append the file name, bbox, and label
+            paragraph_data.append([file_name, bbox, label])
+
+        return paragraph_data
