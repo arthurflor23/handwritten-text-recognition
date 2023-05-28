@@ -154,8 +154,8 @@ class Source():
 
                 # Get the minimum and maximum coords x and y
                 min_x = min(min_x, int(line.get('Left')))
-                min_y = min(min_y, int(line.get('Top')))
                 max_x = max(max_x, int(line.get('Right')))
+                min_y = min(min_y, int(line.get('Top')))
                 max_y = max(max_y, int(line.get('Bottom')))
 
                 # Get label
