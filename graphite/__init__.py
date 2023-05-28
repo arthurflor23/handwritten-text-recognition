@@ -1,7 +1,7 @@
-from .dataset import Augmentor
-from .dataset import Dataset
+from graphite.dataset import Augmentor
+from graphite.dataset import Dataset
 
-from .model import Carbon
-from .model import Model
+from graphite.model import Carbon
+from graphite.model import Model
 
 __all__ = ['Augmentor', 'Dataset', 'Carbon', 'Model']
