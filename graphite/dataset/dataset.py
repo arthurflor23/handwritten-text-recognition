@@ -4,9 +4,10 @@ import cv2
 import json
 import html
 import nltk
-import random
 import importlib
+import numpy as np
 import multiprocessing
+import concurrent.futures
 
 
 class Dataset():
@@ -80,7 +81,7 @@ class Dataset():
         self.max_cols = float('-inf')
 
         # Set the random seed
-        random.seed(self.seed)
+        np.random.seed(self.seed)
 
         # Load data at startup
         if not self.inference_mode:
@@ -182,7 +183,10 @@ class Dataset():
 
         return info
 
-    def next_batch(self, partition, batch_size=16, augmentor=None, keep_original=False):
+    def batch_generator(self, partition,
+                        batch_size=16,
+                        augmentor=None,
+                        keep_original=False):
         """
         Generates a batch of data samples for the specified partition.
 
@@ -204,34 +208,48 @@ class Dataset():
         """
 
         dataset = getattr(self, partition)
+        indices = np.arange(dataset['size'])
 
-        size = dataset['size']
-        data = dataset['data']
-        index = 0
+        batch_index = 0
+        label_index = 2 if keep_original else 3
 
         while True:
-            # Start from the beginning and shuffle the data if reach the end
-            if index >= size:
-                index = 0
-                random.shuffle(data)
+            # Start from the beginning and shuffle the data if reaching the end
+            if batch_index >= dataset['size']:
+                np.random.shuffle(indices)
+                batch_index = 0
 
-            # Retrieve a batch of data samples
-            batch_data = data[index:index + batch_size]
-            index += batch_size
+            # Create a batch of data samples
+            batch_indices = indices[batch_index:batch_index + batch_size]
+            batch_index += batch_size
 
-            # Extract input data and labels from the batch
-            x_data = [self._read_image(x[0], x[1]) if self.lazy_mode else x[0] for x in batch_data]
-            y_data = [x[2 if keep_original else 3] for x in batch_data]
+            # Retrieve images and labels
+            x_data = []
+            y_data = []
+
+            if self.lazy_mode:
+                batch_data = [dataset['data'][i] for i in batch_indices]
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    # Submit tasks for reading images
+                    futures = [executor.submit(self._read_image, item[0], item[1]) for item in batch_data]
+
+                    # Process the completed tasks
+                    for future, item in zip(futures, batch_data):
+                        x_data.append(future.result())
+                        y_data.append(item[label_index])
+            else:
+                for i in batch_indices:
+                    x_data.append(dataset['data'][i][0])
+                    y_data.append(dataset['data'][i][label_index])
 
             if not keep_original:
                 # Perform augmentation operations
                 if augmentor is not None:
                     print('augmentor')
-                    # ...
 
                 # Apply normalization, padding, rotation, etc.
                 print('keep_original')
-                # ...
 
             # Yield the batch of input data and labels as NumPy arrays
             yield x_data, y_data
@@ -432,7 +450,7 @@ class Dataset():
 
                 for i, ratio in enumerate(ratios):
                     if ratio is not None:
-                        random.shuffle(data[i])
+                        np.random.shuffle(data[i])
                         merged.extend(data[i])
 
                 if merged:
@@ -440,7 +458,7 @@ class Dataset():
 
                     for i, ratio in enumerate(ratios):
                         if ratio is not None:
-                            random.shuffle(merged)
+                            np.random.shuffle(merged)
                             index = round((ratio + 1e-8) * total_merged)
                             data[i] = merged[:index]
                             merged = merged[index:]
@@ -448,7 +466,7 @@ class Dataset():
             else:
                 for i, ratio in enumerate(ratios):
                     if ratio is not None:
-                        random.shuffle(data[i])
+                        np.random.shuffle(data[i])
                         index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
                         data[i] = data[i][:index]
 
@@ -459,7 +477,7 @@ class Dataset():
 
             # Apply the process_data function to items in parallel
             with multiprocessing.get_context('fork').Pool() as pool:
-                random.shuffle(data[i])
+                np.random.shuffle(data[i])
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
         return data
