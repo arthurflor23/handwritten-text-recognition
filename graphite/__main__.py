@@ -8,10 +8,12 @@ if __name__ == '__main__':
     # Task flags
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
+
     parser.add_argument('--test', default=False, action='store_true',
                         help="Perform optical model test")
     parser.add_argument('--train', default=False, action='store_true',
                         help="Perform optical model training")
+
     parser.add_argument('--check', default=False, action='store_true',
                         help="Perform data verification")
     parser.add_argument('--check-samples', default=False, action='store_true',
@@ -19,27 +21,45 @@ if __name__ == '__main__':
 
     # Optical Model
     parser.add_argument('--optical-model', default=None,
-                        help="Define the optical model (bluche, puigcerver, flor)")
+                        help="Define the optical model (bluche, flor, puigcerver)")
 
     # Dataset
     parser.add_argument('--source', default=None,
                         help="Define the source data (iam, rimes)")
     parser.add_argument('--level', default='line',
                         help="Define the recoginition level (line, paragraph)")
-    parser.add_argument('--lazy-mode', default=False, action='store_true',
-                        help="Enable lazy loading")
     parser.add_argument('--training-ratio', default=None,
                         help="Set the training partition ratio")
     parser.add_argument('--validation-ratio', default=None,
                         help="Set the validation partition ratio")
     parser.add_argument('--test-ratio', default=None,
                         help="Set the test partition ratio")
+    parser.add_argument('--lazy-mode', default=False, action='store_true',
+                        help="Enable lazy loading")
 
     # Data augmentation
-    # parser.add_argument('--disable-aug', default=True, action='store_false',
-    #                     help="Disable data augmentation completely")
-    # parser.add_argument('--aug-rotation', default=[-1.5, 1.5], nargs='+',
-    #                     help="Set rotation transformation (min_value, max_value)")
+    parser.add_argument('--elastic-distortion', default=[0.99, 16, 8], nargs='+', type=float,
+                        help="Apply elastic distortion (probability, grid size, magnitude)")
+    parser.add_argument('--perspective-transform', default=[0.99, 16, 8], nargs='+', type=float,
+                        help="Apply perspective transformation (probability, grid size, magnitude)")
+    parser.add_argument('--gaussian-noise', default=[0.99, 3, 5], nargs='+', type=float,
+                        help="Apply Gaussian noise (probability, kernel size, iterations)")
+    parser.add_argument('--gaussian-blur', default=[0.99, 3, 5], nargs='+', type=float,
+                        help="Apply Gaussian blur (probability, kernel size, iterations)")
+    parser.add_argument('--shearing', default=[0.99, 1.5], nargs='+', type=float,
+                        help="Apply shearing transformation (probability, absolute range value)")
+    parser.add_argument('--scaling', default=[0.99, 1.5], nargs='+', type=float,
+                        help="Apply scaling transformation (probability, absolute range value)")
+    parser.add_argument('--rotation', default=[0.99, 1.5], nargs='+', type=float,
+                        help="Apply rotation transformation (probability, absolute range value)")
+    parser.add_argument('--translate-x', default=[0.99, 1.5], nargs='+', type=float,
+                        help="Apply horizontal translation (probability, absolute range value)")
+    parser.add_argument('--translate-y', default=[0.99, 1.5], nargs='+', type=float,
+                        help="Apply vertical translation (probability, absolute range value)")
+    parser.add_argument('--mixup', default=[0.99, 0.5, 2], nargs='+', type=float,
+                        help="Apply mixup augmentation (probability, opacity, iterations)")
+    parser.add_argument('--disable-augmentation', default=True, action='store_false',
+                        help="Disable data augmentation completely")
 
     # Inference
     parser.add_argument('--images', default=[], nargs='+',
