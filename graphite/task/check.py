@@ -30,14 +30,38 @@ def check(args):
     print(dataset)
 
     # Create Augmentor instance
-    augmentor = Augmentor()
+    augmentor = Augmentor(
+        elastic_distortion=args.elastic_distortion,
+        perspective_transform=args.perspective_transform,
+        gaussian_noise=args.gaussian_noise,
+        gaussian_blur=args.gaussian_blur,
+        shearing=args.shearing,
+        scaling=args.scaling,
+        rotation=args.rotation,
+        translate_x=args.translate_x,
+        translate_y=args.translate_y,
+        mixup=args.mixup,
+    )
+    print(augmentor)
 
     # Get batches of original and transformed data for training
-    src_batch = dataset.next_batch('training', keep_original=True)
-    aug_batch = dataset.next_batch('training', augmentor=augmentor)
+    src_batch = dataset.batch_generator('training', keep_original=True)
+    aug_batch = dataset.batch_generator('training', augmentor=augmentor)
 
     if args.check_samples:
         print("Checking samples...\n")
+
+        # import time
+        # counter = 0
+        # start_time = time.time()
+        # for _ in range(1000):
+        #     aug_images, aug_labels = next(aug_batch)
+        #     counter += 1
+        # end_time = time.time()
+
+        # print("\n\nLoop performed {} times".format(counter))
+        # print(f"Execution time: {end_time - start_time:.4f} seconds\n\n")
+        # exit()
 
         while True:
             # Get the next batch of original and transformed images and labels
