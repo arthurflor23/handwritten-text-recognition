@@ -146,7 +146,7 @@ class Dataset():
         """
 
         info = f"""
-            Dataset Configuration
+            Dataset Configuration\n
             Source                  {self.source or '-'}
             Recognition Level       {self.level or '-'}
             Training Ratio          {self.training_ratio or '-'}
@@ -156,7 +156,7 @@ class Dataset():
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
-            Dataset Information
+            \nDataset Information\n
             Total Size              {self.size}
 
             Training Size           {self.training['size']}
@@ -246,7 +246,7 @@ class Dataset():
             if not keep_original:
                 # Perform augmentation operations
                 if augmentor is not None:
-                    print('augmentor')
+                    x_data = augmentor.transform(x_data)
 
                 # Apply normalization, padding, rotation, etc.
                 print('keep_original')
