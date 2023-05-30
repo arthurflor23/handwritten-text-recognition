@@ -180,7 +180,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, batch_images, opacity, pickups, range_radius=True):
+    def mixup(self, image, batch_images, opacity, pickups, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -194,7 +194,7 @@ class Augmentor():
             Opacity of the mixup effect.
         pickups : int
             Number of images for the mixup operation.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for opacity and pickups, by default True.
 
         Returns
@@ -203,12 +203,26 @@ class Augmentor():
             Mixed image.
         """
 
-        # do something
-        # ...
+        num_imgs = len(batch_images)
+        pickups = min(pickups, num_imgs)
+
+        pickup_idxs = np.random.choice(num_imgs, size=pickups, replace=False)
+        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
+
+        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
+            pickup_img = batch_images[pickup_idx]
+
+            if pickup_img.shape[:2] != image.shape[:2]:
+                interp = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
+                    or pickup_img.shape[1] > image.shape[1] else cv2.INTER_AREA
+
+                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interp)
+
+            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
 
         return image
 
-    def dilation(self, image, kernel_size, iterations, range_radius=True):
+    def dilation(self, image, kernel_size, iterations, radius=True):
         """
         Apply Dilation to the image.
 
@@ -220,7 +234,7 @@ class Augmentor():
             Kernel size for dilation.
         iterations : int
             Number of iterations for dilation.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
         Returns
@@ -234,7 +248,7 @@ class Augmentor():
 
         return image
 
-    def elastic_distortion(self, image, grid_size, magnitude, range_radius=True):
+    def elastic_distortion(self, image, grid_size, magnitude, radius=True):
         """
         Apply elastic distortion to the image.
 
@@ -246,7 +260,7 @@ class Augmentor():
             Grid size for elastic distortion.
         magnitude : float
             Magnitude of elastic distortion.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for grid size and magnitude, by default True.
 
         Returns
@@ -260,7 +274,7 @@ class Augmentor():
 
         return image
 
-    def perspective_transform(self, image, type, magnitude, range_radius=True):
+    def perspective_transform(self, image, type, magnitude, radius=True):
         """
         Apply perspective transform to the image.
 
@@ -272,7 +286,7 @@ class Augmentor():
             Type of perspective transform.
         magnitude : float
             Magnitude of perspective transform.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for type and magnitude, by default True.
 
         Returns
@@ -286,7 +300,7 @@ class Augmentor():
 
         return image
 
-    def gaussian_noise(self, image, kernel_size, iterations, range_radius=True):
+    def gaussian_noise(self, image, kernel_size, iterations, radius=True):
         """
         Apply Gaussian noise to the image.
 
@@ -298,7 +312,7 @@ class Augmentor():
             Kernel size for Gaussian noise.
         iterations : int
             Number of iterations for Gaussian noise.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
         Returns
@@ -312,7 +326,7 @@ class Augmentor():
 
         return image
 
-    def gaussian_blur(self, image, kernel_size, iterations, range_radius=True):
+    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
         """
         Apply Gaussian blur to the image.
 
@@ -324,7 +338,7 @@ class Augmentor():
             Kernel size for Gaussian blur.
         iterations : int
             Number of iterations for Gaussian blur.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
         Returns
@@ -338,7 +352,7 @@ class Augmentor():
 
         return image
 
-    def shearing(self, image, value, range_radius=True):
+    def shearing(self, image, value, radius=True):
         """
         Apply shearing to the image.
 
@@ -348,7 +362,7 @@ class Augmentor():
             Input image to be sheared.
         value : float
             Shearing value.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for value, by default True.
 
         Returns
@@ -362,7 +376,7 @@ class Augmentor():
 
         return image
 
-    def scaling(self, image, value, range_radius=True):
+    def scaling(self, image, value, radius=True):
         """
         Apply scaling to the image.
 
@@ -372,7 +386,7 @@ class Augmentor():
             Input image to be scaled.
         value : float
             Scaling value.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for value, by default True.
 
         Returns
@@ -386,7 +400,7 @@ class Augmentor():
 
         return image
 
-    def rotation(self, image, value, range_radius=True):
+    def rotation(self, image, value, radius=True):
         """
         Apply rotation to the image.
 
@@ -396,7 +410,7 @@ class Augmentor():
             Input image to be rotated.
         value : float
             Rotation value.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for value, by default True.
 
         Returns
@@ -410,7 +424,7 @@ class Augmentor():
 
         return image
 
-    def translate_x(self, image, value, range_radius=True):
+    def translate_x(self, image, value, radius=True):
         """
         Apply X-axis translation to the image.
 
@@ -420,7 +434,7 @@ class Augmentor():
             Input image to be translated.
         value : float
             X-axis translation value.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for value, by default True.
 
         Returns
@@ -434,7 +448,7 @@ class Augmentor():
 
         return image
 
-    def translate_y(self, image, value, range_radius=True):
+    def translate_y(self, image, value, radius=True):
         """
         Apply Y-axis translation to the image.
 
@@ -444,7 +458,7 @@ class Augmentor():
             Input image to be translated.
         value : float
             Y-axis translation value.
-        range_radius : bool, optional
+        radius : bool, optional
             Whether to use range radius for value, by default True.
 
         Returns
