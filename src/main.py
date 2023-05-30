@@ -124,6 +124,17 @@ if __name__ == "__main__":
 
     # The default mode is inference.
     else:
+        print('Not training or transforming.')
+        print('Source Path:', source_path)
+        print('Weights:', weights_path)
+        print('Architecture:', args.arch)
+        print('Archive:', args.archive)
+        print('CSV:', args.csv)
+        print('Append:', args.append)
+        print('Parquet:', args.parquet)
+        print('Test:', args.test)
+        
+                
         final_predicts = []
 
         if args.archive:
@@ -178,9 +189,17 @@ if __name__ == "__main__":
             images = images[:args.test]
 
         total = len(images)
-        pbar = tqdm(total=total)
+        print('Total images:', total)
+        print('\n-----------------')
+        
+        pbar = tqdm(images) # tqdm(total=total)
 
-        for image_name in images:
+        # for image_name in images:
+        # for i, image_name in enumerate(pbar):
+        for image_name in pbar: 
+            pbar.set_description(f'{image_name}') # f'Image: {image_name} ({i})'
+            # print(f'{image_name} ({i} / {total})')
+            
             image_path = os.path.join(folder_path, image_name)
 
             try:
@@ -241,7 +260,7 @@ if __name__ == "__main__":
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
-            pbar.update(1)
+            # pbar.update(1)
 
         if args.csv:
             if args.csv.split(".")[-1] != "csv":
