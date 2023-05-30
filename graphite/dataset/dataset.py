@@ -181,6 +181,7 @@ class Dataset():
                         batch_size=16,
                         augmentor=None,
                         normalize=True,
+                        shuffle=True,
                         debug=False):
         """
         Generates a batch of data samples for the specified partition.
@@ -195,6 +196,8 @@ class Dataset():
             The Augmentor class. Default is None.
         normalize : bool, optional
             Indicates whether to normalize the batch, default is True.
+        shuffle : bool, optional
+            Specifies whether shuffles per epoch, default is True.
         debug : bool, optional
             Specifies whether to enable debug mode, default is False.
 
@@ -212,7 +215,8 @@ class Dataset():
 
         while True:
             if batch_index >= dataset['size']:
-                np.random.shuffle(indices)
+                if shuffle:
+                    np.random.shuffle(indices)
                 batch_index = 0
 
             batch_indices = indices[batch_index:batch_index + batch_size]
@@ -475,7 +479,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._format_label(label)
+        label = self._normalize_label(label)
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -533,19 +537,19 @@ class Dataset():
 
         return image
 
-    def _format_label(self, label):
+    def _normalize_label(self, label):
         """
-        Standardizes a label by formatting, normalizing, and standardizing the string of text.
+        Normalize a label by formatting, and standardizing the string of text.
 
         Parameters
         ----------
         label : str
-            The label to be standardized.
+            The label to be normalized.
 
         Returns
         -------
         str
-            The standardized label.
+            The normalized label.
         """
 
         if isinstance(label, str):
