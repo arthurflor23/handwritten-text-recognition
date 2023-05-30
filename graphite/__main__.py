@@ -38,6 +38,10 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
+    parser.add_argument('--mixup', default=[0.99, 0.5, 2], nargs='+', type=float,
+                        help="Apply mixup augmentation (probability, opacity, pickups)")
+    parser.add_argument('--dilation', default=[0.99, 3, 5], nargs='+', type=float,
+                        help="Apply dilation (probability, kernel_size, magnitude)")
     parser.add_argument('--elastic-distortion', default=[0.99, 16, 8], nargs='+', type=float,
                         help="Apply elastic distortion (probability, grid size, magnitude)")
     parser.add_argument('--perspective-transform', default=[0.99, 16, 8], nargs='+', type=float,
@@ -56,8 +60,6 @@ if __name__ == '__main__':
                         help="Apply horizontal translation (probability, range_radius)")
     parser.add_argument('--translate-y', default=[0.99, 1.5], nargs='+', type=float,
                         help="Apply vertical translation (probability, range_radius)")
-    parser.add_argument('--mixup', default=[0.99, 0.5, 2], nargs='+', type=float,
-                        help="Apply mixup augmentation (probability, opacity, iterations)")
     parser.add_argument('--disable-augmentation', default=True, action='store_false',
                         help="Disable data augmentation completely")
 
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     if args.train or args.test or args.infer:
         assert args.network is not None, "network must be defined"
 
-    # Forward to task
+    # Tasks
     if args.check:
         task.check(args)
 
