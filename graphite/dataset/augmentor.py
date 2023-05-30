@@ -7,6 +7,8 @@ import concurrent.futures
 class Augmentor():
 
     def __init__(self,
+                 mixup=None,
+                 dilation=None,
                  elastic_distortion=None,
                  perspective_transform=None,
                  gaussian_noise=None,
@@ -15,9 +17,10 @@ class Augmentor():
                  scaling=None,
                  rotation=None,
                  translate_x=None,
-                 translate_y=None,
-                 mixup=None):
+                 translate_y=None):
 
+        self.mixup_params = mixup
+        self.dilation_params = dilation
         self.elastic_distortion_params = elastic_distortion
         self.perspective_transform_params = perspective_transform
         self.gaussian_noise_params = gaussian_noise
@@ -27,7 +30,6 @@ class Augmentor():
         self.rotation_params = rotation
         self.translate_x_params = translate_x
         self.translate_y_params = translate_y
-        self.mixup_params = mixup
 
     def __repr__(self):
         """
@@ -40,6 +42,8 @@ class Augmentor():
         """
 
         return json.dumps({
+            'mixup': self.mixup_params,
+            'dilation': self.dilation_params,
             'elastic_distortion': self.elastic_distortion_params,
             'perspective_transform': self.perspective_transform_params,
             'gaussian_noise': self.gaussian_noise_params,
@@ -49,7 +53,6 @@ class Augmentor():
             'rotation': self.rotation_params,
             'translate_x': self.translate_x_params,
             'translate_y': self.translate_y_params,
-            'mixup': self.mixup_params,
         })
 
     def __str__(self):
@@ -64,6 +67,8 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
+            Mixup                   {self.mixup_params}
+            Dilation                {self.dilation_params}
             Elastic Distortion      {self.elastic_distortion_params}
             Perspective Transform   {self.perspective_transform_params}
 
@@ -76,8 +81,6 @@ class Augmentor():
             Rotation                {self.rotation_params}
             Translation X           {self.translate_x_params}
             Translation Y           {self.translate_y_params}
-
-            Mixup                   {self.mixup_params}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -113,7 +116,7 @@ class Augmentor():
 
         return images
 
-    def augmentation(self, image, images=None):
+    def augmentation(self, image, batch_images=None):
         """
         Apply transformations to an image.
 
@@ -121,7 +124,7 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be transformed.
-        images : list
+        batch_images : list
             List of images used for mixup transformation.
 
         Returns
@@ -130,6 +133,14 @@ class Augmentor():
             Transformed image.
 
         """
+
+        # Mixup
+        if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
+            image = self.mixup(image, batch_images, *self.mixup_params[1:])
+
+        # Dilation
+        if self.dilation_params and np.random.random() < self.dilation_params[0]:
+            image = self.dilation(image, *self.dilation_params[1:])
 
         # Elastic Distortions
         if self.elastic_distortion_params and np.random.random() < self.elastic_distortion_params[0]:
@@ -167,9 +178,59 @@ class Augmentor():
         if self.translate_y_params and np.random.random() < self.translate_y_params[0]:
             image = self.translate_y(image, *self.translate_y_params[1:])
 
-        # Mixup
-        if self.mixup_params and np.random.random() < self.mixup_params[0]:
-            image = self.mixup(image, images, *self.mixup_params[1:])
+        return image
+
+    def mixup(self, image, batch_images, opacity, pickups, range_radius=True):
+        """
+        Apply mixup augmentation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be mixed.
+        batch_images : list
+            List of additional images for mixing.
+        opacity : float
+            Opacity of the mixup effect.
+        pickups : int
+            Number of images for the mixup operation.
+        range_radius : bool, optional
+            Whether to use range radius for opacity and pickups, by default True.
+
+        Returns
+        -------
+        ndarray
+            Mixed image.
+        """
+
+        # do something
+        # ...
+
+        return image
+
+    def dilation(self, image, kernel_size, iterations, range_radius=True):
+        """
+        Apply Dilation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be dilated.
+        kernel_size : int
+            Kernel size for dilation.
+        iterations : int
+            Number of iterations for dilation.
+        range_radius : bool, optional
+            Whether to use range radius for kernel size and iterations, by default True.
+
+        Returns
+        -------
+        ndarray
+            Dilated image.
+        """
+
+        # do something
+        # ...
 
         return image
 
@@ -390,34 +451,6 @@ class Augmentor():
         -------
         ndarray
             Translated image.
-        """
-
-        # do something
-        # ...
-
-        return image
-
-    def mixup(self, image, images, opacity, iterations, range_radius=True):
-        """
-        Apply mixup augmentation to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be mixed.
-        images : list
-            List of additional images for mixing.
-        opacity : float
-            Opacity of the mixup effect.
-        iterations : int
-            Number of iterations for the mixup operation.
-        range_radius : bool, optional
-            Whether to use range radius for opacity and iterations, by default True.
-
-        Returns
-        -------
-        ndarray
-            Mixed image.
         """
 
         # do something
