@@ -54,6 +54,8 @@ class Dataset():
         None
         """
 
+        np.random.seed(seed)
+
         self.source = source
         self.level = level
 
@@ -80,25 +82,17 @@ class Dataset():
         self.min_cols = float('inf')
         self.max_cols = float('-inf')
 
-        # Set the random seed
-        np.random.seed(self.seed)
-
-        # Load data at startup
         if not self.inference_mode:
             data = self._fetch_data_from_source()
 
-        # Prepare data
         data = self._prepare_data(data)
 
-        # Create partitions
         self.training = self._create_partition_dictionary(data[0])
         self.validation = self._create_partition_dictionary(data[1])
         self.test = self._create_partition_dictionary(data[2])
 
-        # Initialize Tokenizer class
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
-        # Encode data
         self.training['data'] = self.tokenizer.encode_data(self.training['data'])
         self.validation['data'] = self.tokenizer.encode_data(self.validation['data'])
         self.test['data'] = self.tokenizer.encode_data(self.test['data'])
@@ -217,16 +211,13 @@ class Dataset():
         label_index = 2 if debug else 3
 
         while True:
-            # Start from the beginning and shuffle the data if reaching the end
             if batch_index >= dataset['size']:
                 np.random.shuffle(indices)
                 batch_index = 0
 
-            # Create a batch of data samples
             batch_indices = indices[batch_index:batch_index + batch_size]
             batch_index += batch_size
 
-            # Retrieve images and labels
             x_data = []
             y_data = []
 
@@ -234,10 +225,8 @@ class Dataset():
                 batch_data = [dataset['data'][i] for i in batch_indices]
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    # Submit tasks for reading images
                     futures = [executor.submit(self._read_image, data[0], data[1]) for data in batch_data]
 
-                    # Process the completed tasks
                     for future, data in zip(futures, batch_data):
                         x_data.append(future.result())
                         y_data.append(data[label_index])
@@ -247,17 +236,12 @@ class Dataset():
                     y_data.append(dataset['data'][i][label_index])
 
             if augmentor:
-                # Perform data augmentation
                 x_data = augmentor.batch_augmentation(x_data)
 
             if normalize:
-                # Apply normalization, padding, rotation, etc.
                 print('normalizing, padding, rotation')
 
-            # # Prepare the batch
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
-
-            # Yield the the batch
             yield x_data, y_data
 
     def _create_partition_dictionary(self, partition_data):
@@ -275,7 +259,6 @@ class Dataset():
             The partition dict.
         """
 
-        # Initialize the partition dictionary with default values
         dct = {
             'data': partition_data,
             'size': len(partition_data),
@@ -288,10 +271,8 @@ class Dataset():
             'max_cols': 0,
         }
 
-        # Get the labels from the partition data
         labels = [x[2] for x in partition_data if x[2]]
 
-        # Update the partition dictionary with relevant values if labels exist
         if labels:
             dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
             dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
@@ -301,32 +282,25 @@ class Dataset():
             dct['min_cols'] = min(len(y) for x in labels for y in x)
             dct['max_cols'] = max(len(y) for x in labels for y in x)
 
-        # Update the object's properties using the partition dictionary
         self.size += dct['size']
         self.charset = sorted(set(self.charset + dct['charset']))
 
         if dct['min_text']:
-            # Update the minimum label if it exists
             self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
 
         if dct['max_text']:
-            # Update the maximum label if it exists
             self.max_text = max(self.max_text or dct['max_text'], dct['max_text'], key=len)
 
         if dct['min_rows']:
-            # Update the minimum number of rows if it exists
             self.min_rows = min(self.min_rows, dct['min_rows'])
 
         if dct['max_rows']:
-            # Update the maximum number of rows if it exists
             self.max_rows = max(self.max_rows, dct['max_rows'])
 
         if dct['min_cols']:
-            # Update the minimum number of columns if it exists
             self.min_cols = min(self.min_cols, dct['min_cols'])
 
         if dct['max_cols']:
-            # Update the maximum number of columns if it exists
             self.max_cols = max(self.max_cols, dct['max_cols'])
 
         return dct
@@ -341,29 +315,21 @@ class Dataset():
             The fetched data.
         """
 
-        # Check the module based on the source
         module_name = importlib.util.resolve_name(f".source.{self.source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "source file must be created"
 
-        # Import the module
         module = importlib.import_module(module_name, __package__)
 
-        # Check the source class
         class_name = 'Source'
         assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        # Create an instance of the class
         source = getattr(module, class_name)(self.data_path)
 
-        # Check the method based on the level
         method_name = f"get_{self.level}_data"
         assert hasattr(source, method_name), f"`{method_name}` method must be created"
 
-        # Get the method
         method = getattr(source, method_name)
-
-        # Call the method to get the data
         data = method()
 
         return data
@@ -412,29 +378,22 @@ class Dataset():
 
                 elif len(data[i][j]) == 2:
                     if isinstance(data[i][1], str):
-                        # Prepare data considering images and labels as input
                         data[i][j] = [data[i][j][0] or '', [], data[i][j][1] or '']
                     else:
-                        # Prepare data considering images and bbox as input
                         data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], ['']]
 
                 elif len(data[i][j]) == 3:
-                    # Prepare data considering images, bbox, and labels as input
                     data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], data[i][j][2] or '']
 
                 if len(data[i][j][1]) != 0 and len(data[i][j][1]) != 4:
                     raise ValueError("bbox value must have 0 or 4 dims [x, y, width, height]")
 
-                # Extend data list with empty lists to ensure length of 3
                 data[i][j].extend([[]] * (3 - len(data[i][j])))
 
-                # Extend data list with empty lists to ensure length of 3
             data[i].extend([[]] * (3 - len(data[i])))
 
-        # Extend data list with empty lists to ensure length of 3
         data.extend([[]] * (3 - len(data)))
 
-        # Get the training, validation, and test ratios
         ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
         ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
 
@@ -444,13 +403,10 @@ class Dataset():
                     continue
 
                 if isinstance(ratios[i], str):
-                    # Convert the ratio to a float or int
                     ratios[i] = float(ratios[i]) if '.' in ratios[i] else int(ratios[i])
 
-            # Calculate the total ratio
             ratio = sum(x for x in ratios if x is not None)
 
-            # Resample data based on aspect ratio
             if isinstance(ratio, float) and ratio == 1.0:
                 merged = []
 
@@ -476,12 +432,10 @@ class Dataset():
                         index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
                         data[i] = data[i][:index]
 
-        # Filter valid data
         for i in range(len(data)):
             if not data[i]:
                 continue
 
-            # Apply the process_data function to items in parallel
             with multiprocessing.get_context('fork').Pool() as pool:
                 np.random.shuffle(data[i])
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
@@ -506,7 +460,6 @@ class Dataset():
         image_path, bbox, label = item
         image = None
 
-        # Check if the image exist and is readable
         if os.path.exists(image_path) and os.path.isfile(image_path):
             try:
                 image = self._read_image(image_path, bbox)
@@ -522,14 +475,12 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        # Standardize label
         label = self._format_label(label)
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
-        # Check lazy mode to determine whether to keep the image loaded
         image = image_path if self.lazy_mode else image
 
         return image, bbox, label
@@ -552,20 +503,15 @@ class Dataset():
         """
 
         if not isinstance(image_path, str):
-            # Return image if it is already a NumPy array
             return image_path
 
-        # Load image in grayscale
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
         if bbox is None or len(bbox) != 4:
-            # Return the entire image
             return image
 
-        # Extract bbox values
         x, y, width, height = bbox
 
-        # Convert x, y, width, height to integers if they are floats
         if isinstance(x, float):
             x = int(x * image.shape[1])
 
@@ -578,13 +524,11 @@ class Dataset():
         if isinstance(height, float):
             height = int(height * image.shape[0])
 
-        # Padding around the box
         y = max(0, abs(y - 10))
         x = max(0, abs(x - 10))
         height = min(image.shape[0], (height + 10))
         width = min(image.shape[1], (width + 10))
 
-        # Crop image using pixel-based coordinates
         image = image[y:y+height, x:x+width]
 
         return image
@@ -607,10 +551,8 @@ class Dataset():
         if isinstance(label, str):
             label = label.split('\n')
 
-        # Filter out empty strings
         label = [x.strip() for x in label if x.strip()]
 
-        # Substitutions
         substitutions = {
             r'[ ]': ' ',
             r'[＿]': '_',
@@ -647,40 +589,25 @@ class Dataset():
             r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
         }
 
-        # Compile the regular expressions
         regexes = {re.compile(k): v for k, v in substitutions.items()}
 
-        # Treebank tokenizer
         tokenizer = nltk.tokenize.TreebankWordTokenizer()
-        # Treebank detokenizer
         detokenizer = nltk.tokenize.TreebankWordDetokenizer()
 
         for i in range(len(label)):
-            # Replace HTML entities
             label[i] = html.unescape(label[i])
 
-            # Perform the substitutions
             for pattern, replacement in regexes.items():
                 label[i] = pattern.sub(replacement, label[i])
 
-            # Remove extra spaces around punctuation marks
             label[i] = re.sub(r'\s+([!?,.;:])', r'\1', label[i])
-
-            # Fix spacing around contractions
             label[i] = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', label[i])
-
-            # Remove spaces before opening single quotes
             label[i] = re.sub(r'\s+(?=[\'"])', '', label[i])
-
-            # Remove spaces after closing single quotes
             label[i] = re.sub(r'(?<=[\'"]) +', '', label[i])
 
-            # Tokenize text
             tokens = tokenizer.tokenize(label[i])
-            # Detokenize the tokens
             label[i] = detokenizer.detokenize(tokens)
 
-            # Remove extra spaces and handle quotes
             label[i] = re.sub(r'\s+', ' ', label[i].replace('"', ' " ')).strip()
             label[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label[i]).strip()
 
@@ -706,13 +633,11 @@ class Tokenizer():
             Maximum number of columns for each label. Default is 128.
         """
 
-        # Initialize special tokens
         self.pad_tk = '¶'
         self.sos_tk = '◖'
         self.eos_tk = '◗'
         self.unk_tk = '◬'
 
-        # Create a character set by combining special tokens and charset parameter
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.charset_size = len(self.charset) + 1
 
@@ -764,20 +689,15 @@ class Tokenizer():
 
         encoded_label = []
 
-        # Encode each row in the label
         for row in label:
-            # Add start of sequence token
             enconded_row = [sos_tk_index]
 
-            # Encode each character in the row
             for char in row:
                 index = self.charset.index(char)
                 index = unk_tk_index if index == -1 else index
                 enconded_row.append(index)
 
-            # Add end of sequence token
             enconded_row += [eos_tk_index]
-            # Add padding tokens to reach the maximum column length
             enconded_row += [pad_tk_index] * max(0, abs(self.max_cols - len(enconded_row)))
 
             encoded_label.append(enconded_row)
@@ -824,18 +744,15 @@ class Tokenizer():
 
         label = []
 
-        # Decode each encoded row
         for enconded_row in encoded_label:
             row = ''
 
-            # Decode each encoded character
             for enconded_char in enconded_row:
                 if int(enconded_char) == -1:
                     continue
 
                 row += self.charset[int(enconded_char)]
 
-            # Remove special tokens from the decoded row
             row = row.replace(self.pad_tk, '')
             row = row.replace(self.sos_tk, '')
             row = row.replace(self.eos_tk, '')
