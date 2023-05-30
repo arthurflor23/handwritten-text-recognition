@@ -43,8 +43,17 @@ def check(args):
     )
     print(augmentor)
 
-    src_batch = dataset.batch_generator('training', normalize=False, debug=True)
-    aug_batch = dataset.batch_generator('training', augmentor=augmentor)
+    src_batch = dataset.batch_generator(partition='training',
+                                        augmentor=None,
+                                        normalize=False,
+                                        shuffle=False,
+                                        debug=True)
+
+    aug_batch = dataset.batch_generator(partition='training',
+                                        augmentor=augmentor,
+                                        normalize=False,
+                                        shuffle=False,
+                                        debug=False)
 
     if args.check_samples:
         print("Checking samples...\n")
