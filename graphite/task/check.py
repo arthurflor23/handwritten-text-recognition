@@ -19,7 +19,6 @@ def check(args):
         This function does not return any value.
     """
 
-    # Create a dataset object with the specified arguments
     dataset = Dataset(source=args.source,
                       level=args.level,
                       training_ratio=args.training_ratio,
@@ -29,8 +28,9 @@ def check(args):
                       seed=42)
     print(dataset)
 
-    # Create Augmentor instance
     augmentor = Augmentor(
+        mixup=args.mixup,
+        dilation=args.dilation,
         elastic_distortion=args.elastic_distortion,
         perspective_transform=args.perspective_transform,
         gaussian_noise=args.gaussian_noise,
@@ -40,11 +40,9 @@ def check(args):
         rotation=args.rotation,
         translate_x=args.translate_x,
         translate_y=args.translate_y,
-        mixup=args.mixup,
     )
     print(augmentor)
 
-    # Get batches of original and transformed data for training
     src_batch = dataset.batch_generator('training', normalize=False, debug=True)
     aug_batch = dataset.batch_generator('training', augmentor=augmentor)
 
@@ -64,11 +62,9 @@ def check(args):
         # exit()
 
         while True:
-            # Get the next batch of original and transformed images and labels
             src_images, src_labels = next(src_batch)
             aug_images, aug_labels = next(aug_batch)
 
-            # Display images
             for i in range(len(src_images)):
                 cv2.imshow("Source Image", src_images[i])
                 cv2.imshow("Augmented Image", aug_images[i])
@@ -83,11 +79,9 @@ def check(args):
                     print("Length", len(aug_labels[i][j]))
                     print(aug_labels[i][j])
 
-                # Wait for key press
                 print("\nPress Enter to continue or Esc to stop...\n")
                 key = cv2.waitKey(0)
 
-                # Stop the looping if Esc is pressed
                 if key == 27:
                     cv2.destroyAllWindows()
                     return
