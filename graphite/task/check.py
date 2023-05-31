@@ -30,6 +30,7 @@ def check(args):
 
     augmentor = Augmentor(
         mixup=args.mixup,
+        erosion=args.erosion,
         dilation=args.dilation,
         elastic_distortion=args.elastic_distortion,
         perspective_transform=args.perspective_transform,
