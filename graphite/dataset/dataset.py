@@ -186,7 +186,8 @@ class Dataset():
     def batch_generator(self, partition,
                         batch_size=16,
                         augmentor=None,
-                        keep_original=False):
+                        normalize=True,
+                        debug=False):
         """
         Generates a batch of data samples for the specified partition.
 
@@ -198,20 +199,22 @@ class Dataset():
             The number of samples in each batch, by default 16.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
-        keep_original : bool, optional
-            Whether to include the original samples in the batch, default is False.
+        normalize : bool, optional
+            Indicates whether to normalize the batch, default is True.
+        debug : bool, optional
+            Specifies whether to enable debug mode, default is False.
 
         Returns
         -------
         tuple
-            A tuple containing the input data and corresponding labels as NumPy arrays.
+            A tuple containing the input data and corresponding labels.
         """
 
         dataset = getattr(self, partition)
         indices = np.arange(dataset['size'])
 
         batch_index = 0
-        label_index = 2 if keep_original else 3
+        label_index = 2 if debug else 3
 
         while True:
             # Start from the beginning and shuffle the data if reaching the end
@@ -232,26 +235,29 @@ class Dataset():
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     # Submit tasks for reading images
-                    futures = [executor.submit(self._read_image, item[0], item[1]) for item in batch_data]
+                    futures = [executor.submit(self._read_image, data[0], data[1]) for data in batch_data]
 
                     # Process the completed tasks
-                    for future, item in zip(futures, batch_data):
+                    for future, data in zip(futures, batch_data):
                         x_data.append(future.result())
-                        y_data.append(item[label_index])
+                        y_data.append(data[label_index])
             else:
                 for i in batch_indices:
                     x_data.append(dataset['data'][i][0])
                     y_data.append(dataset['data'][i][label_index])
 
-            if not keep_original:
-                # Perform augmentation operations
-                if augmentor is not None:
-                    x_data = augmentor.transform(x_data)
+            if augmentor:
+                # Perform data augmentation
+                x_data = augmentor.batch_augmentation(x_data)
 
+            if normalize:
                 # Apply normalization, padding, rotation, etc.
-                print('keep_original')
+                print('normalizing, padding, rotation')
 
-            # Yield the batch of input data and labels as NumPy arrays
+            # # Prepare the batch
+            # batch = (x_data,) if 'test' in partition else (x_data, y_data)
+
+            # Yield the the batch
             yield x_data, y_data
 
     def _create_partition_dictionary(self, partition_data):
