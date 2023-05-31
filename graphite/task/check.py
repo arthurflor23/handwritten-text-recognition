@@ -24,23 +24,23 @@ def check(args):
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
-                      lazy_mode=True,
+                      lazy_mode=False,
                       seed=42)
     print(dataset)
 
-    augmentor = Augmentor(
-        erosion=args.erosion,
-        dilation=args.dilation,
-        elastic_transform=args.elastic_transform,
-        perspective_transform=args.perspective_transform,
-        mixup=args.mixup,
-        shearing=args.shearing,
-        scaling=args.scaling,
-        rotation=args.rotation,
-        translation=args.translation,
-        salt_and_pepper=args.salt_and_pepper,
-        gaussian_blur=args.gaussian_blur,
-    )
+    augmentor = Augmentor(erosion=args.erosion,
+                          dilation=args.dilation,
+                          elastic_transform=args.elastic_transform,
+                          perspective_transform=args.perspective_transform,
+                          mixup=args.mixup,
+                          shearing=args.shearing,
+                          scaling=args.scaling,
+                          rotation=args.rotation,
+                          translation=args.translation,
+                          salt_and_pepper=args.salt_and_pepper,
+                          gaussian_blur=args.gaussian_blur,
+                          reference_pixels=dataset.reference_pixels,
+                          seed=42)
     print(augmentor)
 
     src_batch = dataset.batch_generator(partition='training',

@@ -23,6 +23,7 @@ class Augmentor():
                  translation=None,
                  salt_and_pepper=None,
                  gaussian_blur=None,
+                 reference_pixels=None,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -51,6 +52,8 @@ class Augmentor():
             Parameters for salt and pepper noise, by default None.
         gaussian_blur : dict or None, optional
             Parameters for Gaussian blur transformation, by default None.
+        reference_pixels : list, optional
+            Reference pixel values for transformation, by default None.
         seed : int or None, optional
             Seed for random number generation, by default None.
 
@@ -60,6 +63,7 @@ class Augmentor():
         """
 
         np.random.seed(seed)
+        cv2.setRNGSeed(seed)
 
         self.erosion_params = erosion
         self.dilation_params = dilation
@@ -72,6 +76,7 @@ class Augmentor():
         self.translation_params = translation
         self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_blur_params = gaussian_blur
+        self.reference_pixels = reference_pixels or [0, 127, 255]
         self.seed = seed
 
     def __repr__(self):
@@ -96,6 +101,7 @@ class Augmentor():
             'translation': self.translation_params,
             'salt_and_pepper': self.salt_and_pepper_params,
             'gaussian_blur': self.gaussian_blur_params,
+            'reference_pixels': self.reference_pixels,
             'seed': self.seed,
         })
 
@@ -113,7 +119,7 @@ class Augmentor():
             Augmentor Configuration\n
             Erosion                 {self.erosion_params}
             Dilation                {self.dilation_params}
-            Elastic Transform      {self.elastic_transform_params}
+            Elastic Transform       {self.elastic_transform_params}
             Perspective Transform   {self.perspective_transform_params}
             Mixup                   {self.mixup_params}
 
@@ -125,6 +131,7 @@ class Augmentor():
             Salt and Pepper Noise   {self.salt_and_pepper_params}
             Gaussian Blur           {self.gaussian_blur_params}
 
+            Reference Pixels        {self.reference_pixels},
             Seed                    {self.seed}
         """
 
@@ -145,19 +152,13 @@ class Augmentor():
         -------
         list
             List of augmented images after applying transformations.
-
         """
 
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     # Submit tasks for reading images
-        #     futures = [executor.submit(self.augmentation, image, images) for image in images]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.augmentation, image, images) for image in images]
 
-        #     # Process the completed tasks
-        #     for i, future in enumerate(futures):
-        #         images[i] = future.result()
-
-        for i in range(len(images)):
-            images[i] = self.augmentation(images[i], images)
+            for i, future in enumerate(futures):
+                images[i] = future.result()
 
         return images
 
@@ -176,52 +177,64 @@ class Augmentor():
         -------
         ndarray
             Transformed image.
-
         """
 
-        # Erosion
-        if self.erosion_params and np.random.random() < self.erosion_params[0]:
-            image = self.erosion(image, *self.erosion_params[1:])
+        # Baseline:                 0.3344
+        # Erosion:                  0.8849
+        # Dilation:                 0.7587
+        # Elastic:                  26.2814
+        # Perspective:              2.6164
+        # Mixup:                    1.8779
+        # Shearing:                 2.2788
+        # Scaling:                  4.4867
+        # Rotation:                 2.2125
+        # Translation:              2.2645
+        # Salt and Pepper Noise:    3.3826
+        # Gaussian Blur:            1.4530
 
-        # Dilation
-        if self.dilation_params and np.random.random() < self.dilation_params[0]:
-            image = self.dilation(image, *self.dilation_params[1:])
+        # # Erosion
+        # if self.erosion_params and np.random.random() < self.erosion_params[0]:
+        #     image = self.erosion(image, *self.erosion_params[1:])
 
-        # Elastic Transform
-        if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
-            image = self.elastic_transform(image, *self.elastic_transform_params[1:])
+        # # Dilation
+        # if self.dilation_params and np.random.random() < self.dilation_params[0]:
+        #     image = self.dilation(image, *self.dilation_params[1:])
 
-        # Perspective Transform
-        if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
-            image = self.perspective_transform(image, *self.perspective_transform_params[1:])
+        # # Elastic Transform
+        # if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
+        #     image = self.elastic_transform(image, *self.elastic_transform_params[1:])
 
-        # Mixup
-        if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
-            image = self.mixup(image, batch_images, *self.mixup_params[1:])
+        # # Perspective Transform
+        # if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
+        #     image = self.perspective_transform(image, *self.perspective_transform_params[1:])
 
-        # Shearing
-        if self.shearing_params and np.random.random() < self.shearing_params[0]:
-            image = self.shearing(image, *self.shearing_params[1:])
+        # # Mixup
+        # if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
+        #     image = self.mixup(image, batch_images, *self.mixup_params[1:])
 
-        # Scaling
-        if self.scaling_params and np.random.random() < self.scaling_params[0]:
-            image = self.scaling(image, *self.scaling_params[1:])
+        # # Shearing
+        # if self.shearing_params and np.random.random() < self.shearing_params[0]:
+        #     image = self.shearing(image, *self.shearing_params[1:])
 
-        # Rotation
-        if self.rotation_params and np.random.random() < self.rotation_params[0]:
-            image = self.rotation(image, *self.rotation_params[1:])
+        # # Scaling
+        # if self.scaling_params and np.random.random() < self.scaling_params[0]:
+        #     image = self.scaling(image, *self.scaling_params[1:])
 
-        # Translation
-        if self.translation_params and np.random.random() < self.translation_params[0]:
-            image = self.translation(image, *self.translation_params[1:])
+        # # Rotation
+        # if self.rotation_params and np.random.random() < self.rotation_params[0]:
+        #     image = self.rotation(image, *self.rotation_params[1:])
+
+        # # Translation
+        # if self.translation_params and np.random.random() < self.translation_params[0]:
+        #     image = self.translation(image, *self.translation_params[1:])
 
         # Salt and Pepper Noise
         if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
             image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
 
-        # Gaussian Blur
-        if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
-            image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
+        # # Gaussian Blur
+        # if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
+        #     image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
 
         return image
 
@@ -245,6 +258,8 @@ class Augmentor():
         ndarray
             Eroded image.
         """
+
+        image = np.copy(image)
 
         if radius:
             kernel_size = np.random.randint(1, max(1, kernel_size) + 1)
@@ -276,6 +291,8 @@ class Augmentor():
             Dilated image.
         """
 
+        image = np.copy(image)
+
         if radius:
             kernel_size = np.random.randint(1, max(1, kernel_size) + 1)
             iterations = np.random.randint(1, max(1, iterations) + 1)
@@ -305,6 +322,8 @@ class Augmentor():
         ndarray
             Distorted image.
         """
+
+        image = np.copy(image)
 
         if radius:
             grid_size = np.random.randint(1, max(1, grid_size) + 1)
@@ -365,12 +384,11 @@ class Augmentor():
             polygons[d] = [x1 + dx, y1 + dy, x2, y2, x3, y3, x4, y4]
 
         generated_mesh = [[dimensions[i], polygons[i]] for i in range(len(dimensions))]
-        background_color = int(np.bincount(np.ravel(image)).argmax())
 
         image = Image.fromarray(image).transform(image.shape[::-1], Image.MESH,
                                                  data=generated_mesh,
                                                  resample=Image.BICUBIC,
-                                                 fillcolor=background_color)
+                                                 fillcolor=self.reference_pixels[1])
 
         return np.array(image)
 
@@ -393,6 +411,8 @@ class Augmentor():
             Transformed image.
         """
 
+        image = np.copy(image)
+
         if radius:
             factor = np.random.uniform(0.0, max(0.0, factor))
 
@@ -414,9 +434,7 @@ class Augmentor():
         ], dtype=np.float32)
 
         M = cv2.getPerspectiveTransform(src_points, dst_points)
-
-        background_color = int(np.bincount(np.ravel(image)).argmax())
-        image = cv2.warpPerspective(image, M, image.shape[::-1], borderValue=background_color)
+        image = cv2.warpPerspective(image, M, image.shape[::-1], borderValue=self.reference_pixels[1])
 
         return image
 
@@ -442,6 +460,8 @@ class Augmentor():
         ndarray
             Mixed image.
         """
+
+        image = np.copy(image)
 
         num_imgs = len(batch_images)
         pickups = min(pickups, num_imgs)
@@ -481,18 +501,20 @@ class Augmentor():
             Sheared image.
         """
 
+        image = np.copy(image)
+
         if radius:
             factor = np.random.uniform(-factor, factor)
 
         height, width = image.shape[:2]
-        background_color = int(np.bincount(np.ravel(image)).argmax())
 
         extra_width = int(abs(factor) * height)
         extended_image = cv2.copyMakeBorder(image, 0, 0, extra_width, extra_width,
-                                            cv2.BORDER_CONSTANT, value=background_color)
+                                            cv2.BORDER_CONSTANT, value=self.reference_pixels[1])
 
         M = np.float32([[1, factor, 0], [0, 1, 0]])
-        image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height), borderValue=background_color)
+        image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height),
+                               borderValue=self.reference_pixels[1])
 
         return image
 
@@ -514,6 +536,8 @@ class Augmentor():
         ndarray
             Scaled image.
         """
+
+        image = np.copy(image)
 
         factor = np.random.uniform(min_factor, max_factor)
         height, width = image.shape[:2]
@@ -545,11 +569,12 @@ class Augmentor():
             Rotated image.
         """
 
+        image = np.copy(image)
+
         if radius:
             angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
-        background_color = int(np.bincount(np.ravel(image)).argmax())
 
         center = (width // 2, height // 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -562,7 +587,7 @@ class Augmentor():
         M[0, 2] += (new_width / 2) - center[0]
         M[1, 2] += (new_height / 2) - center[1]
 
-        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=background_color)
+        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=self.reference_pixels[1])
 
         return image
 
@@ -587,12 +612,13 @@ class Augmentor():
             Translated image.
         """
 
+        image = np.copy(image)
+
         if radius:
             y_factor = np.random.uniform(0.0, max(0.0, y_factor))
             x_factor = np.random.uniform(0.0, max(0.0, x_factor))
 
         height, width = image.shape[:2]
-        background_color = int(np.bincount(np.ravel(image)).argmax())
 
         abs_y_translation = int(min(height, width) * y_factor)
         abs_x_translation = int(min(height, width) * x_factor)
@@ -602,11 +628,11 @@ class Augmentor():
         new_height = height + abs(abs_y_translation)
         new_width = width + abs(abs_x_translation)
 
-        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=background_color)
+        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=self.reference_pixels[1])
 
         return image
 
-    def salt_and_pepper(self, image, percentage_noise, radius=True):
+    def salt_and_pepper(self, image, noise_percentage, radius=True):
         """
         Apply Gaussian noise to the image.
 
@@ -614,10 +640,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be noised.
-        percentage_noise : float
+        noise_percentage : float
             Percentage of pixels to add noise to (between 0 and 1).
         radius : bool, optional
-            Whether to use range radius for percentage_noise, by default True.
+            Whether to use range radius for noise_percentage, by default True.
 
         Returns
         -------
@@ -625,26 +651,18 @@ class Augmentor():
             Noised image.
         """
 
+        image = np.copy(image)
+
         if radius:
-            percentage_noise = np.random.uniform(1e-8, max(1e-8, percentage_noise))
+            noise_percentage = np.random.uniform(0.0, max(0.0, noise_percentage))
 
-        num_pixels = image.size
-        num_pixels_to_noise = int(num_pixels * percentage_noise)
+        noise_percentage *= 0.25
 
-        indices = np.random.choice(num_pixels, num_pixels_to_noise, replace=False)
+        noise_mask = np.empty(image.shape[::-1])
+        noise_mask = cv2.randu(noise_mask, 0, 1)
 
-        salt_mask = np.random.rand(num_pixels_to_noise) < 0.5
-        pepper_mask = ~salt_mask
-
-        noisy_image = image.flatten()
-
-        max_pixel = int(np.bincount(np.ravel(noisy_image[noisy_image > 127])).argmax())
-        min_pixel = int(np.bincount(np.ravel(noisy_image[noisy_image < 127])).argmax())
-
-        noisy_image[indices[salt_mask]] = max_pixel
-        noisy_image[indices[pepper_mask]] = min_pixel
-
-        image = noisy_image.reshape(image.shape)
+        np.putmask(image, noise_mask < noise_percentage, self.reference_pixels[0])
+        np.putmask(image, noise_mask > (1 - noise_percentage), self.reference_pixels[2])
 
         return image
 

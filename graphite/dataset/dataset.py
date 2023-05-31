@@ -55,17 +55,15 @@ class Dataset():
         """
 
         np.random.seed(seed)
+        cv2.setRNGSeed(seed)
 
         self.source = source
         self.level = level
-
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
-
         self.inference_mode = data is not None
         self.lazy_mode = lazy_mode
         self.seed = seed
@@ -85,7 +83,7 @@ class Dataset():
         if not self.inference_mode:
             data = self._fetch_data_from_source()
 
-        data = self._prepare_data(data)
+        data, self.reference_pixels = self._prepare_data(data)
 
         self.training = self._create_partition_dictionary(data[0])
         self.validation = self._create_partition_dictionary(data[1])
@@ -117,6 +115,7 @@ class Dataset():
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
+            'reference_pixels': self.reference_pixels,
             'charset': self.charset,
             'charset_length': len(self.charset),
             'min_text': self.min_text,
@@ -152,6 +151,7 @@ class Dataset():
 
             \nDataset Information\n
             Total Size              {self.size}
+            Reference Pixels        {self.reference_pixels}
 
             Training Size           {self.training['size']}
             Validation Size         {self.validation['size']}
@@ -436,6 +436,8 @@ class Dataset():
                         index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
                         data[i] = data[i][:index]
 
+        reference_pixels = []
+
         for i in range(len(data)):
             if not data[i]:
                 continue
@@ -444,7 +446,13 @@ class Dataset():
                 np.random.shuffle(data[i])
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
-        return data
+            reference_pixels.extend([sublist[-1] for sublist in data[i]])
+            data[i] = [sublist[:-1] for sublist in data[i]]
+
+        reference_pixels = np.average(np.transpose(reference_pixels), axis=1)
+        reference_pixels = reference_pixels.astype(np.uint8).tolist()
+
+        return data, reference_pixels
 
     def _validate_data_item(self, item):
         """
@@ -485,9 +493,10 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
+        reference_pixels = [np.min(image), np.average(image), np.max(image)]
         image = image_path if self.lazy_mode else image
 
-        return image, bbox, label
+        return image, bbox, label, reference_pixels
 
     def _read_image(self, image_path, bbox=None):
         """
