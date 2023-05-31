@@ -47,7 +47,7 @@ class Dataset():
         lazy_mode : bool, optional
             Lazy mode flag for lazy loading process. Default is True.
         seed : int, optional
-            The random seed. Default is 42.
+            The random seed. Default is None.
 
         Returns
         -------
