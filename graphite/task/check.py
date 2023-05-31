@@ -45,7 +45,7 @@ def check(args):
     print(augmentor)
 
     # Get batches of original and transformed data for training
-    src_batch = dataset.batch_generator('training', keep_original=True)
+    src_batch = dataset.batch_generator('training', normalize=False, debug=True)
     aug_batch = dataset.batch_generator('training', augmentor=augmentor)
 
     if args.check_samples:
@@ -73,16 +73,18 @@ def check(args):
                 cv2.imshow("Source Image", src_images[i])
                 cv2.imshow("Augmented Image", aug_images[i])
 
-                print("\nLabel")
+                print("\nSource Label")
                 for j in range(len(src_labels[i])):
+                    print("Length", len(src_labels[i][j]))
                     print(src_labels[i][j])
 
                 print("\nEncoded Label")
                 for j in range(len(aug_labels[i])):
+                    print("Length", len(aug_labels[i][j]))
                     print(aug_labels[i][j])
 
                 # Wait for key press
-                print("\nPress Enter to continue or Esc to stop...")
+                print("\nPress Enter to continue or Esc to stop...\n")
                 key = cv2.waitKey(0)
 
                 # Stop the looping if Esc is pressed
