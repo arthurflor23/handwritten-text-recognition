@@ -44,24 +44,22 @@ if __name__ == '__main__':
                         help="Apply dilation (probability, kernel_size, iterations)")
     parser.add_argument('--dilation', default=[0.99, 3, 1], nargs='+', type=float,
                         help="Apply dilation (probability, kernel_size, iterations)")
-    parser.add_argument('--elastic-distortion', default=[0.99, 16, 8], nargs='+', type=float,
-                        help="Apply elastic distortion (probability, grid size, magnitude)")
+    parser.add_argument('--elastic-transform', default=[0.99, 16, 8], nargs='+', type=float,
+                        help="Apply elastic transform (probability, grid size, factor)")
     parser.add_argument('--perspective-transform', default=[0.99, 0.5], nargs='+', type=float,
-                        help="Apply perspective transformation (probability, magnitude)")
+                        help="Apply perspective transformation (probability, factor)")
     parser.add_argument('--salt-and-pepper', default=[0.99, 0.5], nargs='+', type=float,
                         help="Apply Gaussian noise (probability, percentage)")
     parser.add_argument('--gaussian-blur', default=[0.99, 3, 5], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
     parser.add_argument('--shearing', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply shearing transformation (probability, range_radius)")
-    parser.add_argument('--scaling', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply scaling transformation (probability, range_radius)")
+                        help="Apply shearing transformation (probability, factor)")
+    parser.add_argument('--scaling', default=[0.99, 0.5, 1.5], nargs='+', type=float,
+                        help="Apply scaling transformation (probability, min_factor, max_factor)")
     parser.add_argument('--rotation', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply rotation transformation (probability, range_radius)")
-    parser.add_argument('--translate-x', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply horizontal translation (probability, range_radius)")
-    parser.add_argument('--translate-y', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply vertical translation (probability, range_radius)")
+                        help="Apply rotation transformation (probability, angle)")
+    parser.add_argument('--translation', default=[0.99, 0.5, 0.5], nargs='+', type=float,
+                        help="Apply vertical and horizontal translation (probability, y_factor, x_factor)")
     parser.add_argument('--disable-augmentation', default=True, action='store_false',
                         help="Disable data augmentation completely")
 
