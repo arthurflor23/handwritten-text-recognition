@@ -34,7 +34,7 @@ def check(args):
         dilation=args.dilation,
         elastic_distortion=args.elastic_distortion,
         perspective_transform=args.perspective_transform,
-        gaussian_noise=args.gaussian_noise,
+        salt_and_pepper=args.salt_and_pepper,
         gaussian_blur=args.gaussian_blur,
         shearing=args.shearing,
         scaling=args.scaling,
