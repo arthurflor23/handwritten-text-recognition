@@ -46,10 +46,10 @@ if __name__ == '__main__':
                         help="Apply dilation (probability, kernel_size, iterations)")
     parser.add_argument('--elastic-distortion', default=[0.99, 16, 8], nargs='+', type=float,
                         help="Apply elastic distortion (probability, grid size, magnitude)")
-    parser.add_argument('--perspective-transform', default=[0.99, 16, 8], nargs='+', type=float,
-                        help="Apply perspective transformation (probability, type, magnitude)")
-    parser.add_argument('--gaussian-noise', default=[0.99, 3, 5], nargs='+', type=float,
-                        help="Apply Gaussian noise (probability, kernel size, iterations)")
+    parser.add_argument('--perspective-transform', default=[0.99, 0.5], nargs='+', type=float,
+                        help="Apply perspective transformation (probability, magnitude)")
+    parser.add_argument('--salt-and-pepper', default=[0.99, 0.5], nargs='+', type=float,
+                        help="Apply Gaussian noise (probability, percentage)")
     parser.add_argument('--gaussian-blur', default=[0.99, 3, 5], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
     parser.add_argument('--shearing', default=[0.99, 1.5], nargs='+', type=float,
