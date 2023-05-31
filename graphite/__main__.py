@@ -41,21 +41,21 @@ if __name__ == '__main__':
     parser.add_argument('--elastic-distortion', default=[0.99, 16, 8], nargs='+', type=float,
                         help="Apply elastic distortion (probability, grid size, magnitude)")
     parser.add_argument('--perspective-transform', default=[0.99, 16, 8], nargs='+', type=float,
-                        help="Apply perspective transformation (probability, grid size, magnitude)")
+                        help="Apply perspective transformation (probability, type, magnitude)")
     parser.add_argument('--gaussian-noise', default=[0.99, 3, 5], nargs='+', type=float,
                         help="Apply Gaussian noise (probability, kernel size, iterations)")
     parser.add_argument('--gaussian-blur', default=[0.99, 3, 5], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
     parser.add_argument('--shearing', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply shearing transformation (probability, absolute range value)")
+                        help="Apply shearing transformation (probability, range_radius)")
     parser.add_argument('--scaling', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply scaling transformation (probability, absolute range value)")
+                        help="Apply scaling transformation (probability, range_radius)")
     parser.add_argument('--rotation', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply rotation transformation (probability, absolute range value)")
+                        help="Apply rotation transformation (probability, range_radius)")
     parser.add_argument('--translate-x', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply horizontal translation (probability, absolute range value)")
+                        help="Apply horizontal translation (probability, range_radius)")
     parser.add_argument('--translate-y', default=[0.99, 1.5], nargs='+', type=float,
-                        help="Apply vertical translation (probability, absolute range value)")
+                        help="Apply vertical translation (probability, range_radius)")
     parser.add_argument('--mixup', default=[0.99, 0.5, 2], nargs='+', type=float,
                         help="Apply mixup augmentation (probability, opacity, iterations)")
     parser.add_argument('--disable-augmentation', default=True, action='store_false',
