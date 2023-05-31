@@ -24,6 +24,8 @@ from data.generator import DataGenerator
 
 from network.model import HTRModel
 
+BATCH_SIZE = 1000
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
