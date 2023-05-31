@@ -29,18 +29,17 @@ def check(args):
     print(dataset)
 
     augmentor = Augmentor(
-        mixup=args.mixup,
         erosion=args.erosion,
         dilation=args.dilation,
-        elastic_distortion=args.elastic_distortion,
+        elastic_transform=args.elastic_transform,
         perspective_transform=args.perspective_transform,
         salt_and_pepper=args.salt_and_pepper,
+        mixup=args.mixup,
         gaussian_blur=args.gaussian_blur,
         shearing=args.shearing,
         scaling=args.scaling,
         rotation=args.rotation,
-        translate_x=args.translate_x,
-        translate_y=args.translate_y,
+        translation=args.translation,
     )
     print(augmentor)
 
