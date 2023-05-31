@@ -15,15 +15,14 @@ class Augmentor():
                  mixup=None,
                  erosion=None,
                  dilation=None,
-                 elastic_distortion=None,
+                 elastic_transform=None,
                  perspective_transform=None,
                  salt_and_pepper=None,
                  gaussian_blur=None,
                  shearing=None,
                  scaling=None,
                  rotation=None,
-                 translate_x=None,
-                 translate_y=None,
+                 translation=None,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -36,8 +35,8 @@ class Augmentor():
             Parameters for erosion transformation, by default None.
         dilation : dict or None, optional
             Parameters for dilation transformation, by default None.
-        elastic_distortion : dict or None, optional
-            Parameters for elastic distortion transformation, by default None.
+        elastic_transform : dict or None, optional
+            Parameters for elastic transformation, by default None.
         perspective_transform : dict or None, optional
             Parameters for perspective transform transformation, by default None.
         salt_and_pepper : dict or None, optional
@@ -50,10 +49,8 @@ class Augmentor():
             Parameters for scaling transformation, by default None.
         rotation : dict or None, optional
             Parameters for rotation transformation, by default None.
-        translate_x : dict or None, optional
-            Parameters for horizontal translation transformation, by default None.
-        translate_y : dict or None, optional
-            Parameters for vertical translation transformation, by default None.
+        translation : dict or None, optional
+            Parameters for vertical and horizontal translation transformation, by default None.
         seed : int or None, optional
             Seed for random number generation, by default None.
 
@@ -64,18 +61,17 @@ class Augmentor():
 
         np.random.seed(seed)
 
-        self.mixup_params = mixup
         self.erosion_params = erosion
         self.dilation_params = dilation
-        self.elastic_distortion_params = elastic_distortion
+        self.elastic_transform_params = elastic_transform
         self.perspective_transform_params = perspective_transform
         self.salt_and_pepper_params = salt_and_pepper
+        self.mixup_params = mixup
         self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
         self.scaling_params = scaling
         self.rotation_params = rotation
-        self.translate_x_params = translate_x
-        self.translate_y_params = translate_y
+        self.translation_params = translation
         self.seed = seed
 
     def __repr__(self):
@@ -89,18 +85,17 @@ class Augmentor():
         """
 
         return json.dumps({
-            'mixup': self.mixup_params,
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
-            'elastic_distortion': self.elastic_distortion_params,
+            'elastic_transform': self.elastic_transform_params,
             'perspective_transform': self.perspective_transform_params,
             'salt_and_pepper': self.salt_and_pepper_params,
+            'mixup': self.mixup_params,
             'gaussian_blur': self.gaussian_blur_params,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
-            'translate_x': self.translate_x_params,
-            'translate_y': self.translate_y_params,
+            'translation': self.translation_params,
             'seed': self.seed,
         })
 
@@ -116,21 +111,19 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
-            Mixup                   {self.mixup_params}
             Erosion                 {self.erosion_params}
             Dilation                {self.dilation_params}
-            Elastic Distortion      {self.elastic_distortion_params}
+            Elastic Transform      {self.elastic_transform_params}
             Perspective Transform   {self.perspective_transform_params}
 
             Salt and Pepper Noise   {self.salt_and_pepper_params}
+            Mixup                   {self.mixup_params}
             Gaussian Blur           {self.gaussian_blur_params}
 
             Shearing                {self.shearing_params}
             Scaling                 {self.scaling_params}
-
             Rotation                {self.rotation_params}
-            Translation X           {self.translate_x_params}
-            Translation Y           {self.translate_y_params}
+            Translation             {self.translation_params}
 
             Seed                    {self.seed}
         """
@@ -186,10 +179,6 @@ class Augmentor():
 
         """
 
-        # # Mixup
-        # if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
-        #     image = self.mixup(image, batch_images, *self.mixup_params[1:])
-
         # # Erosion
         # if self.erosion_params and np.random.random() < self.erosion_params[0]:
         #     image = self.erosion(image, *self.erosion_params[1:])
@@ -198,21 +187,25 @@ class Augmentor():
         # if self.dilation_params and np.random.random() < self.dilation_params[0]:
         #     image = self.dilation(image, *self.dilation_params[1:])
 
-        # # Elastic Distortions
-        # if self.elastic_distortion_params and np.random.random() < self.elastic_distortion_params[0]:
-        #     image = self.elastic_distortion(image, *self.elastic_distortion_params[1:])
+        # # Elastic Transform
+        # if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
+        #     image = self.elastic_transform(image, *self.elastic_transform_params[1:])
 
-        # # Perspective Transforms
+        # # Perspective Transform
         # if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
         #     image = self.perspective_transform(image, *self.perspective_transform_params[1:])
 
-        # # Gaussian Noise
+        # # Salt and Pepper Noise
         # if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
         #     image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
 
-        # Gaussian Blur
-        if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
-            image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
+        # # Mixup
+        # if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
+        #     image = self.mixup(image, batch_images, *self.mixup_params[1:])
+
+        # # Gaussian Blur
+        # if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
+        #     image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
 
         # # Shearing
         # if self.shearing_params and np.random.random() < self.shearing_params[0]:
@@ -226,13 +219,9 @@ class Augmentor():
         # if self.rotation_params and np.random.random() < self.rotation_params[0]:
         #     image = self.rotation(image, *self.rotation_params[1:])
 
-        # # TranslateX
-        # if self.translate_x_params and np.random.random() < self.translate_x_params[0]:
-        #     image = self.translate_x(image, *self.translate_x_params[1:])
-
-        # # TranslateY
-        # if self.translate_y_params and np.random.random() < self.translate_y_params[0]:
-        #     image = self.translate_y(image, *self.translate_y_params[1:])
+        # Translation
+        if self.translation_params and np.random.random() < self.translation_params[0]:
+            image = self.translation(image, *self.translation_params[1:])
 
         return image
 
@@ -269,10 +258,10 @@ class Augmentor():
             pickup_img = batch_images[pickup_idx]
 
             if pickup_img.shape[:2] != image.shape[:2]:
-                interp = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
+                interpolation = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
                     or pickup_img.shape[1] > image.shape[1] else cv2.INTER_AREA
 
-                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interp)
+                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interpolation)
 
             image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
 
@@ -338,20 +327,20 @@ class Augmentor():
 
         return image
 
-    def elastic_distortion(self, image, grid_size, magnitude, radius=True):
+    def elastic_transform(self, image, grid_size, factor, radius=True):
         """
-        Apply elastic distortion to the image.
+        Apply elastic transform to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be distorted.
         grid_size : int
-            Grid size for elastic distortion.
-        magnitude : float
-            Magnitude of elastic distortion.
+            Grid size for elastic transform.
+        factor : float
+            Factor of elastic transform.
         radius : bool, optional
-            Whether to use range radius for grid size and magnitude, by default True.
+            Whether to use range radius for grid size and factor, by default True.
 
         Returns
         -------
@@ -361,7 +350,7 @@ class Augmentor():
 
         if radius:
             grid_size = np.random.randint(1, max(1, grid_size) + 1)
-            magnitude = np.random.randint(1, max(1, magnitude) + 1)
+            factor = np.random.randint(1, max(1, factor) + 1)
 
         height, width = image.shape[:2]
 
@@ -402,8 +391,8 @@ class Augmentor():
                            if i not in last_row and i not in last_column]
 
         for a, b, c, d in polygon_indices:
-            dx = np.random.randint(-magnitude, magnitude + 1)
-            dy = np.random.randint(-magnitude, magnitude + 1)
+            dx = np.random.randint(-factor, factor + 1)
+            dy = np.random.randint(-factor, factor + 1)
 
             x1, y1, x2, y2, x3, y3, x4, y4 = polygons[a]
             polygons[a] = [x1, y1, x2, y2, x3 + dx, y3 + dy, x4, y4]
@@ -427,7 +416,7 @@ class Augmentor():
 
         return np.array(image)
 
-    def perspective_transform(self, image, magnitude, radius=True):
+    def perspective_transform(self, image, factor, radius=True):
         """
         Apply perspective transform to the image.
 
@@ -435,10 +424,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be transformed.
-        magnitude : float
-            Magnitude of perspective transform.
+        factor : float
+            Factor of perspective transform.
         radius : bool, optional
-            Whether to use range radius for type and magnitude, by default True.
+            Whether to use range radius for type and factor, by default True.
 
         Returns
         -------
@@ -447,10 +436,10 @@ class Augmentor():
         """
 
         if radius:
-            magnitude = np.random.uniform(1e-8, max(1e-8, magnitude))
+            factor = np.random.uniform(1e-8, max(1e-8, factor))
 
         height, width = image.shape[:2]
-        max_offset = int(min(height, width) * magnitude)
+        max_offset = int(min(height, width) * factor)
 
         src_points = np.array([
             (0, 0),
@@ -469,7 +458,7 @@ class Augmentor():
         M = cv2.getPerspectiveTransform(src_points, dst_points)
 
         background_color = int(np.bincount(np.ravel(image)).argmax())
-        image = cv2.warpPerspective(image, M, image.shape[::-1], borderValue=background_color)
+        image = cv2.warpPerspective(image, M, image.shape[::-1], borderfactor=background_color)
 
         return image
 
@@ -541,7 +530,7 @@ class Augmentor():
 
         return image
 
-    def shearing(self, image, value, radius=True):
+    def shearing(self, image, factor, radius=True):
         """
         Apply shearing to the image.
 
@@ -549,10 +538,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be sheared.
-        value : float
-            Shearing value.
+        factor : float
+            Shearing factor.
         radius : bool, optional
-            Whether to use range radius for value, by default True.
+            Whether to use range radius for factor, by default True.
 
         Returns
         -------
@@ -560,12 +549,22 @@ class Augmentor():
             Sheared image.
         """
 
-        # do something
-        # ...
+        if radius:
+            factor = np.random.uniform(-factor, factor)
+
+        height, width = image.shape[:2]
+        background_color = int(np.bincount(np.ravel(image)).argmax())
+
+        extra_width = int(abs(factor) * height)
+        extended_image = cv2.copyMakeBorder(image, 0, 0, extra_width, extra_width,
+                                            cv2.BORDER_CONSTANT, value=background_color)
+
+        M = np.float32([[1, factor, 0], [0, 1, 0]])
+        image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height), borderValue=background_color)
 
         return image
 
-    def scaling(self, image, value, radius=True):
+    def scaling(self, image, min_factor, max_factor):
         """
         Apply scaling to the image.
 
@@ -573,10 +572,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be scaled.
-        value : float
-            Scaling value.
-        radius : bool, optional
-            Whether to use range radius for value, by default True.
+        min_factor : float
+            Scaling min factor.
+        max_factor : float
+            Scaling max factor.
 
         Returns
         -------
@@ -584,12 +583,18 @@ class Augmentor():
             Scaled image.
         """
 
-        # do something
-        # ...
+        factor = np.random.uniform(min_factor, max_factor)
+        height, width = image.shape[:2]
+
+        new_height = int(height * factor)
+        new_width = int(width * factor)
+
+        interpolation = cv2.INTER_CUBIC if new_height > height or new_width > width else cv2.INTER_AREA
+        image = cv2.resize(image, (new_width, new_height), interpolation=interpolation)
 
         return image
 
-    def rotation(self, image, value, radius=True):
+    def rotation(self, image, angle, radius=True):
         """
         Apply rotation to the image.
 
@@ -597,10 +602,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be rotated.
-        value : float
-            Rotation value.
+        angle : float
+            Rotation angle in degrees.
         radius : bool, optional
-            Whether to use range radius for value, by default True.
+            Whether to use range radius for factor, by default True.
 
         Returns
         -------
@@ -608,12 +613,28 @@ class Augmentor():
             Rotated image.
         """
 
-        # do something
-        # ...
+        if radius:
+            angle = np.random.uniform(-angle, angle)
+
+        height, width = image.shape[:2]
+        background_color = int(np.bincount(np.ravel(image)).argmax())
+
+        center = (width // 2, height // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+        cos_angle = np.abs(M[0, 0])
+        sin_angle = np.abs(M[0, 1])
+        new_width = int((height * sin_angle) + (width * cos_angle))
+        new_height = int((height * cos_angle) + (width * sin_angle))
+
+        M[0, 2] += (new_width / 2) - center[0]
+        M[1, 2] += (new_height / 2) - center[1]
+
+        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=background_color)
 
         return image
 
-    def translate_x(self, image, value, radius=True):
+    def translation(self, image, y_factor, x_factor, radius=True):
         """
         Apply X-axis translation to the image.
 
@@ -621,10 +642,12 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be translated.
-        value : float
-            X-axis translation value.
+        y_factor : float
+            Y-axis translation factor.
+        x_factor : float
+            X-axis translation factor.
         radius : bool, optional
-            Whether to use range radius for value, by default True.
+            Whether to use range radius for factor, by default True.
 
         Returns
         -------
@@ -632,31 +655,21 @@ class Augmentor():
             Translated image.
         """
 
-        # do something
-        # ...
+        if radius:
+            y_factor = np.random.uniform(0.0, max(0.0, y_factor))
+            x_factor = np.random.uniform(0.0, max(0.0, x_factor))
 
-        return image
+        height, width = image.shape[:2]
+        background_color = int(np.bincount(np.ravel(image)).argmax())
 
-    def translate_y(self, image, value, radius=True):
-        """
-        Apply Y-axis translation to the image.
+        abs_y_translation = int(min(height, width) * y_factor)
+        abs_x_translation = int(min(height, width) * x_factor)
 
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be translated.
-        value : float
-            Y-axis translation value.
-        radius : bool, optional
-            Whether to use range radius for value, by default True.
+        M = np.float32([[1, 0, abs_x_translation], [0, 1, abs_y_translation]])
 
-        Returns
-        -------
-        ndarray
-            Translated image.
-        """
+        new_height = height + abs(abs_y_translation)
+        new_width = width + abs(abs_x_translation)
 
-        # do something
-        # ...
+        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=background_color)
 
         return image
