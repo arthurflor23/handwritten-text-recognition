@@ -33,13 +33,13 @@ def check(args):
         dilation=args.dilation,
         elastic_transform=args.elastic_transform,
         perspective_transform=args.perspective_transform,
-        salt_and_pepper=args.salt_and_pepper,
         mixup=args.mixup,
-        gaussian_blur=args.gaussian_blur,
         shearing=args.shearing,
         scaling=args.scaling,
         rotation=args.rotation,
         translation=args.translation,
+        salt_and_pepper=args.salt_and_pepper,
+        gaussian_blur=args.gaussian_blur,
     )
     print(augmentor)
 

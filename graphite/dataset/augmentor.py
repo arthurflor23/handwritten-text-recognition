@@ -12,25 +12,23 @@ class Augmentor():
     """
 
     def __init__(self,
-                 mixup=None,
                  erosion=None,
                  dilation=None,
                  elastic_transform=None,
                  perspective_transform=None,
-                 salt_and_pepper=None,
-                 gaussian_blur=None,
+                 mixup=None,
                  shearing=None,
                  scaling=None,
                  rotation=None,
                  translation=None,
+                 salt_and_pepper=None,
+                 gaussian_blur=None,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
 
         Parameters
         ----------
-        mixup : dict or None, optional
-            Parameters for mixup transformation, by default None.
         erosion : dict or None, optional
             Parameters for erosion transformation, by default None.
         dilation : dict or None, optional
@@ -39,10 +37,8 @@ class Augmentor():
             Parameters for elastic transformation, by default None.
         perspective_transform : dict or None, optional
             Parameters for perspective transform transformation, by default None.
-        salt_and_pepper : dict or None, optional
-            Parameters for salt and pepper noise, by default None.
-        gaussian_blur : dict or None, optional
-            Parameters for Gaussian blur transformation, by default None.
+        mixup : dict or None, optional
+            Parameters for mixup transformation, by default None.
         shearing : dict or None, optional
             Parameters for shearing transformation, by default None.
         scaling : dict or None, optional
@@ -51,6 +47,10 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
+        salt_and_pepper : dict or None, optional
+            Parameters for salt and pepper noise, by default None.
+        gaussian_blur : dict or None, optional
+            Parameters for Gaussian blur transformation, by default None.
         seed : int or None, optional
             Seed for random number generation, by default None.
 
@@ -65,13 +65,13 @@ class Augmentor():
         self.dilation_params = dilation
         self.elastic_transform_params = elastic_transform
         self.perspective_transform_params = perspective_transform
-        self.salt_and_pepper_params = salt_and_pepper
         self.mixup_params = mixup
-        self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
+        self.salt_and_pepper_params = salt_and_pepper
+        self.gaussian_blur_params = gaussian_blur
         self.seed = seed
 
     def __repr__(self):
@@ -89,13 +89,13 @@ class Augmentor():
             'dilation': self.dilation_params,
             'elastic_transform': self.elastic_transform_params,
             'perspective_transform': self.perspective_transform_params,
-            'salt_and_pepper': self.salt_and_pepper_params,
             'mixup': self.mixup_params,
-            'gaussian_blur': self.gaussian_blur_params,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
             'translation': self.translation_params,
+            'salt_and_pepper': self.salt_and_pepper_params,
+            'gaussian_blur': self.gaussian_blur_params,
             'seed': self.seed,
         })
 
@@ -115,15 +115,15 @@ class Augmentor():
             Dilation                {self.dilation_params}
             Elastic Transform      {self.elastic_transform_params}
             Perspective Transform   {self.perspective_transform_params}
-
-            Salt and Pepper Noise   {self.salt_and_pepper_params}
             Mixup                   {self.mixup_params}
-            Gaussian Blur           {self.gaussian_blur_params}
 
             Shearing                {self.shearing_params}
             Scaling                 {self.scaling_params}
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
+
+            Salt and Pepper Noise   {self.salt_and_pepper_params}
+            Gaussian Blur           {self.gaussian_blur_params}
 
             Seed                    {self.seed}
         """
@@ -179,91 +179,49 @@ class Augmentor():
 
         """
 
-        # # Erosion
-        # if self.erosion_params and np.random.random() < self.erosion_params[0]:
-        #     image = self.erosion(image, *self.erosion_params[1:])
+        # Erosion
+        if self.erosion_params and np.random.random() < self.erosion_params[0]:
+            image = self.erosion(image, *self.erosion_params[1:])
 
-        # # Dilation
-        # if self.dilation_params and np.random.random() < self.dilation_params[0]:
-        #     image = self.dilation(image, *self.dilation_params[1:])
+        # Dilation
+        if self.dilation_params and np.random.random() < self.dilation_params[0]:
+            image = self.dilation(image, *self.dilation_params[1:])
 
-        # # Elastic Transform
-        # if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
-        #     image = self.elastic_transform(image, *self.elastic_transform_params[1:])
+        # Elastic Transform
+        if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
+            image = self.elastic_transform(image, *self.elastic_transform_params[1:])
 
-        # # Perspective Transform
-        # if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
-        #     image = self.perspective_transform(image, *self.perspective_transform_params[1:])
+        # Perspective Transform
+        if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
+            image = self.perspective_transform(image, *self.perspective_transform_params[1:])
 
-        # # Salt and Pepper Noise
-        # if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
-        #     image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
+        # Mixup
+        if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
+            image = self.mixup(image, batch_images, *self.mixup_params[1:])
 
-        # # Mixup
-        # if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
-        #     image = self.mixup(image, batch_images, *self.mixup_params[1:])
+        # Shearing
+        if self.shearing_params and np.random.random() < self.shearing_params[0]:
+            image = self.shearing(image, *self.shearing_params[1:])
 
-        # # Gaussian Blur
-        # if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
-        #     image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
+        # Scaling
+        if self.scaling_params and np.random.random() < self.scaling_params[0]:
+            image = self.scaling(image, *self.scaling_params[1:])
 
-        # # Shearing
-        # if self.shearing_params and np.random.random() < self.shearing_params[0]:
-        #     image = self.shearing(image, *self.shearing_params[1:])
-
-        # # Scaling
-        # if self.scaling_params and np.random.random() < self.scaling_params[0]:
-        #     image = self.scaling(image, *self.scaling_params[1:])
-
-        # # Rotation
-        # if self.rotation_params and np.random.random() < self.rotation_params[0]:
-        #     image = self.rotation(image, *self.rotation_params[1:])
+        # Rotation
+        if self.rotation_params and np.random.random() < self.rotation_params[0]:
+            image = self.rotation(image, *self.rotation_params[1:])
 
         # Translation
         if self.translation_params and np.random.random() < self.translation_params[0]:
             image = self.translation(image, *self.translation_params[1:])
 
-        return image
+        # Salt and Pepper Noise
+        if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
+            image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
 
-    def mixup(self, image, batch_images, opacity, pickups, radius=True):
-        """
-        Apply mixup augmentation to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be mixed.
-        batch_images : list
-            List of additional images for mixing.
-        opacity : float
-            Opacity of the mixup effect.
-        pickups : int
-            Number of images for the mixup operation.
-        radius : bool, optional
-            Whether to use range radius for opacity and pickups, by default True.
-
-        Returns
-        -------
-        ndarray
-            Mixed image.
-        """
-
-        num_imgs = len(batch_images)
-        pickups = min(pickups, num_imgs)
-
-        pickup_idxs = np.random.choice(num_imgs, size=pickups, replace=False)
-        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
-
-        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
-            pickup_img = batch_images[pickup_idx]
-
-            if pickup_img.shape[:2] != image.shape[:2]:
-                interpolation = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
-                    or pickup_img.shape[1] > image.shape[1] else cv2.INTER_AREA
-
-                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interpolation)
-
-            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
+        # Gaussian Blur
+        if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
+            image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
 
         return image
 
@@ -436,10 +394,10 @@ class Augmentor():
         """
 
         if radius:
-            factor = np.random.uniform(1e-8, max(1e-8, factor))
+            factor = np.random.uniform(0.0, max(0.0, factor))
 
         height, width = image.shape[:2]
-        max_offset = int(min(height, width) * factor)
+        max_offset = max(1, int(min(height, width) * factor))
 
         src_points = np.array([
             (0, 0),
@@ -458,75 +416,49 @@ class Augmentor():
         M = cv2.getPerspectiveTransform(src_points, dst_points)
 
         background_color = int(np.bincount(np.ravel(image)).argmax())
-        image = cv2.warpPerspective(image, M, image.shape[::-1], borderfactor=background_color)
+        image = cv2.warpPerspective(image, M, image.shape[::-1], borderValue=background_color)
 
         return image
 
-    def salt_and_pepper(self, image, noise_percentage, radius=True):
+    def mixup(self, image, batch_images, opacity, pickups, radius=True):
         """
-        Apply Gaussian noise to the image.
+        Apply mixup augmentation to the image.
 
         Parameters
         ----------
         image : ndarray
-            Input image to be noised.
-        noise_percentage : float
-            Percentage of pixels to add noise to (between 0 and 1).
+            Input image to be mixed.
+        batch_images : list
+            List of additional images for mixing.
+        opacity : float
+            Opacity of the mixup effect.
+        pickups : int
+            Number of images for the mixup operation.
         radius : bool, optional
-            Whether to use range radius for noise_percentage, by default True.
+            Whether to use range radius for opacity and pickups, by default True.
 
         Returns
         -------
         ndarray
-            Noised image.
+            Mixed image.
         """
 
-        if radius:
-            noise_percentage = np.random.uniform(1e-8, max(1e-8, noise_percentage))
+        num_imgs = len(batch_images)
+        pickups = min(pickups, num_imgs)
 
-        num_pixels = image.size
-        num_pixels_to_noise = int(num_pixels * noise_percentage)
+        pickup_idxs = np.random.choice(num_imgs, size=pickups, replace=False)
+        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
 
-        indices = np.random.choice(num_pixels, num_pixels_to_noise, replace=False)
+        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
+            pickup_img = batch_images[pickup_idx]
 
-        salt_mask = np.random.rand(num_pixels_to_noise) < 0.5
-        pepper_mask = ~salt_mask
+            if pickup_img.shape[:2] != image.shape[:2]:
+                interpolation = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
+                    or pickup_img.shape[1] > image.shape[1] else cv2.INTER_AREA
 
-        noisy_image = image.flatten()
-        noisy_image[indices[salt_mask]] = 255
-        noisy_image[indices[pepper_mask]] = 0
+                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interpolation)
 
-        image = noisy_image.reshape(image.shape)
-
-        return image
-
-    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
-        """
-        Apply Gaussian blur to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be blurred.
-        kernel_size : int
-            Kernel size for Gaussian blur.
-        iterations : int
-            Number of iterations for Gaussian blur.
-        radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
-
-        Returns
-        -------
-        ndarray
-            Blurred image.
-        """
-
-        if radius:
-            kernel_size = np.random.choice(range(1, max(1, kernel_size) + 1, 2))
-            iterations = np.random.randint(1, max(1, iterations) + 1)
-
-        for _ in range(iterations):
-            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
+            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
 
         return image
 
@@ -671,5 +603,77 @@ class Augmentor():
         new_width = width + abs(abs_x_translation)
 
         image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=background_color)
+
+        return image
+
+    def salt_and_pepper(self, image, percentage_noise, radius=True):
+        """
+        Apply Gaussian noise to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be noised.
+        percentage_noise : float
+            Percentage of pixels to add noise to (between 0 and 1).
+        radius : bool, optional
+            Whether to use range radius for percentage_noise, by default True.
+
+        Returns
+        -------
+        ndarray
+            Noised image.
+        """
+
+        if radius:
+            percentage_noise = np.random.uniform(1e-8, max(1e-8, percentage_noise))
+
+        num_pixels = image.size
+        num_pixels_to_noise = int(num_pixels * percentage_noise)
+
+        indices = np.random.choice(num_pixels, num_pixels_to_noise, replace=False)
+
+        salt_mask = np.random.rand(num_pixels_to_noise) < 0.5
+        pepper_mask = ~salt_mask
+
+        noisy_image = image.flatten()
+
+        max_pixel = int(np.bincount(np.ravel(noisy_image[noisy_image > 127])).argmax())
+        min_pixel = int(np.bincount(np.ravel(noisy_image[noisy_image < 127])).argmax())
+
+        noisy_image[indices[salt_mask]] = max_pixel
+        noisy_image[indices[pepper_mask]] = min_pixel
+
+        image = noisy_image.reshape(image.shape)
+
+        return image
+
+    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
+        """
+        Apply Gaussian blur to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be blurred.
+        kernel_size : int
+            Kernel size for Gaussian blur.
+        iterations : int
+            Number of iterations for Gaussian blur.
+        radius : bool, optional
+            Whether to use range radius for kernel size and iterations, by default True.
+
+        Returns
+        -------
+        ndarray
+            Blurred image.
+        """
+
+        if radius:
+            kernel_size = np.random.choice(range(1, max(1, kernel_size) + 1, 2))
+            iterations = np.random.randint(1, max(1, iterations) + 1)
+
+        for _ in range(iterations):
+            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
         return image
