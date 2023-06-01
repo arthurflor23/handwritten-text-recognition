@@ -202,7 +202,16 @@ if __name__ == "__main__":
         print('\n-----------------')
         
         pbar = tqdm(images) # tqdm(total=total)
-
+        
+        out_path = None
+        if args.csv:
+            if args.csv.split(".")[-1] != "csv":
+                out_path = os.path.join(args.csv, "predicts.csv")
+            else:
+                out_path = args.csv
+        elif args.parquet:
+            out_path = os.path.join(args.csv, 'predicts.parquet')
+            
         # for image_name in images:
         for i, image_name in enumerate(pbar):
         # for image_name in pbar: 
@@ -217,9 +226,15 @@ if __name__ == "__main__":
                 else:
                     img = cv2.imread(image_path)
             except:
-                continue
+                try:
+                    img = plt.imread(image_path)
+                except:
+                    # [image_name, predicts[0][0], probabilities[0][0], predicted_blank]
+                    final_predicts.append([image_name, "<FAILED_TO_OPEN>", 0, 0])
+                    continue
 
             if img is None:
+                final_predicts.append([image_name, "<IMAGE_WAS_NONE>", 0, 0])
                 continue
 
             # first check if image is a blank snippet
@@ -271,30 +286,43 @@ if __name__ == "__main__":
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             # pbar.update(1)
             if i != 0 and i % BATCH_SIZE == 0:
+                # if args.csv:
+                #     if args.csv.split(".")[-1] != "csv":
+                #         csv_path = os.path.join(args.csv, "predicts.csv")
+                #     else:
+                #         csv_path = args.csv
+                #     with open(csv_path, 'a', newline='') as csvfile:
+                #         writer = csv.writer(csvfile)
+                #         writer.writerows(final_predicts)
+                # elif args.parquet:
+                #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
+                #     fastparquet.write(parquet_path, final_predicts)
                 if args.csv:
-                    if args.csv.split(".")[-1] != "csv":
-                        csv_path = os.path.join(args.csv, "predicts.csv")
-                    else:
-                        csv_path = args.csv
-                    with open(csv_path, 'a', newline='') as csvfile:
+                    with open(out_path, 'a', newline='') as csvfile:
                         writer = csv.writer(csvfile)
                         writer.writerows(final_predicts)
                 elif args.parquet:
-                    parquet_path = os.path.join(args.csv, 'predicts.parquet')
-                    fastparquet.write(parquet_path, final_predicts)
+                    fastparquet.write(out_path, final_predicts)
                 final_predicts = []
 
+        # if args.csv:
+        #     if args.csv.split(".")[-1] != "csv":
+        #         csv_path = os.path.join(args.csv, "predicts.csv")
+        #     else:
+        #         csv_path = args.csv
+        #     with open(csv_path, 'a', newline='') as csvfile:
+        #         writer = csv.writer(csvfile)
+        #         writer.writerows(final_predicts)
+        # elif args.parquet:
+        #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
+        #     fastparquet.write(parquet_path, final_predicts)
+
         if args.csv:
-            if args.csv.split(".")[-1] != "csv":
-                csv_path = os.path.join(args.csv, "predicts.csv")
-            else:
-                csv_path = args.csv
-            with open(csv_path, 'a', newline='') as csvfile:
+            with open(out_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
         elif args.parquet:
-            parquet_path = os.path.join(args.csv, 'predicts.parquet')
-            fastparquet.write(parquet_path, final_predicts)
+            fastparquet.write(out_path, final_predicts)
 
         finish_time = time.time()
         total_time = finish_time - start_time
