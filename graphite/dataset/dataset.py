@@ -55,7 +55,6 @@ class Dataset():
         """
 
         np.random.seed(seed)
-        cv2.setRNGSeed(seed)
 
         self.source = source
         self.level = level
