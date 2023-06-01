@@ -157,13 +157,10 @@ class Augmentor():
             (self.erosion, self.erosion_params),
             (self.dilation, self.dilation_params),
             (self.elastic_transform, self.elastic_transform_params),
-
             (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
             (self.perspective_transform, self.perspective_transform_params),
-
             (self.salt_and_pepper, self.salt_and_pepper_params),
             (self.gaussian_blur, self.gaussian_blur_params),
-
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
@@ -466,7 +463,7 @@ class Augmentor():
 
         return image
 
-    def scaling(self, image, min_factor, max_factor):
+    def scaling(self, image, factor, radius=True):
         """
         Apply scaling to the image.
 
@@ -474,10 +471,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be scaled.
-        min_factor : float
-            Scaling min factor.
-        max_factor : float
-            Scaling max factor.
+        factor : float
+            Scaling factor.
+        radius : bool, optional
+            Whether to use range radius for factor, by default True.
 
         Returns
         -------
@@ -485,11 +482,13 @@ class Augmentor():
             Scaled image.
         """
 
-        factor = np.random.uniform(min_factor, max_factor)
+        if radius:
+            factor = np.random.uniform(-factor, factor)
+
         height, width = image.shape[:2]
 
-        new_height = int(height * factor)
-        new_width = int(width * factor)
+        new_height = int(height * (1 - factor))
+        new_width = int(width * (1 - factor))
 
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
