@@ -239,10 +239,17 @@ class Dataset():
                     y_data.append(dataset['data'][i][label_index])
 
             if augmentor:
-                x_data = augmentor.batch_augmentation(x_data)
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
+                    x_data = [future.result() for future in futures]
 
             if normalize:
-                print('normalizing, padding, rotation')
+                axis = np.array([x.shape for x in x_data])
+                max_axis = np.max(axis[..., 0]), np.max(axis[..., 1])
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(self._normalize_image, x, max_axis) for x in x_data]
+                    x_data = [future.result() for future in futures]
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
             yield x_data, y_data
@@ -624,6 +631,39 @@ class Dataset():
             label[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label[i]).strip()
 
         return label
+
+    def _normalize_image(self, image, max_axis=None):
+        """
+        Normalize the given image.
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            The input image to normalize.
+        max_axis : tuple or None, optional
+            The maximum axis size to pad the image.
+            The format of max_axis should be (height, width).
+
+        Returns
+        -------
+        numpy.ndarray
+            The normalized image.
+        """
+
+        if max_axis is not None:
+            bottom_pad = max(0, max_axis[0] - image.shape[0])
+            right_pad = max(0, max_axis[1] - image.shape[1])
+
+            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
+                                       borderType=cv2.BORDER_CONSTANT,
+                                       value=self.reference_pixels[1])
+
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        image = cv2.flip(image, 1)
+
+        image = np.divide(image, 255, dtype=np.float32)
+
+        return image
 
 
 class Tokenizer():

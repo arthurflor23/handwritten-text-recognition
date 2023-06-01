@@ -1,7 +1,6 @@
 import cv2
 import json
 import numpy as np
-import concurrent.futures
 
 
 class Augmentor():
@@ -136,27 +135,6 @@ class Augmentor():
 
         return info
 
-    def batch_augmentation(self, images):
-        """
-        Apply transformations to a batch of images.
-
-        Parameters
-        ----------
-        images : list
-            List of input images.
-
-        Returns
-        -------
-        list
-            List of augmented images after applying transformations.
-        """
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.augmentation, image, images) for image in images]
-            images = [future.result() for future in futures]
-
-        return images
-
     def augmentation(self, image, batch_images):
         """
         Apply transformations to an image.
@@ -178,17 +156,20 @@ class Augmentor():
             (self.erosion, self.erosion_params),
             (self.dilation, self.dilation_params),
             (self.elastic_transform, self.elastic_transform_params),
-            (self.perspective_transform, self.perspective_transform_params),
+
             (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
+            (self.perspective_transform, self.perspective_transform_params),
+
+            (self.salt_and_pepper, self.salt_and_pepper_params),
+            (self.gaussian_blur, self.gaussian_blur_params),
+
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
             (self.translation, self.translation_params),
-            (self.salt_and_pepper, self.salt_and_pepper_params),
-            (self.gaussian_blur, self.gaussian_blur_params),
         ]
 
-        for i, (transform_func, params) in enumerate(transformations):
+        for transform_func, params in transformations:
             if params and np.random.random() < params[0]:
                 image = transform_func(image, *params[1:])
 
@@ -294,6 +275,47 @@ class Augmentor():
 
         return image
 
+    def mixup(self, image, batch_images, opacity, pickups, radius=True):
+        """
+        Apply mixup augmentation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be mixed.
+        batch_images : list
+            List of additional images for mixing.
+        opacity : float
+            Opacity of the mixup effect.
+        pickups : int
+            Number of images for the mixup operation.
+        radius : bool, optional
+            Whether to use range radius for opacity and pickups, by default True.
+
+        Returns
+        -------
+        ndarray
+            Mixed image.
+        """
+
+        batch_length = len(batch_images)
+
+        pickups = min(pickups, batch_length)
+        pickup_idxs = np.uint8(np.random.uniform(0, batch_length, pickups))
+
+        height, width = image.shape[:2]
+        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
+
+        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
+            pickup_img = batch_images[pickup_idx]
+
+            if pickup_img.shape[:2] != image.shape[:2]:
+                pickup_img = cv2.resize(pickup_img, (width, height), interpolation=cv2.INTER_LINEAR)
+
+            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
+
+        return image
+
     def perspective_transform(self, image, factor, radius=True):
         """
         Apply perspective transform to the image.
@@ -341,42 +363,66 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, batch_images, opacity, pickups, radius=True):
+    def salt_and_pepper(self, image, noise_percentage, radius=True):
         """
-        Apply mixup augmentation to the image.
+        Apply Gaussian noise to the image.
 
         Parameters
         ----------
         image : ndarray
-            Input image to be mixed.
-        batch_images : list
-            List of additional images for mixing.
-        opacity : float
-            Opacity of the mixup effect.
-        pickups : int
-            Number of images for the mixup operation.
+            Input image to be noised.
+        noise_percentage : float
+            Percentage of pixels to add noise to (between 0 and 1).
         radius : bool, optional
-            Whether to use range radius for opacity and pickups, by default True.
+            Whether to use range radius for noise_percentage, by default True.
 
         Returns
         -------
         ndarray
-            Mixed image.
+            Noised image.
         """
 
-        batch_length = len(batch_images)
-        pickups = min(pickups, batch_length)
+        if radius:
+            noise_percentage = np.random.uniform(0.0, noise_percentage)
 
-        pickup_idxs = np.uint8(np.random.uniform(0, batch_length, pickups))
-        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
+        noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
+        noise_percentage *= 0.25
 
-        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
-            pickup_img = batch_images[pickup_idx]
+        image = np.where(noise_mask < noise_percentage, self.reference_pixels[0], image)
+        image = np.where(noise_mask > (1 - noise_percentage), self.reference_pixels[2], image)
 
-            if pickup_img.shape[:2] != image.shape[:2]:
-                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=cv2.INTER_LINEAR)
+        return image
 
-            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
+    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
+        """
+        Apply Gaussian blur to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be blurred.
+        kernel_size : int
+            Kernel size for Gaussian blur.
+        iterations : int
+            Number of iterations for Gaussian blur.
+        radius : bool, optional
+            Whether to use range radius for kernel size and iterations, by default True.
+
+        Returns
+        -------
+        ndarray
+            Blurred image.
+        """
+
+        if radius:
+            kernel_size = np.random.randint(1, kernel_size + 1)
+            iterations = np.random.randint(1, iterations + 1)
+
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+
+        for _ in range(iterations):
+            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
         return image
 
@@ -406,13 +452,16 @@ class Augmentor():
 
         extra_width = int(abs(factor) * height)
         extended_image = cv2.copyMakeBorder(image, 0, 0, extra_width, extra_width,
-                                            cv2.BORDER_CONSTANT, value=self.reference_pixels[1])
+                                            borderType=cv2.BORDER_CONSTANT,
+                                            value=self.reference_pixels[1])
 
         M = np.float32([[1, factor, 0], [0, 1, 0]])
 
         image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.reference_pixels[1])
+
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
         return image
 
@@ -485,6 +534,8 @@ class Augmentor():
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.reference_pixels[1])
 
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
+
         return image
 
     def translation(self, image, y_factor, x_factor, radius=True):
@@ -527,68 +578,7 @@ class Augmentor():
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.reference_pixels[1])
 
-        return image
-
-    def salt_and_pepper(self, image, noise_percentage, radius=True):
-        """
-        Apply Gaussian noise to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be noised.
-        noise_percentage : float
-            Percentage of pixels to add noise to (between 0 and 1).
-        radius : bool, optional
-            Whether to use range radius for noise_percentage, by default True.
-
-        Returns
-        -------
-        ndarray
-            Noised image.
-        """
-
-        if radius:
-            noise_percentage = np.random.uniform(0.0, noise_percentage)
-
-        noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
-        noise_percentage *= 0.25
-
-        image = np.where(noise_mask < noise_percentage, self.reference_pixels[0], image)
-        image = np.where(noise_mask > (1 - noise_percentage), self.reference_pixels[2], image)
-
-        return image
-
-    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
-        """
-        Apply Gaussian blur to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be blurred.
-        kernel_size : int
-            Kernel size for Gaussian blur.
-        iterations : int
-            Number of iterations for Gaussian blur.
-        radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
-
-        Returns
-        -------
-        ndarray
-            Blurred image.
-        """
-
-        if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
-            iterations = np.random.randint(1, iterations + 1)
-
-        if kernel_size % 2 == 0:
-            kernel_size += 1
-
-        for _ in range(iterations):
-            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
         return image
 
