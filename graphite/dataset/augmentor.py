@@ -12,14 +12,14 @@ class Augmentor():
                  erosion=None,
                  dilation=None,
                  elastic_transform=None,
-                 perspective_transform=None,
                  mixup=None,
+                 perspective_transform=None,
+                 salt_and_pepper=None,
+                 gaussian_blur=None,
                  shearing=None,
                  scaling=None,
                  rotation=None,
                  translation=None,
-                 salt_and_pepper=None,
-                 gaussian_blur=None,
                  reference_pixels=None,
                  seed=None):
         """
@@ -33,10 +33,14 @@ class Augmentor():
             Parameters for dilation transformation, by default None.
         elastic_transform : dict or None, optional
             Parameters for elastic transformation, by default None.
-        perspective_transform : dict or None, optional
-            Parameters for perspective transform transformation, by default None.
         mixup : dict or None, optional
             Parameters for mixup transformation, by default None.
+        perspective_transform : dict or None, optional
+            Parameters for perspective transform transformation, by default None.
+        salt_and_pepper : dict or None, optional
+            Parameters for salt and pepper noise, by default None.
+        gaussian_blur : dict or None, optional
+            Parameters for Gaussian blur transformation, by default None.
         shearing : dict or None, optional
             Parameters for shearing transformation, by default None.
         scaling : dict or None, optional
@@ -45,10 +49,6 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
-        salt_and_pepper : dict or None, optional
-            Parameters for salt and pepper noise, by default None.
-        gaussian_blur : dict or None, optional
-            Parameters for Gaussian blur transformation, by default None.
         reference_pixels : list, optional
             Reference pixel values for transformation, by default None.
         seed : int or None, optional
@@ -64,14 +64,14 @@ class Augmentor():
         self.erosion_params = erosion
         self.dilation_params = dilation
         self.elastic_transform_params = elastic_transform
-        self.perspective_transform_params = perspective_transform
         self.mixup_params = mixup
+        self.perspective_transform_params = perspective_transform
+        self.salt_and_pepper_params = salt_and_pepper
+        self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
-        self.salt_and_pepper_params = salt_and_pepper
-        self.gaussian_blur_params = gaussian_blur
         self.reference_pixels = reference_pixels or [0, 127, 255]
         self.seed = seed
 
@@ -89,15 +89,15 @@ class Augmentor():
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
             'elastic_transform': self.elastic_transform_params,
-            'perspective_transform': self.perspective_transform_params,
             'mixup': self.mixup_params,
+            'perspective_transform': self.perspective_transform_params,
+            'gaussian_blur': self.gaussian_blur_params,
+            'reference_pixels': self.reference_pixels,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
             'translation': self.translation_params,
             'salt_and_pepper': self.salt_and_pepper_params,
-            'gaussian_blur': self.gaussian_blur_params,
-            'reference_pixels': self.reference_pixels,
             'seed': self.seed,
         })
 
@@ -116,16 +116,17 @@ class Augmentor():
             Erosion                 {self.erosion_params}
             Dilation                {self.dilation_params}
             Elastic Transform       {self.elastic_transform_params}
-            Perspective Transform   {self.perspective_transform_params}
+
             Mixup                   {self.mixup_params}
+            Perspective Transform   {self.perspective_transform_params}
+
+            Salt and Pepper Noise   {self.salt_and_pepper_params}
+            Gaussian Blur           {self.gaussian_blur_params}
 
             Shearing                {self.shearing_params}
             Scaling                 {self.scaling_params}
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
-
-            Salt and Pepper Noise   {self.salt_and_pepper_params}
-            Gaussian Blur           {self.gaussian_blur_params}
 
             Reference Pixels        {self.reference_pixels}
             Seed                    {self.seed}

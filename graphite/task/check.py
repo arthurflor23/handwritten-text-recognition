@@ -31,14 +31,14 @@ def check(args):
     augmentor = Augmentor(erosion=args.erosion,
                           dilation=args.dilation,
                           elastic_transform=args.elastic_transform,
-                          perspective_transform=args.perspective_transform,
                           mixup=args.mixup,
+                          perspective_transform=args.perspective_transform,
+                          salt_and_pepper=args.salt_and_pepper,
+                          gaussian_blur=args.gaussian_blur,
                           shearing=args.shearing,
                           scaling=args.scaling,
                           rotation=args.rotation,
                           translation=args.translation,
-                          salt_and_pepper=args.salt_and_pepper,
-                          gaussian_blur=args.gaussian_blur,
                           reference_pixels=dataset.reference_pixels,
                           seed=42)
     print(augmentor)
