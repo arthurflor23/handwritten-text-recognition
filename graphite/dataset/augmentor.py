@@ -61,7 +61,6 @@ class Augmentor():
         """
 
         np.random.seed(seed)
-        cv2.setRNGSeed(seed)
 
         self.erosion_params = erosion
         self.dilation_params = dilation
@@ -154,13 +153,11 @@ class Augmentor():
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(self.augmentation, image, images) for image in images]
-
-            for i, future in enumerate(futures):
-                images[i] = future.result()
+            images = [future.result() for future in futures]
 
         return images
 
-    def augmentation(self, image, batch_images=None):
+    def augmentation(self, image, batch_images):
         """
         Apply transformations to an image.
 
@@ -177,49 +174,23 @@ class Augmentor():
             Transformed image.
         """
 
-        # Erosion
-        if self.erosion_params and np.random.random() < self.erosion_params[0]:
-            image = self.erosion(image, *self.erosion_params[1:])
+        transformations = [
+            (self.erosion, self.erosion_params),
+            (self.dilation, self.dilation_params),
+            (self.elastic_transform, self.elastic_transform_params),
+            (self.perspective_transform, self.perspective_transform_params),
+            (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
+            (self.shearing, self.shearing_params),
+            (self.scaling, self.scaling_params),
+            (self.rotation, self.rotation_params),
+            (self.translation, self.translation_params),
+            (self.salt_and_pepper, self.salt_and_pepper_params),
+            (self.gaussian_blur, self.gaussian_blur_params),
+        ]
 
-        # Dilation
-        if self.dilation_params and np.random.random() < self.dilation_params[0]:
-            image = self.dilation(image, *self.dilation_params[1:])
-
-        # Elastic Transform
-        if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
-            image = self.elastic_transform(image, *self.elastic_transform_params[1:])
-
-        # Perspective Transform
-        if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
-            image = self.perspective_transform(image, *self.perspective_transform_params[1:])
-
-        # Mixup
-        if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
-            image = self.mixup(image, batch_images, *self.mixup_params[1:])
-
-        # Shearing
-        if self.shearing_params and np.random.random() < self.shearing_params[0]:
-            image = self.shearing(image, *self.shearing_params[1:])
-
-        # Scaling
-        if self.scaling_params and np.random.random() < self.scaling_params[0]:
-            image = self.scaling(image, *self.scaling_params[1:])
-
-        # Rotation
-        if self.rotation_params and np.random.random() < self.rotation_params[0]:
-            image = self.rotation(image, *self.rotation_params[1:])
-
-        # Translation
-        if self.translation_params and np.random.random() < self.translation_params[0]:
-            image = self.translation(image, *self.translation_params[1:])
-
-        # Salt and Pepper Noise
-        if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
-            image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
-
-        # Gaussian Blur
-        if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
-            image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
+        for i, (transform_func, params) in enumerate(transformations):
+            if params and np.random.random() < params[0]:
+                image = transform_func(image, *params[1:])
 
         return image
 
@@ -308,7 +279,7 @@ class Augmentor():
         if kernel_size % 2 == 0:
             kernel_size += 1
 
-        dxy = cv2.randu(np.zeros(image.shape[:2]), -1.0, 1.0)
+        dxy = self._cv2_randu(image.shape[:2], -1.0, 1.0)
         dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * 0.5)
 
         org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
@@ -580,7 +551,7 @@ class Augmentor():
         if radius:
             noise_percentage = np.random.uniform(0.0, noise_percentage)
 
-        noise_mask = cv2.randu(np.zeros(image.shape[:2]), 0, 1)
+        noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
         noise_percentage *= 0.25
 
         image = np.where(noise_mask < noise_percentage, self.reference_pixels[0], image)
@@ -620,3 +591,34 @@ class Augmentor():
             image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
         return image
+
+    def _cv2_randu(self, shape, low, high):
+        """
+        Generate an array of random numbers using OpenCV's function.
+
+        Parameters
+        ----------
+        shape : tuple
+            Shape of the output array.
+        low : float or int
+            Lower bound of the random number range.
+        high : float or int
+            Upper bound of the random number range.
+
+        Returns
+        -------
+        ndarray
+            Array of random numbers with the specified shape and range.
+        """
+
+        try:
+            self._cv2_seed += 1
+            cv2.setRNGSeed(self._cv2_seed)
+
+        except Exception:
+            self._cv2_seed = self.seed or 0
+            cv2.setRNGSeed(self._cv2_seed)
+
+        rand = cv2.randu(np.empty(shape), low, high)
+
+        return rand
