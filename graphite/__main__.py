@@ -46,37 +46,37 @@ if __name__ == '__main__':
 
     # Data augmentation
     parser.add_argument('--erosion', default=[0.99, 9, 1], nargs='+', type=float,
-                        help="Apply dilation (probability, kernel_size, iterations)")
+                        help="Apply dilation (probability, kernel size, iterations)")
 
     parser.add_argument('--dilation', default=[0.99, 3, 1], nargs='+', type=float,
-                        help="Apply dilation (probability, kernel_size, iterations)")
+                        help="Apply dilation (probability, kernel size, iterations)")
 
-    parser.add_argument('--elastic-transform', default=[0.99, 43], nargs='+', type=float,
-                        help="Apply elastic transform (probability, kernel size)")
+    parser.add_argument('--elastic-transform', default=[0.99, 43, 0.75], nargs='+', type=float,
+                        help="Apply elastic transform (probability, kernel size, alpha)")
 
     parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
-                        help="Apply mixup augmentation (probability, opacity, pickups)")
+                        help="Apply mixup augmentation (probability, opacity, iterations)")
 
-    parser.add_argument('--perspective-transform', default=[0.99, 1.0], nargs='+', type=float,
-                        help="Apply perspective transformation (probability, factor)")
+    parser.add_argument('--perspective-transform', default=[0.99, 0.1], nargs='+', type=float,
+                        help="Apply perspective transformation (probability, alpha)")
 
     parser.add_argument('--salt-and-pepper', default=[0.99, 0.3], nargs='+', type=float,
-                        help="Apply Gaussian noise (probability, percentage)")
+                        help="Apply Gaussian noise (probability, alpha)")
 
     parser.add_argument('--gaussian-blur', default=[0.99, 9, 1], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
 
-    parser.add_argument('--shearing', default=[0.99, 30], nargs='+', type=float,
+    parser.add_argument('--shearing', default=[0.99, 45], nargs='+', type=float,
                         help="Apply shearing transformation (probability, angle)")
 
     parser.add_argument('--scaling', default=[0.99, 0.25], nargs='+', type=float,
-                        help="Apply scaling transformation (probability, scale_delta)")
+                        help="Apply scaling transformation (probability, scale delta)")
 
-    parser.add_argument('--rotation', default=[0.99, 1.5], nargs='+', type=float,
+    parser.add_argument('--rotation', default=[0.99, 4.5], nargs='+', type=float,
                         help="Apply rotation transformation (probability, angle)")
 
-    parser.add_argument('--translation', default=[0.99, 1.0, 1.0], nargs='+', type=float,
-                        help="Apply vertical and horizontal translation (probability, y_factor, x_factor)")
+    parser.add_argument('--translation', default=[0.99, 0.3, 0.3], nargs='+', type=float,
+                        help="Apply vertical and horizontal translation (probability, y-alpha, x-alpha)")
 
     parser.add_argument('--disable-augmentation', default=True, action='store_false',
                         help="Disable data augmentation completely")
