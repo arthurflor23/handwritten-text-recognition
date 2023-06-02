@@ -42,8 +42,8 @@ if __name__ == '__main__':
                         help="Apply dilation (probability, kernel_size, iterations)")
     parser.add_argument('--dilation', default=[0.99, 3, 1], nargs='+', type=float,
                         help="Apply dilation (probability, kernel_size, iterations)")
-    parser.add_argument('--elastic-transform', default=[0.99, 16, 8], nargs='+', type=float,
-                        help="Apply elastic transform (probability, grid size, factor)")
+    parser.add_argument('--elastic-transform', default=[0.99, 33], nargs='+', type=float,
+                        help="Apply elastic transform (probability, kernel size)")
     parser.add_argument('--perspective-transform', default=[0.99, 0.5], nargs='+', type=float,
                         help="Apply perspective transformation (probability, factor)")
     parser.add_argument('--mixup', default=[0.99, 0.2, 1], nargs='+', type=float,
@@ -52,7 +52,7 @@ if __name__ == '__main__':
                         help="Apply shearing transformation (probability, factor)")
     parser.add_argument('--scaling', default=[0.99, 0.5, 1.5], nargs='+', type=float,
                         help="Apply scaling transformation (probability, min_factor, max_factor)")
-    parser.add_argument('--rotation', default=[0.99, 1.5], nargs='+', type=float,
+    parser.add_argument('--rotation', default=[0.99, 5], nargs='+', type=float,
                         help="Apply rotation transformation (probability, angle)")
     parser.add_argument('--translation', default=[0.99, 0.5, 0.5], nargs='+', type=float,
                         help="Apply vertical and horizontal translation (probability, y_factor, x_factor)")
