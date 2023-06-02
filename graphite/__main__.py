@@ -45,7 +45,7 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
-    parser.add_argument('--erosion', default=[0.99, 9, 1], nargs='+', type=float,
+    parser.add_argument('--erosion', default=[0.99, 11, 1], nargs='+', type=float,
                         help="Apply dilation (probability, kernel size, iterations)")
 
     parser.add_argument('--dilation', default=[0.99, 3, 1], nargs='+', type=float,
@@ -57,22 +57,22 @@ if __name__ == '__main__':
     parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
                         help="Apply mixup augmentation (probability, opacity, iterations)")
 
-    parser.add_argument('--perspective-transform', default=[0.99, 0.1], nargs='+', type=float,
+    parser.add_argument('--perspective-transform', default=[0.99, 0.3], nargs='+', type=float,
                         help="Apply perspective transformation (probability, alpha)")
 
     parser.add_argument('--salt-and-pepper', default=[0.99, 0.3], nargs='+', type=float,
                         help="Apply Gaussian noise (probability, alpha)")
 
-    parser.add_argument('--gaussian-blur', default=[0.99, 9, 1], nargs='+', type=float,
+    parser.add_argument('--gaussian-blur', default=[0.99, 11, 1], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
 
-    parser.add_argument('--shearing', default=[0.99, 45], nargs='+', type=float,
+    parser.add_argument('--shearing', default=[0.99, 30], nargs='+', type=float,
                         help="Apply shearing transformation (probability, angle)")
 
-    parser.add_argument('--scaling', default=[0.99, 0.25], nargs='+', type=float,
+    parser.add_argument('--scaling', default=[0.99, 0.3], nargs='+', type=float,
                         help="Apply scaling transformation (probability, scale delta)")
 
-    parser.add_argument('--rotation', default=[0.99, 4.5], nargs='+', type=float,
+    parser.add_argument('--rotation', default=[0.99, 3.0], nargs='+', type=float,
                         help="Apply rotation transformation (probability, angle)")
 
     parser.add_argument('--translation', default=[0.99, 0.3, 0.3], nargs='+', type=float,

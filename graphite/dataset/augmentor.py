@@ -555,7 +555,7 @@ class Augmentor():
 
     def translation(self, image, y_alpha, x_alpha, radius=True):
         """
-        Apply X-axis translation to the image.
+        Apply Y and X-axis translation to the image.
 
         Parameters
         ----------
