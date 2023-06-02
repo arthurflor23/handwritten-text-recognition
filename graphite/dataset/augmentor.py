@@ -3,8 +3,6 @@ import json
 import numpy as np
 import concurrent.futures
 
-from PIL import Image
-
 
 class Augmentor():
     """
@@ -131,7 +129,7 @@ class Augmentor():
             Salt and Pepper Noise   {self.salt_and_pepper_params}
             Gaussian Blur           {self.gaussian_blur_params}
 
-            Reference Pixels        {self.reference_pixels},
+            Reference Pixels        {self.reference_pixels}
             Seed                    {self.seed}
         """
 
@@ -179,62 +177,49 @@ class Augmentor():
             Transformed image.
         """
 
-        # Baseline:                 0.3344
-        # Erosion:                  0.8849
-        # Dilation:                 0.7587
-        # Elastic:                  26.2814
-        # Perspective:              2.6164
-        # Mixup:                    1.8779
-        # Shearing:                 2.2788
-        # Scaling:                  4.4867
-        # Rotation:                 2.2125
-        # Translation:              2.2645
-        # Salt and Pepper Noise:    3.3826
-        # Gaussian Blur:            1.4530
+        # Erosion
+        if self.erosion_params and np.random.random() < self.erosion_params[0]:
+            image = self.erosion(image, *self.erosion_params[1:])
 
-        # # Erosion
-        # if self.erosion_params and np.random.random() < self.erosion_params[0]:
-        #     image = self.erosion(image, *self.erosion_params[1:])
+        # Dilation
+        if self.dilation_params and np.random.random() < self.dilation_params[0]:
+            image = self.dilation(image, *self.dilation_params[1:])
 
-        # # Dilation
-        # if self.dilation_params and np.random.random() < self.dilation_params[0]:
-        #     image = self.dilation(image, *self.dilation_params[1:])
+        # Elastic Transform
+        if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
+            image = self.elastic_transform(image, *self.elastic_transform_params[1:])
 
-        # # Elastic Transform
-        # if self.elastic_transform_params and np.random.random() < self.elastic_transform_params[0]:
-        #     image = self.elastic_transform(image, *self.elastic_transform_params[1:])
+        # Perspective Transform
+        if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
+            image = self.perspective_transform(image, *self.perspective_transform_params[1:])
 
-        # # Perspective Transform
-        # if self.perspective_transform_params and np.random.random() < self.perspective_transform_params[0]:
-        #     image = self.perspective_transform(image, *self.perspective_transform_params[1:])
+        # Mixup
+        if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
+            image = self.mixup(image, batch_images, *self.mixup_params[1:])
 
-        # # Mixup
-        # if batch_images and self.mixup_params and np.random.random() < self.mixup_params[0]:
-        #     image = self.mixup(image, batch_images, *self.mixup_params[1:])
+        # Shearing
+        if self.shearing_params and np.random.random() < self.shearing_params[0]:
+            image = self.shearing(image, *self.shearing_params[1:])
 
-        # # Shearing
-        # if self.shearing_params and np.random.random() < self.shearing_params[0]:
-        #     image = self.shearing(image, *self.shearing_params[1:])
+        # Scaling
+        if self.scaling_params and np.random.random() < self.scaling_params[0]:
+            image = self.scaling(image, *self.scaling_params[1:])
 
-        # # Scaling
-        # if self.scaling_params and np.random.random() < self.scaling_params[0]:
-        #     image = self.scaling(image, *self.scaling_params[1:])
+        # Rotation
+        if self.rotation_params and np.random.random() < self.rotation_params[0]:
+            image = self.rotation(image, *self.rotation_params[1:])
 
-        # # Rotation
-        # if self.rotation_params and np.random.random() < self.rotation_params[0]:
-        #     image = self.rotation(image, *self.rotation_params[1:])
-
-        # # Translation
-        # if self.translation_params and np.random.random() < self.translation_params[0]:
-        #     image = self.translation(image, *self.translation_params[1:])
+        # Translation
+        if self.translation_params and np.random.random() < self.translation_params[0]:
+            image = self.translation(image, *self.translation_params[1:])
 
         # Salt and Pepper Noise
         if self.salt_and_pepper_params and np.random.random() < self.salt_and_pepper_params[0]:
             image = self.salt_and_pepper(image, *self.salt_and_pepper_params[1:])
 
-        # # Gaussian Blur
-        # if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
-        #     image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
+        # Gaussian Blur
+        if self.gaussian_blur_params and np.random.random() < self.gaussian_blur_params[0]:
+            image = self.gaussian_blur(image, *self.gaussian_blur_params[1:])
 
         return image
 
@@ -259,11 +244,9 @@ class Augmentor():
             Eroded image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            kernel_size = np.random.randint(1, max(1, kernel_size) + 1)
-            iterations = np.random.randint(1, max(1, iterations) + 1)
+            kernel_size = np.random.randint(1, kernel_size + 1)
+            iterations = np.random.randint(1, iterations + 1)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
         image = cv2.erode(image, kernel, iterations=iterations)
@@ -291,18 +274,16 @@ class Augmentor():
             Dilated image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            kernel_size = np.random.randint(1, max(1, kernel_size) + 1)
-            iterations = np.random.randint(1, max(1, iterations) + 1)
+            kernel_size = np.random.randint(1, kernel_size + 1)
+            iterations = np.random.randint(1, iterations + 1)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
         image = cv2.dilate(image, kernel, iterations=iterations)
 
         return image
 
-    def elastic_transform(self, image, grid_size, factor, radius=True):
+    def elastic_transform(self, image, kernel_size, radius=True):
         """
         Apply elastic transform to the image.
 
@@ -310,12 +291,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be distorted.
-        grid_size : int
-            Grid size for elastic transform.
-        factor : float
-            Factor of elastic transform.
+        kernel_size : int
+            Kernel size for elastic transform.
         radius : bool, optional
-            Whether to use range radius for grid size and factor, by default True.
+            Whether to use range radius for kernel size and iterations, by default True.
 
         Returns
         -------
@@ -323,74 +302,26 @@ class Augmentor():
             Distorted image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            grid_size = np.random.randint(1, max(1, grid_size) + 1)
-            factor = np.random.randint(1, max(1, factor) + 1)
+            kernel_size = np.random.randint(1, kernel_size + 1)
 
-        height, width = image.shape[:2]
+        if kernel_size % 2 == 0:
+            kernel_size += 1
 
-        horizontal_tiles = grid_size
-        vertical_tiles = grid_size
+        dxy = cv2.randu(np.zeros(image.shape[:2]), -1.0, 1.0)
+        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * 0.5)
 
-        width_of_square = width // horizontal_tiles
-        height_of_square = height // vertical_tiles
+        org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
+        displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
 
-        width_of_last_square = width - width_of_square * (horizontal_tiles - 1)
-        height_of_last_square = height - height_of_square * (vertical_tiles - 1)
+        image = cv2.remap(src=image,
+                          map1=displaced_coords[..., 1],
+                          map2=displaced_coords[..., 0],
+                          interpolation=cv2.INTER_LINEAR,
+                          borderMode=cv2.BORDER_CONSTANT,
+                          borderValue=self.reference_pixels[1])
 
-        dimensions = []
-        for vertical_tile in range(vertical_tiles):
-            for horizontal_tile in range(horizontal_tiles):
-                x1 = horizontal_tile * width_of_square
-                y1 = vertical_tile * height_of_square
-
-                if vertical_tile == (vertical_tiles - 1) and horizontal_tile == (horizontal_tiles - 1):
-                    dimensions.append([x1, y1, x1 + width_of_last_square, y1 + height_of_last_square])
-
-                elif vertical_tile == (vertical_tiles - 1):
-                    dimensions.append([x1, y1, x1 + width_of_square, y1 + height_of_last_square])
-
-                elif horizontal_tile == (horizontal_tiles - 1):
-                    dimensions.append([x1, y1, x1 + width_of_last_square, y1 + height_of_square])
-
-                else:
-                    dimensions.append([x1, y1, x1 + width_of_square, y1 + height_of_square])
-
-        last_column = [(horizontal_tiles - 1) + horizontal_tiles * i for i in range(vertical_tiles)]
-        last_row = range((horizontal_tiles * vertical_tiles) - horizontal_tiles, horizontal_tiles * vertical_tiles)
-
-        polygons = [[x1, y1, x1, y2, x2, y2, x2, y1] for x1, y1, x2, y2 in dimensions]
-
-        polygon_indices = [[i, i + 1, i + horizontal_tiles, i + 1 + horizontal_tiles]
-                           for i in range((vertical_tiles * horizontal_tiles) - 1)
-                           if i not in last_row and i not in last_column]
-
-        for a, b, c, d in polygon_indices:
-            dx = np.random.randint(-factor, factor + 1)
-            dy = np.random.randint(-factor, factor + 1)
-
-            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[a]
-            polygons[a] = [x1, y1, x2, y2, x3 + dx, y3 + dy, x4, y4]
-
-            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[b]
-            polygons[b] = [x1, y1, x2 + dx, y2 + dy, x3, y3, x4, y4]
-
-            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[c]
-            polygons[c] = [x1, y1, x2, y2, x3, y3, x4 + dx, y4 + dy]
-
-            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[d]
-            polygons[d] = [x1 + dx, y1 + dy, x2, y2, x3, y3, x4, y4]
-
-        generated_mesh = [[dimensions[i], polygons[i]] for i in range(len(dimensions))]
-
-        image = Image.fromarray(image).transform(image.shape[::-1], Image.MESH,
-                                                 data=generated_mesh,
-                                                 resample=Image.BICUBIC,
-                                                 fillcolor=self.reference_pixels[1])
-
-        return np.array(image)
+        return image
 
     def perspective_transform(self, image, factor, radius=True):
         """
@@ -411,10 +342,8 @@ class Augmentor():
             Transformed image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            factor = np.random.uniform(0.0, max(0.0, factor))
+            factor = np.random.uniform(0.0, factor)
 
         height, width = image.shape[:2]
         max_offset = max(1, int(min(height, width) * factor))
@@ -434,7 +363,10 @@ class Augmentor():
         ], dtype=np.float32)
 
         M = cv2.getPerspectiveTransform(src_points, dst_points)
-        image = cv2.warpPerspective(image, M, image.shape[::-1], borderValue=self.reference_pixels[1])
+
+        image = cv2.warpPerspective(image, M, image.shape[::-1],
+                                    borderMode=cv2.BORDER_CONSTANT,
+                                    borderValue=self.reference_pixels[1])
 
         return image
 
@@ -461,22 +393,17 @@ class Augmentor():
             Mixed image.
         """
 
-        image = np.copy(image)
+        batch_length = len(batch_images)
+        pickups = min(pickups, batch_length)
 
-        num_imgs = len(batch_images)
-        pickups = min(pickups, num_imgs)
-
-        pickup_idxs = np.random.choice(num_imgs, size=pickups, replace=False)
+        pickup_idxs = np.uint8(np.random.uniform(0, batch_length, pickups))
         opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
 
         for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
             pickup_img = batch_images[pickup_idx]
 
             if pickup_img.shape[:2] != image.shape[:2]:
-                interpolation = cv2.INTER_CUBIC if pickup_img.shape[0] > image.shape[0] \
-                    or pickup_img.shape[1] > image.shape[1] else cv2.INTER_AREA
-
-                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=interpolation)
+                pickup_img = cv2.resize(pickup_img, image.shape[:2][::-1], interpolation=cv2.INTER_LINEAR)
 
             image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
 
@@ -501,8 +428,6 @@ class Augmentor():
             Sheared image.
         """
 
-        image = np.copy(image)
-
         if radius:
             factor = np.random.uniform(-factor, factor)
 
@@ -513,7 +438,9 @@ class Augmentor():
                                             cv2.BORDER_CONSTANT, value=self.reference_pixels[1])
 
         M = np.float32([[1, factor, 0], [0, 1, 0]])
+
         image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height),
+                               borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.reference_pixels[1])
 
         return image
@@ -537,16 +464,13 @@ class Augmentor():
             Scaled image.
         """
 
-        image = np.copy(image)
-
         factor = np.random.uniform(min_factor, max_factor)
         height, width = image.shape[:2]
 
         new_height = int(height * factor)
         new_width = int(width * factor)
 
-        interpolation = cv2.INTER_CUBIC if new_height > height or new_width > width else cv2.INTER_AREA
-        image = cv2.resize(image, (new_width, new_height), interpolation=interpolation)
+        image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
         return image
 
@@ -569,8 +493,6 @@ class Augmentor():
             Rotated image.
         """
 
-        image = np.copy(image)
-
         if radius:
             angle = np.random.uniform(-angle, angle)
 
@@ -581,13 +503,16 @@ class Augmentor():
 
         cos_angle = np.abs(M[0, 0])
         sin_angle = np.abs(M[0, 1])
+
         new_width = int((height * sin_angle) + (width * cos_angle))
         new_height = int((height * cos_angle) + (width * sin_angle))
 
         M[0, 2] += (new_width / 2) - center[0]
         M[1, 2] += (new_height / 2) - center[1]
 
-        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=self.reference_pixels[1])
+        image = cv2.warpAffine(image, M, (new_width, new_height),
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=self.reference_pixels[1])
 
         return image
 
@@ -612,23 +537,24 @@ class Augmentor():
             Translated image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            y_factor = np.random.uniform(0.0, max(0.0, y_factor))
-            x_factor = np.random.uniform(0.0, max(0.0, x_factor))
+            y_factor = np.random.uniform(0.0, y_factor)
+            x_factor = np.random.uniform(0.0, x_factor)
 
         height, width = image.shape[:2]
+        max_offset = min(height, width)
 
-        abs_y_translation = int(min(height, width) * y_factor)
-        abs_x_translation = int(min(height, width) * x_factor)
+        abs_y_translation = int(max_offset * y_factor)
+        abs_x_translation = int(max_offset * x_factor)
 
         M = np.float32([[1, 0, abs_x_translation], [0, 1, abs_y_translation]])
 
         new_height = height + abs(abs_y_translation)
         new_width = width + abs(abs_x_translation)
 
-        image = cv2.warpAffine(image, M, (new_width, new_height), borderValue=self.reference_pixels[1])
+        image = cv2.warpAffine(image, M, (new_width, new_height),
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=self.reference_pixels[1])
 
         return image
 
@@ -651,18 +577,14 @@ class Augmentor():
             Noised image.
         """
 
-        image = np.copy(image)
-
         if radius:
-            noise_percentage = np.random.uniform(0.0, max(0.0, noise_percentage))
+            noise_percentage = np.random.uniform(0.0, noise_percentage)
 
+        noise_mask = cv2.randu(np.zeros(image.shape[:2]), 0, 1)
         noise_percentage *= 0.25
 
-        noise_mask = np.empty(image.shape[::-1])
-        noise_mask = cv2.randu(noise_mask, 0, 1)
-
-        np.putmask(image, noise_mask < noise_percentage, self.reference_pixels[0])
-        np.putmask(image, noise_mask > (1 - noise_percentage), self.reference_pixels[2])
+        image = np.where(noise_mask < noise_percentage, self.reference_pixels[0], image)
+        image = np.where(noise_mask > (1 - noise_percentage), self.reference_pixels[2], image)
 
         return image
 
@@ -688,8 +610,11 @@ class Augmentor():
         """
 
         if radius:
-            kernel_size = np.random.choice(range(1, max(1, kernel_size) + 1, 2))
-            iterations = np.random.randint(1, max(1, iterations) + 1)
+            kernel_size = np.random.randint(1, kernel_size + 1)
+            iterations = np.random.randint(1, iterations + 1)
+
+        if kernel_size % 2 == 0:
+            kernel_size += 1
 
         for _ in range(iterations):
             image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
