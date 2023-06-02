@@ -248,7 +248,7 @@ class Dataset():
                 max_axis = np.max(axis[..., 0]), np.max(axis[..., 1])
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self._normalize_image, x, max_axis) for x in x_data]
+                    futures = [executor.submit(self._standardize_image, x, max_axis) for x in x_data]
                     x_data = [future.result() for future in futures]
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
@@ -493,7 +493,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._normalize_label(label)
+        label = self._standardize_label(label)
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -552,9 +552,9 @@ class Dataset():
 
         return image
 
-    def _normalize_label(self, label):
+    def _standardize_label(self, label):
         """
-        Normalize a label by formatting, and standardizing the string of text.
+        Standardize a label by formatting the string of text.
 
         Parameters
         ----------
@@ -632,9 +632,9 @@ class Dataset():
 
         return label
 
-    def _normalize_image(self, image, max_axis=None):
+    def _standardize_image(self, image, max_axis=None):
         """
-        Normalize the given image.
+        Standardize the given image for optical model.
 
         Parameters
         ----------
