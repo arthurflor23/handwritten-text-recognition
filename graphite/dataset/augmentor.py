@@ -233,7 +233,7 @@ class Augmentor():
 
         return image
 
-    def elastic_transform(self, image, kernel_size, radius=True):
+    def elastic_transform(self, image, kernel_size, alpha, radius=True):
         """
         Apply elastic transform to the image.
 
@@ -243,6 +243,8 @@ class Augmentor():
             Input image to be distorted.
         kernel_size : int
             Kernel size for elastic transform.
+        alpha : float
+            Factor of elastic transform.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
@@ -254,12 +256,13 @@ class Augmentor():
 
         if radius:
             kernel_size = np.random.randint(1, kernel_size + 1)
+            alpha = np.random.uniform(0.0, alpha)
 
         if kernel_size % 2 == 0:
             kernel_size += 1
 
         dxy = self._cv2_randu(image.shape[:2], -1.0, 1.0)
-        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * 0.75)
+        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * alpha)
 
         org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
         displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
@@ -273,7 +276,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, batch_images, opacity, pickups, radius=True):
+    def mixup(self, image, batch_images, op, iterations, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -285,10 +288,10 @@ class Augmentor():
             List of additional images for mixing.
         opacity : float
             Opacity of the mixup effect.
-        pickups : int
+        iterations : int
             Number of images for the mixup operation.
         radius : bool, optional
-            Whether to use range radius for opacity and pickups, by default True.
+            Whether to use range radius for opacity and iterations, by default True.
 
         Returns
         -------
@@ -298,23 +301,23 @@ class Augmentor():
 
         batch_length = len(batch_images)
 
-        pickups = min(pickups, batch_length)
-        pickup_idxs = np.uint8(np.random.uniform(0, batch_length, pickups))
+        iterations = min(iterations, batch_length)
+        indices = np.uint8(np.random.uniform(0, batch_length, iterations))
 
         height, width = image.shape[:2]
-        opacity_vals = np.random.uniform(0.0, opacity, pickups) if radius else np.full(pickups, opacity)
+        opacities = np.random.uniform(0.0, op, iterations) if radius else np.full(iterations, op)
 
-        for pickup_idx, pickup_opac in zip(pickup_idxs, opacity_vals):
-            pickup_img = batch_images[pickup_idx]
+        for i, op in zip(indices, opacities):
+            img = batch_images[i]
 
-            if pickup_img.shape[:2] != image.shape[:2]:
-                pickup_img = cv2.resize(pickup_img, (width, height), interpolation=cv2.INTER_LINEAR)
+            if img.shape[:2] != image.shape[:2]:
+                img = cv2.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
 
-            image = cv2.addWeighted(image, 1 - pickup_opac, pickup_img, pickup_opac, 0)
+            image = cv2.addWeighted(image, 1 - op, img, op, 0)
 
         return image
 
-    def perspective_transform(self, image, factor, radius=True):
+    def perspective_transform(self, image, alpha, radius=True):
         """
         Apply perspective transform to the image.
 
@@ -322,10 +325,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be transformed.
-        factor : float
+        alpha : float
             Factor of perspective transform.
         radius : bool, optional
-            Whether to use range radius for type and factor, by default True.
+            Whether to use range radius for type and alpha, by default True.
 
         Returns
         -------
@@ -334,12 +337,13 @@ class Augmentor():
         """
 
         if radius:
-            factor = np.random.uniform(0.0, factor)
+            alpha = np.random.uniform(0.0, alpha)
 
         height, width = image.shape[:2]
 
         max_offset = min(height, width)
-        max_offset = min(127, int(max_offset * factor * 0.25) + 1)
+        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
+        max_offset = int(np.ceil(max_offset * alpha * max_offset_factor))
 
         src_points = np.array([
             (0, 0),
@@ -370,7 +374,7 @@ class Augmentor():
 
         return image
 
-    def salt_and_pepper(self, image, noise_percentage, radius=True):
+    def salt_and_pepper(self, image, alpha, radius=True):
         """
         Apply Gaussian noise to the image.
 
@@ -378,7 +382,7 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be noised.
-        noise_percentage : float
+        alpha : float
             Percentage of pixels to add noise to (between 0 and 1).
         radius : bool, optional
             Whether to use range radius for noise_percentage, by default True.
@@ -390,13 +394,13 @@ class Augmentor():
         """
 
         if radius:
-            noise_percentage = np.random.uniform(0.0, noise_percentage)
+            alpha = np.random.uniform(0.0, alpha)
 
         noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
-        noise_percentage *= 0.25
+        alpha *= 0.25
 
-        image = np.where(noise_mask < noise_percentage, self.reference_pixels[0], image)
-        image = np.where(noise_mask > (1 - noise_percentage), self.reference_pixels[2], image)
+        image = np.where(noise_mask < alpha, self.reference_pixels[0], image)
+        image = np.where(noise_mask > (1 - alpha), self.reference_pixels[2], image)
 
         return image
 
@@ -444,7 +448,7 @@ class Augmentor():
         angle : float
             Shearing angle in degrees.
         radius : bool, optional
-            Whether to use range radius for factor, by default True.
+            Whether to use range radius for angle, by default True.
 
         Returns
         -------
@@ -456,9 +460,9 @@ class Augmentor():
             angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
-        height_factor = (1 - (height / (height + width))) ** 4
 
-        shear_tan = np.tan(np.radians(angle * height_factor))
+        max_offset_factor = (1 - (height / (height + width))) ** 4
+        shear_tan = np.tan(np.radians(angle * max_offset_factor))
 
         if angle > 0:
             new_width = int(width + height * shear_tan)
@@ -474,7 +478,7 @@ class Augmentor():
 
         return image
 
-    def scaling(self, image, scale_delta, radius=True):
+    def scaling(self, image, delta, radius=True):
         """
         Apply scaling to the image.
 
@@ -482,10 +486,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be scaled.
-        scale_delta : float
+        delta : float
             Scaling delta.
         radius : bool, optional
-            Whether to use range radius for factor, by default True.
+            Whether to use range radius for delta, by default True.
 
         Returns
         -------
@@ -494,12 +498,12 @@ class Augmentor():
         """
 
         if radius:
-            scale_delta = np.random.uniform(-scale_delta, scale_delta)
+            delta = np.random.uniform(-delta, delta)
 
         height, width = image.shape[:2]
 
-        new_height = int(height * (1 - scale_delta))
-        new_width = int(width * (1 - scale_delta))
+        new_height = int(height * (1 - delta))
+        new_width = int(width * (1 - delta))
 
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
@@ -516,7 +520,7 @@ class Augmentor():
         angle : float
             Rotation angle in degrees.
         radius : bool, optional
-            Whether to use range radius for factor, by default True.
+            Whether to use range radius for angle, by default True.
 
         Returns
         -------
@@ -528,10 +532,11 @@ class Augmentor():
             angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
-        height_factor = (1 - (height / (height + width)))
+
+        max_offset_factor = (1 - (height / (height + width))) ** 2
 
         center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center, angle * height_factor, 1.0)
+        M = cv2.getRotationMatrix2D(center, angle * max_offset_factor, 1.0)
 
         cos_angle = np.abs(M[0, 0])
         sin_angle = np.abs(M[0, 1])
@@ -548,7 +553,7 @@ class Augmentor():
 
         return image
 
-    def translation(self, image, y_factor, x_factor, radius=True):
+    def translation(self, image, y_alpha, x_alpha, radius=True):
         """
         Apply X-axis translation to the image.
 
@@ -556,12 +561,12 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be translated.
-        y_factor : float
+        y_alpha : float
             Y-axis translation factor.
-        x_factor : float
+        x_alpha : float
             X-axis translation factor.
         radius : bool, optional
-            Whether to use range radius for factor, by default True.
+            Whether to use range radius for alphas, by default True.
 
         Returns
         -------
@@ -570,14 +575,16 @@ class Augmentor():
         """
 
         if radius:
-            y_factor = np.random.uniform(0.0, y_factor)
-            x_factor = np.random.uniform(0.0, x_factor)
+            y_alpha = np.random.uniform(0.0, y_alpha)
+            x_alpha = np.random.uniform(0.0, x_alpha)
 
         height, width = image.shape[:2]
-        max_offset = min(height, width)
 
-        y_translation = min(127, int(max_offset * y_factor * 0.25))
-        x_translation = min(127, int(max_offset * x_factor * 0.25))
+        max_offset = min(height, width)
+        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
+
+        y_translation = int(np.ceil(max_offset * y_alpha * max_offset_factor))
+        x_translation = int(np.ceil(max_offset * x_alpha * max_offset_factor))
 
         M = np.float32([[1, 0, x_translation], [0, 1, y_translation]])
 
