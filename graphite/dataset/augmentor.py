@@ -259,7 +259,7 @@ class Augmentor():
             kernel_size += 1
 
         dxy = self._cv2_randu(image.shape[:2], -1.0, 1.0)
-        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * 0.5)
+        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * 0.75)
 
         org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
         displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
@@ -269,7 +269,7 @@ class Augmentor():
                           map2=displaced_coords[..., 0],
                           interpolation=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=self.reference_pixels[1])
+                          borderValue=self.reference_pixels[0])
 
         return image
 
@@ -337,7 +337,9 @@ class Augmentor():
             factor = np.random.uniform(0.0, factor)
 
         height, width = image.shape[:2]
-        max_offset = max(1, int(min(height, width) * factor))
+
+        max_offset = min(height, width)
+        max_offset = min(127, int(max_offset * factor * 0.25) + 1)
 
         src_points = np.array([
             (0, 0),
@@ -355,9 +357,16 @@ class Augmentor():
 
         M = cv2.getPerspectiveTransform(src_points, dst_points)
 
-        image = cv2.warpPerspective(image, M, image.shape[::-1],
+        image = cv2.warpPerspective(image, M, (width, height),
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=self.reference_pixels[1])
+                                    borderValue=self.reference_pixels[0])
+
+        _, thresh = cv2.threshold(image, self.reference_pixels[0] + 1, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if contours:
+            x, y, w, h = cv2.boundingRect(max(contours, key=cv2.contourArea))
+            image = image[y:y+h, x:x+w]
 
         return image
 
@@ -424,7 +433,7 @@ class Augmentor():
 
         return image
 
-    def shearing(self, image, factor, radius=True):
+    def shearing(self, image, angle, radius=True):
         """
         Apply shearing to the image.
 
@@ -432,8 +441,8 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be sheared.
-        factor : float
-            Shearing factor.
+        angle : float
+            Shearing angle in degrees.
         radius : bool, optional
             Whether to use range radius for factor, by default True.
 
@@ -444,26 +453,27 @@ class Augmentor():
         """
 
         if radius:
-            factor = np.random.uniform(-factor, factor)
+            angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
+        shear_angle = np.radians(angle)
+        shear_tan = np.tan(shear_angle)
 
-        extra_width = int(abs(factor) * height)
-        extended_image = cv2.copyMakeBorder(image, 0, 0, extra_width, extra_width,
-                                            borderType=cv2.BORDER_CONSTANT,
-                                            value=self.reference_pixels[1])
+        if angle > 0:
+            new_width = int(width + height * shear_tan)
+            M = np.float32([[1, shear_tan, 0], [0, 1, 0]])
 
-        M = np.float32([[1, factor, 0], [0, 1, 0]])
+        else:
+            new_width = int(width - height * shear_tan)
+            M = np.float32([[1, shear_tan, -height * shear_tan], [0, 1, 0]])
 
-        image = cv2.warpAffine(extended_image, M, (width + 2 * extra_width, height),
+        image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[1])
-
-        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
+                               borderValue=self.reference_pixels[0])
 
         return image
 
-    def scaling(self, image, factor, radius=True):
+    def scaling(self, image, scale_delta, radius=True):
         """
         Apply scaling to the image.
 
@@ -471,8 +481,8 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be scaled.
-        factor : float
-            Scaling factor.
+        scale_delta : float
+            Scaling delta.
         radius : bool, optional
             Whether to use range radius for factor, by default True.
 
@@ -483,12 +493,12 @@ class Augmentor():
         """
 
         if radius:
-            factor = np.random.uniform(-factor, factor)
+            scale_delta = np.random.uniform(-scale_delta, scale_delta)
 
         height, width = image.shape[:2]
 
-        new_height = int(height * (1 - factor))
-        new_width = int(width * (1 - factor))
+        new_height = int(height * (1 - scale_delta))
+        new_width = int(width * (1 - scale_delta))
 
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
@@ -532,7 +542,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[1])
+                               borderValue=self.reference_pixels[0])
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
@@ -566,17 +576,17 @@ class Augmentor():
         height, width = image.shape[:2]
         max_offset = min(height, width)
 
-        abs_y_translation = int(max_offset * y_factor)
-        abs_x_translation = int(max_offset * x_factor)
+        y_translation = min(127, int(max_offset * y_factor * 0.25))
+        x_translation = min(127, int(max_offset * x_factor * 0.25))
 
-        M = np.float32([[1, 0, abs_x_translation], [0, 1, abs_y_translation]])
+        M = np.float32([[1, 0, x_translation], [0, 1, y_translation]])
 
-        new_height = height + abs(abs_y_translation)
-        new_width = width + abs(abs_x_translation)
+        new_height = height + abs(y_translation)
+        new_width = width + abs(x_translation)
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[1])
+                               borderValue=self.reference_pixels[0])
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
