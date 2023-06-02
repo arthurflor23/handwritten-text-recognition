@@ -456,8 +456,9 @@ class Augmentor():
             angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
-        shear_angle = np.radians(angle)
-        shear_tan = np.tan(shear_angle)
+        height_factor = (1 - (height / (height + width))) ** 4
+
+        shear_tan = np.tan(np.radians(angle * height_factor))
 
         if angle > 0:
             new_width = int(width + height * shear_tan)
@@ -527,9 +528,10 @@ class Augmentor():
             angle = np.random.uniform(-angle, angle)
 
         height, width = image.shape[:2]
+        height_factor = (1 - (height / (height + width)))
 
         center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        M = cv2.getRotationMatrix2D(center, angle * height_factor, 1.0)
 
         cos_angle = np.abs(M[0, 0])
         sin_angle = np.abs(M[0, 1])
@@ -543,8 +545,6 @@ class Augmentor():
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.reference_pixels[0])
-
-        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
         return image
 

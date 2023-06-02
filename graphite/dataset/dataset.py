@@ -656,7 +656,7 @@ class Dataset():
 
             image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
                                        borderType=cv2.BORDER_CONSTANT,
-                                       value=self.reference_pixels[1])
+                                       value=self.reference_pixels[0])
 
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
         image = cv2.flip(image, 1)
