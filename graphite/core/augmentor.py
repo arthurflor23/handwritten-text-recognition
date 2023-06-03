@@ -1,6 +1,7 @@
 import cv2
 import json
 import numpy as np
+import concurrent.futures
 
 
 class Augmentor():
@@ -136,7 +137,28 @@ class Augmentor():
 
         return info
 
-    def augmentation(self, image, batch_images):
+    def batch_augmentation(self, images):
+        """
+        Apply augmentation transformations to a batch of images.
+
+        Parameters
+        ----------
+        images : list
+            List of images to be transformed.
+
+        Returns
+        -------
+        list
+            Transformed images.
+        """
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.augmentation, x, images) for x in images]
+            images = [future.result() for future in futures]
+
+        return images
+
+    def augmentation(self, image, batch_images=None):
         """
         Apply transformations to an image.
 
@@ -145,7 +167,7 @@ class Augmentor():
         image : ndarray
             Input image to be transformed.
         batch_images : list
-            List of images used for mixup transformation.
+            List of images used for mixup transformation, default is None.
 
         Returns
         -------
@@ -276,7 +298,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, batch_images, op, iterations, radius=True):
+    def mixup(self, image, batch_images, opacity, iterations, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -299,21 +321,20 @@ class Augmentor():
             Mixed image.
         """
 
-        batch_length = len(batch_images)
+        if len(batch_images) > 0:
+            iterations = min(iterations, len(batch_images))
+            indices = np.uint8(np.random.uniform(0, len(batch_images), iterations))
 
-        iterations = min(iterations, batch_length)
-        indices = np.uint8(np.random.uniform(0, batch_length, iterations))
+            height, width = image.shape[:2]
+            opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
 
-        height, width = image.shape[:2]
-        opacities = np.random.uniform(0.0, op, iterations) if radius else np.full(iterations, op)
+            for i, opc in zip(indices, opacities):
+                img = batch_images[i]
 
-        for i, op in zip(indices, opacities):
-            img = batch_images[i]
+                if img.shape[:2] != image.shape[:2]:
+                    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
 
-            if img.shape[:2] != image.shape[:2]:
-                img = cv2.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
-
-            image = cv2.addWeighted(image, 1 - op, img, op, 0)
+                image = cv2.addWeighted(image, 1 - opc, img, opc, 0)
 
         return image
 

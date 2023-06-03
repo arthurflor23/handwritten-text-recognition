@@ -1,6 +1,6 @@
 import cv2
 
-from dataset import Augmentor
+from core import Augmentor
 from dataset import Dataset
 
 
