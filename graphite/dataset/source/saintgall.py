@@ -78,7 +78,7 @@ class Source():
 
     def _filter_data(self, data, partition_data):
         """
-        Filter the given data based on the partition data using multiprocessing.
+        Filter the given data based on the partition data.
 
         Parameters
         ----------
