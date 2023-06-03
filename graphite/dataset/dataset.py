@@ -5,9 +5,9 @@ import json
 import html
 import nltk
 import importlib
+import concurrent
 import numpy as np
 import multiprocessing
-import concurrent.futures
 
 
 class Dataset():
@@ -274,26 +274,26 @@ class Dataset():
 
         return images
 
-    def normalize_labels(self, labels):
+    def normalize_texts(self, texts):
         """
-        Normalize a list of labels by formatting string of text.
+        Normalize a list of texts by string formatting.
 
         Parameters
         ----------
-        labels : str
-            The labels to be normalized.
+        texts : str
+            The texts to be normalized.
 
         Returns
         -------
         str
-            The normalized label.
+            The normalized texts.
         """
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self._normalize_label, x) for x in labels]
-            labels = [future.result() for future in futures]
+            futures = [executor.submit(self._normalize_label, x) for x in texts]
+            texts = [future.result() for future in futures]
 
-        return labels
+        return texts
 
     def _create_partition_dictionary(self, partition_data):
         """
@@ -535,7 +535,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._normalize_label(label)
+        label = self._normalize_text(label)
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -627,25 +627,25 @@ class Dataset():
 
         return image
 
-    def _normalize_label(self, label):
+    def _normalize_text(self, text):
         """
-        Normalize a label by formatting string of text.
+        Normalize a text by string formatting.
 
         Parameters
         ----------
-        label : str
-            The label to be normalized.
+        text : str
+            The text to be normalized.
 
         Returns
         -------
         str
-            The normalized label.
+            The normalized text.
         """
 
-        if isinstance(label, str):
-            label = label.split('\n')
+        if isinstance(text, str):
+            text = text.split('\n')
 
-        label = [x.strip() for x in label if x.strip()]
+        text = [x.strip() for x in text if x.strip()]
 
         substitutions = {
             r'[ ]': ' ',
@@ -688,24 +688,24 @@ class Dataset():
         tokenizer = nltk.tokenize.TreebankWordTokenizer()
         detokenizer = nltk.tokenize.TreebankWordDetokenizer()
 
-        for i in range(len(label)):
-            label[i] = html.unescape(label[i])
+        for i in range(len(text)):
+            text[i] = html.unescape(text[i])
 
             for pattern, replacement in regexes.items():
-                label[i] = pattern.sub(replacement, label[i])
+                text[i] = pattern.sub(replacement, text[i])
 
-            label[i] = re.sub(r'\s+([!?,.;:])', r'\1', label[i])
-            label[i] = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', label[i])
-            label[i] = re.sub(r'\s+(?=[\'"])', '', label[i])
-            label[i] = re.sub(r'(?<=[\'"]) +', '', label[i])
+            text[i] = re.sub(r'\s+([!?,.;:])', r'\1', text[i])
+            text[i] = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', text[i])
+            text[i] = re.sub(r'\s+(?=[\'"])', '', text[i])
+            text[i] = re.sub(r'(?<=[\'"]) +', '', text[i])
 
-            tokens = tokenizer.tokenize(label[i])
-            label[i] = detokenizer.detokenize(tokens)
+            tokens = tokenizer.tokenize(text[i])
+            text[i] = detokenizer.detokenize(tokens)
 
-            label[i] = re.sub(r'\s+', ' ', label[i].replace('"', ' " ')).strip()
-            label[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', label[i]).strip()
+            text[i] = re.sub(r'\s+', ' ', text[i].replace('"', ' " ')).strip()
+            text[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', text[i]).strip()
 
-        return label
+        return text
 
 
 class Tokenizer():

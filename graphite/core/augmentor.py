@@ -1,7 +1,7 @@
 import cv2
 import json
+import concurrent
 import numpy as np
-import concurrent.futures
 
 
 class Augmentor():
