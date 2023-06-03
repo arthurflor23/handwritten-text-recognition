@@ -239,9 +239,7 @@ class Dataset():
                     y_data.append(dataset['data'][i][label_index])
 
             if augmentor:
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
-                    x_data = [future.result() for future in futures]
+                x_data = augmentor.batch_augmentation(x_data)
 
             if normalize:
                 axis = np.array([x.shape for x in x_data])
