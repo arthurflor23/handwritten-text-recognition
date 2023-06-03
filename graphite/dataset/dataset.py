@@ -243,14 +243,57 @@ class Dataset():
 
             if normalize:
                 axis = np.array([x.shape for x in x_data])
-                max_axis = np.max(axis[..., 0]), np.max(axis[..., 1])
+                max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
 
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self._standardize_image, x, max_axis) for x in x_data]
-                    x_data = [future.result() for future in futures]
+                x_data = self.normalize_images(x_data, max_axis=max_axis)
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
             yield x_data, y_data
+
+    def normalize_images(self, images, max_axis=None):
+        """
+        Normalize a list of images for optical model input.
+
+        Parameters
+        ----------
+        images : list
+            The input images to normalize.
+        max_axis : tuple or None, optional
+            The maximum axis size to pad the image.
+            The format of max_axis should be (height, width).
+
+        Returns
+        -------
+        list
+            The normalized images.
+        """
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self._normalize_image, x, max_axis) for x in images]
+            images = [future.result() for future in futures]
+
+        return images
+
+    def normalize_labels(self, labels):
+        """
+        Normalize a list of labels by formatting string of text.
+
+        Parameters
+        ----------
+        labels : str
+            The labels to be normalized.
+
+        Returns
+        -------
+        str
+            The normalized label.
+        """
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self._normalize_label, x) for x in labels]
+            labels = [future.result() for future in futures]
+
+        return labels
 
     def _create_partition_dictionary(self, partition_data):
         """
@@ -446,8 +489,9 @@ class Dataset():
             if not data[i]:
                 continue
 
+            np.random.shuffle(data[i])
+
             with multiprocessing.get_context('fork').Pool() as pool:
-                np.random.shuffle(data[i])
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
             reference_pixels.extend([sublist[-1] for sublist in data[i]])
@@ -491,7 +535,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._standardize_label(label)
+        label = self._normalize_label(label)
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -550,9 +594,42 @@ class Dataset():
 
         return image
 
-    def _standardize_label(self, label):
+    def _normalize_image(self, image, max_axis=None):
         """
-        Standardize a label by formatting the string of text.
+        Normalize the given image for optical model input.
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            The input image to normalize.
+        max_axis : tuple or None, optional
+            The maximum axis size to pad the image.
+            The format of max_axis should be (height, width).
+
+        Returns
+        -------
+        numpy.ndarray
+            The normalized image.
+        """
+
+        if max_axis is not None:
+            bottom_pad = max(0, max_axis[0] - image.shape[0])
+            right_pad = max(0, max_axis[1] - image.shape[1])
+
+            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
+                                       borderType=cv2.BORDER_CONSTANT,
+                                       value=self.reference_pixels[0])
+
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        image = cv2.flip(image, 1)
+
+        image = np.divide(image, 255, dtype=np.float32)
+
+        return image
+
+    def _normalize_label(self, label):
+        """
+        Normalize a label by formatting string of text.
 
         Parameters
         ----------
@@ -630,39 +707,6 @@ class Dataset():
 
         return label
 
-    def _standardize_image(self, image, max_axis=None):
-        """
-        Standardize the given image for optical model.
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            The input image to normalize.
-        max_axis : tuple or None, optional
-            The maximum axis size to pad the image.
-            The format of max_axis should be (height, width).
-
-        Returns
-        -------
-        numpy.ndarray
-            The normalized image.
-        """
-
-        if max_axis is not None:
-            bottom_pad = max(0, max_axis[0] - image.shape[0])
-            right_pad = max(0, max_axis[1] - image.shape[1])
-
-            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=self.reference_pixels[0])
-
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        image = cv2.flip(image, 1)
-
-        image = np.divide(image, 255, dtype=np.float32)
-
-        return image
-
 
 class Tokenizer():
     """
@@ -709,8 +753,9 @@ class Tokenizer():
             Encoded data with token indices appended to each element.
         """
 
-        with multiprocessing.get_context('fork').Pool() as pool:
-            encoded_labels = pool.map(self.encode, [x[-1] for x in data])
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self.encode, x[-1]) for x in data]
+            encoded_labels = [future.result() for future in futures]
 
             for i in range(len(data)):
                 data[i].append(encoded_labels[i])
@@ -769,8 +814,9 @@ class Tokenizer():
             Decoded data with labels appended to each element.
         """
 
-        with multiprocessing.get_context('fork').Pool() as pool:
-            labels = pool.map(self.decode, [x[-1] for x in data])
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self.decode, x[-1]) for x in data]
+            labels = [future.result() for future in futures]
 
             for i in range(len(data)):
                 data[i].append(labels[i])
