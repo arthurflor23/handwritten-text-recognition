@@ -1,6 +1,5 @@
 import cv2
 import json
-import concurrent
 import numpy as np
 
 
@@ -136,27 +135,6 @@ class Augmentor():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
-
-    def batch_augmentation(self, images):
-        """
-        Apply augmentation transformations to a batch of images.
-
-        Parameters
-        ----------
-        images : list
-            List of images to be transformed.
-
-        Returns
-        -------
-        list
-            Transformed images.
-        """
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.augmentation, x, images) for x in images]
-            images = [future.result() for future in futures]
-
-        return images
 
     def augmentation(self, image, batch_images=None):
         """
