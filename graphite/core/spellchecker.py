@@ -1,5 +1,6 @@
 import os
 import re
+import copy
 import time
 import dotenv
 import openai
@@ -47,8 +48,8 @@ class SpellChecker():
             futures = [executor.submit(self._request_api, instruction, "\n".join(x)) for x in batches]
             enhanced_batches = [future.result() for future in futures]
 
+        enhanced_texts = copy.deepcopy(texts)
         pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
-        enhanced_texts = texts.copy()
 
         for enhanced_batch in enhanced_batches:
             matches = pattern.findall(enhanced_batch)
@@ -57,18 +58,15 @@ class SpellChecker():
                 tag = match[0].split(".")
                 enhanced_texts[int(tag[0])][int(tag[1])] = match[1].replace("\n", "").strip()
 
-        # remove this
-        for i in range(len(enhanced_texts)):
-            print(texts[i])
-            print(enhanced_texts[i])
-            print()
-
         return enhanced_texts
 
     def _request_api(self, instruction=None, prompt=None):
 
         if instruction is None:
-            instruction = """Fix all spelling mistakes (including accents and contractions)."""
+            instruction = """
+                Fix all spelling mistakes (including accents and contractions);
+                Do this instruction for each line.
+            """
 
         retry_limit = 10
         retry_sleep = 10
@@ -77,11 +75,11 @@ class SpellChecker():
         while retry_count < retry_limit:
             try:
                 response = openai.Edit.create(engine="text-davinci-edit-001",
-                                              instruction=' '.join(instruction.split()),
+                                              instruction=instruction,
                                               input=prompt or '',
                                               temperature=0,
                                               top_p=1,
-                                              n=16)
+                                              n=1)
 
                 response = response.choices[0].text.strip()
                 return response
