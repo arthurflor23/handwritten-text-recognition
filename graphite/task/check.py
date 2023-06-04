@@ -45,13 +45,13 @@ def check(args):
 
     src_batch = dataset.batch_generator(partition='training',
                                         augmentor=None,
-                                        normalize=False,
+                                        standardize=False,
                                         shuffle=False,
                                         debug=True)
 
     aug_batch = dataset.batch_generator(partition='training',
                                         augmentor=augmentor,
-                                        normalize=False,
+                                        standardize=False,
                                         shuffle=False,
                                         debug=False)
 
