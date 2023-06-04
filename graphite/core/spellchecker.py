@@ -8,8 +8,23 @@ import concurrent
 
 
 class SpellChecker():
+    """
+    Check and correct spelling errors in texts using the OpenAI API.
+    """
 
     def __init__(self, api_key=None, env_key=None, dotenv_file='.env'):
+        """
+        Constructs the necessary attributes for the spell checker object.
+
+        Parameters
+        ----------
+        api_key : str
+            The API key to interact with the OpenAI API.
+        env_key : str
+            The key to access the environment variable which holds the API key.
+        dotenv_file : str
+            The file name of the environment file. Default is '.env'.
+        """
 
         self.api_key = api_key
         self.env_key = env_key
@@ -25,6 +40,21 @@ class SpellChecker():
         openai.api_key = self.api_key
 
     def enhance_texts(self, texts, instruction=None):
+        """
+        Enhances texts by correcting spelling errors.
+
+        Parameters
+        ----------
+        texts : list
+            The texts to be enhanced.
+        instruction : str, optional
+            The instruction to be followed by the API.
+
+        Returns
+        -------
+        enhanced_texts : list
+            The enhanced texts.
+        """
 
         tokens_length = 0
         batches = [[]]
@@ -61,6 +91,21 @@ class SpellChecker():
         return enhanced_texts
 
     def _request_api(self, instruction=None, prompt=None):
+        """
+        Makes a request to the OpenAI API.
+
+        Parameters
+        ----------
+        instruction : str, optional
+            The instruction to be followed by the API.
+        prompt : str, optional
+            The prompt for the API.
+
+        Returns
+        -------
+        response : str
+            The API response.
+        """
 
         if instruction is None:
             instruction = """
