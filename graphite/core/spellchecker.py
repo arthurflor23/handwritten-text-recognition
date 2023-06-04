@@ -108,6 +108,7 @@ class SpellChecker():
         """
 
         if instruction is None:
+            # Correct only the misspelled words.
             instruction = """
                 Fix all spelling mistakes (including accents and contractions);
                 Do this instruction for each line.
