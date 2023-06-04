@@ -4,6 +4,7 @@ import cv2
 import json
 import html
 import nltk
+import string
 import importlib
 import concurrent
 import numpy as np
@@ -179,7 +180,7 @@ class Dataset():
     def batch_generator(self, partition,
                         batch_size=16,
                         augmentor=None,
-                        normalize=True,
+                        standardize=True,
                         shuffle=True,
                         debug=False):
         """
@@ -193,8 +194,8 @@ class Dataset():
             The number of samples in each batch, by default 16.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
-        normalize : bool, optional
-            Indicates whether to normalize the batch, default is True.
+        standardize : bool, optional
+            Indicates whether to standardize the batch, default is True.
         shuffle : bool, optional
             Specifies whether shuffles per epoch, default is True.
         debug : bool, optional
@@ -239,61 +240,20 @@ class Dataset():
                     y_data.append(dataset['data'][i][label_index])
 
             if augmentor:
-                x_data = augmentor.batch_augmentation(x_data)
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
+                    x_data = [future.result() for future in futures]
 
-            if normalize:
+            if standardize:
                 axis = np.array([x.shape for x in x_data])
                 max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
 
-                x_data = self.normalize_images(x_data, max_axis=max_axis)
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    futures = [executor.submit(self._standardize_image, x, max_axis) for x in x_data]
+                    x_data = [future.result() for future in futures]
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
             yield x_data, y_data
-
-    def normalize_images(self, images, max_axis=None):
-        """
-        Normalize a list of images for optical model input.
-
-        Parameters
-        ----------
-        images : list
-            The input images to normalize.
-        max_axis : tuple or None, optional
-            The maximum axis size to pad the image.
-            The format of max_axis should be (height, width).
-
-        Returns
-        -------
-        list
-            The normalized images.
-        """
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self._normalize_image, x, max_axis) for x in images]
-            images = [future.result() for future in futures]
-
-        return images
-
-    def normalize_texts(self, texts):
-        """
-        Normalize a list of texts by string formatting.
-
-        Parameters
-        ----------
-        texts : str
-            The texts to be normalized.
-
-        Returns
-        -------
-        str
-            The normalized texts.
-        """
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self._normalize_label, x) for x in texts]
-            texts = [future.result() for future in futures]
-
-        return texts
 
     def _create_partition_dictionary(self, partition_data):
         """
@@ -535,7 +495,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._normalize_text(label)
+        label = self._standardize_text(label)[0]
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -594,14 +554,14 @@ class Dataset():
 
         return image
 
-    def _normalize_image(self, image, max_axis=None):
+    def _standardize_image(self, image, max_axis=None):
         """
-        Normalize the given image for optical model input.
+        Standardize the given image for optical model input.
 
         Parameters
         ----------
         image : numpy.ndarray
-            The input image to normalize.
+            The input image to standardize.
         max_axis : tuple or None, optional
             The maximum axis size to pad the image.
             The format of max_axis should be (height, width).
@@ -609,7 +569,7 @@ class Dataset():
         Returns
         -------
         numpy.ndarray
-            The normalized image.
+            The standardized image.
         """
 
         if max_axis is not None:
@@ -627,25 +587,26 @@ class Dataset():
 
         return image
 
-    def _normalize_text(self, text):
+    def _standardize_text(self, texts):
         """
-        Normalize a text by string formatting.
+        Standardize texts by string formatting.
 
         Parameters
         ----------
-        text : str
-            The text to be normalized.
+        texts : list
+            The texts to be standardized.
 
         Returns
         -------
-        str
-            The normalized text.
+        list
+            The standardized texts.
         """
 
-        if isinstance(text, str):
-            text = text.split('\n')
+        if isinstance(texts, str):
+            texts = [texts.split('\n')]
 
-        text = [x.strip() for x in text if x.strip()]
+        if isinstance(texts[0], str):
+            texts = [texts]
 
         substitutions = {
             r'[ ]': ' ',
@@ -683,29 +644,35 @@ class Dataset():
             r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
         }
 
-        regexes = {re.compile(k): v for k, v in substitutions.items()}
+        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
 
         tokenizer = nltk.tokenize.TreebankWordTokenizer()
         detokenizer = nltk.tokenize.TreebankWordDetokenizer()
 
-        for i in range(len(text)):
-            text[i] = html.unescape(text[i])
+        for i in range(len(texts)):
+            texts[i] = [line.strip() for line in texts[i] if line.strip()]
 
-            for pattern, replacement in regexes.items():
-                text[i] = pattern.sub(replacement, text[i])
+            for j, line in enumerate(texts[i]):
+                line = html.unescape(line)
 
-            text[i] = re.sub(r'\s+([!?,.;:])', r'\1', text[i])
-            text[i] = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', text[i])
-            text[i] = re.sub(r'\s+(?=[\'"])', '', text[i])
-            text[i] = re.sub(r'(?<=[\'"]) +', '', text[i])
+                for pattern, replacement in regexes.items():
+                    line = pattern.sub(replacement, line)
 
-            tokens = tokenizer.tokenize(text[i])
-            text[i] = detokenizer.detokenize(tokens)
+                line = re.sub(r'\s+([!?,.;:])', r'\1', line)
+                line = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', line)
+                line = re.sub(r'\s+(?=[\'"])', '', line)
+                line = re.sub(r'(?<=[\'"]) +', '', line)
 
-            text[i] = re.sub(r'\s+', ' ', text[i].replace('"', ' " ')).strip()
-            text[i] = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', text[i]).strip()
+                tokens = tokenizer.tokenize(line)
+                line = detokenizer.detokenize(tokens)
 
-        return text
+                line = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', line.replace('"', ' " ')).strip()
+                line = line.translate(str.maketrans({punct: f" {punct} " for punct in string.punctuation}))
+                line = re.sub(r'\s+', ' ', line.strip()).strip()
+
+                texts[i][j] = line
+
+        return texts
 
 
 class Tokenizer():
