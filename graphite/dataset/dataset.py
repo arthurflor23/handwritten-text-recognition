@@ -13,7 +13,7 @@ import multiprocessing
 
 class Dataset():
     """
-    General class for data source management
+    Data source management.
     """
 
     def __init__(self,
