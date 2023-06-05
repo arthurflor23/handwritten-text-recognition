@@ -69,6 +69,7 @@ class Dataset():
         self.seed = seed
 
         self.size = 0
+        self.corpus = ''
         self.charset = []
 
         self.min_text = ''
@@ -85,9 +86,9 @@ class Dataset():
 
         data, self.reference_pixels = self._prepare_data(data)
 
-        self.training = self._create_partition_dictionary(data[0])
-        self.validation = self._create_partition_dictionary(data[1])
-        self.test = self._create_partition_dictionary(data[2])
+        self.training = self._create_partition_dictionary(data[0], test=False)
+        self.validation = self._create_partition_dictionary(data[1], test=False)
+        self.test = self._create_partition_dictionary(data[2], test=True)
 
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
@@ -116,6 +117,7 @@ class Dataset():
             'seed': self.seed,
             'size': self.size,
             'reference_pixels': self.reference_pixels,
+            'corpus': self.corpus,
             'charset': self.charset,
             'charset_length': len(self.charset),
             'min_text': self.min_text,
@@ -156,6 +158,9 @@ class Dataset():
             Training Size           {self.training['size']}
             Validation Size         {self.validation['size']}
             Test Size               {self.test['size']}
+
+            Corpus Length           {len(self.corpus)}
+            Corpus                  {self.corpus[:100]} [...]
 
             Charset Length          {len(self.charset)}
             Charset                 {''.join(self.charset)}
@@ -617,7 +622,7 @@ class Dataset():
 
         return image, bbox, label, reference_pixels
 
-    def _create_partition_dictionary(self, partition_data):
+    def _create_partition_dictionary(self, partition_data, test=False):
         """
         Creates a partition dictionary from the given partition data.
 
@@ -625,6 +630,8 @@ class Dataset():
         ----------
         partition_data : tuple
             The partition data containing labels, images, and bbox information.
+        test : bool, optional
+            If set to True, the function will handle the partition data as test data. Default is False.
 
         Returns
         -------
@@ -635,6 +642,7 @@ class Dataset():
         dct = {
             'data': partition_data,
             'size': len(partition_data),
+            'corpus': '',
             'charset': [],
             'min_text': '',
             'max_text': '',
@@ -647,6 +655,7 @@ class Dataset():
         labels = [x[2] for x in partition_data if x[2]]
 
         if labels:
+            dct['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
             dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
             dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
             dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
@@ -656,7 +665,10 @@ class Dataset():
             dct['max_cols'] = max(len(y) for x in labels for y in x)
 
         self.size += dct['size']
-        self.charset = sorted(set(self.charset + dct['charset']))
+
+        if not test:
+            self.corpus = f"{self.corpus} {dct['corpus']}".strip()
+            self.charset = sorted(set(self.charset + dct['charset']))
 
         if dct['min_text']:
             self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
