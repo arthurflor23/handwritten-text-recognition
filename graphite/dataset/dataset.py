@@ -82,7 +82,8 @@ class Dataset():
         self.max_cols = float('-inf')
 
         if not self.inference_mode:
-            data = self._fetch_data_from_source()
+            self.fetch_data = self._fetch_data_method()
+            data = self.fetch_data()
 
         data, self.reference_pixels = self._prepare_data(data)
 
@@ -432,14 +433,19 @@ class Dataset():
 
         return image
 
-    def _fetch_data_from_source(self):
+    def _fetch_data_method(self):
         """
-        Fetches the data from the specified data source.
+        Dynamically loads the specified data source and fetches the data.
 
         Returns
         -------
-        list
-            The fetched data.
+        method : method object
+            The method corresponding to 'get_{level}_data' from the Source class in the imported module.
+
+        Raises
+        ------
+        AssertionError
+            If the specified source file, Source class or method don't exist.
         """
 
         module_name = importlib.util.resolve_name(f".source.{self.source}", __package__)
@@ -457,9 +463,8 @@ class Dataset():
         assert hasattr(source, method_name), f"`{method_name}` method must be created"
 
         method = getattr(source, method_name)
-        data = method()
 
-        return data
+        return method
 
     def _prepare_data(self, data):
         """

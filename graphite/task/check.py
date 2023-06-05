@@ -1,7 +1,7 @@
 import cv2
 
-from core import Augmentor
 from dataset import Dataset
+from util import Augmentor
 
 
 def check(args):

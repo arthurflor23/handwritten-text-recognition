@@ -1,7 +1,7 @@
-from graphite.core import Augmentor
-from graphite.core import Carbon
-from graphite.core import Language
 from graphite.dataset import Dataset
 from graphite.model import OpticalModel
+from graphite.util import Augmentor
+from graphite.util import Carbon
+from graphite.util import SpellChecker
 
-__all__ = ['Augmentor', 'Carbon', 'Language', 'Dataset', 'OpticalModel']
+__all__ = ['Dataset', 'OpticalModel', 'Augmentor', 'Carbon', 'SpellChecker']
