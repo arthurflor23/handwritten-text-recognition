@@ -229,7 +229,7 @@ class Dataset():
                 batch_data = [dataset['data'][i] for i in batch_indices]
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self._read_image, data[0], data[1]) for data in batch_data]
+                    futures = [executor.submit(self.read_image, data[0], data[1]) for data in batch_data]
 
                     for future, data in zip(futures, batch_data):
                         x_data.append(future.result())
@@ -249,72 +249,183 @@ class Dataset():
                 max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
 
                 with concurrent.futures.ProcessPoolExecutor() as executor:
-                    futures = [executor.submit(self._standardize_image, x, max_axis) for x in x_data]
+                    futures = [executor.submit(self.standardize_image, x, max_axis) for x in x_data]
                     x_data = [future.result() for future in futures]
 
+                x_data = np.array(x_data, dtype=np.float64)
+                y_data = np.array(y_data, dtype=np.int16)
+
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
+
             yield x_data, y_data
 
-    def _create_partition_dictionary(self, partition_data):
+    def standardize_text(self, text):
         """
-        Creates a partition dictionary from the given partition data.
+        Standardize texts by string formatting.
 
         Parameters
         ----------
-        partition_data : tuple
-            The partition data containing labels, images, and bbox information.
+        texts : list
+            The texts to be standardized.
 
         Returns
         -------
-        dict
-            The partition dict.
+        list
+            The standardized texts.
         """
 
-        dct = {
-            'data': partition_data,
-            'size': len(partition_data),
-            'charset': [],
-            'min_text': '',
-            'max_text': '',
-            'min_rows': 0,
-            'max_rows': 0,
-            'min_cols': 0,
-            'max_cols': 0,
+        if isinstance(text, str):
+            text = [text.split('\n')]
+
+        if isinstance(text[0], str):
+            text = [text]
+
+        substitutions = {
+            r'[ ]': ' ',
+            r'[＿]': '_',
+            r'[，]': ',',
+            r'[；]': ';',
+            r'[：]': ':',
+            r'[！﹗]': '!',
+            r'[？﹖]': '?',
+            r'[．。]': '.',
+            r'[＂“”″‶]': '"',
+            r'[（]': '(',
+            r'[）]': ')',
+            r'[［]': '[',
+            r'[］]': ']',
+            r'[｛]': '}',
+            r'[｝]': '{',
+            r'[＠]': '@',
+            r'[＊]': '*',
+            r'[／]': '/',
+            r'[＼]': '\\\\',
+            r'[＆]': '&',
+            r'[＃]': '#',
+            r'[％]': '%',
+            r'[＾]': '^',
+            r'[˗֊‐‑‒–—－−﹣]': '-',
+            r'[＋]': '+',
+            r'[＜]': '<',
+            r'[＝]': '=',
+            r'[＞]': '>',
+            r'[｜]': '|',
+            r'[～]': '~',
+            r'[⋯]': '...',
+            r'[＄]': '$',
+            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
         }
 
-        labels = [x[2] for x in partition_data if x[2]]
+        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
 
-        if labels:
-            dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
-            dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
-            dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
-            dct['min_rows'] = min(len(x) for x in labels)
-            dct['max_rows'] = max(len(x) for x in labels)
-            dct['min_cols'] = min(len(y) for x in labels for y in x)
-            dct['max_cols'] = max(len(y) for x in labels for y in x)
+        tokenizer = nltk.tokenize.TreebankWordTokenizer()
+        detokenizer = nltk.tokenize.TreebankWordDetokenizer()
 
-        self.size += dct['size']
-        self.charset = sorted(set(self.charset + dct['charset']))
+        for i in range(len(text)):
+            text[i] = [line.strip() for line in text[i] if line.strip()]
 
-        if dct['min_text']:
-            self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
+            for j, line in enumerate(text[i]):
+                line = html.unescape(line)
 
-        if dct['max_text']:
-            self.max_text = max(self.max_text or dct['max_text'], dct['max_text'], key=len)
+                for pattern, replacement in regexes.items():
+                    line = pattern.sub(replacement, line)
 
-        if dct['min_rows']:
-            self.min_rows = min(self.min_rows, dct['min_rows'])
+                line = re.sub(r'\s+([!?,.;:])', r'\1', line)
+                line = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', line)
+                line = re.sub(r'\s+(?=[\'"])', '', line)
+                line = re.sub(r'(?<=[\'"]) +', '', line)
 
-        if dct['max_rows']:
-            self.max_rows = max(self.max_rows, dct['max_rows'])
+                tokens = tokenizer.tokenize(line)
+                line = detokenizer.detokenize(tokens)
 
-        if dct['min_cols']:
-            self.min_cols = min(self.min_cols, dct['min_cols'])
+                line = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', line.replace('"', ' " ')).strip()
+                line = line.translate(str.maketrans({punct: f" {punct} " for punct in string.punctuation}))
+                line = re.sub(r'\s+', ' ', line.strip()).strip()
 
-        if dct['max_cols']:
-            self.max_cols = max(self.max_cols, dct['max_cols'])
+                text[i][j] = line
 
-        return dct
+        return text
+
+    def standardize_image(self, image, max_axis=None):
+        """
+        Standardize the given image for optical model input.
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            The input image to standardize.
+        max_axis : tuple or None, optional
+            The maximum axis size to pad the image.
+            The format of max_axis should be (height, width).
+
+        Returns
+        -------
+        numpy.ndarray
+            The standardized image.
+        """
+
+        if max_axis is not None:
+            bottom_pad = max(0, max_axis[0] - image.shape[0])
+            right_pad = max(0, max_axis[1] - image.shape[1])
+
+            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
+                                       borderType=cv2.BORDER_CONSTANT,
+                                       value=self.reference_pixels[0])
+
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        image = cv2.flip(image, 1)
+
+        image = np.divide(image, 255, dtype=np.float32)
+
+        return image
+
+    def read_image(self, image_path, bbox=None):
+        """
+        Read an image from the given file path and perform optional bbox.
+
+        Parameters
+        ----------
+        image_path : str
+            The path to the image file.
+        bbox : tuple, optional
+            The bbox coordinates (x, y, width, height). Default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            The loaded image as a NumPy array.
+        """
+
+        if not isinstance(image_path, str):
+            return image_path
+
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+        if bbox is None or len(bbox) != 4:
+            return image
+
+        x, y, width, height = bbox
+
+        if isinstance(x, float):
+            x = int(x * image.shape[1])
+
+        if isinstance(y, float):
+            y = int(y * image.shape[0])
+
+        if isinstance(width, float):
+            width = int(width * image.shape[1])
+
+        if isinstance(height, float):
+            height = int(height * image.shape[0])
+
+        y = max(0, abs(y - 10))
+        x = max(0, abs(x - 10))
+        height = min(image.shape[0], (height + 10))
+        width = min(image.shape[1], (width + 10))
+
+        image = image[y:y+height, x:x+width]
+
+        return image
 
     def _fetch_data_from_source(self):
         """
@@ -482,7 +593,7 @@ class Dataset():
 
         if os.path.exists(image_path) and os.path.isfile(image_path):
             try:
-                image = self._read_image(image_path, bbox)
+                image = self.read_image(image_path, bbox)
 
             except Exception:
                 print(f"Image `{os.path.basename(image_path)}` cannot be read.")
@@ -495,7 +606,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self._standardize_text(label)[0]
+        label = self.standardize_text(label)[0]
 
         if not self.inference_mode and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -506,173 +617,66 @@ class Dataset():
 
         return image, bbox, label, reference_pixels
 
-    def _read_image(self, image_path, bbox=None):
+    def _create_partition_dictionary(self, partition_data):
         """
-        Read an image from the given file path and perform optional bbox.
+        Creates a partition dictionary from the given partition data.
 
         Parameters
         ----------
-        image_path : str
-            The path to the image file.
-        bbox : tuple, optional
-            The bbox coordinates (x, y, width, height). Default is None.
+        partition_data : tuple
+            The partition data containing labels, images, and bbox information.
 
         Returns
         -------
-        numpy.ndarray
-            The loaded image as a NumPy array.
+        dict
+            The partition dict.
         """
 
-        if not isinstance(image_path, str):
-            return image_path
-
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-        if bbox is None or len(bbox) != 4:
-            return image
-
-        x, y, width, height = bbox
-
-        if isinstance(x, float):
-            x = int(x * image.shape[1])
-
-        if isinstance(y, float):
-            y = int(y * image.shape[0])
-
-        if isinstance(width, float):
-            width = int(width * image.shape[1])
-
-        if isinstance(height, float):
-            height = int(height * image.shape[0])
-
-        y = max(0, abs(y - 10))
-        x = max(0, abs(x - 10))
-        height = min(image.shape[0], (height + 10))
-        width = min(image.shape[1], (width + 10))
-
-        image = image[y:y+height, x:x+width]
-
-        return image
-
-    def _standardize_image(self, image, max_axis=None):
-        """
-        Standardize the given image for optical model input.
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            The input image to standardize.
-        max_axis : tuple or None, optional
-            The maximum axis size to pad the image.
-            The format of max_axis should be (height, width).
-
-        Returns
-        -------
-        numpy.ndarray
-            The standardized image.
-        """
-
-        if max_axis is not None:
-            bottom_pad = max(0, max_axis[0] - image.shape[0])
-            right_pad = max(0, max_axis[1] - image.shape[1])
-
-            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=self.reference_pixels[0])
-
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        image = cv2.flip(image, 1)
-
-        image = np.divide(image, 255, dtype=np.float32)
-
-        return image
-
-    def _standardize_text(self, texts):
-        """
-        Standardize texts by string formatting.
-
-        Parameters
-        ----------
-        texts : list
-            The texts to be standardized.
-
-        Returns
-        -------
-        list
-            The standardized texts.
-        """
-
-        if isinstance(texts, str):
-            texts = [texts.split('\n')]
-
-        if isinstance(texts[0], str):
-            texts = [texts]
-
-        substitutions = {
-            r'[ ]': ' ',
-            r'[＿]': '_',
-            r'[，]': ',',
-            r'[；]': ';',
-            r'[：]': ':',
-            r'[！﹗]': '!',
-            r'[？﹖]': '?',
-            r'[．。]': '.',
-            r'[＂“”″‶]': '"',
-            r'[（]': '(',
-            r'[）]': ')',
-            r'[［]': '[',
-            r'[］]': ']',
-            r'[｛]': '}',
-            r'[｝]': '{',
-            r'[＠]': '@',
-            r'[＊]': '*',
-            r'[／]': '/',
-            r'[＼]': '\\\\',
-            r'[＆]': '&',
-            r'[＃]': '#',
-            r'[％]': '%',
-            r'[＾]': '^',
-            r'[˗֊‐‑‒–—－−﹣]': '-',
-            r'[＋]': '+',
-            r'[＜]': '<',
-            r'[＝]': '=',
-            r'[＞]': '>',
-            r'[｜]': '|',
-            r'[～]': '~',
-            r'[⋯]': '...',
-            r'[＄]': '$',
-            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
+        dct = {
+            'data': partition_data,
+            'size': len(partition_data),
+            'charset': [],
+            'min_text': '',
+            'max_text': '',
+            'min_rows': 0,
+            'max_rows': 0,
+            'min_cols': 0,
+            'max_cols': 0,
         }
 
-        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
+        labels = [x[2] for x in partition_data if x[2]]
 
-        tokenizer = nltk.tokenize.TreebankWordTokenizer()
-        detokenizer = nltk.tokenize.TreebankWordDetokenizer()
+        if labels:
+            dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
+            dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
+            dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
+            dct['min_rows'] = min(len(x) for x in labels)
+            dct['max_rows'] = max(len(x) for x in labels)
+            dct['min_cols'] = min(len(y) for x in labels for y in x)
+            dct['max_cols'] = max(len(y) for x in labels for y in x)
 
-        for i in range(len(texts)):
-            texts[i] = [line.strip() for line in texts[i] if line.strip()]
+        self.size += dct['size']
+        self.charset = sorted(set(self.charset + dct['charset']))
 
-            for j, line in enumerate(texts[i]):
-                line = html.unescape(line)
+        if dct['min_text']:
+            self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
 
-                for pattern, replacement in regexes.items():
-                    line = pattern.sub(replacement, line)
+        if dct['max_text']:
+            self.max_text = max(self.max_text or dct['max_text'], dct['max_text'], key=len)
 
-                line = re.sub(r'\s+([!?,.;:])', r'\1', line)
-                line = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', line)
-                line = re.sub(r'\s+(?=[\'"])', '', line)
-                line = re.sub(r'(?<=[\'"]) +', '', line)
+        if dct['min_rows']:
+            self.min_rows = min(self.min_rows, dct['min_rows'])
 
-                tokens = tokenizer.tokenize(line)
-                line = detokenizer.detokenize(tokens)
+        if dct['max_rows']:
+            self.max_rows = max(self.max_rows, dct['max_rows'])
 
-                line = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', line.replace('"', ' " ')).strip()
-                line = line.translate(str.maketrans({punct: f" {punct} " for punct in string.punctuation}))
-                line = re.sub(r'\s+', ' ', line.strip()).strip()
+        if dct['min_cols']:
+            self.min_cols = min(self.min_cols, dct['min_cols'])
 
-                texts[i][j] = line
+        if dct['max_cols']:
+            self.max_cols = max(self.max_cols, dct['max_cols'])
 
-        return texts
+        return dct
 
 
 class Tokenizer():
