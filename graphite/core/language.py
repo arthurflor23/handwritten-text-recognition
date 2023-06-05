@@ -61,7 +61,7 @@ class Language():
 
         for i, text in enumerate(texts):
             for j, line in enumerate(text):
-                pp_text = f"<{i}.{j}>{line}</{i}.{j}>"
+                pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
                 pp_text_tokens_length = len(pp_text.split())
 
                 if tokens_length + pp_text_tokens_length > 1024:
@@ -75,7 +75,7 @@ class Language():
         print(f"Total batches: {len(batches)}")
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self._request_api, instruction, " ".join(x)) for x in batches]
+            futures = [executor.submit(self._request_api, instruction, ' '.join(x)) for x in batches]
             enhanced_batches = [future.result() for future in futures]
 
         enhanced_texts = copy.deepcopy(texts)
@@ -85,8 +85,8 @@ class Language():
             matches = pattern.findall(enhanced_batch)
 
             for match in matches:
-                tag = match[0].split(".")
-                enhanced_texts[int(tag[0])][int(tag[1])] = match[1].replace("\n", "").strip()
+                tag = match[0].split('.')
+                enhanced_texts[int(tag[0])][int(tag[1])] = match[1].replace('\n', '').strip()
 
         return enhanced_texts
 
@@ -118,9 +118,9 @@ class Language():
 
         while retry_count < retry_limit:
             try:
-                response = openai.Edit.create(engine="text-davinci-edit-001",
-                                              instruction=" ".join(instruction.split()),
-                                              input=prompt or "",
+                response = openai.Edit.create(engine='text-davinci-edit-001',
+                                              instruction=' '.join(instruction.split()),
+                                              input=prompt or '',
                                               temperature=0,
                                               top_p=1,
                                               n=1)
