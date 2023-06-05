@@ -39,7 +39,7 @@ class SpellChecker():
         # https://platform.openai.com/account/api-keys
         openai.api_key = self.api_key
 
-    def enhance_texts(self, texts, instruction=None):
+    def enhance_text_data(self, text_data, instruction=None):
         """
         Enhances texts by correcting spelling errors.
 
@@ -59,7 +59,7 @@ class SpellChecker():
         tokens_length = 0
         batches = [[]]
 
-        for i, text in enumerate(texts):
+        for i, text in enumerate(text_data):
             for j, line in enumerate(text):
                 pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
                 pp_text_tokens_length = len(pp_text.split())
@@ -78,7 +78,7 @@ class SpellChecker():
             futures = [executor.submit(self._request_api, instruction, ' '.join(x)) for x in batches]
             enhanced_batches = [future.result() for future in futures]
 
-        enhanced_texts = copy.deepcopy(texts)
+        enhanced_texts = copy.deepcopy(text_data)
         pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
 
         for enhanced_batch in enhanced_batches:
@@ -133,7 +133,7 @@ class SpellChecker():
                 print(err)
                 print(f"Request failed. Retrying... (Attempt {retry_count}/{retry_limit})")
 
-                retry_sleep += 5
+                retry_sleep += 10
                 time.sleep(retry_sleep)
 
         return prompt
