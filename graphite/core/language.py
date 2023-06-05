@@ -7,14 +7,14 @@ import openai
 import concurrent
 
 
-class SpellChecker():
+class Language():
     """
     Check and correct spelling errors in texts using the OpenAI API.
     """
 
     def __init__(self, api_key=None, env_key=None, dotenv_file='.env'):
         """
-        Constructs the necessary attributes for the spell checker object.
+        Constructs the necessary attributes for the class object.
 
         Parameters
         ----------

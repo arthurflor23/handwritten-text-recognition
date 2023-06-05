@@ -88,12 +88,9 @@ if __name__ == '__main__':
     parser.add_argument('--bbox', default=[], nargs='+',
                         help="Set bounding box values (x, y, width, height)")
 
-    # Spell check
-    parser.add_argument('--spell-check', default='openai',
-                        help="Define the spell check (openai)")
-
-    parser.add_argument('--api-key', default=None,
-                        help="Set the spell check API_KEY")
+    # Spell checker
+    parser.add_argument('--openai-api-key', default=None,
+                        help="Set the spell checker API_KEY")
 
     # Others
     parser.add_argument('--id', default=None,

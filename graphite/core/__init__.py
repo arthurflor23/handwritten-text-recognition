@@ -1,5 +1,5 @@
 from .augmentor import Augmentor
 from .carbon import Carbon
-from .spellchecker import SpellChecker
+from .language import Language
 
-__all__ = ['Augmentor', 'Carbon', 'SpellChecker']
+__all__ = ['Augmentor', 'Carbon', 'Language']
