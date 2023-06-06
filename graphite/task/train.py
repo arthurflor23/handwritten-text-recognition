@@ -29,7 +29,7 @@ def train(args):
 
     spell_checker = SpellChecker(env_key='OPENAI_API_KEY')
 
-    optical_model = OpticalModel()
+    optical_model = OpticalModel(network=args.network, seed=42)
 
     # carbon = Carbon(dataset=dataset,
     #                 augmentor=augmentor,
