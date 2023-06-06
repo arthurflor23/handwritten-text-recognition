@@ -22,9 +22,9 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
-                 data_path='data',
                  lazy_mode=True,
-                 data=None,
+                 infer_data=None,
+                 artifact_path='data',
                  seed=None):
         """
         Initializes a new instance of the Dataset class.
@@ -41,12 +41,12 @@ class Dataset():
             The validation ratio for resample. Default is None.
         test_ratio : float or int, optional
             The test ratio for resample. Default is None.
-        data_path : str, optional
-            Path name to fetch the data. Default is 'data'.
         lazy_mode : bool, optional
             Lazy mode flag for lazy loading process. Default is True.
-        data : list, optional
+        infer_data : list, optional
             Custom data for inference mode. Default is None.
+        artifact_path : str, optional
+            Path name to fetch the data. Default is 'data'.
         seed : int, optional
             The random seed. Default is None.
 
@@ -63,7 +63,7 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
-        self.data_path = os.path.join(self.base_path, data_path)
+        self.artifact_path = os.path.join(self.base_path, artifact_path)
         self.lazy_mode = lazy_mode
         self.seed = seed
 
@@ -80,14 +80,14 @@ class Dataset():
         self.min_cols = float('inf')
         self.max_cols = float('-inf')
 
-        if data is None:
+        if infer_data is None:
             self._source = self._import_source(self.source)
-            self._source = self._source(self.data_path)
+            self._source = self._source(self.artifact_path)
 
             data = self._source.fetch_data(self.level)
             data, self.reference_pixels = self._prepare_data(data, infer=False)
         else:
-            data, self.reference_pixels = self._prepare_data(data, infer=True)
+            data, self.reference_pixels = self._prepare_data(infer_data, infer=True)
 
         self.training = self._create_partition_dictionary(data[0], test=False)
         self.validation = self._create_partition_dictionary(data[1], test=False)

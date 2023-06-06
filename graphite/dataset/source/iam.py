@@ -8,13 +8,13 @@ class Source():
     Represents the IAM database source.
     """
 
-    def __init__(self, data_path):
+    def __init__(self, artifact_path):
         """
         Initializes a new instance of the Source class.
 
         Parameters
         ----------
-        data_path : str
+        artifact_path : str
             The path to the data.
 
         Returns
@@ -22,8 +22,8 @@ class Source():
         None
         """
 
-        self.data_path = data_path
-        self.base_path = os.path.join(self.data_path, 'iam')
+        self.artifact_path = artifact_path
+        self.base_path = os.path.join(self.artifact_path, 'iam')
 
         self.partition_path = os.path.join(self.base_path, 'largeWriterIndependentTextLineRecognitionTask')
         self.training_file_path = os.path.join(self.partition_path, 'trainset.txt')

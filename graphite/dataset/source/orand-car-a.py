@@ -6,13 +6,13 @@ class Source():
     Represents the ORAND-CAR-A-2014 database source.
     """
 
-    def __init__(self, data_path):
+    def __init__(self, artifact_path):
         """
         Initializes a new instance of the Source class.
 
         Parameters
         ----------
-        data_path : str
+        artifact_path : str
             The path to the data.
 
         Returns
@@ -20,8 +20,8 @@ class Source():
         None
         """
 
-        self.data_path = data_path
-        self.base_path = os.path.join(self.data_path, 'orand-car-2014', 'CAR-A')
+        self.artifact_path = artifact_path
+        self.base_path = os.path.join(self.artifact_path, 'orand-car-2014', 'CAR-A')
 
         self.training_path = os.path.join(self.base_path, 'a_train_images')
         self.test_path = os.path.join(self.base_path, 'a_test_images')
