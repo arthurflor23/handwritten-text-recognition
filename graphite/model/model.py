@@ -28,7 +28,7 @@ class OpticalModel():
 
     def _get_network_class(self):
 
-        module_name = importlib.util.resolve_name(f".network.{self.network}", __package__)
+        module_name = importlib.util.resolve_name(f".networks.{self.network}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "network file must be created"
 

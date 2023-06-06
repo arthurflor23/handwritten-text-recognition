@@ -1,6 +1,5 @@
-from dataset import Dataset
-from model import OpticalModel
-from util import Augmentor, Carbon, SpellChecker
+from dataset import Augmentor, Dataset
+from model import OpticalModel, SpellChecker
 
 
 def train(args):

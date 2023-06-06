@@ -449,7 +449,7 @@ class Dataset():
             If the specified source file, Source class or method don't exist.
         """
 
-        module_name = importlib.util.resolve_name(f".source.{self.source}", __package__)
+        module_name = importlib.util.resolve_name(f".sources.{self.source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "source file must be created"
 
