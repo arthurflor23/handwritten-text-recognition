@@ -16,8 +16,8 @@
 snippets_path=$1
 column=$2
 weights="../weights/$3.hdf5"
-test=${4:-0}
-csv_path="/home/lanceap/compute/1950_Transcription/$column"
+csv_path="$4/$column"
+test=${5:-0}
 column_directory="$snippets_path/$column"
 column_directory=${column_directory//\"}
 

@@ -24,6 +24,7 @@ from data.generator import DataGenerator
 
 from network.model import HTRModel
 
+
 BATCH_SIZE = 1000
 
 if __name__ == "__main__":
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-    weights_path = args.weights
+    weights_path = os.path.join("../weights", args.weights)
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -81,8 +82,8 @@ if __name__ == "__main__":
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size,
                          beam_width=8,
-                         stop_tolerance=15,
-                         reduce_tolerance=8,
+                         stop_tolerance=20,
+                         reduce_tolerance=10,
                          reduce_factor=0.1)
 
         model.compile(learning_rate=0.001)
@@ -184,6 +185,7 @@ if __name__ == "__main__":
                          beam_width=10)
 
         model.compile()
+        print(weights_path)
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
         model.load_checkpoint(target=weights_path)
