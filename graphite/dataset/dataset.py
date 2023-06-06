@@ -13,11 +13,10 @@ import multiprocessing
 
 class Dataset():
     """
-    Data source management.
+    General data source management.
     """
 
     def __init__(self,
-                 data=None,
                  source=None,
                  level=None,
                  training_ratio=None,
@@ -25,14 +24,13 @@ class Dataset():
                  test_ratio=None,
                  data_path='data',
                  lazy_mode=True,
+                 data=None,
                  seed=None):
         """
         Initializes a new instance of the Dataset class.
 
         Parameters
         ----------
-        data : list, optional
-            Custom data for inference mode. Default is None.
         source : str, optional
             The data source name. Default is None.
         level : str, optional
@@ -47,6 +45,8 @@ class Dataset():
             Path name to fetch the data. Default is 'data'.
         lazy_mode : bool, optional
             Lazy mode flag for lazy loading process. Default is True.
+        data : list, optional
+            Custom data for inference mode. Default is None.
         seed : int, optional
             The random seed. Default is None.
 
@@ -64,8 +64,8 @@ class Dataset():
         self.test_ratio = test_ratio
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
-        self.inference_mode = data is not None
         self.lazy_mode = lazy_mode
+        self.infer = data is not None
         self.seed = seed
 
         self.size = 0
@@ -81,9 +81,9 @@ class Dataset():
         self.min_cols = float('inf')
         self.max_cols = float('-inf')
 
-        if not self.inference_mode:
-            self.fetch_data = self._fetch_data_method()
-            data = self.fetch_data()
+        if not self.infer:
+            self.source_class = self._get_source_class()
+            data = getattr(self.source_class, f"get_{self.level}_data")()
 
         data, self.reference_pixels = self._prepare_data(data)
 
@@ -113,7 +113,7 @@ class Dataset():
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
-            'inference_mode': self.inference_mode,
+            'infer': self.infer,
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
@@ -148,7 +148,7 @@ class Dataset():
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
-            Inference Mode          {self.inference_mode}
+            Inference Mode          {self.infer}
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
@@ -183,7 +183,8 @@ class Dataset():
 
         return info
 
-    def batch_generator(self, partition,
+    def batch_generator(self,
+                        partition,
                         batch_size=16,
                         augmentor=None,
                         standardize=True,
@@ -433,7 +434,7 @@ class Dataset():
 
         return image
 
-    def _fetch_data_method(self):
+    def _get_source_class(self):
         """
         Dynamically loads the specified data source and fetches the data.
 
@@ -457,14 +458,9 @@ class Dataset():
         class_name = 'Source'
         assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        source = getattr(module, class_name)(self.data_path)
+        source_class = getattr(module, class_name)(self.data_path)
 
-        method_name = f"get_{self.level}_data"
-        assert hasattr(source, method_name), f"`{method_name}` method must be created"
-
-        method = getattr(source, method_name)
-
-        return method
+        return source_class
 
     def _prepare_data(self, data):
         """
@@ -486,7 +482,7 @@ class Dataset():
         if not 1 <= len(data) <= 3:
             raise ValueError("input data must have 1 to 3 partition lists")
 
-        if self.inference_mode:
+        if self.infer:
             data = [[], [], data]
 
         for i in range(len(data)):
@@ -618,7 +614,7 @@ class Dataset():
 
         label = self.standardize_text(label)[0]
 
-        if not self.inference_mode and not label:
+        if not self.infer and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
