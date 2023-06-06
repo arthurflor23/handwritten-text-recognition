@@ -11,7 +11,7 @@ class OpticalModel():
     def __init__(self,
                  network=None,
                  data_path='mlruns',
-                 run_id=None,
+                 model_uri=None,
                  seed=None):
 
         tf.random.set_seed(seed)
@@ -19,12 +19,12 @@ class OpticalModel():
         self.network = network
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
-        self.run_id = run_id
-        self.infer = run_id is not None
+        self.model_uri = model_uri
         self.seed = seed
 
-        if not self.infer:
-            self.network_class = self._get_network_class()
+        # if not self.infer:
+        #     self.network_class = self._get_network_class()
+        #     self.model = self.network_class.get_model()
 
     def _get_network_class(self):
 

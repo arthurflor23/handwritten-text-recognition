@@ -83,7 +83,7 @@ class Dataset():
 
         if not self.infer:
             self.source_class = self._get_source_class()
-            data = getattr(self.source_class, f"get_{self.level}_data")()
+            data = self.source_class.get_data(self.level)
 
         data, self.reference_pixels = self._prepare_data(data)
 
