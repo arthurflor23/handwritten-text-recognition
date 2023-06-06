@@ -7,7 +7,7 @@ import openai
 import concurrent
 
 
-class SpellChecker():
+class LanguageModel():
     """
     Check and correct spelling errors in texts using the OpenAI API.
     """
