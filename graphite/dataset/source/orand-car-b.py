@@ -29,14 +29,19 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'b_train_gt.txt')
         self.test_file_path = os.path.join(self.base_path, 'b_test_gt.txt')
 
-    def get_line_data(self):
+    def get_data(self, _):
         """
-        Retrieves the line data for training, validation, and testing.
+        Retrieves the data for training, validation, and testing.
+
+        Parameters
+        ----------
+        level : str
+            The granularity level of the data to be retrieved.
 
         Returns
         -------
         tuple
-            A tuple containing lists of training, validation, and test lines data.
+            A tuple containing lists of training, validation, and test data.
         """
 
         def process_row(row, file_path):

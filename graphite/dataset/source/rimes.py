@@ -30,37 +30,32 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'training_2011.xml')
         self.test_file_path = os.path.join(self.base_path, 'eval_2011_annotated.xml')
 
-    def get_line_data(self):
+    def get_data(self, level):
         """
-        Retrieves the line data for training, validation, and testing.
+        Retrieves the data for training, validation, and testing.
+
+        Parameters
+        ----------
+        level : str
+            The granularity level of the data to be retrieved.
 
         Returns
         -------
         tuple
-            A tuple containing lists of training, validation, and test lines data.
+            A tuple containing lists of training, validation, and test data.
         """
 
-        # Load the lines data from the files
-        training_lines = self._load_lines_data(self.training_file_path, self.training_path)
-        test_lines = self._load_lines_data(self.test_file_path, self.test_path)
+        if level == 'line':
+            # Load the lines data from the files
+            training_data = self._load_lines_data(self.training_file_path, self.training_path)
+            test_data = self._load_lines_data(self.test_file_path, self.test_path)
 
-        return training_lines, [], test_lines
+        elif level == 'paragraph':
+            # Load the paragraphs data from the files
+            training_data = self._load_paragraphs_data(self.training_file_path, self.training_path)
+            test_data = self._load_paragraphs_data(self.test_file_path, self.test_path)
 
-    def get_paragraph_data(self):
-        """
-        Retrieves the paragraph data for training, validation, and testing.
-
-        Returns
-        -------
-        tuple
-            A tuple containing lists of training, validation, and test paragraphs data.
-        """
-
-        # Load the paragraphs data from the files
-        training_paragraphs = self._load_paragraphs_data(self.training_file_path, self.training_path)
-        test_paragraphs = self._load_paragraphs_data(self.test_file_path, self.test_path)
-
-        return training_paragraphs, [], test_paragraphs
+        return training_data, [], test_data
 
     def _load_lines_data(self, file_path, partition_path):
         """

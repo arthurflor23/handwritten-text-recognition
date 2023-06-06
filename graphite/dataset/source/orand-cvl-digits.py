@@ -27,14 +27,19 @@ class Source():
         self.training_path = os.path.join(self.base_path, 'cvl-strings', 'train', '**', '*.png')
         self.test_path = os.path.join(self.base_path, 'cvl-strings-eval', '**', '*.png')
 
-    def get_line_data(self):
+    def get_data(self, _):
         """
-        Retrieves the line data for training, validation, and testing.
+        Retrieves the data for training, validation, and testing.
+
+        Parameters
+        ----------
+        level : str
+            The granularity level of the data to be retrieved.
 
         Returns
         -------
         tuple
-            A tuple containing lists of training, validation, and test lines data.
+            A tuple containing lists of training, validation, and test data.
         """
 
         def process_file(file_path):
@@ -43,9 +48,9 @@ class Source():
             return [file_path, [], label]
 
         training_files = glob.glob(self.training_path, recursive=True)
-        training_lines = [process_file(file_path) for file_path in training_files]
+        training_data = [process_file(file_path) for file_path in training_files]
 
         test_files = glob.glob(self.test_path, recursive=True)
-        test_lines = [process_file(file_path) for file_path in test_files]
+        test_data = [process_file(file_path) for file_path in test_files]
 
-        return training_lines, [], test_lines
+        return training_data, [], test_data

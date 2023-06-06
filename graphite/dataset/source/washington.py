@@ -32,14 +32,19 @@ class Source():
         self.words_file_path = os.path.join(self.transcription_path, 'word_labels.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'transcription.txt')
 
-    def get_word_data(self):
+    def get_data(self, level):
         """
-        Retrieves the word data for training, validation, and testing.
+        Retrieves the data for training, validation, and testing.
+
+        Parameters
+        ----------
+        level : str
+            The granularity level of the data to be retrieved.
 
         Returns
         -------
         tuple
-            A tuple containing lists of training, validation, and test words data.
+            A tuple containing lists of training, validation, and test data.
         """
 
         # Load the partition data for training, validation, and testing
@@ -47,40 +52,25 @@ class Source():
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
 
-        # Load the words data from the file
-        words_data = self._load_words_data(self.words_file_path)
+        if level == 'word':
+            # Load the words data from the file
+            words_data = self._load_words_data(self.words_file_path)
 
-        # Filter the words data based on the partition data
-        training_words = self._filter_data(words_data, training_partition_data)
-        validation_words = self._filter_data(words_data, validation_partition_data)
-        test_words = self._filter_data(words_data, test_partition_data)
+            # Filter the words data based on the partition data
+            training_data = self._filter_data(words_data, training_partition_data)
+            validation_data = self._filter_data(words_data, validation_partition_data)
+            test_data = self._filter_data(words_data, test_partition_data)
 
-        return training_words, validation_words, test_words
+        elif level == 'line':
+            # Load the lines data from the file
+            lines_data = self._load_lines_data(self.lines_file_path)
 
-    def get_line_data(self):
-        """
-        Retrieves the line data for training, validation, and testing.
+            # Filter the lines data based on the partition data
+            training_data = self._filter_data(lines_data, training_partition_data)
+            validation_data = self._filter_data(lines_data, validation_partition_data)
+            test_data = self._filter_data(lines_data, test_partition_data)
 
-        Returns
-        -------
-        tuple
-            A tuple containing lists of training, validation, and test lines data.
-        """
-
-        # Load the partition data for training, validation, and testing
-        training_partition_data = self._load_partition_data(self.training_file_path)
-        validation_partition_data = self._load_partition_data(self.validation_file_path)
-        test_partition_data = self._load_partition_data(self.test_file_path)
-
-        # Load the lines data from the file
-        lines_data = self._load_lines_data(self.lines_file_path)
-
-        # Filter the lines data based on the partition data
-        training_lines = self._filter_data(lines_data, training_partition_data)
-        validation_lines = self._filter_data(lines_data, validation_partition_data)
-        test_lines = self._filter_data(lines_data, test_partition_data)
-
-        return training_lines, validation_lines, test_lines
+        return training_data, validation_data, test_data
 
     def _load_partition_data(self, file_path):
         """
