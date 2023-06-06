@@ -1,4 +1,4 @@
-from .language import SpellChecker
 from .model import OpticalModel
+from .spellchecker import SpellChecker
 
-__all__ = ['SpellChecker', 'OpticalModel']
+__all__ = ['OpticalModel', 'SpellChecker']
