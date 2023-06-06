@@ -30,7 +30,7 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'training_2011.xml')
         self.test_file_path = os.path.join(self.base_path, 'eval_2011_annotated.xml')
 
-    def get_data(self, level):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 

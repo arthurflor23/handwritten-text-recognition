@@ -9,7 +9,7 @@ class OpticalModel():
     """
 
     def __init__(self,
-                 network=None,
+                 network,
                  data_path='mlruns',
                  run_id=None,
                  seed=None):
@@ -22,12 +22,12 @@ class OpticalModel():
         self.run_id = run_id
         self.seed = seed
 
-        self.network_class = self._get_network_class()
-        self.model = self.network_class.get_model()
+        self._network = self._import_network(self.network)
+        self._network = self._network()
 
-    def _get_network_class(self):
+    def _import_network(self, network):
 
-        module_name = importlib.util.resolve_name(f".networks.{self.network}", __package__)
+        module_name = importlib.util.resolve_name(f".network.{network}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "network file must be created"
 
@@ -36,6 +36,6 @@ class OpticalModel():
         class_name = 'Network'
         assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        network_class = getattr(module, class_name)()
+        network = getattr(module, class_name)
 
-        return network_class
+        return network

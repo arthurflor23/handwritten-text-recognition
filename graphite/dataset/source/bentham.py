@@ -34,7 +34,7 @@ class Source():
         self.lines_file_path = os.path.join(self.base_path, 'Transcriptions', '**.txt')
         self.paragraphs_file_path = os.path.join(self.base_path, 'PAGE', '**.xml')
 
-    def get_data(self, level):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 

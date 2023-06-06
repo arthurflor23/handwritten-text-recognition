@@ -27,7 +27,7 @@ class Source():
         self.training_path = os.path.join(self.base_path, 'cvl-strings', 'train', '**', '*.png')
         self.test_path = os.path.join(self.base_path, 'cvl-strings-eval', '**', '*.png')
 
-    def get_data(self, _):
+    def fetch_data(self, _):
         """
         Retrieves the data for training, validation, and testing.
 

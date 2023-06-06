@@ -29,7 +29,7 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'b_train_gt.txt')
         self.test_file_path = os.path.join(self.base_path, 'b_test_gt.txt')
 
-    def get_data(self, _):
+    def fetch_data(self, _):
         """
         Retrieves the data for training, validation, and testing.
 

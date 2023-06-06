@@ -1,5 +1,7 @@
+from carbon import Carbon
 from dataset import Augmentor, Dataset
-from model import LanguageModel, OpticalModel
+from model import OpticalModel
+from spelling import Spelling
 
 
 def train(args):
@@ -26,11 +28,11 @@ def train(args):
                           reference_pixels=dataset.reference_pixels,
                           seed=42)
 
-    language_model = LanguageModel(env_key='OPENAI_API_KEY')
+    spelling = Spelling(env_key='OPENAI_API_KEY')
 
-    optical_model = OpticalModel(network=args.network, seed=42)
+    # optical_model = OpticalModel(network=args.network, seed=42)
 
     # carbon = Carbon(dataset=dataset,
     #                 augmentor=augmentor,
-    #                 spell_checker=spell_checker,
+    #                 spelling=spelling,
     #                 optical_model=optical_model)

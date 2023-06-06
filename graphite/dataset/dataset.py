@@ -81,8 +81,10 @@ class Dataset():
         self.max_cols = float('-inf')
 
         if data is None:
-            self.source_class = self._get_source_class()
-            data = self.source_class.get_data(self.level)
+            self._source = self._import_source(self.source)
+            self._source = self._source(self.data_path)
+
+            data = self._source.fetch_data(self.level)
             data, self.reference_pixels = self._prepare_data(data, infer=False)
         else:
             data, self.reference_pixels = self._prepare_data(data, infer=True)
@@ -432,22 +434,27 @@ class Dataset():
 
         return image
 
-    def _get_source_class(self):
+    def _import_source(self, source):
         """
-        Dynamically loads the specified data source and fetches the data.
+        Dynamically imports the specified source.
+
+        Parameters
+        ----------
+        source : str
+            The name of the source to be imported.
 
         Returns
         -------
-        method : method object
-            The method corresponding to 'get_{level}_data' from the Source class in the imported module.
+        source : instance of Source class
+            An instance of the Source class from the imported module.
 
         Raises
         ------
         AssertionError
-            If the specified source file, Source class or method don't exist.
+            If the specified source file or Source class don't exist.
         """
 
-        module_name = importlib.util.resolve_name(f".sources.{self.source}", __package__)
+        module_name = importlib.util.resolve_name(f".source.{source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
         assert module_spec is not None, "source file must be created"
 
@@ -456,9 +463,9 @@ class Dataset():
         class_name = 'Source'
         assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        source_class = getattr(module, class_name)(self.data_path)
+        source = getattr(module, class_name)
 
-        return source_class
+        return source
 
     def _prepare_data(self, data, infer=False):
         """

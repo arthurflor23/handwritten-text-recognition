@@ -34,7 +34,7 @@ class Source():
         self.words_file_path = os.path.join(self.transcription_path, 'words.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'lines.txt')
 
-    def get_data(self, level):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 

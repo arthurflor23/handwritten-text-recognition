@@ -1,4 +1,3 @@
-from .language import LanguageModel
-from .optical import OpticalModel
+from .model import OpticalModel
 
-__all__ = ['LanguageModel', 'OpticalModel']
+__all__ = ['OpticalModel']
