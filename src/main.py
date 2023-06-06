@@ -24,6 +24,9 @@ from data.generator import DataGenerator
 
 from network.model import HTRModel
 
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
