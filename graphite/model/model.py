@@ -10,16 +10,14 @@ class OpticalModel():
 
     def __init__(self,
                  network,
-                 data_path='mlruns',
-                 run_id=None,
+                 artifact_path='mlruns',
                  seed=None):
 
         tf.random.set_seed(seed)
 
         self.network = network
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
-        self.data_path = os.path.join(self.base_path, data_path)
-        self.run_id = run_id
+        self.artifact_path = os.path.join(self.base_path, artifact_path)
         self.seed = seed
 
         self._network = self._import_network(self.network)
