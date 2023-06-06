@@ -1,6 +1,7 @@
 import os
 import re
 import copy
+import json
 import dotenv
 import importlib
 import concurrent
@@ -44,6 +45,43 @@ class Spelling():
 
         self._spell_checker = self._import_spell_checker(self.spell_checker)
         self._spell_checker = self._spell_checker(self.api_key)
+
+    def __repr__(self):
+        """
+        Returns a JSON-formatted string representation of the Spelling object.
+
+        Returns
+        -------
+        str
+            A JSON-formatted string containing the object's attributes.
+        """
+
+        return json.dumps({
+            'spell_checker': self.spell_checker,
+            'env_key': self.env_key,
+            'dotenv_path': self.dotenv_path,
+        })
+
+    def __str__(self):
+        """
+        Returns a string representation of the Spelling object with useful information.
+
+        Returns
+        -------
+        str
+            The string representation of the object.
+        """
+
+        info = f"""
+            Spelling Configuration\n
+            Spell Checker           {self.spell_checker}
+            Environment Key         {self.env_key or '-'}
+            Environment Path        {self.dotenv_path or '-'}
+        """
+
+        info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        return info
 
     def enhance(self, text_data, instruction=None):
         """
