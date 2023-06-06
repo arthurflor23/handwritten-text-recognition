@@ -21,9 +21,9 @@ if __name__ == '__main__':
     parser.add_argument('--check-samples', default=False, action='store_true',
                         help="View sample data")
 
-    # Optical Model
-    parser.add_argument('--optical-model', default=None,
-                        help="Define the optical model (bluche, flor, puigcerver)")
+    # Optical Network
+    parser.add_argument('--network', default=None,
+                        help="Define the optical network (bluche, flor, puigcerver)")
 
     # Dataset
     parser.add_argument('--source', default=None,
@@ -93,8 +93,8 @@ if __name__ == '__main__':
                         help="Set the spell checker API_KEY")
 
     # Others
-    parser.add_argument('--id', default=None,
-                        help="Specify running id")
+    parser.add_argument('--run-id', default=None,
+                        help="Specify mlflow run id")
 
     args = parser.parse_args()
 
