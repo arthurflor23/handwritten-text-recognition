@@ -1,5 +1,5 @@
 from dataset import Augmentor, Dataset
-from model import OpticalModel, SpellChecker
+from model import LanguageModel, OpticalModel
 
 
 def train(args):
@@ -26,7 +26,7 @@ def train(args):
                           reference_pixels=dataset.reference_pixels,
                           seed=42)
 
-    spell_checker = SpellChecker(env_key='OPENAI_API_KEY')
+    language_model = LanguageModel(env_key='OPENAI_API_KEY')
 
     optical_model = OpticalModel(network=args.network, seed=42)
 
