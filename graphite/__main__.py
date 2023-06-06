@@ -1,4 +1,4 @@
-import task
+import tasks
 import argparse
 
 
@@ -107,14 +107,14 @@ if __name__ == '__main__':
 
     # Tasks
     if args.check:
-        task.check(args)
+        tasks.check(args)
 
     else:
         if args.train:
-            task.train(args)
+            tasks.train(args)
 
         if args.test:
-            task.test(args)
+            tasks.test(args)
 
         if args.infer and len(args.images):
-            task.infer(args)
+            tasks.infer(args)
