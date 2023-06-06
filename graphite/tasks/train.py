@@ -6,31 +6,33 @@ from spelling import Spelling
 
 def train(args):
 
-    dataset = Dataset(source=args.source,
-                      level=args.level,
-                      training_ratio=args.training_ratio,
-                      validation_ratio=args.validation_ratio,
-                      test_ratio=args.test_ratio,
-                      lazy_mode=args.lazy_mode,
-                      seed=42)
+    # dataset = Dataset(source=args.source,
+    #                   level=args.level,
+    #                   training_ratio=args.training_ratio,
+    #                   validation_ratio=args.validation_ratio,
+    #                   test_ratio=args.test_ratio,
+    #                   lazy_mode=args.lazy_mode,
+    #                   seed=42)
 
-    augmentor = Augmentor(erosion=args.erosion,
-                          dilation=args.dilation,
-                          elastic_transform=args.elastic_transform,
-                          mixup=args.mixup,
-                          perspective_transform=args.perspective_transform,
-                          salt_and_pepper=args.salt_and_pepper,
-                          gaussian_blur=args.gaussian_blur,
-                          shearing=args.shearing,
-                          scaling=args.scaling,
-                          rotation=args.rotation,
-                          translation=args.translation,
-                          reference_pixels=dataset.reference_pixels,
-                          seed=42)
+    # augmentor = Augmentor(erosion=args.erosion,
+    #                       dilation=args.dilation,
+    #                       elastic_transform=args.elastic_transform,
+    #                       mixup=args.mixup,
+    #                       perspective_transform=args.perspective_transform,
+    #                       salt_and_pepper=args.salt_and_pepper,
+    #                       gaussian_blur=args.gaussian_blur,
+    #                       shearing=args.shearing,
+    #                       scaling=args.scaling,
+    #                       rotation=args.rotation,
+    #                       translation=args.translation,
+    #                       reference_pixels=dataset.reference_pixels,
+    #                       seed=42)
 
-    spelling = Spelling(env_key='OPENAI_API_KEY')
+    # spelling = Spelling(spell_checker=args.spell_checker,
+    #                     api_key=args.api_key,
+    #                     env_key=args.env_key)
 
-    # optical_model = OpticalModel(network=args.network, seed=42)
+    optical_model = OpticalModel(network=args.network, seed=42)
 
     # carbon = Carbon(dataset=dataset,
     #                 augmentor=augmentor,
