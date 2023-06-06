@@ -65,7 +65,6 @@ class Dataset():
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.data_path = os.path.join(self.base_path, data_path)
         self.lazy_mode = lazy_mode
-        self.infer = data is not None
         self.seed = seed
 
         self.size = 0
@@ -81,11 +80,12 @@ class Dataset():
         self.min_cols = float('inf')
         self.max_cols = float('-inf')
 
-        if not self.infer:
+        if data is None:
             self.source_class = self._get_source_class()
             data = self.source_class.get_data(self.level)
-
-        data, self.reference_pixels = self._prepare_data(data)
+            data, self.reference_pixels = self._prepare_data(data, infer=False)
+        else:
+            data, self.reference_pixels = self._prepare_data(data, infer=True)
 
         self.training = self._create_partition_dictionary(data[0], test=False)
         self.validation = self._create_partition_dictionary(data[1], test=False)
@@ -113,7 +113,6 @@ class Dataset():
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
-            'infer': self.infer,
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
@@ -148,7 +147,6 @@ class Dataset():
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
-            Inference Mode          {self.infer}
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
@@ -462,7 +460,7 @@ class Dataset():
 
         return source_class
 
-    def _prepare_data(self, data):
+    def _prepare_data(self, data, infer=False):
         """
         Prepares the data for partitioning.
 
@@ -470,6 +468,8 @@ class Dataset():
         ----------
         data : tuple
             The input data (training, validation, test).
+        infer : bool, optional
+            Flag for inference mode. Default is False.
 
         Returns
         -------
@@ -482,7 +482,7 @@ class Dataset():
         if not 1 <= len(data) <= 3:
             raise ValueError("input data must have 1 to 3 partition lists")
 
-        if self.infer:
+        if infer:
             data = [[], [], data]
 
         for i in range(len(data)):
@@ -579,7 +579,7 @@ class Dataset():
 
         return data, reference_pixels
 
-    def _validate_data_item(self, item):
+    def _validate_data_item(self, item, infer=False):
         """
         Validates a data item.
 
@@ -587,6 +587,8 @@ class Dataset():
         ----------
         item : tuple
             The data item to validate.
+        infer : bool, optional
+            Flag for inference mode. Default is False.
 
         Returns
         -------
@@ -614,7 +616,7 @@ class Dataset():
 
         label = self.standardize_text(label)[0]
 
-        if not self.infer and not label:
+        if not infer and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
