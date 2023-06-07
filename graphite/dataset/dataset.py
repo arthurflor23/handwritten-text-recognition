@@ -728,8 +728,7 @@ class Tokenizer():
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.charset_size = len(self.charset) + 1
 
-        self.max_rows = max_rows
-        self.max_cols = max_cols + (len(self.charset) - len(charset))
+        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)))
 
     def encode_data(self, data):
         """
@@ -786,7 +785,7 @@ class Tokenizer():
                 enconded_row.append(index)
 
             enconded_row += [eos_tk_index]
-            enconded_row += [pad_tk_index] * max(0, abs(self.max_cols - len(enconded_row)))
+            enconded_row += [pad_tk_index] * max(0, abs(self.shape[1] - len(enconded_row)))
 
             encoded_label.append(enconded_row)
 
