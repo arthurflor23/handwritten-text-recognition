@@ -1,18 +1,18 @@
 from carbon import Carbon
 from dataset import Augmentor, Dataset
-from model import OpticalModel
+from model import Model
 from spelling import Spelling
 
 
 def train(args):
 
-    # dataset = Dataset(source=args.source,
-    #                   level=args.level,
-    #                   training_ratio=args.training_ratio,
-    #                   validation_ratio=args.validation_ratio,
-    #                   test_ratio=args.test_ratio,
-    #                   lazy_mode=args.lazy_mode,
-    #                   seed=42)
+    dataset = Dataset(source=args.source,
+                      level=args.level,
+                      training_ratio=args.training_ratio,
+                      validation_ratio=args.validation_ratio,
+                      test_ratio=args.test_ratio,
+                      lazy_mode=args.lazy_mode,
+                      seed=42)
 
     # augmentor = Augmentor(erosion=args.erosion,
     #                       dilation=args.dilation,
@@ -32,7 +32,11 @@ def train(args):
     #                     api_key=args.api_key,
     #                     env_key=args.env_key)
 
-    optical_model = OpticalModel(network=args.network, seed=42)
+    print(dataset.tokenizer.shape)
+
+    model = Model(network=args.network,
+                  network_flavor=args.network_flavor,
+                  seed=42)
 
     # carbon = Carbon(dataset=dataset,
     #                 augmentor=augmentor,
