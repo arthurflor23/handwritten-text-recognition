@@ -5,26 +5,6 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    # Task flags
-    parser.add_argument('--infer', default=False, action='store_true',
-                        help="Perform inference process")
-
-    parser.add_argument('--test', default=False, action='store_true',
-                        help="Perform optical model test")
-
-    parser.add_argument('--train', default=False, action='store_true',
-                        help="Perform optical model training")
-
-    parser.add_argument('--check', default=False, action='store_true',
-                        help="Perform data verification")
-
-    parser.add_argument('--check-samples', default=False, action='store_true',
-                        help="View sample data")
-
-    # Optical Network
-    parser.add_argument('--network', default=None,
-                        help="Define the optical network (bluche, flor, puigcerver)")
-
     # Dataset
     parser.add_argument('--source', default=None,
                         help="Define the source data (iam, rimes)")
@@ -81,12 +61,18 @@ if __name__ == '__main__':
     parser.add_argument('--disable-augmentation', default=True, action='store_false',
                         help="Disable data augmentation completely")
 
-    # Inference
     parser.add_argument('--images', default=[], nargs='+',
                         help="Set image path list for handwriting recognition")
 
     parser.add_argument('--bbox', default=[], nargs='+',
                         help="Set bounding box values (x, y, width, height)")
+
+    # Optical Network
+    parser.add_argument('--network', default=None,
+                        help="Define the optical network (bluche, flor, puigcerver)")
+
+    parser.add_argument('--network-flavor', default='vanilla',
+                        help="Define the optical network variation (vanilla)")
 
     # Spell checker
     parser.add_argument('--spell-checker', default=None,
@@ -97,6 +83,40 @@ if __name__ == '__main__':
 
     parser.add_argument('--env-key', default=None,
                         help="Define the environment variable which holds the API key")
+
+    # Training
+    parser.add_argument('--train', default=False, action='store_true',
+                        help="Perform optical model training")
+
+    parser.add_argument('--learning-rate', default=1e-4, type=float,
+                        help="Learning rate for the optimizer")
+
+    parser.add_argument('--plateau-cooldown', default=0, type=int,
+                        help="Cooldown period after a learning rate plateau is triggered")
+
+    parser.add_argument('--plateau-factor', default=0.2, type=float,
+                        help="Factor by which the learning rate will be reduced on a plateau")
+
+    parser.add_argument('--plateau-patience', default=10, type=int,
+                        help="Number of epochs without improvement for the learning rate to be reduced")
+
+    parser.add_argument('--patience', default=20, type=int,
+                        help="Number of epochs with no improvement after which training will be stopped")
+
+    # Inference
+    parser.add_argument('--infer', default=False, action='store_true',
+                        help="Perform inference process")
+
+    # Testing
+    parser.add_argument('--test', default=False, action='store_true',
+                        help="Perform optical model test")
+
+    # Check
+    parser.add_argument('--check', default=False, action='store_true',
+                        help="Perform data verification")
+
+    parser.add_argument('--check-samples', default=False, action='store_true',
+                        help="View sample data")
 
     # Others
     parser.add_argument('--run-id', default=None,
