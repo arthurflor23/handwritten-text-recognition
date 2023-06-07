@@ -3,25 +3,29 @@ import importlib
 import tensorflow as tf
 
 
-class OpticalModel():
+class Model():
     """
     General optical model management.
     """
 
     def __init__(self,
                  network,
+                 network_flavor='vanilla',
                  artifact_path='mlruns',
                  seed=None):
 
         tf.random.set_seed(seed)
 
         self.network = network
+        self.network_flavor = network_flavor
         self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.artifact_path = os.path.join(self.base_path, artifact_path)
         self.seed = seed
 
         self._network = self._import_network(self.network)
         self._network = self._network()
+
+        self.model = self._network.compile_model(self.network_flavor, (1024, 127, 1), 98)
 
     def _import_network(self, network):
 
