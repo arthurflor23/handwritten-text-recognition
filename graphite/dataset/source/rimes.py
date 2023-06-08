@@ -74,22 +74,15 @@ class Source():
 
         line_data = []
 
-        # Parse the XML file
         root = ET.parse(file_path).getroot()
 
-        # Iterate over each SinglePage elements
         for single_page in root.findall('SinglePage'):
-            # Get the FileName attribute and construct the full file path
             file_name = os.path.join(partition_path, single_page.get('FileName'))
 
-            # Find the Paragraph element within SinglePage
             paragraph = single_page.find('Paragraph')
-            # Find all Line elements within Paragraph
             lines = paragraph.findall('Line')
 
-            # Iterate over each Line element
             for line in lines:
-                # Extract the attributes of each Line element
                 label = line.get('Value').strip()
 
                 if not label:
@@ -100,7 +93,6 @@ class Source():
                 width = int(line.get('Right')) - x
                 height = int(line.get('Bottom')) - y
 
-                # Append the line data to lines_data
                 line_data.append([file_name, [x, y, width, height], label])
 
         return line_data
@@ -122,44 +114,32 @@ class Source():
 
         paragraph_data = []
 
-        # Parse the XML file
         root = ET.parse(file_path).getroot()
 
-        # Iterate over each SinglePage elements
         for single_page in root.findall('SinglePage'):
-            # Get the FileName attribute and construct the full file path
             file_name = os.path.join(partition_path, single_page.get('FileName'))
 
-            # Find the Paragraph element within SinglePage
             paragraph = single_page.find('Paragraph')
-            # Find all Line elements within Paragraph
             lines = paragraph.findall('Line')
 
             label = []
             min_x, max_x = float('inf'), float('-inf')
             min_y, max_y = float('inf'), float('-inf')
 
-            # Iterate over each Line element
             for line in lines:
-                # Extract the attributes of each Line element
                 line_label = line.get('Value').strip()
 
                 if not line_label:
                     continue
 
-                # Get the minimum and maximum coords x and y
                 min_x = min(min_x, int(line.get('Left')))
                 max_x = max(max_x, int(line.get('Right')))
                 min_y = min(min_y, int(line.get('Top')))
                 max_y = max(max_y, int(line.get('Bottom')))
 
-                # Get label
                 label.append(line_label)
 
-            # Concatenate the Value attribute of Line elements
             bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
-
-            # Append the file name, bbox, and label
             paragraph_data.append([file_name, bbox, label])
 
         return paragraph_data

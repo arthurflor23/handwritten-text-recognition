@@ -148,9 +148,8 @@ class Source():
 
             image_path = os.path.join(word_path, word_file_name)
             bbox = []
-            label = self._format_label(parts[1].replace('-', '').replace('|', ' '))
+            label = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
 
-            # Construct the word data entry with image path, bounding box, and label
             words_data.append([image_path, bbox, label])
 
         return words_data
@@ -185,9 +184,8 @@ class Source():
 
             image_path = os.path.join(line_path, line_file_name)
             bbox = []
-            label = self._format_label(parts[1].replace('-', '').replace('|', ' '))
+            label = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
 
-            # Construct the line data entry with image path, bounding box, and label
             lines_data.append([image_path, bbox, label])
 
         return lines_data
@@ -207,7 +205,6 @@ class Source():
             The standardized label.
         """
 
-        # dct of substitutions
         substitutions = {
             's_pt': '.',
             's_cm': ',',
@@ -219,11 +216,10 @@ class Source():
             's_br': ')',
             's_qt': '\'',
             's_GW': 'G.W.',
-            's_s': 's',
+            's_s': 'ſ',
             's_': '',
         }
 
-        # Perform the substitutions
         for pattern, replacement in substitutions.items():
             label = label.replace(pattern, replacement)
 

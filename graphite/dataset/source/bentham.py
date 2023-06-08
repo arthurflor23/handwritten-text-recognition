@@ -193,19 +193,14 @@ class Source():
             image_path = os.path.basename(xml_path).replace('.xml', '')
             image_path = os.path.join(self.base_path, 'Images', 'Pages', f"{image_path}.jpg")
 
-            # Parse the XML file
             root = ET.parse(xml_path).getroot()
-
-            # Define the namespace used in the XML
             namespace = {'ns': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2010-03-19'}
 
             label = []
             min_x, max_x = float('inf'), float('-inf')
             min_y, max_y = float('inf'), float('-inf')
 
-            # Find all TextLine elements and iterate over them
             for text_line in root.findall('.//ns:TextLine', namespace):
-                # Extract the label from the TextEquiv element
                 text_equiv = text_line.find('ns:TextEquiv', namespace)
                 line_label = text_equiv.find('ns:Unicode', namespace).text.strip()
 
@@ -217,27 +212,22 @@ class Source():
                 x_values, y_values = [], []
 
                 if points:
-                    # Extract x and y values from the points
                     for point in points.split(' '):
                         x, y = point.split(',')
                         x_values.append(int(x))
                         y_values.append(int(y))
 
                 else:
-                    # Extract x and y values from the individual points
                     x_values = [int(point.attrib['x']) for point in coords]
                     y_values = [int(point.attrib['y']) for point in coords]
 
-                # Get the minimum and maximum coords x and y
                 min_x = min(min_x, min(x_values))
                 max_x = max(max_x, max(x_values))
                 min_y = min(min_y, min(y_values))
                 max_y = max(max_y, max(y_values))
 
-                # Get label
                 label.append(line_label)
 
-            # Create a paragraph entry with image path, bounding box, and label
             bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
             paragraph_data.append([image_path, bbox, label])
 

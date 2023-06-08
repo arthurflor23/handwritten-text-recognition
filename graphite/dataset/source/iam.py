@@ -195,7 +195,6 @@ class Source():
             bbox = [int(x) for x in parts[4:8]] if bbox_info else []
             label = ' '.join(parts[8:]).replace('|', ' ')
 
-            # Construct the word data entry with image path, bounding box, and label
             words_data.append([image_path, bbox, label])
 
         return words_data
@@ -235,7 +234,6 @@ class Source():
             bbox = [int(x) for x in parts[4:8]] if bbox_info else []
             label = ' '.join(parts[8:]).replace('|', ' ')
 
-            # Construct the line data entry with image path, bounding box, and label
             lines_data.append([image_path, bbox, label])
 
         return lines_data
@@ -272,15 +270,12 @@ class Source():
             if file_path in paragraphs_data:
                 images_path, bbox, label = paragraphs_data[file_path]
 
-                # Update the bounding box by expanding it to include the line
                 bbox[0] = min(bbox[0], line[1][0])
                 bbox[1] = min(bbox[1], line[1][1])
                 bbox[2] = max(bbox[2], line[1][2] + line[1][0])
                 bbox[3] = max(bbox[3], line[1][3] + line[1][1])
 
-                # Append the line's label to the existing paragraph's label
                 label += f"\n{line[2]}"
-
                 paragraphs_data[file_path] = [images_path, bbox, label]
 
             else:
@@ -292,8 +287,6 @@ class Source():
         for i, paragraph in enumerate(paragraphs_data):
             if bbox_info:
                 bbox = paragraph[1]
-
-                # Update the bounding box to be a list of coordinates
                 bbox[0] = paragraph[1][0]
                 bbox[1] = paragraph[1][1]
                 bbox[2] = abs(paragraph[1][2] - bbox[0])
@@ -301,7 +294,6 @@ class Source():
 
                 paragraphs_data[i][1] = bbox
             else:
-                # If bbox_info is False, set an empty list for the bounding box
                 paragraphs_data[i][1] = []
 
         return paragraphs_data

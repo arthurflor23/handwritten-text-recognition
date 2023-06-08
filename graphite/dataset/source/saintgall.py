@@ -139,7 +139,6 @@ class Source():
             bbox = []
             label = parts[1].replace('-', '').replace('|', ' ')
 
-            # Construct the line data entry with image path, bounding box, and label
             lines_data.append([image_path, bbox, label])
 
         return lines_data
