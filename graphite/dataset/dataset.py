@@ -706,7 +706,7 @@ class Tokenizer():
     Class for tokenizing data using a character set.
     """
 
-    def __init__(self, charset, max_rows=1, max_cols=128):
+    def __init__(self, charset, max_rows, max_cols):
         """
         Initialize the Tokenizer.
 
@@ -715,9 +715,9 @@ class Tokenizer():
         charset : list
             List of characters in the character set.
         max_rows : int, optional
-            Maximum number of rows for each label. Default is 1.
+            Maximum number of rows for each label.
         max_cols : int, optional
-            Maximum number of columns for each label. Default is 128.
+            Maximum number of columns for each label.
         """
 
         self.pad_tk = '¶'
@@ -726,7 +726,9 @@ class Tokenizer():
         self.unk_tk = '◬'
 
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
-        self.charset_size = len(self.charset) + 1
+
+        # max_cols + 2              # for sos and eos tokens
+        # vocab_size = len(self.charset) + 1     # for CTC blank token
 
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)))
 
@@ -780,8 +782,7 @@ class Tokenizer():
             enconded_row = [sos_tk_index]
 
             for char in row:
-                index = self.charset.index(char)
-                index = unk_tk_index if index == -1 else index
+                index = self.charset.index(char) if char in self.charset else unk_tk_index
                 enconded_row.append(index)
 
             enconded_row += [eos_tk_index]
