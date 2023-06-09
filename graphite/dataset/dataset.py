@@ -726,10 +726,6 @@ class Tokenizer():
         self.unk_tk = '◬'
 
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
-
-        # max_cols + 2              # for sos and eos tokens
-        # vocab_size = len(self.charset) + 1     # for CTC blank token
-
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)))
 
     def encode_data(self, data):
