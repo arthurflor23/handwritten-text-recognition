@@ -83,7 +83,7 @@ class Spelling():
 
         return info
 
-    def enhance(self, text_data, instruction=None):
+    def enhance_text_data(self, text_data, instruction=None):
         """
         Enhances texts by correcting spelling errors.
 
