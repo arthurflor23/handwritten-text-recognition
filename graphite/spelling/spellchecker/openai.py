@@ -20,7 +20,7 @@ class SpellChecker():
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
 
-    def enhance(self, text, instruction=None):
+    def enhance_text(self, text, instruction=None):
         """
         Makes a request to the OpenAI API.
 
