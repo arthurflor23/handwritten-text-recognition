@@ -10,7 +10,7 @@ class Network():
 
     def compile_model(self, _, input_size, output_size, learning_rate=None, loss=None):
 
-        inputs, outputs = self._get_vanilla_architecture(input_size, output_size)
+        inputs, outputs = self._get_architecture(input_size, output_size)
 
         if learning_rate and loss:
             optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
@@ -22,7 +22,7 @@ class Network():
 
         return model
 
-    def _get_vanilla_architecture(self, input_size, output_size):
+    def _get_architecture(self, input_size, output_size):
 
         inputs = tf.keras.layers.Input(name='input', shape=input_size)
 
