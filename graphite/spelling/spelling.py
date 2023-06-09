@@ -13,7 +13,7 @@ class Spelling():
     """
 
     def __init__(self,
-                 spell_checker,
+                 spell_checker=None,
                  api_key=None,
                  env_key=None,
                  dotenv_file='.env'):
@@ -22,8 +22,8 @@ class Spelling():
 
         Parameters
         ----------
-        spell_checker : str
-            The spell checker name.
+        spell_checker : str, optional
+            The spell checker name. Default is None.
         api_key : str, optional
             The API key to interact with spell checker. Default is None.
         env_key : str, optional
@@ -43,8 +43,9 @@ class Spelling():
             dotenv.load_dotenv(self.dotenv_path)
             self.api_key = os.environ[self.env_key]
 
-        self._spell_checker = self._import_spell_checker(self.spell_checker)
-        self._spell_checker = self._spell_checker(self.api_key)
+        if spell_checker:
+            self._spell_checker = self._import_spell_checker(self.spell_checker)
+            self._spell_checker = self._spell_checker(self.api_key)
 
     def __repr__(self):
         """
@@ -99,6 +100,9 @@ class Spelling():
         enhanced_texts : list
             The enhanced texts.
         """
+
+        if not self.spell_checker:
+            return text_data
 
         tokens_length = 0
         batches = [[]]
