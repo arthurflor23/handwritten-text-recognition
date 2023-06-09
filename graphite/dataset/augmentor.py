@@ -21,6 +21,7 @@ class Augmentor():
                  rotation=None,
                  translation=None,
                  reference_pixels=None,
+                 disable_augmentation=False,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -51,6 +52,8 @@ class Augmentor():
             Parameters for vertical and horizontal translation transformation, by default None.
         reference_pixels : list, optional
             Reference pixel values for transformation, by default None.
+        disable_augmentation : bool,
+            Flag to disable augmentation, by default False.
         seed : int or None, optional
             Seed for random number generation, by default None.
 
@@ -73,6 +76,7 @@ class Augmentor():
         self.rotation_params = rotation
         self.translation_params = translation
         self.reference_pixels = reference_pixels or [0, 127, 255]
+        self.disable_augmentation = disable_augmentation
         self.seed = seed
 
     def __repr__(self):
@@ -98,6 +102,7 @@ class Augmentor():
             'rotation': self.rotation_params,
             'translation': self.translation_params,
             'salt_and_pepper': self.salt_and_pepper_params,
+            'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
         })
 
@@ -129,6 +134,7 @@ class Augmentor():
             Translation             {self.translation_params}
 
             Reference Pixels        {self.reference_pixels}
+            Augmentation Disabled   {self.disable_augmentation}
             Seed                    {self.seed}
         """
 
@@ -153,23 +159,24 @@ class Augmentor():
             Transformed image.
         """
 
-        transformations = [
-            (self.erosion, self.erosion_params),
-            (self.dilation, self.dilation_params),
-            (self.elastic_transform, self.elastic_transform_params),
-            (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
-            (self.perspective_transform, self.perspective_transform_params),
-            (self.salt_and_pepper, self.salt_and_pepper_params),
-            (self.gaussian_blur, self.gaussian_blur_params),
-            (self.shearing, self.shearing_params),
-            (self.scaling, self.scaling_params),
-            (self.rotation, self.rotation_params),
-            (self.translation, self.translation_params),
-        ]
+        if not self.disable_augmentation:
+            transformations = [
+                (self.erosion, self.erosion_params),
+                (self.dilation, self.dilation_params),
+                (self.elastic_transform, self.elastic_transform_params),
+                (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
+                (self.perspective_transform, self.perspective_transform_params),
+                (self.salt_and_pepper, self.salt_and_pepper_params),
+                (self.gaussian_blur, self.gaussian_blur_params),
+                (self.shearing, self.shearing_params),
+                (self.scaling, self.scaling_params),
+                (self.rotation, self.rotation_params),
+                (self.translation, self.translation_params),
+            ]
 
-        for transform_func, params in transformations:
-            if params and np.random.random() < params[0]:
-                image = transform_func(image, *params[1:])
+            for transform_func, params in transformations:
+                if params and np.random.random() < params[0]:
+                    image = transform_func(image, *params[1:])
 
         return image
 
