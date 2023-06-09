@@ -58,21 +58,12 @@ if __name__ == '__main__':
     parser.add_argument('--translation', default=[0.99, 0.3, 0.3], nargs='+', type=float,
                         help="Apply vertical and horizontal translation (probability, y-alpha, x-alpha)")
 
-    parser.add_argument('--disable-augmentation', default=True, action='store_false',
+    parser.add_argument('--disable-augmentation', default=False, action='store_true',
                         help="Disable data augmentation completely")
-
-    parser.add_argument('--images', default=[], nargs='+',
-                        help="Set image path list for handwriting recognition")
-
-    parser.add_argument('--bbox', default=[], nargs='+',
-                        help="Set bounding box values (x, y, width, height)")
 
     # Optical Network
     parser.add_argument('--network', default=None,
                         help="Define the optical network (bluche, flor, puigcerver)")
-
-    parser.add_argument('--network-flavor', default='vanilla',
-                        help="Define the optical network variation (vanilla)")
 
     # Spell checker
     parser.add_argument('--spell-checker', default=None,
@@ -103,13 +94,19 @@ if __name__ == '__main__':
     parser.add_argument('--patience', default=20, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
+    # Testing
+    parser.add_argument('--test', default=False, action='store_true',
+                        help="Perform optical model test")
+
     # Inference
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
 
-    # Testing
-    parser.add_argument('--test', default=False, action='store_true',
-                        help="Perform optical model test")
+    parser.add_argument('--images', default=[], nargs='+',
+                        help="Set image path list for handwriting recognition")
+
+    parser.add_argument('--bbox', default=[], nargs='+',
+                        help="Set bounding box values (x, y, width, height)")
 
     # Check
     parser.add_argument('--check', default=False, action='store_true',
