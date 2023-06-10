@@ -5,20 +5,16 @@ from .layers import GatedConv2D
 
 class Network():
 
-    def __init__(self):
-        print('init... flavor=None, model_uri=None, learning_rate=None, loss=None...')
+    def compile_model(self,
+                      output_size,
+                      learning_rate,
+                      ctc_loss_func):
 
-    def compile_model(self, _, input_size, output_size, learning_rate=None, loss=None):
+        inputs, outputs = self._get_architecture(input_size=(1024, 128, 1), output_size=output_size)
+        model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
-        inputs, outputs = self._get_architecture(input_size, output_size)
-
-        if learning_rate and loss:
-            optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-
-            model = tf.keras.Model(inputs=inputs, outputs=outputs)
-            model.compile(optimizer=optimizer, loss=loss)
-
-            # model.load_weights(model_uri)
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=ctc_loss_func)
 
         return model
 
