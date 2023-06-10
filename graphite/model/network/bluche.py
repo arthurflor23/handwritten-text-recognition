@@ -14,17 +14,28 @@ class Network():
         URL: https://ieeexplore.ieee.org/document/8270042
     """
 
-    def compile_model(self, output_shape, learning_rate, ctc_loss_func):
+    def __init__(self, output_shape):
+        """
+        Initializes a new instance of the Network class.
+
+        Parameters:
+        -----------
+        output_shape : tuple
+            The shape of the model output (max_rows, max_cols, charset_length).
+        """
+
+        self.input_shape = (1024, 128, 1)
+        self.output_shape = output_shape
+
+    def compile_model(self, learning_rate, loss_func):
         """
         Build and compile the model.
 
         Parameters:
         -----------
-        output_shape : tuple
-            The shape of the output tensor.
         learning_rate : float
             The learning rate for the optimizer.
-        ctc_loss_func : function
+        loss_func : function
             The loss function to be used in the model.
             It's supposed to be a CTC (Connectionist Temporal Classification) loss function.
 
@@ -34,11 +45,11 @@ class Network():
             The compiled model.
         """
 
-        inputs, outputs = self._get_architecture(output_shape)
+        inputs, outputs = self._get_architecture(self.output_shape)
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
         optimizer = tf.keras.optimizers.legacy.RMSprop(learning_rate=learning_rate)
-        model.compile(optimizer=optimizer, loss=ctc_loss_func)
+        model.compile(optimizer=optimizer, loss=loss_func)
 
         return model
 
@@ -57,10 +68,9 @@ class Network():
             A tuple containing the input and output tensors of the model.
         """
 
-        input_shape = (1024, 128, 1)
-        inputs = tf.keras.layers.Input(name='input', shape=input_shape)
+        inputs = tf.keras.layers.Input(name='input', shape=self.input_shape)
+        target_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
 
-        target_shape = (input_shape[0] // 2, input_shape[1] // 2, input_shape[2] * 4)
         cnn = tf.keras.layers.Reshape(target_shape=target_shape)(inputs)
 
         cnn = tf.keras.layers.Conv2D(filters=8,
