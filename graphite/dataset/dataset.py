@@ -259,8 +259,8 @@ class Dataset():
                     futures = [executor.submit(self.standardize_image, x, max_axis) for x in x_data]
                     x_data = [future.result() for future in futures]
 
-                x_data = np.array(x_data, dtype=np.float64)
-                y_data = np.array(y_data, dtype=np.int16)
+                # x_data = np.array(x_data, dtype=np.float64)
+                # y_data = np.array(y_data, dtype=np.int16)
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
 
@@ -726,7 +726,7 @@ class Tokenizer():
         self.unk_tk = '◬'
 
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
-        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)))
+        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset))
 
     def encode_data(self, data):
         """
