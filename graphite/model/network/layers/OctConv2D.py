@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class OctConv2D(tf.keras.layer.Layer):
+class OctConv2D(tf.keras.layers.Layer):
     """
     Octave Convolutional Layer.
 
