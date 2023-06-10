@@ -23,13 +23,12 @@ class Model():
         self.seed = seed
 
         self._network = self._import_network(self.network)
-        self._network = self._network()
+        self._network = self._network(self.tokenizer.shape)
 
     def compile(self, learning_rate=None, model_uri=None):
 
-        self.model = self._network.compile_model(output_shape=self.tokenizer.shape,
-                                                 learning_rate=learning_rate,
-                                                 ctc_loss_func=self.ctc_loss_func)
+        self.model = self._network.compile_model(learning_rate=learning_rate,
+                                                 loss_func=self.ctc_loss_func)
 
         if model_uri:
             self.model.load_weights(model_uri)
