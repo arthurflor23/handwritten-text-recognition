@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('--train', default=False, action='store_true',
                         help="Perform optical model training")
 
-    parser.add_argument('--learning-rate', default=1e-4, type=float,
+    parser.add_argument('--learning-rate', default=None, type=float,
                         help="Learning rate for the optimizer")
 
     parser.add_argument('--plateau-cooldown', default=0, type=int,
