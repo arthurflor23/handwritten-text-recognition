@@ -42,13 +42,15 @@ def check(args):
                           seed=42)
     print(augmentor)
 
-    src_batch = dataset.batch_generator(partition='training',
+    src_batch = dataset.batch_generator(batch_size=16,
+                                        partition='training',
                                         augmentor=None,
                                         standardize=False,
                                         shuffle=False,
                                         debug=True)
 
-    aug_batch = dataset.batch_generator(partition='training',
+    aug_batch = dataset.batch_generator(batch_size=16,
+                                        partition='training',
                                         augmentor=augmentor,
                                         standardize=False,
                                         shuffle=False,
