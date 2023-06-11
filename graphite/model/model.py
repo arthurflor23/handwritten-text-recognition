@@ -27,12 +27,27 @@ class Model():
 
     def compile(self, learning_rate=None, model_uri=None):
 
-        self.model = self._network.compile_model(output_size=self.tokenizer.shape,
-                                                 learning_rate=learning_rate or 1e-4,
+        self.model = self._network.compile_model(output_shape=self.tokenizer.shape,
+                                                 learning_rate=learning_rate,
                                                  ctc_loss_func=self.ctc_loss_func)
 
         if model_uri:
             self.model.load_weights(model_uri)
+
+        self.model.summary()
+
+    def fit(self,
+            training_data,
+            validation_data,
+            plateau_cooldown=0,
+            plateau_factor=0.2,
+            plateau_patience=10,
+            patience=20,
+            epochs=1000,
+            verbose=1):
+
+        # callbacks=callbacks,
+        print('fit')
 
     def _import_network(self, network):
 
