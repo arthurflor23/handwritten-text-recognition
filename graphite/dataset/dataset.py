@@ -184,8 +184,8 @@ class Dataset():
         return info
 
     def batch_generator(self,
+                        batch_size,
                         partition,
-                        batch_size=16,
                         augmentor=None,
                         standardize=True,
                         shuffle=True,
@@ -195,10 +195,10 @@ class Dataset():
 
         Parameters
         ----------
+        batch_size : int, optional
+            The number of samples in each batch.
         partition : str
             The partition type ('training', 'validation', or 'test').
-        batch_size : int, optional
-            The number of samples in each batch, by default 16.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
         standardize : bool, optional
