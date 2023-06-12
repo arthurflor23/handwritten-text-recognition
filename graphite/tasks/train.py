@@ -13,6 +13,7 @@ def train(args):
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
                       seed=42)
+    print(dataset)
 
     augmentor = Augmentor(erosion=args.erosion,
                           dilation=args.dilation,
@@ -29,16 +30,21 @@ def train(args):
                           disable_augmentation=args.disable_augmentation,
                           seed=42)
 
-    spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
-
     model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
     model.compile(learning_rate=args.learning_rate, model_uri=None)
 
-    # model.fit(...,
-    #           plateau_cooldown=args.plateau_cooldown,
-    #           plateau_factor=args.plateau_factor,
-    #           plateau_patience=args.plateau_patience,
-    #           patience=args.patience)
+    training_data_generator = dataset.batch_generator(batch_size=16, partition='training', augmentor=augmentor)
+    validation_data_generator = dataset.batch_generator(batch_size=16, partition='validation', augmentor=None)
+
+    model.fit(training_data=training_data_generator,
+              validation_data=validation_data_generator,
+              plateau_cooldown=args.plateau_cooldown,
+              plateau_factor=args.plateau_factor,
+              plateau_patience=args.plateau_patience,
+              patience=args.patience,
+              verbose=1)
+
+    # spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
 
     # carbon = Carbon(dataset=dataset,
     #                 augmentor=augmentor,
