@@ -4,8 +4,35 @@ from .layers import GatedConv2D
 
 
 class Network():
+    """
+    A TensorFlow-based class representing Bluche and Messina neural network for handwriting recognition.
+
+    Reference:
+        Bluche, T., Messina, R.,
+        Gated convolutional recurrent neural networks for multilingual handwriting recognition.
+        14th IAPR International Conference on Document Analysis and Recognition (ICDAR), pp. 646-651, 2017.
+        URL: https://ieeexplore.ieee.org/document/8270042
+    """
 
     def compile_model(self, output_shape, learning_rate, ctc_loss_func):
+        """
+        Build and compile the model.
+
+        Parameters:
+        -----------
+        output_shape : tuple
+            The shape of the output tensor.
+        learning_rate : float
+            The learning rate for the optimizer.
+        ctc_loss_func : function
+            The loss function to be used in the model.
+            It's supposed to be a CTC (Connectionist Temporal Classification) loss function.
+
+        Returns:
+        --------
+        model : tf.keras.Model
+            The compiled model.
+        """
 
         inputs, outputs = self._get_architecture(output_shape)
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
@@ -16,6 +43,19 @@ class Network():
         return model
 
     def _get_architecture(self, output_shape):
+        """
+        Define the architecture of the neural network model.
+
+        Parameters:
+        -----------
+        output_shape : tuple
+            The shape of the output tensor.
+
+        Returns:
+        --------
+        tuple :
+            A tuple containing the input and output tensors of the model.
+        """
 
         input_shape = (1024, 128, 1)
         inputs = tf.keras.layers.Input(name='input', shape=input_shape)
@@ -61,8 +101,6 @@ class Network():
 
         cnn = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(cnn)
 
-        print(output_shape)
-
         shape = cnn.get_shape()
         blstm = tf.keras.layers.Reshape((shape[1], shape[2] * shape[3]))(cnn)
 
@@ -70,6 +108,8 @@ class Network():
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(blstm)
-        outputs = tf.keras.layers.Dense(units=output_shape[-1], activation='softmax')(blstm)
+        dense = tf.keras.layers.Dense(units=output_shape[-1], activation='softmax')(blstm)
+
+        outputs = tf.expand_dims(dense, axis=1)
 
         return (inputs, outputs)
