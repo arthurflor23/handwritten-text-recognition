@@ -286,7 +286,7 @@ if __name__ == "__main__":
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             if i != 0 and i % BATCH_SIZE == 0:
                 if args.csv:
-                    with open(out_path, 'a', newline='') as csvfile:
+                    with open(out_path, 'a+', newline='') as csvfile:
                         writer = csv.writer(csvfile)
                         writer.writerows(final_predicts)
                 elif args.parquet:
