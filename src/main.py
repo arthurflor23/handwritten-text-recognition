@@ -82,7 +82,7 @@ if __name__ == "__main__":
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size,
                          beam_width=8,
-                         stop_tolerance=20,
+                         stop_tolerance=18,
                          reduce_tolerance=10,
                          reduce_factor=0.1)
 
@@ -136,7 +136,6 @@ if __name__ == "__main__":
         print('Append:', args.append)
         print('Parquet:', args.parquet)
         print('Test:', args.test)
-        
                 
         final_predicts = []
 
@@ -203,7 +202,7 @@ if __name__ == "__main__":
         print('Total images:', total)
         print('\n-----------------')
         
-        pbar = tqdm(images) # tqdm(total=total)
+        pbar = tqdm(images)
         
         out_path = None
         if args.csv:
@@ -217,9 +216,8 @@ if __name__ == "__main__":
         # for image_name in images:
         for i, image_name in enumerate(pbar):
         # for image_name in pbar: 
-            pbar.set_description(f'{image_name}') # f'Image: {image_name} ({i})'
-            # print(f'{image_name} ({i} / {total})')
-            
+            pbar.set_description(f'{image_name}')
+
             image_path = os.path.join(folder_path, image_name)
 
             try:
@@ -286,19 +284,7 @@ if __name__ == "__main__":
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
-            # pbar.update(1)
             if i != 0 and i % BATCH_SIZE == 0:
-                # if args.csv:
-                #     if args.csv.split(".")[-1] != "csv":
-                #         csv_path = os.path.join(args.csv, "predicts.csv")
-                #     else:
-                #         csv_path = args.csv
-                #     with open(csv_path, 'a', newline='') as csvfile:
-                #         writer = csv.writer(csvfile)
-                #         writer.writerows(final_predicts)
-                # elif args.parquet:
-                #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
-                #     fastparquet.write(parquet_path, final_predicts)
                 if args.csv:
                     with open(out_path, 'a', newline='') as csvfile:
                         writer = csv.writer(csvfile)
@@ -306,18 +292,6 @@ if __name__ == "__main__":
                 elif args.parquet:
                     fastparquet.write(out_path, final_predicts)
                 final_predicts = []
-
-        # if args.csv:
-        #     if args.csv.split(".")[-1] != "csv":
-        #         csv_path = os.path.join(args.csv, "predicts.csv")
-        #     else:
-        #         csv_path = args.csv
-        #     with open(csv_path, 'a', newline='') as csvfile:
-        #         writer = csv.writer(csvfile)
-        #         writer.writerows(final_predicts)
-        # elif args.parquet:
-        #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
-        #     fastparquet.write(parquet_path, final_predicts)
 
         if args.csv:
             with open(out_path, 'a', newline='') as csvfile:
