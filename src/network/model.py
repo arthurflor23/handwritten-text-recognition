@@ -16,6 +16,7 @@ from contextlib import redirect_stdout
 from tensorflow.keras import backend as K
 from tensorflow.keras import Model
 
+
 from tensorflow.keras.callbacks import CSVLogger, TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.constraints import MaxNorm
@@ -76,6 +77,14 @@ class HTRModel:
         self.reduce_tolerance = reduce_tolerance
         self.reduce_factor = reduce_factor
         self.reduce_cooldown = reduce_cooldown
+
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+            except RuntimeError as e:
+                print(e)
 
     def summary(self, output=None, target=None):
         """Show/Save model structure (summary)"""
@@ -187,6 +196,8 @@ class HTRModel:
         :param: See tensorflow.keras.Model.fit()
         :return: A history object
         """
+
+
 
         # remove ReduceLROnPlateau (if exist) when use schedule learning rate
         if callbacks and self.learning_schedule:

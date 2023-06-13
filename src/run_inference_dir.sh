@@ -16,7 +16,12 @@
 snippets_path=$1
 column=$2
 weights="../weights/$3.hdf5"
-csv_path="$4/$column"
+
+if [[$4 == *.csv]]; then
+  csv_path = $4
+else
+  csv_path="$4/$column"
+fi
 test=${5:-0}
 column_directory="$snippets_path/$column"
 column_directory=${column_directory//\"}
