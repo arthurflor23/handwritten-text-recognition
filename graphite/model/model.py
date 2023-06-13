@@ -1,4 +1,5 @@
 import os
+import time
 import importlib
 import tensorflow as tf
 
@@ -30,14 +31,20 @@ class Model():
         self.model = self._network.compile_model(learning_rate=learning_rate,
                                                  loss_func=self.ctc_loss_func)
 
-        if model_uri:
-            self.model.load_weights(model_uri)
+        if model_uri is None:
+            timestamp = str(int(time.time()))
+            model_uri = os.path.join(self.artifact_path, self.network, timestamp, 'model.hdf5')
+
+        self.model_uri = model_uri
+
+        if self.model_uri and os.path.exists(self.model_uri) and os.path.isfile(self.model_uri):
+            self.model.load_weights(self.model_uri)
 
         self.model.summary()
 
     def fit(self,
             training_data,
-            validation_data,
+            validation_data=None,
             plateau_cooldown=0,
             plateau_factor=0.2,
             plateau_patience=10,
@@ -45,7 +52,15 @@ class Model():
             epochs=1000,
             verbose=1):
 
-        # callbacks=callbacks,
+        # logpath = os.path.dirname(self.model_uri)
+        # logfile = os.path.join(logdir, 'epochs.log')
+
+        # callbacks=setup_callbacks
+
+        # self.model.fit()
+        # workers (?)
+        # use_multiprocessing (?)
+
         print('fit')
 
     def _import_network(self, network):
