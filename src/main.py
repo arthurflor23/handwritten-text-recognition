@@ -50,7 +50,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-    weights_path = args.weights
+    weights_path = os.path.join("../weights", args.weights)
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -83,8 +83,8 @@ if __name__ == "__main__":
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size,
                          beam_width=8,
-                         stop_tolerance=15,
-                         reduce_tolerance=8,
+                         stop_tolerance=18,
+                         reduce_tolerance=10,
                          reduce_factor=0.1)
 
         model.compile(learning_rate=0.001)
@@ -188,6 +188,7 @@ if __name__ == "__main__":
         model.compile()
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
+        print(f'Loading weights from {weights_path}')
         model.load_checkpoint(target=weights_path)
 
         blank_model = xgb.XGBClassifier()
@@ -314,7 +315,7 @@ if __name__ == "__main__":
                 #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
                 #     fastparquet.write(parquet_path, final_predicts)
                 if args.csv:
-                    with open(out_path, 'a', newline='') as csvfile:
+                    with open(out_path, 'a+', newline='') as csvfile:
                         writer = csv.writer(csvfile)
                         writer.writerows(final_predicts)
                 elif args.parquet:
