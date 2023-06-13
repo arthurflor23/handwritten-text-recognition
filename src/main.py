@@ -24,8 +24,9 @@ from data.generator import DataGenerator
 
 from network.model import HTRModel
 
-
 BATCH_SIZE = 1000
+
+WRITE_BAD_TO_OWN_FILE = False # True
 
 if __name__ == "__main__":
 
@@ -49,7 +50,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-    weights_path = os.path.join("../weights", args.weights)
+#     weights_path = os.path.join("../weights", args.weights)
+    weights_path = args.weights
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -136,6 +138,7 @@ if __name__ == "__main__":
         print('Append:', args.append)
         print('Parquet:', args.parquet)
         print('Test:', args.test)
+        
                 
         final_predicts = []
 
@@ -184,9 +187,9 @@ if __name__ == "__main__":
                          beam_width=10)
 
         model.compile()
-        print(weights_path)
         if not os.path.exists(weights_path):
             raise AssertionError("Weights don't exist")
+        print(f'Loading weights from {weights_path}')
         model.load_checkpoint(target=weights_path)
 
         blank_model = xgb.XGBClassifier()
@@ -202,22 +205,27 @@ if __name__ == "__main__":
         print('Total images:', total)
         print('\n-----------------')
         
-        pbar = tqdm(images)
+        pbar = tqdm(images) # tqdm(total=total)
         
         out_path = None
+        bad_path = os.path.join(args.csv, 'predicts_bad.csv')
         if args.csv:
             if args.csv.split(".")[-1] != "csv":
                 out_path = os.path.join(args.csv, "predicts.csv")
             else:
                 out_path = args.csv
+                bad_path = args.csv.replace(".csv", "_bad.csv")
         elif args.parquet:
             out_path = os.path.join(args.csv, 'predicts.parquet')
+                # bad_path = args.csv.replace(".csv", "_bad.csv")
+            
             
         # for image_name in images:
         for i, image_name in enumerate(pbar):
         # for image_name in pbar: 
-            pbar.set_description(f'{image_name}')
-
+            pbar.set_description(f'{image_name}') # f'Image: {image_name} ({i})'
+            # print(f'{image_name} ({i} / {total})')
+            
             image_path = os.path.join(folder_path, image_name)
 
             try:
@@ -230,11 +238,21 @@ if __name__ == "__main__":
                     img = plt.imread(image_path)
                 except:
                     # [image_name, predicts[0][0], probabilities[0][0], predicted_blank]
-                    final_predicts.append([image_name, "<FAILED_TO_OPEN>", 0, 0])
+                    failed_to_open_value = "<FAILED_TO_OPEN>"
+                    if WRITE_BAD_TO_OWN_FILE:
+                        with open(bad_path, 'a') as f:
+                            f.write(f"{image_name},{failed_to_open_value},0,0\n")                    
+                    else:
+                        final_predicts.append([image_name, failed_to_open_value, 0, 0])
                     continue
 
             if img is None:
-                final_predicts.append([image_name, "<IMAGE_WAS_NONE>", 0, 0])
+                non_image_value = "<IMAGE_WAS_NONE>"
+                if WRITE_BAD_TO_OWN_FILE:
+                    with open(bad_path, 'a') as f:
+                        f.write(f"{image_name},{non_image_value},0,0\n")
+                else:
+                    final_predicts.append([image_name, non_image_value, 0, 0])
                 continue
 
             # first check if image is a blank snippet
@@ -284,7 +302,19 @@ if __name__ == "__main__":
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
 
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
+            # pbar.update(1)
             if i != 0 and i % BATCH_SIZE == 0:
+                # if args.csv:
+                #     if args.csv.split(".")[-1] != "csv":
+                #         csv_path = os.path.join(args.csv, "predicts.csv")
+                #     else:
+                #         csv_path = args.csv
+                #     with open(csv_path, 'a', newline='') as csvfile:
+                #         writer = csv.writer(csvfile)
+                #         writer.writerows(final_predicts)
+                # elif args.parquet:
+                #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
+                #     fastparquet.write(parquet_path, final_predicts)
                 if args.csv:
                     with open(out_path, 'a+', newline='') as csvfile:
                         writer = csv.writer(csvfile)
@@ -292,6 +322,18 @@ if __name__ == "__main__":
                 elif args.parquet:
                     fastparquet.write(out_path, final_predicts)
                 final_predicts = []
+
+        # if args.csv:
+        #     if args.csv.split(".")[-1] != "csv":
+        #         csv_path = os.path.join(args.csv, "predicts.csv")
+        #     else:
+        #         csv_path = args.csv
+        #     with open(csv_path, 'a', newline='') as csvfile:
+        #         writer = csv.writer(csvfile)
+        #         writer.writerows(final_predicts)
+        # elif args.parquet:
+        #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
+        #     fastparquet.write(parquet_path, final_predicts)
 
         if args.csv:
             with open(out_path, 'a', newline='') as csvfile:
