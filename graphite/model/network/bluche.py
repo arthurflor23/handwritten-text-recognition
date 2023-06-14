@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from .layers import Processing, GatedConv2D
+from .layers import InputProcess, GatedConv2D
 
 
 class Network():
@@ -69,10 +69,10 @@ class Network():
         """
 
         inputs = tf.keras.Input(shape=(None, None, 1))
-        preproc = Processing(target_shape=self.input_shape)(inputs)
+        preproc = InputProcess(target_shape=self.input_shape)(inputs)
 
-        target_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
-        cnn = tf.keras.layers.Reshape(target_shape=target_shape)(preproc)
+        tile_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
+        cnn = tf.keras.layers.Reshape(target_shape=tile_shape)(preproc)
 
         cnn = tf.keras.layers.Conv2D(filters=8,
                                      kernel_size=(3, 3),
@@ -112,8 +112,8 @@ class Network():
 
         cnn = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(cnn)
 
-        shape = cnn.get_shape()
-        blstm = tf.keras.layers.Reshape((shape[1], shape[2] * shape[3]))(cnn)
+        cnn_shape = cnn.get_shape()
+        blstm = tf.keras.layers.Reshape((cnn_shape[1], cnn_shape[2] * cnn_shape[3]))(cnn)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
