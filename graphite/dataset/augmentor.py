@@ -164,7 +164,8 @@ class Augmentor():
                 (self.erosion, self.erosion_params),
                 (self.dilation, self.dilation_params),
                 (self.elastic_transform, self.elastic_transform_params),
-                (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
+                (self.mixup, self.mixup_params[:1] + [batch_images] +
+                 self.mixup_params[1:] if self.mixup_params else None),
                 (self.perspective_transform, self.perspective_transform_params),
                 (self.salt_and_pepper, self.salt_and_pepper_params),
                 (self.gaussian_blur, self.gaussian_blur_params),
