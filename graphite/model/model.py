@@ -135,27 +135,23 @@ class Model():
     def ctc_loss_func(y_true, y_pred):
         # (16, 944, 165, 1) (16, 1, 48)....
 
-        # if len(y_true.shape) > 2:
-        #     y_true = tf.squeeze(y_true)
+        if len(y_true.shape) > 2:
+            y_true = tf.squeeze(y_true)
 
-        # # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
-        # # output of every model is softmax
-        # # so sum across alphabet_size_1_hot_encoded give 1
-        # #               string_length give string length
-        # input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
-        # input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+        # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
+        # output of every model is softmax
+        # so sum across alphabet_size_1_hot_encoded give 1
+        #               string_length give string length
+        input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
+        input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
 
-        # # y_true strings are padded with 0
-        # # so sum of non-zero gives number of characters in this string
-        # label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
+        # y_true strings are padded with 0
+        # so sum of non-zero gives number of characters in this string
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
 
-        # loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+        loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
 
-        # # average loss across all entries in the batch
-        # loss = tf.reduce_mean(loss)
-
-        # temp...
-        x = tf.constant([[1., 1.], [2., 2.]])
-        loss = tf.reduce_mean(x)
+        # average loss across all entries in the batch
+        loss = tf.reduce_mean(loss)
 
         return loss
