@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from .layers import GatedConv2D
+from .layers import Processing, GatedConv2D
 
 
 class Network():
@@ -68,10 +68,11 @@ class Network():
             A tuple containing the input and output tensors of the model.
         """
 
-        inputs = tf.keras.layers.Input(name='input', shape=self.input_shape)
-        target_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
+        inputs = tf.keras.Input(shape=(None, None, 1))
+        preproc = Processing(target_shape=self.input_shape)(inputs)
 
-        cnn = tf.keras.layers.Reshape(target_shape=target_shape)(inputs)
+        target_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
+        cnn = tf.keras.layers.Reshape(target_shape=target_shape)(preproc)
 
         cnn = tf.keras.layers.Conv2D(filters=8,
                                      kernel_size=(3, 3),
@@ -120,6 +121,6 @@ class Network():
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(blstm)
         dense = tf.keras.layers.Dense(units=output_shape[-1], activation='softmax')(blstm)
 
-        outputs = tf.expand_dims(dense, axis=1)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1))(dense)
 
         return (inputs, outputs)
