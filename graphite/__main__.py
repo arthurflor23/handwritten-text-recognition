@@ -79,6 +79,9 @@ if __name__ == '__main__':
     parser.add_argument('--train', default=False, action='store_true',
                         help="Perform optical model training")
 
+    parser.add_argument('--batch-size', default=16, type=int,
+                        help="Batch size for the optical model")
+
     parser.add_argument('--learning-rate', default=1e-4, type=float,
                         help="Learning rate for the optimizer")
 
