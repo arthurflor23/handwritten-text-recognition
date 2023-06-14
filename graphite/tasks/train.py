@@ -33,11 +33,13 @@ def train(args):
     model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
     model.compile(learning_rate=args.learning_rate, model_uri=None)
 
-    training_data_generator = dataset.batch_generator(partition='training', batch_size=16, augmentor=augmentor)
-    validation_data_generator = dataset.batch_generator(partition='validation', batch_size=16, augmentor=None)
+    training_data, training_steps = dataset.get_generator('training', batch_size=args.batch_size, augmentor=augmentor)
+    validation_data, validation_steps = dataset.get_generator('validation', batch_size=args.batch_size, augmentor=None)
 
-    model.fit(training_data=training_data_generator,
-              validation_data=validation_data_generator,
+    model.fit(training_data=training_data,
+              training_steps=training_steps,
+              validation_data=validation_data,
+              validation_steps=validation_steps,
               plateau_cooldown=args.plateau_cooldown,
               plateau_factor=args.plateau_factor,
               plateau_patience=args.plateau_patience,
