@@ -20,7 +20,6 @@ class GatedConv2D(tf.keras.layers.Conv2D):
          ----------
          **kwargs : dict
              Conv2D keyword arguments.
-
          """
 
         super().__init__(**kwargs)
