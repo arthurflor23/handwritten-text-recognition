@@ -187,7 +187,6 @@ class Dataset():
                         partition,
                         batch_size,
                         augmentor=None,
-                        standardize=True,
                         shuffle=True,
                         debug=False):
         """
@@ -201,8 +200,6 @@ class Dataset():
             The number of samples in each batch.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
-        standardize : bool, optional
-            Indicates whether to standardize the batch, default is True.
         shuffle : bool, optional
             Specifies whether shuffles per epoch, default is True.
         debug : bool, optional
@@ -251,20 +248,19 @@ class Dataset():
                     futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
                     x_data = [future.result() for future in futures]
 
-            if standardize:
-                axis = np.array([x.shape for x in x_data])
-                max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
+            axis = np.array([x.shape for x in x_data])
+            max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
 
-                with concurrent.futures.ProcessPoolExecutor() as executor:
-                    futures = [executor.submit(self.standardize_image, x, max_axis) for x in x_data]
-                    x_data = [future.result() for future in futures]
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                futures = [executor.submit(self.standardize_image, x, max_axis) for x in x_data]
+                x_data = [future.result() for future in futures]
 
-                # x_data = np.array(x_data, dtype=np.float64)
-                # y_data = np.array(y_data, dtype=np.int16)
+            x_data = np.expand_dims(x_data, axis=-1)
+            y_data = np.array(y_data)
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
 
-            yield x_data, y_data
+            yield (x_data, y_data)
 
     def standardize_text(self, text):
         """
@@ -379,10 +375,9 @@ class Dataset():
                                        borderType=cv2.BORDER_CONSTANT,
                                        value=self.reference_pixels[0])
 
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        image = cv2.flip(image, 1)
-
-        image = np.divide(image, 255, dtype=np.float32)
+        # image = np.divide(image, 255, dtype=np.float32)
+        # image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        # image = cv2.flip(image, 1)
 
         return image
 
