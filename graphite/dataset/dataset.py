@@ -187,8 +187,8 @@ class Dataset():
                         partition,
                         batch_size,
                         augmentor=None,
-                        shuffle=True,
-                        debug=False):
+                        padding=True,
+                        shuffle=True):
         """
         Generates a batch of data samples for the specified partition.
 
@@ -200,10 +200,10 @@ class Dataset():
             The number of samples in each batch.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
+        padding : bool, optional
+            Specifies whether to enable padding mode, default is True.
         shuffle : bool, optional
             Specifies whether shuffles per epoch, default is True.
-        debug : bool, optional
-            Specifies whether to enable debug mode, default is False.
 
         Returns
         -------
@@ -215,7 +215,7 @@ class Dataset():
         indices = np.arange(dataset['size'])
 
         batch_index = 0
-        label_index = 2 if debug else 3
+        label_index = 3 if padding else 2
 
         while True:
             if batch_index >= dataset['size']:
@@ -248,21 +248,26 @@ class Dataset():
                     futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
                     x_data = [future.result() for future in futures]
 
-            axis = np.array([x.shape for x in x_data])
-            max_axis = [np.max(axis[..., 0]), np.max(axis[..., 1])]
+            if padding:
+                max_axis = max(len(x) for x in x_data), max(len(x[0]) for x in x_data)
+                pad_value = self.reference_pixels[0]
 
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                futures = [executor.submit(self.standardize_image, x, max_axis) for x in x_data]
-                x_data = [future.result() for future in futures]
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(self._pad_data_item, x, max_axis, pad_value) for x in x_data]
+                    x_data = np.array([future.result() for future in futures])
 
-            x_data = np.expand_dims(x_data, axis=-1)
-            y_data = np.array(y_data)
+                max_axis = max(len(y) for y in y_data), max(len(y[0]) for y in y_data)
+                pad_value = self.tokenizer.pad_tk_index
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(self._pad_data_item, y, max_axis, pad_value) for y in y_data]
+                    y_data = np.array([future.result() for future in futures])
 
             # batch = (x_data,) if 'test' in partition else (x_data, y_data)
 
-            yield (x_data, y_data)
+            yield x_data, y_data
 
-    def standardize_text(self, text):
+    def format_text(self, text):
         """
         Standardize texts by string formatting.
 
@@ -349,38 +354,6 @@ class Dataset():
 
         return text
 
-    def standardize_image(self, image, max_axis=None):
-        """
-        Standardize the given image for optical model input.
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            The input image to standardize.
-        max_axis : tuple or None, optional
-            The maximum axis size to pad the image.
-            The format of max_axis should be (height, width).
-
-        Returns
-        -------
-        numpy.ndarray
-            The standardized image.
-        """
-
-        if max_axis is not None:
-            bottom_pad = max(0, max_axis[0] - image.shape[0])
-            right_pad = max(0, max_axis[1] - image.shape[1])
-
-            image = cv2.copyMakeBorder(image, 0, bottom_pad, 0, right_pad,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=self.reference_pixels[0])
-
-        # image = np.divide(image, 255, dtype=np.float32)
-        # image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        # image = cv2.flip(image, 1)
-
-        return image
-
     def read_image(self, image_path, bbox=None):
         """
         Read an image from the given file path and perform optional bbox.
@@ -422,6 +395,7 @@ class Dataset():
 
         y = max(0, abs(y - 10))
         x = max(0, abs(x - 10))
+
         height = min(image.shape[0], (height + 10))
         width = min(image.shape[1], (width + 10))
 
@@ -616,7 +590,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self.standardize_text(label)[0]
+        label = self.format_text(label)[0]
 
         if not infer and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -695,6 +669,32 @@ class Dataset():
 
         return dct
 
+    def _pad_data_item(self, item, max_axis, pad_value=0):
+        """
+        Pads an input item along the axis (y, x) to match the provided maximum dimensions.
+
+        Parameters
+        ----------
+        item : np.ndarray
+            The input item to be padded, expected to be a numpy array.
+        max_axis : tuple
+            A tuple of maximum dimensions along each axis. Each dimension value is used
+            to pad the corresponding axis of the item.
+        pad_value : int, optional
+            The constant value used for padding. Defaults to 0.
+
+        Returns
+        -------
+        np.ndarray
+            The padded item, expanded with a new dimension at the end.
+        """
+
+        padding = ((0, max_axis[0] - len(item)), (0, max_axis[1] - len(item[0])))
+        item = np.pad(item, pad_width=padding, mode='constant', constant_values=pad_value)
+        item = np.expand_dims(item, axis=-1)
+
+        return item
+
 
 class Tokenizer():
     """
@@ -722,6 +722,11 @@ class Tokenizer():
 
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset))
+
+        self.pad_tk_index = self.charset.index(self.pad_tk)
+        self.sos_tk_index = self.charset.index(self.sos_tk)
+        self.eos_tk_index = self.charset.index(self.eos_tk)
+        self.unk_tk_index = self.charset.index(self.unk_tk)
 
     def encode_data(self, data):
         """
@@ -762,23 +767,16 @@ class Tokenizer():
             Encoded label with token indices.
         """
 
-        pad_tk_index = self.charset.index(self.pad_tk)
-        unk_tk_index = self.charset.index(self.unk_tk)
-        sos_tk_index = self.charset.index(self.sos_tk)
-        eos_tk_index = self.charset.index(self.eos_tk)
-
         encoded_label = []
 
         for row in label:
-            enconded_row = [sos_tk_index]
+            enconded_row = [self.sos_tk_index]
 
             for char in row:
-                index = self.charset.index(char) if char in self.charset else unk_tk_index
+                index = self.charset.index(char) if char in self.charset else self.unk_tk_index
                 enconded_row.append(index)
 
-            enconded_row += [eos_tk_index]
-            enconded_row += [pad_tk_index] * max(0, abs(self.shape[1] - len(enconded_row)))
-
+            enconded_row += [self.eos_tk_index]
             encoded_label.append(enconded_row)
 
         return encoded_label
