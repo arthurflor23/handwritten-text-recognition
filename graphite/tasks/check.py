@@ -45,39 +45,50 @@ def check(args):
     src_batch = dataset.batch_generator(batch_size=16,
                                         partition='training',
                                         augmentor=None,
-                                        shuffle=False,
-                                        debug=True)
+                                        padding=False,
+                                        shuffle=False)
 
     aug_batch = dataset.batch_generator(batch_size=16,
                                         partition='training',
                                         augmentor=augmentor,
-                                        shuffle=False,
-                                        debug=False)
+                                        padding=True,
+                                        shuffle=False)
 
-    if args.check_samples:
-        print("Checking samples...\n")
+    print("Checking samples...\n")
 
-        while True:
-            src_images, src_labels = next(src_batch)
-            aug_images, aug_labels = next(aug_batch)
+    # import time
+    # counter = 0
+    # start_time = time.time()
+    # for _ in range(1000):
+    #     aug_images, aug_labels = next(aug_batch)
+    #     counter += 1
+    # end_time = time.time()
 
-            for i in range(len(src_images)):
-                cv2.imshow("Source Image", src_images[i])
-                cv2.imshow("Augmented Image", aug_images[i])
+    # print("\n\nLoop performed {} times".format(counter))
+    # print(f"Execution time: {end_time - start_time:.4f} seconds\n\n")
+    # exit()
 
-                print("\nSource Label")
-                for j in range(len(src_labels[i])):
-                    print("Length", len(src_labels[i][j]))
-                    print(src_labels[i][j])
+    while True:
+        src_images, src_labels = next(src_batch)
+        aug_images, aug_labels = next(aug_batch)
 
-                print("\nEncoded Label")
-                for j in range(len(aug_labels[i])):
-                    print("Length", len(aug_labels[i][j]))
-                    print(aug_labels[i][j])
+        for i in range(len(src_images)):
+            cv2.imshow("Source Image", src_images[i])
+            cv2.imshow("Augmented Image", aug_images[i])
 
-                print("\nPress Enter to continue or Esc to stop...\n")
-                key = cv2.waitKey(0)
+            print("\nSource Label")
+            for j in range(len(src_labels[i])):
+                print("Length", len(src_labels[i][j]))
+                print(src_labels[i][j])
 
-                if key == 27:
-                    cv2.destroyAllWindows()
-                    return
+            print("\nEncoded Label")
+            for j in range(len(aug_labels[i])):
+                print("Length", len(aug_labels[i][j]))
+                print(aug_labels[i][j].tolist())
+
+            print("\nPress Enter to continue or Esc to stop...\n")
+            key = cv2.waitKey(0)
+
+            if key == 27:
+                cv2.destroyAllWindows()
+                return
