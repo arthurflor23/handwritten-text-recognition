@@ -112,9 +112,6 @@ if __name__ == '__main__':
     parser.add_argument('--check', default=False, action='store_true',
                         help="Perform data verification")
 
-    parser.add_argument('--check-samples', default=False, action='store_true',
-                        help="View sample data")
-
     # Others
     parser.add_argument('--run-id', default=None,
                         help="Specify mlflow run id")
