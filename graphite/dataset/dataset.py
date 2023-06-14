@@ -183,12 +183,12 @@ class Dataset():
 
         return info
 
-    def batch_generator(self,
-                        partition,
-                        batch_size,
-                        augmentor=None,
-                        padding=True,
-                        shuffle=True):
+    def get_generator(self,
+                      partition,
+                      batch_size=16,
+                      augmentor=None,
+                      padding=True,
+                      shuffle=True):
         """
         Generates a batch of data samples for the specified partition.
 
@@ -197,7 +197,7 @@ class Dataset():
         partition : str
             The partition type ('training', 'validation', or 'test').
         batch_size : int, optional
-            The number of samples in each batch.
+            The number of samples in each batch, default is 16.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
         padding : bool, optional
@@ -211,61 +211,56 @@ class Dataset():
             A tuple containing the input data and corresponding labels.
         """
 
+        def generator(dataset, indices):
+            batch_index = 0
+            label_index = 3 if padding else 2
+
+            while True:
+                if batch_index >= dataset['size']:
+                    if shuffle:
+                        np.random.shuffle(indices)
+                    batch_index = 0
+
+                batch_indices = indices[batch_index:batch_index + batch_size]
+                batch_index += batch_size
+
+                x_data = []
+                y_data = []
+
+                if self.lazy_mode:
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        batch_data = [dataset['data'][i] for i in batch_indices]
+                        futures = [executor.submit(self.read_image, data[0], data[1]) for data in batch_data]
+
+                        for future, data in zip(futures, batch_data):
+                            x_data.append(future.result())
+                            y_data.append(data[label_index])
+
+                else:
+                    for i in batch_indices:
+                        x_data.append(dataset['data'][i][0])
+                        y_data.append(dataset['data'][i][label_index])
+
+                if augmentor:
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
+                        x_data = [future.result() for future in futures]
+
+                if padding:
+                    x_data = self._pad_data(x_data, self.reference_pixels[0])
+                    y_data = self._pad_data(y_data, self.tokenizer.pad_tk_index)
+
+                # batch = (x_data,) if 'test' in partition else (x_data, y_data)
+
+                yield x_data, y_data
+
         dataset = getattr(self, partition)
         indices = np.arange(dataset['size'])
 
-        batch_index = 0
-        label_index = 3 if padding else 2
+        batch_generator = generator(dataset, indices)
+        steps_per_epoch = (dataset['size'] + batch_size - 1) // batch_size
 
-        while True:
-            if batch_index >= dataset['size']:
-                if shuffle:
-                    np.random.shuffle(indices)
-                batch_index = 0
-
-            batch_indices = indices[batch_index:batch_index + batch_size]
-            batch_index += batch_size
-
-            x_data = []
-            y_data = []
-
-            if self.lazy_mode:
-                batch_data = [dataset['data'][i] for i in batch_indices]
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self.read_image, data[0], data[1]) for data in batch_data]
-
-                    for future, data in zip(futures, batch_data):
-                        x_data.append(future.result())
-                        y_data.append(data[label_index])
-            else:
-                for i in batch_indices:
-                    x_data.append(dataset['data'][i][0])
-                    y_data.append(dataset['data'][i][label_index])
-
-            if augmentor:
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(augmentor.augmentation, x, x_data) for x in x_data]
-                    x_data = [future.result() for future in futures]
-
-            if padding:
-                max_axis = max(len(x) for x in x_data), max(len(x[0]) for x in x_data)
-                pad_value = self.reference_pixels[0]
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self._pad_data_item, x, max_axis, pad_value) for x in x_data]
-                    x_data = np.array([future.result() for future in futures])
-
-                max_axis = max(len(y) for y in y_data), max(len(y[0]) for y in y_data)
-                pad_value = self.tokenizer.pad_tk_index
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(self._pad_data_item, y, max_axis, pad_value) for y in y_data]
-                    y_data = np.array([future.result() for future in futures])
-
-            # batch = (x_data,) if 'test' in partition else (x_data, y_data)
-
-            yield x_data, y_data
+        return batch_generator, steps_per_epoch
 
     def format_text(self, text):
         """
@@ -669,31 +664,33 @@ class Dataset():
 
         return dct
 
-    def _pad_data_item(self, item, max_axis, pad_value=0):
+    def _pad_data(self, data, pad_value=0):
         """
-        Pads an input item along the axis (y, x) to match the provided maximum dimensions.
+        Pad each data item in the list to a uniform shape, filling with the `pad_value`.
 
         Parameters
         ----------
-        item : np.ndarray
-            The input item to be padded, expected to be a numpy array.
-        max_axis : tuple
-            A tuple of maximum dimensions along each axis. Each dimension value is used
-            to pad the corresponding axis of the item.
+        data : list
+            List of numpy arrays to be padded.
         pad_value : int, optional
-            The constant value used for padding. Defaults to 0.
+            Value used for padding, by default 0.
 
         Returns
         -------
-        np.ndarray
-            The padded item, expanded with a new dimension at the end.
+        numpy.ndarray
+            Padded data as a numpy array.
         """
 
-        padding = ((0, max_axis[0] - len(item)), (0, max_axis[1] - len(item[0])))
-        item = np.pad(item, pad_width=padding, mode='constant', constant_values=pad_value)
-        item = np.expand_dims(item, axis=-1)
+        max_axis = max(len(item) for item in data), max(len(item[0]) for item in data)
 
-        return item
+        for i in range(len(data)):
+            padding = [(0, mdim - idim) for idim, mdim in zip(np.asarray(data[i]).shape, max_axis)]
+            data[i] = np.pad(data[i], pad_width=padding, mode='constant', constant_values=pad_value)
+            data[i] = np.expand_dims(data[i], axis=-1)
+
+        data = np.array(data)
+
+        return data
 
 
 class Tokenizer():
@@ -721,7 +718,7 @@ class Tokenizer():
         self.unk_tk = '◬'
 
         self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
-        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset))
+        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
 
         self.pad_tk_index = self.charset.index(self.pad_tk)
         self.sos_tk_index = self.charset.index(self.sos_tk)
