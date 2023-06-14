@@ -50,18 +50,71 @@ class Model():
             plateau_patience=10,
             patience=20,
             epochs=1000,
-            verbose=1):
+            verbose=1,
+            **kwargs):
 
-        # logpath = os.path.dirname(self.model_uri)
-        # logfile = os.path.join(logdir, 'epochs.log')
+        logpath = os.path.dirname(self.model_uri)
+        logfile = os.path.join(logpath, 'epochs.log')
 
-        # callbacks=setup_callbacks
+        callbacks = [
+            tf.keras.callbacks.CSVLogger(
+                filename=logfile,
+                separator=',',
+                append=True,
+            ),
+            tf.keras.callbacks.TensorBoard(
+                log_dir=logpath,
+                write_graph=True,
+                write_images=True,
+                profile_batch=10,
+                histogram_freq=10,
+                embeddings_freq=10,
+                update_freq='epoch',
+                write_steps_per_second=True,
+            ),
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=self.model_uri,
+                mode='auto',
+                monitor='val_loss',
+                save_best_only=True,
+                save_weights_only=True,
+                save_freq='epoch',
+                verbose=verbose,
+            ),
+            tf.keras.callbacks.EarlyStopping(
+                mode='min',
+                monitor='val_loss',
+                min_delta=1e-8,
+                patience=patience,
+                start_from_epoch=0,
+                restore_best_weights=True,
+                verbose=verbose,
+            ),
+            tf.keras.callbacks.ReduceLROnPlateau(
+                mode='min',
+                monitor='val_loss',
+                min_lr=1e-8,
+                min_delta=1e-8,
+                factor=plateau_factor,
+                patience=plateau_patience,
+                cooldown=plateau_cooldown,
+                verbose=verbose,
+            ),
+        ]
 
-        # self.model.fit()
-        # workers (?)
-        # use_multiprocessing (?)
+        output = self.model.fit(
+            x=training_data,
+            validation_data=validation_data,
+            epochs=epochs,
+            shuffle=True,
+            workers=10,
+            use_multiprocessing=True,
+            callbacks=callbacks,
+            verbose=verbose,
+            **kwargs,
+        )
 
-        print('fit')
+        return output
 
     def _import_network(self, network):
 
@@ -80,24 +133,29 @@ class Model():
 
     @staticmethod
     def ctc_loss_func(y_true, y_pred):
+        # (16, 944, 165, 1) (16, 1, 48)....
 
-        if len(y_true.shape) > 2:
-            y_true = tf.squeeze(y_true)
+        # if len(y_true.shape) > 2:
+        #     y_true = tf.squeeze(y_true)
 
-        # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
-        # output of every model is softmax
-        # so sum across alphabet_size_1_hot_encoded give 1
-        #               string_length give string length
-        input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
-        input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+        # # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
+        # # output of every model is softmax
+        # # so sum across alphabet_size_1_hot_encoded give 1
+        # #               string_length give string length
+        # input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
+        # input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
 
-        # y_true strings are padded with 0
-        # so sum of non-zero gives number of characters in this string
-        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
+        # # y_true strings are padded with 0
+        # # so sum of non-zero gives number of characters in this string
+        # label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
 
-        loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+        # loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
 
-        # average loss across all entries in the batch
-        loss = tf.reduce_mean(loss)
+        # # average loss across all entries in the batch
+        # loss = tf.reduce_mean(loss)
+
+        # temp...
+        x = tf.constant([[1., 1.], [2., 2.]])
+        loss = tf.reduce_mean(x)
 
         return loss
