@@ -164,8 +164,7 @@ class Augmentor():
                 (self.erosion, self.erosion_params),
                 (self.dilation, self.dilation_params),
                 (self.elastic_transform, self.elastic_transform_params),
-                (self.mixup, self.mixup_params[:1] + [batch_images] +
-                 self.mixup_params[1:] if self.mixup_params else None),
+                (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 (self.perspective_transform, self.perspective_transform_params),
                 (self.salt_and_pepper, self.salt_and_pepper_params),
                 (self.gaussian_blur, self.gaussian_blur_params),
@@ -284,7 +283,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, batch_images, opacity, iterations, radius=True):
+    def mixup(self, image, opacity, iterations, radius=True, batch_images=None):
         """
         Apply mixup augmentation to the image.
 
@@ -292,14 +291,14 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be mixed.
-        batch_images : list
-            List of additional images for mixing.
         opacity : float
             Opacity of the mixup effect.
         iterations : int
             Number of images for the mixup operation.
         radius : bool, optional
             Whether to use range radius for opacity and iterations, by default True.
+        batch_images : list
+            List of additional images for mixing.
 
         Returns
         -------
@@ -307,7 +306,7 @@ class Augmentor():
             Mixed image.
         """
 
-        if len(batch_images) > 0:
+        if batch_images:
             iterations = min(iterations, len(batch_images))
             indices = np.uint8(np.random.uniform(0, len(batch_images), iterations))
 
