@@ -44,7 +44,9 @@ class Model():
 
     def fit(self,
             training_data,
+            training_steps=None,
             validation_data=None,
+            validation_steps=None,
             plateau_cooldown=0,
             plateau_factor=0.2,
             plateau_patience=10,
@@ -104,12 +106,11 @@ class Model():
 
         output = self.model.fit(
             x=training_data,
+            steps_per_epoch=training_steps,
             validation_data=validation_data,
+            validation_steps=validation_steps,
+            # callbacks=callbacks,
             epochs=epochs,
-            shuffle=True,
-            workers=10,
-            use_multiprocessing=True,
-            callbacks=callbacks,
             verbose=verbose,
             **kwargs,
         )
@@ -133,25 +134,21 @@ class Model():
 
     @staticmethod
     def ctc_loss_func(y_true, y_pred):
-        # (16, 944, 165, 1) (16, 1, 48)....
 
+        # Reshape inputs to (batch_size, sequence_length, last_dim_size)
+        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1, tf.shape(y_true)[-1]))
+        y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+
+        # Remove extra dimensions in y_true if present
         if len(y_true.shape) > 2:
             y_true = tf.squeeze(y_true)
 
-        # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
-        # output of every model is softmax
-        # so sum across alphabet_size_1_hot_encoded give 1
-        #               string_length give string length
-        input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
-        input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
-
-        # y_true strings are padded with 0
-        # so sum of non-zero gives number of characters in this string
+        # Compute lengths for CTC calculation
         label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
+        input_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
+        # Compute CTC loss and average it across the batch
         loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
-
-        # average loss across all entries in the batch
         loss = tf.reduce_mean(loss)
 
         return loss
