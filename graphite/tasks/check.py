@@ -56,18 +56,6 @@ def check(args):
 
     print("Checking samples...\n")
 
-    # import time
-    # counter = 0
-    # start_time = time.time()
-    # for _ in range(1000):
-    #     aug_images, aug_labels = next(aug_batch)
-    #     counter += 1
-    # end_time = time.time()
-
-    # print("\n\nLoop performed {} times".format(counter))
-    # print(f"Execution time: {end_time - start_time:.4f} seconds\n\n")
-    # exit()
-
     while True:
         src_images, src_labels = next(src_batch)
         aug_images, aug_labels = next(aug_batch)
