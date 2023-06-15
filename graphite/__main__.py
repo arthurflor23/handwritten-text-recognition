@@ -50,7 +50,7 @@ if __name__ == '__main__':
                         help="Apply shearing transformation (probability, angle)")
 
     parser.add_argument('--scaling', default=[0.99, 0.3], nargs='+', type=float,
-                        help="Apply scaling transformation (probability, scale delta)")
+                        help="Apply scaling transformation (probability, scale alpha)")
 
     parser.add_argument('--rotation', default=[0.99, 3.0], nargs='+', type=float,
                         help="Apply rotation transformation (probability, angle)")
