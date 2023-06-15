@@ -48,7 +48,7 @@ class Network():
         inputs, outputs = self._get_architecture(self.output_shape)
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
-        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        optimizer = tf.keras.optimizers.legacy.RMSprop(learning_rate=learning_rate)
         model.compile(optimizer=optimizer, loss=loss_func)
 
         return model
