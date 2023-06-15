@@ -38,38 +38,39 @@ def check(args):
                           scaling=args.scaling,
                           rotation=args.rotation,
                           translation=args.translation,
-                          reference_pixels=dataset.reference_pixels,
                           seed=42)
     print(augmentor)
 
-    src_batch = dataset.batch_generator(batch_size=16,
-                                        partition='training',
-                                        augmentor=None,
-                                        padding=False,
-                                        shuffle=False)
+    src_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=None,
+                                             padding=False,
+                                             shuffle=False)
 
-    aug_batch = dataset.batch_generator(batch_size=16,
-                                        partition='training',
-                                        augmentor=augmentor,
-                                        padding=True,
-                                        shuffle=False)
+    aug_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=augmentor,
+                                             padding=True,
+                                             shuffle=False)
 
     print("Checking samples...\n")
 
     while True:
-        src_images, src_labels = next(src_batch)
-        aug_images, aug_labels = next(aug_batch)
+        src_images, src_labels = next(src_generator)
+        aug_images, aug_labels = next(aug_generator)
 
         for i in range(len(src_images)):
             cv2.imshow("Source Image", src_images[i])
             cv2.imshow("Augmented Image", aug_images[i])
 
             print("\nSource Label")
+
             for j in range(len(src_labels[i])):
                 print("Length", len(src_labels[i][j]))
                 print(src_labels[i][j])
 
             print("\nEncoded Label")
+
             for j in range(len(aug_labels[i])):
                 print("Length", len(aug_labels[i][j]))
                 print(aug_labels[i][j].tolist())
