@@ -52,8 +52,7 @@ class Model():
             plateau_patience=10,
             patience=20,
             epochs=1000,
-            verbose=1,
-            **kwargs):
+            verbose=1):
 
         logpath = os.path.dirname(self.model_uri)
         logfile = os.path.join(logpath, 'epochs.log')
@@ -79,7 +78,7 @@ class Model():
                 mode='auto',
                 monitor='val_loss',
                 save_best_only=True,
-                save_weights_only=True,
+                save_weights_only=False,
                 save_freq='epoch',
                 verbose=verbose,
             ),
@@ -95,7 +94,7 @@ class Model():
             tf.keras.callbacks.ReduceLROnPlateau(
                 mode='min',
                 monitor='val_loss',
-                min_lr=1e-8,
+                min_lr=1e-4,
                 min_delta=1e-8,
                 factor=plateau_factor,
                 patience=plateau_patience,
@@ -112,7 +111,6 @@ class Model():
             # callbacks=callbacks,
             epochs=epochs,
             verbose=verbose,
-            **kwargs,
         )
 
         return output
