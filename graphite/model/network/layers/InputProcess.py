@@ -37,15 +37,14 @@ class InputProcess(tf.keras.layers.Layer):
             Processed tensor after applying operations.
         """
 
-        inputs = tf.keras.layers.Lambda(lambda x: tf.image.rot90(image=x, k=-1))(inputs)
-        inputs = tf.keras.layers.Lambda(lambda x: tf.image.flip_left_right(image=x))(inputs)
-        inputs = tf.keras.layers.Lambda(lambda x: tf.image.resize_with_pad(image=x,
-                                                                           target_height=self.target_shape[0],
-                                                                           target_width=self.target_shape[1],
-                                                                           method=tf.image.ResizeMethod.BILINEAR,
-                                                                           antialias=True))(inputs)
+        inputs = tf.image.resize_with_pad(inputs,
+                                          target_height=self.target_shape[1],
+                                          target_width=self.target_shape[0],
+                                          method=tf.image.ResizeMethod.BILINEAR,
+                                          antialias=True)
 
-        inputs = tf.keras.layers.Rescaling(scale=1./255, offset=0.0)(inputs)
+        inputs = tf.image.transpose(inputs)
+        inputs = tf.math.divide(inputs, 255)
 
         return inputs
 
