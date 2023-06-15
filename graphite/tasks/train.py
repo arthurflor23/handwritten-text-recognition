@@ -26,17 +26,22 @@ def train(args):
                           scaling=args.scaling,
                           rotation=args.rotation,
                           translation=args.translation,
-                          reference_pixels=dataset.reference_pixels,
                           disable_augmentation=args.disable_augmentation,
                           seed=42)
 
     model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
     model.compile(learning_rate=args.learning_rate, model_uri=None)
 
-    training_data, training_steps = dataset.get_generator('training', batch_size=args.batch_size, augmentor=augmentor)
-    validation_data, validation_steps = dataset.get_generator('validation', batch_size=args.batch_size, augmentor=None)
+    training_data, training_steps = dataset.get_generator(partition='training',
+                                                          batch_size=args.batch_size,
+                                                          augmentor=augmentor)
 
-    model.fit(training_data=training_data,
+    validation_data, validation_steps = dataset.get_generator(partition='validation',
+                                                              batch_size=args.batch_size,
+                                                              augmentor=None)
+
+    model.fit(epochs=args.epochs,
+              training_data=training_data,
               training_steps=training_steps,
               validation_data=validation_data,
               validation_steps=validation_steps,
