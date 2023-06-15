@@ -155,17 +155,17 @@ class Augmentor():
 
         if not self.disable_augmentation:
             transformations = [
-                # (self.erosion, self.erosion_params),
-                # (self.dilation, self.dilation_params),
-                # (self.elastic_transform, self.elastic_transform_params),
-                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+                (self.erosion, self.erosion_params),
+                (self.dilation, self.dilation_params),
+                (self.elastic_transform, self.elastic_transform_params),
+                (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 (self.perspective_transform, self.perspective_transform_params),
-                # (self.salt_and_pepper, self.salt_and_pepper_params),
-                # (self.gaussian_blur, self.gaussian_blur_params),
-                # (self.shearing, self.shearing_params),
-                # (self.scaling, self.scaling_params),
-                # (self.rotation, self.rotation_params),
-                # (self.translation, self.translation_params),
+                (self.salt_and_pepper, self.salt_and_pepper_params),
+                (self.gaussian_blur, self.gaussian_blur_params),
+                (self.shearing, self.shearing_params),
+                (self.scaling, self.scaling_params),
+                (self.rotation, self.rotation_params),
+                (self.translation, self.translation_params),
             ]
 
             for transform_func, params in transformations:
@@ -478,7 +478,7 @@ class Augmentor():
 
         return image
 
-    def scaling(self, image, delta, radius=True):
+    def scaling(self, image, alpha, radius=True):
         """
         Apply scaling to the image.
 
@@ -486,10 +486,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be scaled.
-        delta : float
-            Scaling delta.
+        alpha : float
+            Scaling alpha.
         radius : bool, optional
-            Whether to use range radius for delta, by default True.
+            Whether to use range radius for alpha, by default True.
 
         Returns
         -------
@@ -498,14 +498,18 @@ class Augmentor():
         """
 
         if radius:
-            delta = np.random.uniform(-delta, delta)
+            alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
 
-        new_height = int(height * (1 - delta))
-        new_width = int(width * (1 - delta))
+        new_height = int(height * (1 - alpha))
+        new_width = int(width * (1 - alpha))
 
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+
+        if alpha > 0:
+            padded_image = np.full((height, width), 255, dtype=np.uint8)
+            padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
 
