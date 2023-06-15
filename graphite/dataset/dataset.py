@@ -85,9 +85,9 @@ class Dataset():
             self._source = self._source(self.artifact_path)
 
             data = self._source.fetch_data(self.level)
-            data, self.reference_pixels = self._prepare_data(data, infer=False)
+            data = self._prepare_data(data, infer=False)
         else:
-            data, self.reference_pixels = self._prepare_data(infer_data, infer=True)
+            data = self._prepare_data(infer_data, infer=True)
 
         self.training = self._create_partition_dictionary(data[0], test=False)
         self.validation = self._create_partition_dictionary(data[1], test=False)
@@ -118,7 +118,6 @@ class Dataset():
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
-            'reference_pixels': self.reference_pixels,
             'corpus': self.corpus,
             'charset': self.charset,
             'charset_length': len(self.charset),
@@ -154,7 +153,6 @@ class Dataset():
 
             \nDataset Information\n
             Total Size              {self.size}
-            Reference Pixels        {self.reference_pixels}
 
             Training Size           {self.training['size']}
             Validation Size         {self.validation['size']}
@@ -247,8 +245,8 @@ class Dataset():
                         x_data = [future.result() for future in futures]
 
                 if padding:
-                    x_data = self._pad_data(x_data, self.reference_pixels[0])
-                    y_data = self._pad_data(y_data, self.tokenizer.pad_tk_index)
+                    x_data = self._pad_data(x_data, pad_value=255)
+                    y_data = self._pad_data(y_data, pad_value=self.tokenizer.pad_tk_index)
 
                 # batch = (x_data,) if 'test' in partition else (x_data, y_data)
 
@@ -531,8 +529,6 @@ class Dataset():
                         index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
                         data[i] = data[i][:index]
 
-        reference_pixels = []
-
         for i in range(len(data)):
             if not data[i]:
                 continue
@@ -542,13 +538,7 @@ class Dataset():
             with multiprocessing.get_context('fork').Pool() as pool:
                 data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
 
-            reference_pixels.extend([sublist[-1] for sublist in data[i]])
-            data[i] = [sublist[:-1] for sublist in data[i]]
-
-        reference_pixels = np.average(np.transpose(reference_pixels), axis=1)
-        reference_pixels = reference_pixels.astype(np.uint8).tolist()
-
-        return data, reference_pixels
+        return data
 
     def _validate_data_item(self, item, infer=False):
         """
@@ -591,10 +581,9 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
-        reference_pixels = [np.min(image), np.average(image), np.max(image)]
         image = image_path if self.lazy_mode else image
 
-        return image, bbox, label, reference_pixels
+        return image, bbox, label
 
     def _create_partition_dictionary(self, partition_data, test=False):
         """

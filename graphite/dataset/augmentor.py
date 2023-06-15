@@ -20,7 +20,6 @@ class Augmentor():
                  scaling=None,
                  rotation=None,
                  translation=None,
-                 reference_pixels=None,
                  disable_augmentation=False,
                  seed=None):
         """
@@ -50,8 +49,6 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
-        reference_pixels : list, optional
-            Reference pixel values for transformation, by default None.
         disable_augmentation : bool,
             Flag to disable augmentation, by default False.
         seed : int or None, optional
@@ -75,7 +72,6 @@ class Augmentor():
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
-        self.reference_pixels = reference_pixels or [0, 127, 255]
         self.disable_augmentation = disable_augmentation
         self.seed = seed
 
@@ -96,7 +92,6 @@ class Augmentor():
             'mixup': self.mixup_params,
             'perspective_transform': self.perspective_transform_params,
             'gaussian_blur': self.gaussian_blur_params,
-            'reference_pixels': self.reference_pixels,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
@@ -133,7 +128,6 @@ class Augmentor():
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
 
-            Reference Pixels        {self.reference_pixels}
             Augmentation Disabled   {self.disable_augmentation}
             Seed                    {self.seed}
         """
@@ -161,17 +155,17 @@ class Augmentor():
 
         if not self.disable_augmentation:
             transformations = [
-                (self.erosion, self.erosion_params),
-                (self.dilation, self.dilation_params),
-                (self.elastic_transform, self.elastic_transform_params),
-                (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+                # (self.erosion, self.erosion_params),
+                # (self.dilation, self.dilation_params),
+                # (self.elastic_transform, self.elastic_transform_params),
+                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 (self.perspective_transform, self.perspective_transform_params),
-                (self.salt_and_pepper, self.salt_and_pepper_params),
-                (self.gaussian_blur, self.gaussian_blur_params),
-                (self.shearing, self.shearing_params),
-                (self.scaling, self.scaling_params),
-                (self.rotation, self.rotation_params),
-                (self.translation, self.translation_params),
+                # (self.salt_and_pepper, self.salt_and_pepper_params),
+                # (self.gaussian_blur, self.gaussian_blur_params),
+                # (self.shearing, self.shearing_params),
+                # (self.scaling, self.scaling_params),
+                # (self.rotation, self.rotation_params),
+                # (self.translation, self.translation_params),
             ]
 
             for transform_func, params in transformations:
@@ -279,7 +273,7 @@ class Augmentor():
                           map2=displaced_coords[..., 0],
                           interpolation=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=self.reference_pixels[0])
+                          borderValue=255)
 
         return image
 
@@ -369,9 +363,9 @@ class Augmentor():
 
         image = cv2.warpPerspective(image, M, (width, height),
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=self.reference_pixels[0])
+                                    borderValue=255)
 
-        _, thresh = cv2.threshold(image, self.reference_pixels[0] + 1, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(image, 254, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if contours:
@@ -405,8 +399,8 @@ class Augmentor():
         noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
         alpha *= 0.25
 
-        image = np.where(noise_mask < alpha, self.reference_pixels[0], image)
-        image = np.where(noise_mask > (1 - alpha), self.reference_pixels[2], image)
+        image = np.where(noise_mask < alpha, 0, image)
+        image = np.where(noise_mask > (1 - alpha), 255, image)
 
         return image
 
@@ -480,7 +474,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[0])
+                               borderValue=255)
 
         return image
 
@@ -555,7 +549,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[0])
+                               borderValue=255)
 
         return image
 
@@ -599,7 +593,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.reference_pixels[0])
+                               borderValue=255)
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
