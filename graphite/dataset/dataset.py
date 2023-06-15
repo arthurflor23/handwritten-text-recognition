@@ -85,9 +85,9 @@ class Dataset():
             self._source = self._source(self.artifact_path)
 
             data = self._source.fetch_data(self.level)
-            data = self._prepare_data(data, infer=False)
+            data = self._prepare_source_data(data, infer=False)
         else:
-            data = self._prepare_data(infer_data, infer=True)
+            data = self._prepare_source_data(infer_data, infer=True)
 
         self.training = self._create_partition_dictionary(data[0], test=False)
         self.validation = self._create_partition_dictionary(data[1], test=False)
@@ -206,7 +206,7 @@ class Dataset():
         Returns
         -------
         tuple
-            A tuple containing the input data and corresponding labels.
+            A generator for data batches and steps per epoch.
         """
 
         def generator(dataset, indices):
@@ -245,10 +245,12 @@ class Dataset():
                         x_data = [future.result() for future in futures]
 
                 if padding:
-                    x_data = self._pad_data(x_data, pad_value=255)
-                    y_data = self._pad_data(y_data, pad_value=self.tokenizer.pad_tk_index)
-
-                # batch = (x_data,) if 'test' in partition else (x_data, y_data)
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        futures = [executor.submit(*arguments) for arguments in [
+                            (self.pad_batch_data, x_data, 255, np.uint8),
+                            (self.pad_batch_data, y_data, self.tokenizer.pad_tk_index, np.uint32),
+                        ]]
+                        x_data, y_data = [future.result() for future in futures]
 
                 yield x_data, y_data
 
@@ -429,7 +431,7 @@ class Dataset():
 
         return source
 
-    def _prepare_data(self, data, infer=False):
+    def _prepare_source_data(self, data, infer=False):
         """
         Prepares the data for partitioning.
 
@@ -653,33 +655,37 @@ class Dataset():
 
         return dct
 
-    def _pad_data(self, data, pad_value=0):
+    def pad_batch_data(self, batch_data, pad_value=0, dtype=None):
         """
-        Pad each data item in the list to a uniform shape, filling with the `pad_value`.
+        Pads each 2D sub-array in the batch data to the maximum height and width.
 
         Parameters
         ----------
         data : list
-            List of numpy arrays to be padded.
+            List of 2D sub-arrays to be padded.
         pad_value : int, optional
-            Value used for padding, by default 0.
+            Padding value. Default is 0.
+        dtype : data-type, optional
+            Desired data type of output array.
 
         Returns
         -------
         numpy.ndarray
-            Padded data as a numpy array.
+            Padded batch data.
         """
 
-        max_axis = max(len(item) for item in data), max(len(item[0]) for item in data)
+        max_height = max(len(data) for data in batch_data)
+        max_width = max(len(item) for data in batch_data for item in data)
 
-        for i in range(len(data)):
-            padding = [(0, mdim - idim) for idim, mdim in zip(np.asarray(data[i]).shape, max_axis)]
-            data[i] = np.pad(data[i], pad_width=padding, mode='constant', constant_values=pad_value)
-            data[i] = np.expand_dims(data[i], axis=-1)
+        padded_data = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
 
-        data = np.array(data)
+        for i, data in enumerate(batch_data):
+            for j, item in enumerate(data):
+                padded_data[i, j, :len(item)] = item
 
-        return data
+        padded_data = np.expand_dims(padded_data, axis=-1)
+
+        return padded_data
 
 
 class Tokenizer():
