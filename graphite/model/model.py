@@ -133,19 +133,15 @@ class Model():
     @staticmethod
     def ctc_loss_func(y_true, y_pred):
 
-        # Reshape inputs to (batch_size, sequence_length, last_dim_size)
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1, tf.shape(y_true)[-1]))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        # Remove extra dimensions in y_true if present
         if len(y_true.shape) > 2:
             y_true = tf.squeeze(y_true)
 
-        # Compute lengths for CTC calculation
         label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
         input_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
-        # Compute CTC loss and average it across the batch
         loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
         loss = tf.reduce_mean(loss)
 
