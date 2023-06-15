@@ -36,7 +36,7 @@ class Spelling():
         self.api_key = api_key
         self.env_key = env_key
 
-        self.base_path = os.path.join(os.path.dirname(__file__), '..')
+        self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
         self.dotenv_path = os.path.join(self.base_path, dotenv_file)
 
         if self.env_key is not None:
