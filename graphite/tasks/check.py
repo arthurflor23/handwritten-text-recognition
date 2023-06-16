@@ -73,7 +73,7 @@ def check(args):
 
             for j in range(len(aug_labels[i])):
                 print("Length", len(aug_labels[i][j]))
-                print(aug_labels[i][j].tolist())
+                print([list(x) for x in aug_labels[i][j]])
 
             print("\nPress Enter to continue or Esc to stop...\n")
             key = cv2.waitKey(0)
