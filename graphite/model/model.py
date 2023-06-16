@@ -30,6 +30,7 @@ class Model():
             The random seed to ensure repeatability of results, by default None.
         """
 
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
         tf.random.set_seed(seed)
 
         self.network = network
@@ -161,7 +162,7 @@ class Model():
             # ),
             tf.keras.callbacks.ModelCheckpoint(
                 filepath=self.model_uri,
-                mode='auto',
+                mode='min',
                 monitor='val_loss',
                 save_best_only=True,
                 save_weights_only=False,
