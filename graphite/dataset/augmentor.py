@@ -9,9 +9,9 @@ class Augmentor():
     """
 
     def __init__(self,
+                 elastic_transform=None,
                  erosion=None,
                  dilation=None,
-                 elastic_transform=None,
                  mixup=None,
                  perspective_transform=None,
                  salt_and_pepper=None,
@@ -27,12 +27,12 @@ class Augmentor():
 
         Parameters
         ----------
+        elastic_transform : dict or None, optional
+            Parameters for elastic transformation, by default None.
         erosion : dict or None, optional
             Parameters for erosion transformation, by default None.
         dilation : dict or None, optional
             Parameters for dilation transformation, by default None.
-        elastic_transform : dict or None, optional
-            Parameters for elastic transformation, by default None.
         mixup : dict or None, optional
             Parameters for mixup transformation, by default None.
         perspective_transform : dict or None, optional
@@ -61,9 +61,9 @@ class Augmentor():
 
         np.random.seed(seed)
 
+        self.elastic_transform_params = elastic_transform
         self.erosion_params = erosion
         self.dilation_params = dilation
-        self.elastic_transform_params = elastic_transform
         self.mixup_params = mixup
         self.perspective_transform_params = perspective_transform
         self.salt_and_pepper_params = salt_and_pepper
@@ -86,9 +86,9 @@ class Augmentor():
         """
 
         return json.dumps({
+            'elastic_transform': self.elastic_transform_params,
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
-            'elastic_transform': self.elastic_transform_params,
             'mixup': self.mixup_params,
             'perspective_transform': self.perspective_transform_params,
             'gaussian_blur': self.gaussian_blur_params,
@@ -113,9 +113,9 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
+            Elastic Transform       {self.elastic_transform_params}
             Erosion                 {self.erosion_params}
             Dilation                {self.dilation_params}
-            Elastic Transform       {self.elastic_transform_params}
 
             Mixup                   {self.mixup_params}
             Perspective Transform   {self.perspective_transform_params}
@@ -155,9 +155,9 @@ class Augmentor():
 
         if not self.disable_augmentation:
             transformations = [
+                (self.elastic_transform, self.elastic_transform_params),
                 (self.erosion, self.erosion_params),
                 (self.dilation, self.dilation_params),
-                (self.elastic_transform, self.elastic_transform_params),
                 (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 (self.perspective_transform, self.perspective_transform_params),
                 (self.salt_and_pepper, self.salt_and_pepper_params),
@@ -199,7 +199,7 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
         image = cv2.erode(image, kernel, iterations=iterations)
 
         return image
@@ -229,7 +229,7 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
         image = cv2.dilate(image, kernel, iterations=iterations)
 
         return image
@@ -277,7 +277,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, opacity, iterations, radius=True, batch_images=None):
+    def mixup(self, image, opacity, iterations, batch_images=None, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -289,10 +289,10 @@ class Augmentor():
             Opacity of the mixup effect.
         iterations : int
             Number of images for the mixup operation.
-        radius : bool, optional
-            Whether to use range radius for opacity and iterations, by default True.
         batch_images : list
             List of additional images for mixing.
+        radius : bool, optional
+            Whether to use range radius for opacity and iterations, by default True.
 
         Returns
         -------
@@ -300,18 +300,35 @@ class Augmentor():
             Mixed image.
         """
 
-        if batch_images:
-            iterations = min(iterations, len(batch_images))
-            indices = np.uint8(np.random.uniform(0, len(batch_images), iterations))
+        height, width = image.shape[:2]
 
-            height, width = image.shape[:2]
+        size_min = height * width * 0.75
+        size_max = height * width * 1.25
+        size_images = [img for img in batch_images if size_min <= img.shape[0] * img.shape[1] <= size_max]
+
+        if size_images:
+            iterations = min(iterations, len(size_images))
+            indices = np.uint8(np.random.uniform(0, len(size_images), iterations))
             opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
 
             for i, opc in zip(indices, opacities):
-                img = batch_images[i]
+                img = size_images[i]
 
-                if img.shape[:2] != image.shape[:2]:
-                    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
+                ratio_width = width / float(img.shape[1])
+                ratio_height = height / float(img.shape[0])
+                ratio = min(ratio_width, ratio_height)
+
+                dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
+                img = cv2.resize(img, dim, interpolation=cv2.INTER_LINEAR)
+
+                delta_w = width - dim[0]
+                delta_h = height - dim[1]
+                top, bottom = delta_h//2, delta_h-(delta_h//2)
+                left, right = delta_w//2, delta_w-(delta_w//2)
+
+                img = cv2.copyMakeBorder(img, top, bottom, left, right,
+                                         borderType=cv2.BORDER_CONSTANT,
+                                         value=np.mean(image))
 
                 image = cv2.addWeighted(image, 1 - opc, img, opc, 0)
 
@@ -364,13 +381,6 @@ class Augmentor():
         image = cv2.warpPerspective(image, M, (width, height),
                                     borderMode=cv2.BORDER_CONSTANT,
                                     borderValue=255)
-
-        _, thresh = cv2.threshold(image, 254, 255, cv2.THRESH_BINARY_INV)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        if contours:
-            x, y, w, h = cv2.boundingRect(np.concatenate(contours))
-            image = image[y:y+h, x:x+w]
 
         return image
 
