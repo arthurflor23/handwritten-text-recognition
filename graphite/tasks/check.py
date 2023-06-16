@@ -27,9 +27,9 @@ def check(args):
                       seed=42)
     print(dataset)
 
-    augmentor = Augmentor(erosion=args.erosion,
+    augmentor = Augmentor(elastic_transform=args.elastic_transform,
+                          erosion=args.erosion,
                           dilation=args.dilation,
-                          elastic_transform=args.elastic_transform,
                           mixup=args.mixup,
                           perspective_transform=args.perspective_transform,
                           salt_and_pepper=args.salt_and_pepper,
