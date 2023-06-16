@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=16, type=int,
                         help="Batch size for the generator")
 
-    parser.add_argument('--learning-rate', default=1e-4, type=float,
+    parser.add_argument('--learning-rate', default=1e-3, type=float,
                         help="Learning rate for the optimizer")
 
     parser.add_argument('--plateau-cooldown', default=0, type=int,
