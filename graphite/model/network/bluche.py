@@ -5,13 +5,13 @@ from .layers import InputProcess, GatedConv2D
 
 class Network():
     """
-    A TensorFlow-based class representing Bluche and Messina neural network for handwriting recognition.
+    A TensorFlow-based class representing `bluche` optical model.
 
     Reference:
         Bluche, T., Messina, R.,
         Gated convolutional recurrent neural networks for multilingual handwriting recognition.
         14th IAPR International Conference on Document Analysis and Recognition (ICDAR), pp. 646-651, 2017.
-        URL: https://ieeexplore.ieee.org/document/8270042
+        DOI: https://doi.org/10.1109/ICDAR.2017.111
     """
 
     def __init__(self, output_shape):
@@ -69,10 +69,10 @@ class Network():
         """
 
         inputs = tf.keras.Input(shape=(None, None, 1))
-        preproc = InputProcess(target_shape=self.input_shape)(inputs)
+        inproc = InputProcess(target_shape=self.input_shape)(inputs)
 
         tile_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
-        cnn = tf.keras.layers.Reshape(target_shape=tile_shape)(preproc)
+        cnn = tf.keras.layers.Reshape(target_shape=tile_shape)(inproc)
 
         cnn = tf.keras.layers.Conv2D(filters=8,
                                      kernel_size=(3, 3),
@@ -115,10 +115,10 @@ class Network():
         cnn_shape = cnn.get_shape()
         blstm = tf.keras.layers.Reshape((cnn_shape[1], cnn_shape[2] * cnn_shape[3]))(cnn)
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         dense = tf.keras.layers.Dense(units=output_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1))(dense)
