@@ -14,6 +14,20 @@ class Model():
                  tokenizer,
                  artifact_path='mlruns',
                  seed=None):
+        """
+        Initializes a new instance of the Model class.
+
+        Parameters
+        ----------
+        network : str
+            The name of the network module to be used.
+        tokenizer : object
+            The Tokenizer object used for tokenizing the input data.
+        artifact_path : str, optional
+            The relative path to the directory where model artifacts are stored, by default 'mlruns'.
+        seed : int, optional
+            The random seed to ensure repeatability of results, by default None.
+        """
 
         tf.random.set_seed(seed)
 
@@ -27,9 +41,18 @@ class Model():
         self._network = self._network(self.tokenizer.shape)
 
     def compile(self, learning_rate=None, model_uri=None):
+        """
+        Compiles the model.
 
-        self.model = self._network.compile_model(learning_rate=learning_rate,
-                                                 loss_func=self.ctc_loss_func)
+        Parameters
+        ----------
+        learning_rate : float, optional
+            The learning rate for the optimizer in the model, by default None.
+        model_uri : str, optional
+            The URI where the model weights are (or will be) stored, by default None.
+        """
+
+        self.model = self._network.compile_model(learning_rate=learning_rate, loss_func=self.ctc_loss_func)
 
         if model_uri is None:
             timestamp = str(int(time.time()))
@@ -53,35 +76,61 @@ class Model():
             patience=20,
             epochs=1000,
             verbose=1):
+        """
+        Trains the model.
+
+        Parameters
+        ----------
+        training_data : array-like
+            The training data to be used.
+        training_steps : int, optional
+            The number of steps for each training epoch, by default None.
+        validation_data : array-like, optional
+            The validation data to be used, by default None.
+        validation_steps : int, optional
+            The number of steps for each validation run, by default None.
+        plateau_cooldown : int, optional
+            The number of epochs to wait before resuming normal operation after lr has been reduced, by default 0.
+        plateau_factor : float, optional
+            Factor by which the learning rate will be reduced, by default 0.2.
+        plateau_patience : int, optional
+            The number of epochs with no improvement after which learning rate will be reduced, by default 10.
+        patience : int, optional
+            The number of epochs with no improvement after which training will be stopped, by default 20.
+        epochs : int, optional
+            The number of epochs to train the model, by default 1000.
+        verbose : int, optional
+            Verbosity mode, by default 1.
+        """
 
         logpath = os.path.dirname(self.model_uri)
         logfile = os.path.join(logpath, 'epochs.log')
 
         callbacks = [
-            tf.keras.callbacks.CSVLogger(
-                filename=logfile,
-                separator=',',
-                append=True,
-            ),
-            tf.keras.callbacks.TensorBoard(
-                log_dir=logpath,
-                write_graph=True,
-                write_images=True,
-                profile_batch=10,
-                histogram_freq=10,
-                embeddings_freq=10,
-                update_freq='epoch',
-                write_steps_per_second=True,
-            ),
-            tf.keras.callbacks.ModelCheckpoint(
-                filepath=self.model_uri,
-                mode='auto',
-                monitor='val_loss',
-                save_best_only=True,
-                save_weights_only=False,
-                save_freq='epoch',
-                verbose=verbose,
-            ),
+            # tf.keras.callbacks.CSVLogger(
+            #     filename=logfile,
+            #     separator=',',
+            #     append=True,
+            # ),
+            # tf.keras.callbacks.TensorBoard(
+            #     log_dir=logpath,
+            #     write_graph=True,
+            #     write_images=True,
+            #     profile_batch=10,
+            #     histogram_freq=10,
+            #     embeddings_freq=10,
+            #     update_freq='epoch',
+            #     write_steps_per_second=True,
+            # ),
+            # tf.keras.callbacks.ModelCheckpoint(
+            #     filepath=self.model_uri,
+            #     mode='auto',
+            #     monitor='val_loss',
+            #     save_best_only=True,
+            #     save_weights_only=False,
+            #     save_freq='epoch',
+            #     verbose=verbose,
+            # ),
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
@@ -108,7 +157,7 @@ class Model():
             steps_per_epoch=training_steps,
             validation_data=validation_data,
             validation_steps=validation_steps,
-            # callbacks=callbacks,
+            callbacks=callbacks,
             epochs=epochs,
             verbose=verbose,
         )
@@ -116,6 +165,14 @@ class Model():
         return output
 
     def _import_network(self, network):
+        """
+        Imports the network module with the given name.
+
+        Parameters
+        ----------
+        network : str
+            The name of the network module to be imported.
+        """
 
         module_name = importlib.util.resolve_name(f".network.{network}", __package__)
         module_spec = importlib.util.find_spec(module_name)
@@ -132,6 +189,16 @@ class Model():
 
     @staticmethod
     def ctc_loss_func(y_true, y_pred):
+        """
+        Computes the CTC (Connectionist Temporal Classification) loss.
+
+        Parameters
+        ----------
+        y_true : array-like
+            The ground truth labels.
+        y_pred : array-like
+            The predicted labels.
+        """
 
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1, tf.shape(y_true)[-1]))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
