@@ -25,19 +25,19 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
+    parser.add_argument('--elastic-transform', default=[0.99, 43, 0.75], nargs='+', type=float,
+                        help="Apply elastic transform (probability, kernel size, alpha)")
+
     parser.add_argument('--erosion', default=[0.99, 11, 1], nargs='+', type=float,
                         help="Apply dilation (probability, kernel size, iterations)")
 
     parser.add_argument('--dilation', default=[0.99, 3, 1], nargs='+', type=float,
                         help="Apply dilation (probability, kernel size, iterations)")
 
-    parser.add_argument('--elastic-transform', default=[0.99, 43, 0.75], nargs='+', type=float,
-                        help="Apply elastic transform (probability, kernel size, alpha)")
-
     parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
                         help="Apply mixup augmentation (probability, opacity, iterations)")
 
-    parser.add_argument('--perspective-transform', default=[0.99, 0.3], nargs='+', type=float,
+    parser.add_argument('--perspective-transform', default=[0.99, 0.4], nargs='+', type=float,
                         help="Apply perspective transformation (probability, alpha)")
 
     parser.add_argument('--salt-and-pepper', default=[0.99, 0.3], nargs='+', type=float,
