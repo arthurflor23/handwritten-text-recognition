@@ -369,7 +369,7 @@ class Augmentor():
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if contours:
-            x, y, w, h = cv2.boundingRect(max(contours, key=cv2.contourArea))
+            x, y, w, h = cv2.boundingRect(np.concatenate(contours))
             image = image[y:y+h, x:x+w]
 
         return image
