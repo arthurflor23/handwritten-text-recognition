@@ -35,9 +35,7 @@ class Spelling():
         self.spell_checker = spell_checker
         self.api_key = api_key
         self.env_key = env_key
-
-        self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
-        self.dotenv_path = os.path.join(self.base_path, dotenv_file)
+        self.dotenv_path = dotenv_file
 
         if self.env_key is not None:
             dotenv.load_dotenv(self.dotenv_path)

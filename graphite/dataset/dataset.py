@@ -62,8 +62,7 @@ class Dataset():
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-        self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
-        self.artifact_path = os.path.join(self.base_path, artifact_path)
+        self.artifact_path = artifact_path
         self.lazy_mode = lazy_mode
         self.seed = seed
 
