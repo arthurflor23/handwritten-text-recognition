@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import importlib
 import tensorflow as tf
 
@@ -33,12 +34,48 @@ class Model():
 
         self.network = network
         self.tokenizer = tokenizer
-        self.base_path = os.path.join(os.path.dirname(__file__), '..', '..')
-        self.artifact_path = os.path.join(self.base_path, artifact_path)
+        self.artifact_path = artifact_path
         self.seed = seed
 
         self._network = self._import_network(self.network)
         self._network = self._network(self.tokenizer.shape)
+
+    def __repr__(self):
+        """
+        Returns a JSON-formatted string representation of the Model object.
+
+        Returns
+        -------
+        str
+            A JSON-formatted string containing the object's attributes.
+        """
+
+        return json.dumps({
+            'network': self.network,
+            'tokenizer_shape': self.tokenizer.shape,
+            'seed': self.seed,
+        })
+
+    def __str__(self):
+        """
+        Returns a string representation of the Model object with useful information.
+
+        Returns
+        -------
+        str
+            The string representation of the object.
+        """
+
+        info = f"""
+            Model Configuration\n
+            Network                 {self.network}
+            Tokenizer Shape         {self.tokenizer.shape}
+            Seed                    {self.seed}
+        """
+
+        info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        return info
 
     def compile(self, learning_rate=None, model_uri=None):
         """
@@ -56,9 +93,9 @@ class Model():
 
         if model_uri is None:
             timestamp = str(int(time.time()))
-            model_uri = os.path.join(self.artifact_path, self.network, timestamp, 'model.hdf5')
+            model_uri = os.path.join(self.network, timestamp, 'model.hdf5')
 
-        self.model_uri = model_uri
+        self.model_uri = os.path.join(self.artifact_path, model_uri)
 
         if self.model_uri and os.path.exists(self.model_uri) and os.path.isfile(self.model_uri):
             self.model.load_weights(self.model_uri)
@@ -104,33 +141,33 @@ class Model():
         """
 
         logpath = os.path.dirname(self.model_uri)
-        logfile = os.path.join(logpath, 'epochs.log')
+        os.makedirs(logpath, exist_ok=True)
 
         callbacks = [
-            # tf.keras.callbacks.CSVLogger(
-            #     filename=logfile,
-            #     separator=',',
-            #     append=True,
-            # ),
+            tf.keras.callbacks.CSVLogger(
+                filename=os.path.join(logpath, 'epochs.log'),
+                separator=',',
+                append=True,
+            ),
             # tf.keras.callbacks.TensorBoard(
             #     log_dir=logpath,
             #     write_graph=True,
             #     write_images=True,
-            #     profile_batch=10,
+            #     profile_batch=0,
             #     histogram_freq=10,
             #     embeddings_freq=10,
             #     update_freq='epoch',
             #     write_steps_per_second=True,
             # ),
-            # tf.keras.callbacks.ModelCheckpoint(
-            #     filepath=self.model_uri,
-            #     mode='auto',
-            #     monitor='val_loss',
-            #     save_best_only=True,
-            #     save_weights_only=False,
-            #     save_freq='epoch',
-            #     verbose=verbose,
-            # ),
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=self.model_uri,
+                mode='auto',
+                monitor='val_loss',
+                save_best_only=True,
+                save_weights_only=False,
+                save_freq='epoch',
+                verbose=verbose,
+            ),
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
@@ -152,15 +189,13 @@ class Model():
             ),
         ]
 
-        output = self.model.fit(
-            x=training_data,
-            steps_per_epoch=training_steps,
-            validation_data=validation_data,
-            validation_steps=validation_steps,
-            callbacks=callbacks,
-            epochs=epochs,
-            verbose=verbose,
-        )
+        output = self.model.fit(x=training_data,
+                                steps_per_epoch=training_steps,
+                                validation_data=validation_data,
+                                validation_steps=validation_steps,
+                                callbacks=callbacks,
+                                epochs=epochs,
+                                verbose=verbose)
 
         return output
 
