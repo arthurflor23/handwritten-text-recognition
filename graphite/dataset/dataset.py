@@ -257,7 +257,7 @@ class Dataset():
         indices = np.arange(dataset['size'])
 
         batch_generator = generator(dataset, indices)
-        steps_per_epoch = (dataset['size'] + batch_size - 1) // batch_size
+        steps_per_epoch = np.math.ceil(dataset['size'] / batch_size)
 
         return batch_generator, steps_per_epoch
 
