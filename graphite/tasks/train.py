@@ -1,7 +1,7 @@
-from carbon import Carbon
 from dataset import Augmentor, Dataset
 from model import Model
 from spelling import Spelling
+from util import Carbon
 
 
 def train(args):
