@@ -94,9 +94,9 @@ class Dataset():
 
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
-        self.training['data'] = self.tokenizer.encode_data(self.training['data'])
-        self.validation['data'] = self.tokenizer.encode_data(self.validation['data'])
-        self.test['data'] = self.tokenizer.encode_data(self.test['data'])
+        self.training['data'] = self._encode_data(self.training['data'])
+        self.validation['data'] = self._encode_data(self.validation['data'])
+        self.test['data'] = self._encode_data(self.test['data'])
 
     def __repr__(self):
         """
@@ -210,7 +210,6 @@ class Dataset():
 
         def generator(dataset, indices):
             batch_index = 0
-            label_index = 3 if padding else 2
 
             while True:
                 if batch_index >= dataset['size']:
@@ -221,22 +220,17 @@ class Dataset():
                 batch_indices = indices[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                x_data = []
-                y_data = []
-
                 if self.lazy_mode:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        batch_data = [dataset['data'][i] for i in batch_indices]
+                        batch_data = dataset['data'][batch_indices]
                         futures = [executor.submit(self.read_image, data[0], data[1]) for data in batch_data]
 
-                        for future, data in zip(futures, batch_data):
-                            x_data.append(future.result())
-                            y_data.append(data[label_index])
+                        x_data = [future.result() for future in futures]
+                        y_data = dataset['data'][batch_indices][:, 3 if padding else 2]
 
                 else:
-                    for i in batch_indices:
-                        x_data.append(dataset['data'][i][0])
-                        y_data.append(dataset['data'][i][label_index])
+                    x_data = dataset['data'][batch_indices][:, 0]
+                    y_data = dataset['data'][batch_indices][:, 3 if padding else 2]
 
                 if augmentor:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -246,12 +240,12 @@ class Dataset():
                 if padding:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [executor.submit(*arguments) for arguments in [
-                            (self.pad_batch_data, x_data, 255, np.uint8),
-                            (self.pad_batch_data, y_data, self.tokenizer.pad_tk_index, np.int32),
+                            (self._pad_data, x_data, 255, np.uint8),
+                            (self._pad_data, y_data, self.tokenizer.pad_tk_index, np.uint32),
                         ]]
                         x_data, y_data = [future.result() for future in futures]
 
-                yield x_data, y_data
+                yield (x_data, y_data)
 
         dataset = getattr(self, partition)
         indices = np.arange(dataset['size'])
@@ -394,6 +388,30 @@ class Dataset():
         width = min(image.shape[1], (width + 10))
 
         image = image[y:y+height, x:x+width]
+
+        # # TEMPORARY
+        # # image = np.divide(image, 255, dtype=np.float32)
+
+        # # Specify desired output size
+        # desired_width, desired_height = 1024, 128
+
+        # # Check if either dimension of the image is larger than the desired size
+        # if image.shape[1] > desired_width or image.shape[0] > desired_height:
+
+        #     # Get the aspect ratio of the image
+        #     aspect_ratio = image.shape[1] / float(image.shape[0])  # width/height
+
+        #     if (aspect_ratio > desired_width / desired_height):
+        #         # if width is larger, fix it to desired and calculate the height to maintain aspect ratio
+        #         new_width = desired_width
+        #         new_height = np.round(new_width / aspect_ratio).astype(int)
+        #     else:
+        #         # if height is larger, fix it to desired and calculate the width to maintain aspect ratio
+        #         new_height = desired_height
+        #         new_width = np.round(new_height * aspect_ratio).astype(int)
+
+        #     # Resize the image while maintaining the aspect ratio
+        #     image = cv2.resize(image, (new_width, new_height))
 
         return image
 
@@ -654,7 +672,33 @@ class Dataset():
 
         return dct
 
-    def pad_batch_data(self, batch_data, pad_value=0, dtype=None):
+    def _encode_data(self, data):
+        """
+        Encode the data by mapping labels to their corresponding token indices.
+
+        Parameters
+        ----------
+        data : list
+            List of data to encode, where each element is [image, bbox, label].
+
+        Returns
+        -------
+        list
+            Encoded data with token indices appended to each element.
+        """
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.tokenizer.encode, x[-1]) for x in data]
+            encoded_labels = [future.result() for future in futures]
+
+            for i in range(len(data)):
+                data[i].append(encoded_labels[i])
+
+        data = np.asarray(data, dtype=object)
+
+        return data
+
+    def _pad_data(self, data, pad_value=0, dtype=None):
         """
         Pads each 2D sub-array in the batch data to the maximum height and width.
 
@@ -673,12 +717,12 @@ class Dataset():
             Padded batch data.
         """
 
-        max_height = max(len(data) for data in batch_data)
-        max_width = max(len(item) for data in batch_data for item in data)
+        max_height = max(len(data) for data in data)
+        max_width = max(len(item) for data in data for item in data)
 
-        padded_data = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
+        padded_data = np.full((len(data), max_height, max_width), pad_value, dtype=dtype)
 
-        for i, data in enumerate(batch_data):
+        for i, data in enumerate(data):
             for j, item in enumerate(data):
                 padded_data[i, j, :len(item)] = item
 
@@ -719,30 +763,6 @@ class Tokenizer():
         self.eos_tk_index = self.charset.index(self.eos_tk)
         self.unk_tk_index = self.charset.index(self.unk_tk)
 
-    def encode_data(self, data):
-        """
-        Encode the data by mapping labels to their corresponding token indices.
-
-        Parameters
-        ----------
-        data : list
-            List of data to encode, where each element is [image, bbox, label].
-
-        Returns
-        -------
-        list
-            Encoded data with token indices appended to each element.
-        """
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self.encode, x[-1]) for x in data]
-            encoded_labels = [future.result() for future in futures]
-
-            for i in range(len(data)):
-                data[i].append(encoded_labels[i])
-
-        return data
-
     def encode(self, label):
         """
         Encode a single label by mapping characters to their corresponding token indices.
@@ -771,30 +791,6 @@ class Tokenizer():
             encoded_label.append(enconded_row)
 
         return encoded_label
-
-    def decode_data(self, data):
-        """
-        Decode the data by converting token indices back to their corresponding characters.
-
-        Parameters
-        ----------
-        data : list
-            List of data to decode, where each element is [image, bbox, label].
-
-        Returns
-        -------
-        list
-            Decoded data with labels appended to each element.
-        """
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self.decode, x[-1]) for x in data]
-            labels = [future.result() for future in futures]
-
-            for i in range(len(data)):
-                data[i].append(labels[i])
-
-        return data
 
     def decode(self, encoded_label):
         """
