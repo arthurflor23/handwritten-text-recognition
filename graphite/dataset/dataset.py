@@ -247,7 +247,7 @@ class Dataset():
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [executor.submit(*arguments) for arguments in [
                             (self.pad_batch_data, x_data, 255, np.uint8),
-                            (self.pad_batch_data, y_data, self.tokenizer.pad_tk_index, np.uint32),
+                            (self.pad_batch_data, y_data, self.tokenizer.pad_tk_index, np.int32),
                         ]]
                         x_data, y_data = [future.result() for future in futures]
 
