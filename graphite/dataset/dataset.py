@@ -389,30 +389,6 @@ class Dataset():
 
         image = image[y:y+height, x:x+width]
 
-        # # TEMPORARY
-        # # image = np.divide(image, 255, dtype=np.float32)
-
-        # # Specify desired output size
-        # desired_width, desired_height = 1024, 128
-
-        # # Check if either dimension of the image is larger than the desired size
-        # if image.shape[1] > desired_width or image.shape[0] > desired_height:
-
-        #     # Get the aspect ratio of the image
-        #     aspect_ratio = image.shape[1] / float(image.shape[0])  # width/height
-
-        #     if (aspect_ratio > desired_width / desired_height):
-        #         # if width is larger, fix it to desired and calculate the height to maintain aspect ratio
-        #         new_width = desired_width
-        #         new_height = np.round(new_width / aspect_ratio).astype(int)
-        #     else:
-        #         # if height is larger, fix it to desired and calculate the width to maintain aspect ratio
-        #         new_height = desired_height
-        #         new_width = np.round(new_height * aspect_ratio).astype(int)
-
-        #     # Resize the image while maintaining the aspect ratio
-        #     image = cv2.resize(image, (new_width, new_height))
-
         return image
 
     def _import_source(self, source):
