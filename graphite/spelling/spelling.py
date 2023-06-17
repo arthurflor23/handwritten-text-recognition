@@ -120,7 +120,7 @@ class Spelling():
 
         print(f"Total batches: {len(batches)}")
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(self._spell_checker.enhance_text, '\n'.join(x), instruction) for x in batches]
             enhanced_batches = [future.result() for future in futures]
 
