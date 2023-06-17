@@ -1,7 +1,8 @@
 import os
-import time
 import json
+import glob
 import importlib
+import numpy as np
 import tensorflow as tf
 
 
@@ -78,7 +79,7 @@ class Model():
 
         return info
 
-    def compile(self, learning_rate=None, model_uri=None):
+    def compile(self, learning_rate=None, run_index=None):
         """
         Compiles the model.
 
@@ -86,20 +87,21 @@ class Model():
         ----------
         learning_rate : float, optional
             The learning rate for the optimizer in the model, by default None.
-        model_uri : str, optional
-            The URI where the model weights are (or will be) stored, by default None.
+        run_index : int, optional
+            The index of the run to be loaded, by default None.
         """
 
         self.model = self._network.compile_model(learning_rate=learning_rate,
                                                  loss_func=self.ctc_loss_func)
 
-        if model_uri is None:
-            model_uri = os.path.join(self.network, str(int(time.time())), 'model.hdf5')
+        if run_index is not None:
+            runs = sorted(glob.glob(os.path.join(self.artifact_path, self.network, '*')))
 
-        self.model_uri = os.path.join(self.artifact_path, model_uri)
+            if runs and run_index < len(runs):
+                model_uri = os.path.join(runs[run_index], 'model.hdf5')
 
-        if self.model_uri and os.path.exists(self.model_uri) and os.path.isfile(self.model_uri):
-            self.model.load_weights(self.model_uri)
+                if os.path.exists(model_uri) and os.path.isfile(model_uri):
+                    self.model.load_weights(model_uri)
 
         self.model.summary()
 
@@ -141,34 +143,7 @@ class Model():
             Verbosity mode, by default 1.
         """
 
-        # logpath = os.path.dirname(self.model_uri)
-        # os.makedirs(logpath, exist_ok=True)
-
         callbacks = [
-            # tf.keras.callbacks.CSVLogger(
-            #     filename=os.path.join(logpath, 'epochs.log'),
-            #     separator=',',
-            #     append=True,
-            # ),
-            # tf.keras.callbacks.TensorBoard(
-            #     log_dir=logpath,
-            #     write_graph=True,
-            #     write_images=True,
-            #     profile_batch=0,
-            #     histogram_freq=10,
-            #     embeddings_freq=10,
-            #     update_freq='epoch',
-            #     write_steps_per_second=True,
-            # ),
-            # tf.keras.callbacks.ModelCheckpoint(
-            #     filepath=self.model_uri,
-            #     mode='min',
-            #     monitor='val_loss',
-            #     save_best_only=True,
-            #     save_weights_only=False,
-            #     save_freq='epoch',
-            #     verbose=verbose,
-            # ),
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
@@ -198,9 +173,90 @@ class Model():
                                  epochs=epochs,
                                  verbose=verbose)
 
-        # Analysis() history...
-
         return history
+
+    def predict(self,
+                test_data,
+                test_steps,
+                top_paths=1,
+                beam_width=100,
+                ctc_decode=True,
+                token_decode=True,
+                verbose=1):
+        """
+        Generates predictions on the given test data using the model.
+
+        Parameters
+        ----------
+        test_data : array-like
+            The test data to generate predictions for.
+        test_steps : int
+            The total number of steps.
+        top_paths : int, optional
+            The number of top paths to extract from the predictions, by default 1.
+        beam_width : int, optional
+            The width of the beam for the CTC decoder, by default 100.
+        ctc_decode : bool, optional
+            If True, applies CTC decoding to the predictions, by default True.
+        token_decode : bool, optional
+            If True, decodes the tokens to their corresponding characters, by default True.
+        verbose : int, optional
+            Verbosity mode, 0 or 1. By default 1.
+
+        Returns
+        -------
+        tuple of np.ndarray
+            The first array is the decoded predictions, and
+            the second array is the probabilities of these predictions.
+        """
+
+        predicts = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
+        decoded, probabilities = np.log(predicts.clip(min=1e-8)), np.array([])
+
+        if ctc_decode:
+            sequence_length = [predicts.shape[2]] * predicts.shape[0]
+            decoded_paths, probabilities_list = [], []
+
+            progbar = tf.keras.utils.Progbar(target=predicts.shape[1], unit_name='path_decode', verbose=verbose)
+
+            for i in range(predicts.shape[1]):
+                progbar.update(i)
+                inputs = tf.transpose(predicts[:, i, :, :], perm=[1, 0, 2])
+
+                decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                                           sequence_length=sequence_length,
+                                                                           beam_width=beam_width,
+                                                                           top_paths=top_paths)
+
+                probabilities_list.append(tf.exp(log_probabilities))
+
+                decoded_pads = []
+                for j in range(top_paths):
+                    sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
+                    padding = [[0, 0], [0, predicts.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    decoded_pads.append(tf.pad(sparse_decoded, paddings=padding, constant_values=-1))
+
+                decoded_paths.append(decoded_pads)
+                progbar.update(i + 1)
+
+            decoded = np.transpose(tf.stack(decoded_paths, axis=1), (0, 2, 1, 3))
+            probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (2, 0, 1))
+
+            if token_decode:
+                decoded_strings = []
+
+                for i in range(decoded.shape[0]):
+                    instance_strings = []
+
+                    for j in range(decoded.shape[1]):
+                        decoded_string = self.tokenizer.decode(decoded[i, j, :, :])
+                        instance_strings.append(decoded_string)
+
+                    decoded_strings.append(instance_strings)
+
+                decoded = np.array(decoded_strings, dtype=object)
+
+        return decoded, probabilities
 
     def _import_network(self, network):
         """
