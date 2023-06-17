@@ -100,27 +100,33 @@ if __name__ == '__main__':
     parser.add_argument('--patience', default=20, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
-    # Testing
+    # Test
     parser.add_argument('--test', default=False, action='store_true',
                         help="Perform optical model test")
+
+    parser.add_argument('--top-paths', default=1, type=int,
+                        help="Number of top paths to extract from the predictions")
+
+    parser.add_argument('--beam-width', default=100, type=int,
+                        help="The width of the beam for the CTC decoder")
 
     # Inference
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
 
-    parser.add_argument('--images', default=[], nargs='+',
-                        help="Set image path list for handwriting recognition")
+    # parser.add_argument('--images', default=[], nargs='+',
+    #                     help="Set image path list for handwriting recognition")
 
-    parser.add_argument('--bbox', default=[], nargs='+',
-                        help="Set bounding box values (x, y, width, height)")
+    # parser.add_argument('--bbox', default=[], nargs='+',
+    #                     help="Set bounding box values (x, y, width, height)")
 
     # Check
     parser.add_argument('--check', default=False, action='store_true',
                         help="Perform data verification")
 
     # Others
-    parser.add_argument('--run-id', default=None,
-                        help="Specify mlflow run id")
+    parser.add_argument('--run-index', default=None, type=int,
+                        help="Specify the running index")
 
     args = parser.parse_args()
 
@@ -132,15 +138,14 @@ if __name__ == '__main__':
         assert args.network is not None, "network must be defined"
 
     # Tasks
-    if args.check:
+    if args.train:
+        tasks.train(args)
+
+    elif args.test:
+        tasks.test(args)
+
+    elif args.infer:
+        tasks.infer(args)
+
+    elif args.check:
         tasks.check(args)
-
-    else:
-        if args.train:
-            tasks.train(args)
-
-        if args.test:
-            tasks.test(args)
-
-        if args.infer and len(args.images):
-            tasks.infer(args)
