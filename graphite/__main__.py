@@ -138,7 +138,10 @@ if __name__ == '__main__':
         assert args.network is not None, "network must be defined"
 
     # Tasks
-    if args.train:
+    if args.check:
+        tasks.check(args)
+
+    elif args.train:
         tasks.train(args)
 
     elif args.test:
@@ -146,6 +149,3 @@ if __name__ == '__main__':
 
     elif args.infer:
         tasks.infer(args)
-
-    elif args.check:
-        tasks.check(args)
