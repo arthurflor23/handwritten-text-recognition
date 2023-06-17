@@ -28,9 +28,10 @@ def train(args):
                           translation=args.translation,
                           disable_augmentation=args.disable_augmentation,
                           seed=42)
+    print(augmentor)
 
     model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
-    model.compile(learning_rate=args.learning_rate, model_uri=None)
+    model.compile(learning_rate=args.learning_rate, run_index=args.run_index)
 
     training_data, training_steps = dataset.get_generator(partition='training',
                                                           batch_size=args.batch_size,
@@ -50,6 +51,19 @@ def train(args):
               plateau_patience=args.plateau_patience,
               patience=args.patience,
               verbose=1)
+
+    test_data, test_steps = dataset.get_generator(partition='test', batch_size=16, augmentor=None)
+
+    predicts, probabilities = model.predict(test_data=test_data,
+                                            test_steps=test_steps,
+                                            top_paths=args.top_paths,
+                                            beam_width=args.beam_width,
+                                            ctc_decode=True,
+                                            token_decode=True,
+                                            verbose=1)
+
+    print(predicts.shape, probabilities.shape)
+    print(predicts)
 
     # spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
 
