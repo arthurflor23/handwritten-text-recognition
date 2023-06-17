@@ -30,7 +30,7 @@ class Model():
             The random seed to ensure repeatability of results, by default None.
         """
 
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         tf.random.set_seed(seed)
 
         self.network = network
@@ -90,11 +90,11 @@ class Model():
             The URI where the model weights are (or will be) stored, by default None.
         """
 
-        self.model = self._network.compile_model(learning_rate=learning_rate, loss_func=self.ctc_loss_func)
+        self.model = self._network.compile_model(learning_rate=learning_rate,
+                                                 loss_func=self.ctc_loss_func)
 
         if model_uri is None:
-            timestamp = str(int(time.time()))
-            model_uri = os.path.join(self.network, timestamp, 'model.hdf5')
+            model_uri = os.path.join(self.network, str(int(time.time())), 'model.hdf5')
 
         self.model_uri = os.path.join(self.artifact_path, model_uri)
 
@@ -141,15 +141,15 @@ class Model():
             Verbosity mode, by default 1.
         """
 
-        logpath = os.path.dirname(self.model_uri)
-        os.makedirs(logpath, exist_ok=True)
+        # logpath = os.path.dirname(self.model_uri)
+        # os.makedirs(logpath, exist_ok=True)
 
         callbacks = [
-            tf.keras.callbacks.CSVLogger(
-                filename=os.path.join(logpath, 'epochs.log'),
-                separator=',',
-                append=True,
-            ),
+            # tf.keras.callbacks.CSVLogger(
+            #     filename=os.path.join(logpath, 'epochs.log'),
+            #     separator=',',
+            #     append=True,
+            # ),
             # tf.keras.callbacks.TensorBoard(
             #     log_dir=logpath,
             #     write_graph=True,
@@ -160,15 +160,15 @@ class Model():
             #     update_freq='epoch',
             #     write_steps_per_second=True,
             # ),
-            tf.keras.callbacks.ModelCheckpoint(
-                filepath=self.model_uri,
-                mode='min',
-                monitor='val_loss',
-                save_best_only=True,
-                save_weights_only=False,
-                save_freq='epoch',
-                verbose=verbose,
-            ),
+            # tf.keras.callbacks.ModelCheckpoint(
+            #     filepath=self.model_uri,
+            #     mode='min',
+            #     monitor='val_loss',
+            #     save_best_only=True,
+            #     save_weights_only=False,
+            #     save_freq='epoch',
+            #     verbose=verbose,
+            # ),
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
@@ -190,15 +190,17 @@ class Model():
             ),
         ]
 
-        output = self.model.fit(x=training_data,
-                                steps_per_epoch=training_steps,
-                                validation_data=validation_data,
-                                validation_steps=validation_steps,
-                                callbacks=callbacks,
-                                epochs=epochs,
-                                verbose=verbose)
+        history = self.model.fit(x=training_data,
+                                 steps_per_epoch=training_steps,
+                                 validation_data=validation_data,
+                                 validation_steps=validation_steps,
+                                 callbacks=callbacks,
+                                 epochs=epochs,
+                                 verbose=verbose)
 
-        return output
+        # Analysis() history...
+
+        return history
 
     def _import_network(self, network):
         """
@@ -236,16 +238,13 @@ class Model():
             The predicted labels.
         """
 
-        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1, tf.shape(y_true)[-1]))
+        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        if len(y_true.shape) > 2:
-            y_true = tf.squeeze(y_true)
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
-        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype='int64')
-        input_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
-
-        loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+        loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
         loss = tf.reduce_mean(loss)
 
         return loss
