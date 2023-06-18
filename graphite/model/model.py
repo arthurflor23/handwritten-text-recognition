@@ -5,6 +5,8 @@ import importlib
 import numpy as np
 import tensorflow as tf
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 class Model():
     """
@@ -31,8 +33,8 @@ class Model():
             The random seed to ensure repeatability of results, by default None.
         """
 
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         tf.random.set_seed(seed)
+        tf.config.set_visible_devices([], 'GPU')
 
         self.network = network
         self.tokenizer = tokenizer
@@ -98,7 +100,7 @@ class Model():
             runs = sorted(glob.glob(os.path.join(self.artifact_path, self.network, '*')))
 
             if runs and run_index < len(runs):
-                model_uri = os.path.join(runs[run_index], 'model.hdf5')
+                model_uri = os.path.join(runs[run_index], 'model.keras')
 
                 if os.path.exists(model_uri) and os.path.isfile(model_uri):
                     self.model.load_weights(model_uri)
@@ -301,6 +303,23 @@ class Model():
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
         loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
+
+        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+
+        # labels = tf.sparse.from_dense(y_true)
+        # logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + 1e-7)
+
+        # label_length = tf.math.count_nonzero(y_true, axis=-1)
+        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+
+        # loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+        #                       logits=tf.cast(logits, dtype=tf.float32),
+        #                       label_length=tf.cast(label_length, dtype=tf.int32),
+        #                       logit_length=tf.cast(logit_length, dtype=tf.int32),
+        #                       logits_time_major=True,
+        #                       blank_index=-1)
+
         loss = tf.reduce_mean(loss)
 
         return loss
