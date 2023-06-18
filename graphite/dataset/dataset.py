@@ -218,19 +218,18 @@ class Dataset():
                     batch_index = 0
 
                 batch_indices = indices[batch_index:batch_index + batch_size]
+                batch_data = np.asarray(dataset['data'][batch_indices], dtype=object)
                 batch_index += batch_size
 
                 if self.lazy_mode:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        batch_data = dataset['data'][batch_indices]
                         futures = [executor.submit(self.read_image, data[0], data[1]) for data in batch_data]
 
                         x_data = [future.result() for future in futures]
-                        y_data = dataset['data'][batch_indices][:, 3 if padding else 2]
-
+                        y_data = batch_data[:, 3 if padding else 2]
                 else:
-                    x_data = dataset['data'][batch_indices][:, 0]
-                    y_data = dataset['data'][batch_indices][:, 3 if padding else 2]
+                    x_data = batch_data[:, 0]
+                    y_data = batch_data[:, 3 if padding else 2]
 
                 if augmentor:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -241,9 +240,13 @@ class Dataset():
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [executor.submit(*arguments) for arguments in [
                             (self._pad_data, x_data, 255, np.uint8),
-                            (self._pad_data, y_data, self.tokenizer.pad_tk_index, np.uint32),
+                            (self._pad_data, y_data, self.tokenizer.pad_tk_index, np.int32),
                         ]]
                         x_data, y_data = [future.result() for future in futures]
+
+                # x_data = np.divide(x_data, 255.)
+                # x_data = [cv2.resize(x, dsize=(1024, 128), interpolation=cv2.INTER_CUBIC) for x in x_data]
+                # x_data = np.expand_dims(x_data, axis=-1)
 
                 yield (x_data, y_data)
 
