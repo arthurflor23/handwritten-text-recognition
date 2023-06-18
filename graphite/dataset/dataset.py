@@ -88,15 +88,15 @@ class Dataset():
         else:
             data = self._prepare_source_data(infer_data, infer=True)
 
-        self.training = self._create_partition_dictionary(data[0], test=False)
-        self.validation = self._create_partition_dictionary(data[1], test=False)
-        self.test = self._create_partition_dictionary(data[2], test=True)
+        self.training = self._get_partition_dictionary(data[0], test=False)
+        self.validation = self._get_partition_dictionary(data[1], test=False)
+        self.test = self._get_partition_dictionary(data[2], test=True)
 
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
-        self.training['data'] = self._encode_data(self.training['data'])
-        self.validation['data'] = self._encode_data(self.validation['data'])
-        self.test['data'] = self._encode_data(self.test['data'])
+        self.training['data'] = self._get_encoded_data(self.training['data'])
+        self.validation['data'] = self._get_encoded_data(self.validation['data'])
+        self.test['data'] = self._get_encoded_data(self.test['data'])
 
     def __repr__(self):
         """
@@ -239,14 +239,10 @@ class Dataset():
                 if padding:
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [executor.submit(*arguments) for arguments in [
-                            (self._pad_data, x_data, 255, np.uint8),
-                            (self._pad_data, y_data, self.tokenizer.pad_tk_index, np.int32),
+                            (self._pad_batch_data, x_data, 255, np.uint8),
+                            (self._pad_batch_data, y_data, self.tokenizer.pad_tk_index, np.int32),
                         ]]
                         x_data, y_data = [future.result() for future in futures]
-
-                # x_data = np.divide(x_data, 255.)
-                # x_data = [cv2.resize(x, dsize=(1024, 128), interpolation=cv2.INTER_CUBIC) for x in x_data]
-                # x_data = np.expand_dims(x_data, axis=-1)
 
                 yield (x_data, y_data)
 
@@ -583,7 +579,7 @@ class Dataset():
 
         return image, bbox, label
 
-    def _create_partition_dictionary(self, partition_data, test=False):
+    def _get_partition_dictionary(self, partition_data, test=False):
         """
         Creates a partition dictionary from the given partition data.
 
@@ -651,7 +647,7 @@ class Dataset():
 
         return dct
 
-    def _encode_data(self, data):
+    def _get_encoded_data(self, data):
         """
         Encode the data by mapping labels to their corresponding token indices.
 
@@ -677,7 +673,7 @@ class Dataset():
 
         return data
 
-    def _pad_data(self, data, pad_value=0, dtype=None):
+    def _pad_batch_data(self, batch_data, pad_value=0, dtype=None):
         """
         Pads each 2D sub-array in the batch data to the maximum height and width.
 
@@ -696,18 +692,18 @@ class Dataset():
             Padded batch data.
         """
 
-        max_height = max(len(data) for data in data)
-        max_width = max(len(item) for data in data for item in data)
+        max_height = max(len(data) for data in batch_data)
+        max_width = max(len(item) for data in batch_data for item in data)
 
-        padded_data = np.full((len(data), max_height, max_width), pad_value, dtype=dtype)
+        padded = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
 
-        for i, data in enumerate(data):
+        for i, data in enumerate(batch_data):
             for j, item in enumerate(data):
-                padded_data[i, j, :len(item)] = item
+                padded[i, j, :len(item)] = item
 
-        padded_data = np.expand_dims(padded_data, axis=-1)
+        padded = np.expand_dims(padded, axis=-1)
 
-        return padded_data
+        return padded
 
 
 class Tokenizer():
