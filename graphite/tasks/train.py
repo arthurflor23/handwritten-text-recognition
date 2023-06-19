@@ -1,7 +1,6 @@
 from dataset import Augmentor, Dataset
 from model import Model
 from spelling import Spelling
-from util import Carbon
 
 
 def train(args):
@@ -46,28 +45,23 @@ def train(args):
               training_steps=training_steps,
               validation_data=validation_data,
               validation_steps=validation_steps,
-              plateau_cooldown=args.plateau_cooldown,
               plateau_factor=args.plateau_factor,
+              plateau_cooldown=args.plateau_cooldown,
               plateau_patience=args.plateau_patience,
               patience=args.patience,
               verbose=1)
 
-    # test_data, test_steps = dataset.get_generator(partition='test', batch_size=16, augmentor=None)
+    test_data, test_steps = dataset.get_generator(partition='test', batch_size=16, augmentor=None)
 
-    # predicts, probabilities = model.predict(test_data=test_data,
-    #                                         test_steps=test_steps,
-    #                                         top_paths=args.top_paths,
-    #                                         beam_width=args.beam_width,
-    #                                         ctc_decode=True,
-    #                                         token_decode=True,
-    #                                         verbose=1)
+    predicts, probabilities = model.predict(test_data=test_data,
+                                            test_steps=test_steps,
+                                            top_paths=args.top_paths,
+                                            beam_width=args.beam_width,
+                                            ctc_decode=True,
+                                            token_decode=True,
+                                            verbose=1)
 
-    # print(predicts.shape, probabilities.shape)
-    # print(predicts)
+    print(predicts)
+    print(predicts.shape, probabilities.shape)
 
     # spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
-
-    # carbon = Carbon(dataset=dataset,
-    #                 augmentor=augmentor,
-    #                 spelling=spelling,
-    #                 optical_model=optical_model)
