@@ -43,10 +43,10 @@ class InputProcess(tf.keras.layers.Layer):
         if self.target_shape is not None:
             _, height, width, _ = tf.unstack(tf.shape(inputs))
 
-            height = tf.cast(height, tf.float32)
-            width = tf.cast(width, tf.float32)
-
             if height > self.target_shape[1] or width > self.target_shape[0]:
+                height = tf.cast(height, tf.float32)
+                width = tf.cast(width, tf.float32)
+
                 height_scale = self.target_shape[1] / height
                 width_scale = self.target_shape[0] / width
 
@@ -84,6 +84,7 @@ class InputProcess(tf.keras.layers.Layer):
 
         config.update({
             'target_shape': self.target_shape,
+            'pad_value': self.pad_value,
         })
 
         return config
