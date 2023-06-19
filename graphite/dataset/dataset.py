@@ -22,6 +22,7 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
+                 pad_value=255,
                  lazy_mode=True,
                  infer_data=None,
                  artifact_path='data',
@@ -41,6 +42,8 @@ class Dataset():
             The validation ratio for resample. Default is None.
         test_ratio : float or int, optional
             The test ratio for resample. Default is None.
+        pad_value : int, optional
+            Padding value. Default is 255.
         lazy_mode : bool, optional
             Lazy mode flag for lazy loading process. Default is True.
         infer_data : list, optional
@@ -62,8 +65,9 @@ class Dataset():
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-        self.artifact_path = artifact_path
+        self.pad_value = pad_value
         self.lazy_mode = lazy_mode
+        self.artifact_path = artifact_path
         self.seed = seed
 
         self.size = 0
@@ -73,11 +77,11 @@ class Dataset():
         self.min_text = ''
         self.max_text = ''
 
-        self.min_rows = float('inf')
-        self.max_rows = float('-inf')
+        self.min_rows = np.inf
+        self.max_rows = -np.inf
 
-        self.min_cols = float('inf')
-        self.max_cols = float('-inf')
+        self.min_cols = np.inf
+        self.max_cols = -np.inf
 
         if infer_data is None:
             self._source = self._import_source(self.source)
@@ -114,6 +118,7 @@ class Dataset():
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
+            'pad_value': self.pad_value,
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
@@ -147,6 +152,7 @@ class Dataset():
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
+            Padding Value           {self.pad_value}
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
@@ -232,7 +238,7 @@ class Dataset():
                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
 
                 if padding:
-                    x_data = self._pad_batch_data(x_data, 255, np.uint8)
+                    x_data = self._pad_batch_data(x_data, self.pad_value, np.uint8)
                     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
 
                 yield (x_data, y_data)
@@ -664,7 +670,7 @@ class Dataset():
 
         return data
 
-    def _pad_batch_data(self, batch_data, pad_value=0, dtype=None):
+    def _pad_batch_data(self, batch_data, pad_value=255, dtype=None):
         """
         Pads each 2D sub-array in the batch data to the maximum height and width.
 
@@ -673,7 +679,7 @@ class Dataset():
         data : list
             List of 2D sub-arrays to be padded.
         pad_value : int, optional
-            Padding value. Default is 0.
+            Padding value. Default is 255.
         dtype : data-type, optional
             Desired data type of output array.
 
