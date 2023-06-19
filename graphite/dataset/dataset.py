@@ -735,6 +735,43 @@ class Tokenizer():
         self.eos_tk_index = self.charset.index(self.eos_tk)
         self.unk_tk_index = self.charset.index(self.unk_tk)
 
+    def __repr__(self):
+        """
+        Returns a JSON-formatted string representation of the Tokenizer object.
+
+        Returns
+        -------
+        str
+            A JSON-formatted string containing the object's attributes.
+        """
+
+        return json.dumps({
+            'charset': self.charset,
+            'charset_length': len(self.charset),
+            'shape': self.shape,
+        })
+
+    def __str__(self):
+        """
+        Returns a string representation of the Tokenizer object with useful information.
+
+        Returns
+        -------
+        str
+            The string representation of the object.
+        """
+
+        info = f"""
+            Tokenizer Configuration\n
+            Charset             {self.charset}
+            Charset Length      {len(self.charset)}
+            Shape               {self.shape}
+        """
+
+        info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        return info
+
     def encode(self, label):
         """
         Encode a single label by mapping characters to their corresponding token indices.
