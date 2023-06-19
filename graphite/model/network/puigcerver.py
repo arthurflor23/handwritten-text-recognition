@@ -14,7 +14,7 @@ class Network():
         DOI: https://doi.org/10.1109/ICDAR.2017.20
     """
 
-    def __init__(self, output_shape):
+    def __init__(self, output_shape, pad_value):
         """
         Initializes a new instance of the Network class.
 
@@ -22,10 +22,13 @@ class Network():
         -----------
         output_shape : tuple
             The shape of the model output (max_rows, max_cols, charset_length).
+        pad_value : int, optional
+            Padding value.
         """
 
         self.input_shape = (1024, 128, 1)
         self.output_shape = output_shape
+        self.pad_value = pad_value
 
     def compile_model(self, learning_rate, loss_func):
         """
@@ -69,7 +72,7 @@ class Network():
         """
 
         inputs = tf.keras.Input(shape=(None, None, 1))
-        inproc = InputProcess(target_shape=self.input_shape)(inputs)
+        inproc = InputProcess(target_shape=self.input_shape, pad_value=self.pad_value)(inputs)
 
         cnn = tf.keras.layers.Conv2D(filters=16,
                                      kernel_size=(3, 3),
