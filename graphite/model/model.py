@@ -16,6 +16,7 @@ class Model():
     def __init__(self,
                  network,
                  tokenizer,
+                 pad_value=255,
                  artifact_path='mlruns',
                  seed=None):
         """
@@ -27,6 +28,8 @@ class Model():
             The name of the network module to be used.
         tokenizer : object
             The Tokenizer object used for tokenizing the input data.
+        pad_value : int, optional
+            Padding value. Default is 255.
         artifact_path : str, optional
             The relative path to the directory where model artifacts are stored, by default 'mlruns'.
         seed : int, optional
@@ -38,11 +41,12 @@ class Model():
 
         self.network = network
         self.tokenizer = tokenizer
+        self.pad_value = pad_value
         self.artifact_path = artifact_path
         self.seed = seed
 
         self._network = self._import_network(self.network)
-        self._network = self._network(self.tokenizer.shape)
+        self._network = self._network(self.tokenizer.shape, self.pad_value)
 
     def __repr__(self):
         """
@@ -57,6 +61,7 @@ class Model():
         return json.dumps({
             'network': self.network,
             'tokenizer_shape': self.tokenizer.shape,
+            'pad_value': self.pad_value,
             'seed': self.seed,
         })
 
@@ -74,6 +79,7 @@ class Model():
             Model Configuration\n
             Network                 {self.network}
             Tokenizer Shape         {self.tokenizer.shape}
+            Padding Value           {self.pad_value}
             Seed                    {self.seed}
         """
 
