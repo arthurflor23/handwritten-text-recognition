@@ -6,7 +6,7 @@ class InputProcess(tf.keras.layers.Layer):
     This class defines a custom layer for processing.
     """
 
-    def __init__(self, target_shape=None, **kwargs):
+    def __init__(self, target_shape=None, pad_value=255, **kwargs):
         """
         Initialize the InputProcess class.
 
@@ -14,6 +14,8 @@ class InputProcess(tf.keras.layers.Layer):
         ----------
         target_shape : int
             Target shape for resizing operation. Default is None.
+        pad_value : int, optional
+            Padding value. Default is 255.
         **kwargs :
             Variable length argument list for parent class.
         """
@@ -21,6 +23,7 @@ class InputProcess(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.target_shape = target_shape
+        self.pad_value = pad_value
 
     def call(self, inputs):
         """
@@ -37,15 +40,33 @@ class InputProcess(tf.keras.layers.Layer):
             Processed tensor after applying operations.
         """
 
-        inputs = tf.math.divide(inputs, 255.)
-        inputs = tf.image.transpose(inputs)
-
         if self.target_shape is not None:
-            inputs = tf.math.subtract(1., tf.image.resize_with_pad(image=tf.math.subtract(1., inputs),
-                                                                   target_height=self.target_shape[0],
-                                                                   target_width=self.target_shape[1],
-                                                                   method=tf.image.ResizeMethod.BICUBIC,
-                                                                   antialias=True))
+            _, height, width, _ = tf.unstack(tf.shape(inputs))
+
+            height = tf.cast(height, tf.float32)
+            width = tf.cast(width, tf.float32)
+
+            if height > self.target_shape[1] or width > self.target_shape[0]:
+                height_scale = self.target_shape[1] / height
+                width_scale = self.target_shape[0] / width
+
+                scale = tf.minimum(height_scale, width_scale)
+
+                height = tf.cast(tf.round(height * scale), tf.int32)
+                width = tf.cast(tf.round(width * scale), tf.int32)
+
+                inputs = tf.image.resize(
+                    inputs, [height, width], method=tf.image.ResizeMethod.AREA)
+
+            padding_height = self.target_shape[1] - height
+            padding_width = self.target_shape[0] - width
+
+            paddings = [[0, 0], [0, padding_height], [0, padding_width], [0, 0]]
+            inputs = tf.pad(inputs, paddings, constant_values=self.pad_value)
+
+        inputs = tf.image.transpose(inputs)
+        # inputs = tf.image.per_image_standardization(inputs)
+        inputs = tf.math.divide(inputs, 255.)
 
         return inputs
 
