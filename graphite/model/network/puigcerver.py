@@ -72,7 +72,10 @@ class Network():
         """
 
         inputs = tf.keras.Input(shape=(None, None, 1))
-        inproc = InputProcess(target_shape=self.input_shape, pad_value=self.pad_value)(inputs)
+
+        inproc = InputProcess(height_shape=self.input_shape[1],
+                              width_shape=self.input_shape[0],
+                              pad_value=self.pad_value)(inputs)
 
         cnn = tf.keras.layers.Conv2D(filters=16,
                                      kernel_size=(3, 3),
