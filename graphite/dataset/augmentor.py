@@ -20,6 +20,7 @@ class Augmentor():
                  scaling=None,
                  rotation=None,
                  translation=None,
+                 pad_value=255,
                  disable_augmentation=False,
                  seed=None):
         """
@@ -49,6 +50,8 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
+        pad_value : int, optional
+            Padding value. Default is 255.
         disable_augmentation : bool,
             Flag to disable augmentation, by default False.
         seed : int or None, optional
@@ -72,6 +75,8 @@ class Augmentor():
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
+
+        self.pad_value = pad_value
         self.disable_augmentation = disable_augmentation
         self.seed = seed
 
@@ -97,6 +102,7 @@ class Augmentor():
             'rotation': self.rotation_params,
             'translation': self.translation_params,
             'salt_and_pepper': self.salt_and_pepper_params,
+            'pad_value': self.pad_value,
             'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
         })
@@ -128,6 +134,7 @@ class Augmentor():
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
 
+            Padding Value           {self.pad_value}
             Augmentation Disabled   {self.disable_augmentation}
             Seed                    {self.seed}
         """
@@ -273,7 +280,7 @@ class Augmentor():
                           map2=displaced_coords[..., 0],
                           interpolation=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=255)
+                          borderValue=self.pad_value)
 
         return image
 
@@ -380,7 +387,7 @@ class Augmentor():
 
         image = cv2.warpPerspective(image, M, (width, height),
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=255)
+                                    borderValue=self.pad_value)
 
         return image
 
@@ -484,7 +491,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=255)
+                               borderValue=self.pad_value)
 
         return image
 
@@ -518,7 +525,7 @@ class Augmentor():
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
         if alpha > 0:
-            padded_image = np.full((height, width), 255, dtype=np.uint8)
+            padded_image = np.full((height, width), self.pad_value, dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
@@ -563,7 +570,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=255)
+                               borderValue=self.pad_value)
 
         return image
 
@@ -607,7 +614,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=255)
+                               borderValue=self.pad_value)
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
 
