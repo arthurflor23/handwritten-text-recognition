@@ -37,7 +37,7 @@ class Model():
         """
 
         tf.random.set_seed(seed)
-        tf.config.set_visible_devices([], 'GPU')
+        # tf.config.set_visible_devices([], 'GPU')
 
         self.network = network
         self.tokenizer = tokenizer
@@ -155,7 +155,7 @@ class Model():
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
-                min_delta=1e-8,
+                min_delta=1e-4,
                 patience=patience,
                 start_from_epoch=0,
                 restore_best_weights=True,
@@ -165,7 +165,7 @@ class Model():
                 mode='min',
                 monitor='val_loss',
                 min_lr=1e-4,
-                min_delta=1e-8,
+                min_delta=1e-4,
                 factor=plateau_factor,
                 cooldown=plateau_cooldown,
                 patience=plateau_patience,
@@ -218,51 +218,47 @@ class Model():
             the second array is the probabilities of these predictions.
         """
 
+        beam_width = max(top_paths, beam_width)
+
         predicts = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
-        decoded, probabilities = np.log(predicts.clip(min=1e-8)), np.array([])
+        predicts = np.log(predicts + 1e-7)
+
+        decoded, probabilities = predicts, np.array([])
 
         if ctc_decode:
+            progbar = tf.keras.utils.Progbar(target=predicts.shape[1], unit_name='path_decode', verbose=verbose)
+
             sequence_length = [predicts.shape[2]] * predicts.shape[0]
             decoded_paths, probabilities_list = [], []
 
-            progbar = tf.keras.utils.Progbar(target=predicts.shape[1], unit_name='path_decode', verbose=verbose)
-
             for i in range(predicts.shape[1]):
                 progbar.update(i)
-                inputs = tf.transpose(predicts[:, i, :, :], perm=[1, 0, 2])
 
+                inputs = tf.transpose(predicts[:, i, :, :], perm=[1, 0, 2])
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
                                                                            top_paths=top_paths)
 
-                probabilities_list.append(tf.exp(log_probabilities))
-
                 decoded_pads = []
                 for j in range(top_paths):
                     sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
-                    padding = [[0, 0], [0, predicts.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
-                    decoded_pads.append(tf.pad(sparse_decoded, paddings=padding, constant_values=-1))
+                    paddings = [[0, 0], [0, predicts.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
 
                 decoded_paths.append(decoded_pads)
+                probabilities_list.append(tf.exp(log_probabilities))
+
                 progbar.update(i + 1)
 
             decoded = np.transpose(tf.stack(decoded_paths, axis=1), (0, 2, 1, 3))
             probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (2, 0, 1))
 
             if token_decode:
-                decoded_strings = []
+                decoded = [[self.tokenizer.decode(decoded[i, j, :, :])
+                            for j in range(decoded.shape[1])] for i in range(decoded.shape[0])]
 
-                for i in range(decoded.shape[0]):
-                    instance_strings = []
-
-                    for j in range(decoded.shape[1]):
-                        decoded_string = self.tokenizer.decode(decoded[i, j, :, :])
-                        instance_strings.append(decoded_string)
-
-                    decoded_strings.append(instance_strings)
-
-                decoded = np.array(decoded_strings, dtype=object)
+                decoded = np.array(decoded, dtype=object)
 
         return decoded, probabilities
 
@@ -315,6 +311,7 @@ class Model():
 
         # labels = tf.sparse.from_dense(y_true)
         # logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + 1e-7)
+        # logits = tf.transpose(tf.math.log(y_pred + 1e-7), perm=[1, 0, 2])
 
         # label_length = tf.math.count_nonzero(y_true, axis=-1)
         # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
