@@ -44,13 +44,13 @@ def check(args):
     src_generator, _ = dataset.get_generator(partition='training',
                                              batch_size=args.batch_size,
                                              augmentor=None,
-                                             padding=False,
+                                             raw_data=True,
                                              shuffle=False)
 
     aug_generator, _ = dataset.get_generator(partition='training',
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
-                                             padding=True,
+                                             raw_data=False,
                                              shuffle=False)
 
     print("Checking samples...\n")
