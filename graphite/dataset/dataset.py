@@ -8,7 +8,6 @@ import string
 import importlib
 import concurrent
 import numpy as np
-import multiprocessing
 
 
 class Dataset():
@@ -92,15 +91,15 @@ class Dataset():
         else:
             data = self._prepare_source_data(infer_data, infer=True)
 
-        self.training = self._get_partition_dictionary(data[0], test=False)
-        self.validation = self._get_partition_dictionary(data[1], test=False)
-        self.test = self._get_partition_dictionary(data[2], test=True)
+        self.training = self._create_partition(data[0], test=False)
+        self.validation = self._create_partition(data[1], test=False)
+        self.test = self._create_partition(data[2], test=True)
 
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
-        self.training['data'] = self._get_encoded_data(self.training['data'])
-        self.validation['data'] = self._get_encoded_data(self.validation['data'])
-        self.test['data'] = self._get_encoded_data(self.test['data'])
+        self.training = self._encode_partition_labels(self.training)
+        self.validation = self._encode_partition_labels(self.validation)
+        self.test = self._encode_partition_labels(self.test)
 
     def __repr__(self):
         """
@@ -190,7 +189,7 @@ class Dataset():
                       partition,
                       batch_size=16,
                       augmentor=None,
-                      padding=True,
+                      raw_data=False,
                       shuffle=True):
         """
         Generates a batch of data samples for the specified partition.
@@ -203,8 +202,8 @@ class Dataset():
             The number of samples in each batch, default is 16.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
-        padding : bool, optional
-            Specifies whether to enable padding mode, default is True.
+        raw_data : bool, optional
+            Specifies whether to generate raw or processed data, default is False.
         shuffle : bool, optional
             Specifies whether shuffles per epoch, default is True.
 
@@ -226,10 +225,10 @@ class Dataset():
                 batch_indices = indices[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                batch_data = dataset['data'][batch_indices]
+                batch_data = dataset['raw' if raw_data else 'data'][batch_indices]
 
                 x_data = batch_data[:, 0]
-                y_data = batch_data[:, 3 if padding else 2]
+                y_data = batch_data[:, 2]
 
                 if self.lazy_mode:
                     x_data = [self.read_image(data[0], data[1]) for data in batch_data]
@@ -237,7 +236,7 @@ class Dataset():
                 if augmentor:
                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
 
-                if padding:
+                if not raw_data:
                     x_data = self._pad_batch_data(x_data, self.pad_value, np.uint8)
                     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
 
@@ -526,14 +525,15 @@ class Dataset():
 
             np.random.shuffle(data[i])
 
-            with multiprocessing.get_context('fork').Pool() as pool:
-                data[i] = [list(x) for x in pool.map(self._validate_data_item, data[i]) if x]
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self._unpack_data_item, x) for x in data[i]]
+                data[i] = [list(x) for x in [future.result() for future in futures] if x]
 
         return data
 
-    def _validate_data_item(self, item, infer=False):
+    def _unpack_data_item(self, item, infer=False):
         """
-        Validates a data item.
+        Load and validate data item.
 
         Parameters
         ----------
@@ -545,7 +545,7 @@ class Dataset():
         Returns
         -------
         tuple
-            The validated data item.
+            The loaded and validated data item.
         """
 
         image_path, bbox, label = item
@@ -574,9 +574,9 @@ class Dataset():
 
         image = image_path if self.lazy_mode else image
 
-        return image, bbox, label
+        return [image_path, bbox, label], [image, bbox, label]
 
-    def _get_partition_dictionary(self, partition_data, test=False):
+    def _create_partition(self, partition_data, test=False):
         """
         Creates a partition dictionary from the given partition data.
 
@@ -594,8 +594,9 @@ class Dataset():
         """
 
         dct = {
-            'data': partition_data,
-            'size': len(partition_data),
+            'raw': [],
+            'data': [],
+            'size': 0,
             'corpus': '',
             'charset': [],
             'min_text': '',
@@ -606,7 +607,11 @@ class Dataset():
             'max_cols': 0,
         }
 
-        labels = [x[2] for x in partition_data if x[2]]
+        dct['raw'] = np.array([x[0] for x in partition_data], dtype=object)
+        dct['data'] = np.array([x[0] for x in partition_data], dtype=object)
+        dct['size'] = dct['data'].size
+
+        labels = [x[2] for x in dct['data'] if x[2]]
 
         if labels:
             dct['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
@@ -644,31 +649,31 @@ class Dataset():
 
         return dct
 
-    def _get_encoded_data(self, data):
+    def _encode_partition_labels(self, partition):
         """
-        Encode the data by mapping labels to their corresponding token indices.
+        Encode labels in the partition data using the tokenizer.
 
         Parameters
         ----------
-        data : list
-            List of data to encode, where each element is [image, bbox, label].
+        partition : dict
+            A dictionary containing 'data', a list of lists,
+            where the last element of each sublist is a label to be encoded.
 
         Returns
         -------
-        list
-            Encoded data with token indices appended to each element.
+        partition : dict
+            The same partition dictionary with 'data' updated to contain encoded labels
+            and converted to a numpy array of dtype object.
         """
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.tokenizer.encode, x[-1]) for x in data]
+            futures = [executor.submit(self.tokenizer.encode, x[-1]) for x in partition['data']]
             encoded_labels = [future.result() for future in futures]
 
-            for i in range(len(data)):
-                data[i].append(encoded_labels[i])
+            for i in range(len(partition['data'])):
+                partition['data'][i][-1] = encoded_labels[i]
 
-        data = np.asarray(data, dtype=object)
-
-        return data
+        return partition
 
     def _pad_batch_data(self, batch_data, pad_value=255, dtype=None):
         """
@@ -732,8 +737,8 @@ class Tokenizer():
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
 
         self.pad_tk_index = self.charset.index(self.pad_tk)
-        self.sos_tk_index = self.charset.index(self.sos_tk)
-        self.eos_tk_index = self.charset.index(self.eos_tk)
+        # self.sos_tk_index = self.charset.index(self.sos_tk)
+        # self.eos_tk_index = self.charset.index(self.eos_tk)
         self.unk_tk_index = self.charset.index(self.unk_tk)
 
     def __repr__(self):
