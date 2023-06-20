@@ -727,7 +727,8 @@ class Tokenizer():
         self.eos_tk = '◗'
         self.unk_tk = '◬'
 
-        self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
+        self.charset = [self.pad_tk, self.unk_tk] + charset
+        # self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
 
         self.pad_tk_index = self.charset.index(self.pad_tk)
@@ -790,13 +791,14 @@ class Tokenizer():
         encoded_label = []
 
         for row in label:
-            enconded_row = [self.sos_tk_index]
+            enconded_row = []
+            # enconded_row = [self.sos_tk_index]
 
             for char in row:
                 index = self.charset.index(char) if char in self.charset else self.unk_tk_index
                 enconded_row.append(index)
 
-            enconded_row += [self.eos_tk_index]
+            # enconded_row += [self.eos_tk_index]
             encoded_label.append(enconded_row)
 
         return encoded_label
