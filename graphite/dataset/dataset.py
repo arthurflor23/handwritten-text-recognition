@@ -608,7 +608,7 @@ class Dataset():
         }
 
         dct['raw'] = np.array([x[0] for x in partition_data], dtype=object)
-        dct['data'] = np.array([x[0] for x in partition_data], dtype=object)
+        dct['data'] = np.array([x[1] for x in partition_data], dtype=object)
         dct['size'] = dct['data'].size
 
         labels = [x[2] for x in dct['data'] if x[2]]
