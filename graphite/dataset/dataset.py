@@ -213,7 +213,7 @@ class Dataset():
             A generator for data batches and steps per epoch.
         """
 
-        def generator(dataset, indices):
+        def generator(dataset, settype, indices):
             batch_index = 0
 
             while True:
@@ -225,7 +225,7 @@ class Dataset():
                 batch_indices = indices[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                batch_data = dataset['raw' if raw_data else 'data'][batch_indices]
+                batch_data = dataset[settype][batch_indices]
 
                 x_data = batch_data[:, 0]
                 y_data = batch_data[:, 2]
@@ -243,9 +243,10 @@ class Dataset():
                 yield (x_data, y_data)
 
         dataset = getattr(self, partition)
+        settype = 'raw' if raw_data else 'data'
         indices = np.arange(dataset['size'])
 
-        batch_generator = generator(dataset, indices)
+        batch_generator = generator(dataset, settype, indices)
         steps_per_epoch = np.math.ceil(dataset['size'] / batch_size)
 
         return batch_generator, steps_per_epoch
@@ -609,7 +610,7 @@ class Dataset():
 
         dct['raw'] = np.array([x[0] for x in partition_data], dtype=object)
         dct['data'] = np.array([x[1] for x in partition_data], dtype=object)
-        dct['size'] = dct['data'].size
+        dct['size'] = dct['data'].shape[0]
 
         labels = [x[2] for x in dct['data'] if x[2]]
 
