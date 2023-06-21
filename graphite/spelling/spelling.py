@@ -47,7 +47,7 @@ class Spelling():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the Spelling object.
+        Returns a JSON-formatted string representation of the object.
 
         Returns
         -------
@@ -55,15 +55,17 @@ class Spelling():
             A JSON-formatted string containing the object's attributes.
         """
 
-        return json.dumps({
+        attributes = json.dumps({
             'spell_checker': self.spell_checker,
             'env_key': self.env_key,
             'dotenv_path': self.dotenv_path,
-        })
+        }, default=lambda x: str(x))
+
+        return attributes
 
     def __str__(self):
         """
-        Returns a string representation of the Spelling object with useful information.
+        Returns a string representation of the object with useful information.
 
         Returns
         -------

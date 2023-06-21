@@ -103,7 +103,7 @@ class Dataset():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the Dataset object.
+        Returns a JSON-formatted string representation of the object.
 
         Returns
         -------
@@ -111,7 +111,7 @@ class Dataset():
             A JSON-formatted string containing the object's attributes.
         """
 
-        return json.dumps({
+        attributes = json.dumps({
             'source': self.source,
             'level': self.level,
             'training_ratio': self.training_ratio,
@@ -132,11 +132,13 @@ class Dataset():
             'max_rows': self.max_rows,
             'min_cols': self.min_cols,
             'max_cols': self.max_cols,
-        })
+        }, default=lambda x: str(x))
+
+        return attributes
 
     def __str__(self):
         """
-        Returns a string representation of the Dataset object with useful information.
+        Returns a string representation of the object with useful information.
 
         Returns
         -------
@@ -744,7 +746,7 @@ class Tokenizer():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the Tokenizer object.
+        Returns a JSON-formatted string representation of the object.
 
         Returns
         -------
@@ -752,15 +754,17 @@ class Tokenizer():
             A JSON-formatted string containing the object's attributes.
         """
 
-        return json.dumps({
+        attributes = json.dumps({
             'charset': self.charset,
             'charset_length': len(self.charset),
             'shape': self.shape,
-        })
+        }, default=lambda x: str(x))
+
+        return attributes
 
     def __str__(self):
         """
-        Returns a string representation of the Tokenizer object with useful information.
+        Returns a string representation of the object with useful information.
 
         Returns
         -------

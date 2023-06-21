@@ -82,7 +82,7 @@ class Augmentor():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the Augmentor object.
+        Returns a JSON-formatted string representation of the object.
 
         Returns
         -------
@@ -90,7 +90,7 @@ class Augmentor():
             A JSON-formatted string containing the object's attributes.
         """
 
-        return json.dumps({
+        attributes = json.dumps({
             'elastic_transform': self.elastic_transform_params,
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
@@ -105,11 +105,13 @@ class Augmentor():
             'pad_value': self.pad_value,
             'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
-        })
+        }, default=lambda x: str(x))
+
+        return attributes
 
     def __str__(self):
         """
-        Returns a string representation of the Augmentor object with useful information.
+        Returns a string representation of the object with useful information.
 
         Returns
         -------
@@ -162,14 +164,14 @@ class Augmentor():
 
         if not self.disable_augmentation:
             transformations = [
-                (self.elastic_transform, self.elastic_transform_params),
+                # (self.elastic_transform, self.elastic_transform_params),
                 (self.erosion, self.erosion_params),
                 (self.dilation, self.dilation_params),
-                (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
-                (self.perspective_transform, self.perspective_transform_params),
-                (self.salt_and_pepper, self.salt_and_pepper_params),
-                (self.gaussian_blur, self.gaussian_blur_params),
-                (self.shearing, self.shearing_params),
+                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+                # (self.perspective_transform, self.perspective_transform_params),
+                # (self.salt_and_pepper, self.salt_and_pepper_params),
+                # (self.gaussian_blur, self.gaussian_blur_params),
+                # (self.shearing, self.shearing_params),
                 (self.scaling, self.scaling_params),
                 (self.rotation, self.rotation_params),
                 (self.translation, self.translation_params),
