@@ -39,13 +39,17 @@ class Model():
         """
 
         tf.random.set_seed(seed)
-        tf.config.set_visible_devices([], 'GPU')
+        # tf.config.set_visible_devices([], 'GPU')
 
         self.network = network
         self.tokenizer = tokenizer
         self.pad_value = pad_value
         self.artifact_path = artifact_path
         self.seed = seed
+
+        self.optimizer = None
+        self.learning_rate = None
+        self.summary = None
 
         self.evaluate = Evaluate()
         self.logger = Logger()
@@ -63,12 +67,17 @@ class Model():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
+        attributes = {
             'network': self.network,
             'tokenizer_shape': self.tokenizer.shape,
             'pad_value': self.pad_value,
+            'optimizer': self.optimizer,
+            'learning_rate': self.learning_rate,
+            'summary': self.summary,
             'seed': self.seed,
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 
@@ -84,10 +93,15 @@ class Model():
 
         info = f"""
             Model Configuration\n
-            Network                 {self.network}
-            Tokenizer Shape         {self.tokenizer.shape}
-            Padding Value           {self.pad_value}
-            Seed                    {self.seed}
+            Network                     {self.network}
+            Tokenizer Shape             {self.tokenizer.shape}
+            Padding Value               {self.pad_value}
+            Seed                        {self.seed}
+
+            Optimizer                   {self.optimizer or '-'}
+            Learning Rate               {self.learning_rate or '-'}
+
+            Summary\n\n                 {self.summary or '-'}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -118,8 +132,12 @@ class Model():
                 if os.path.exists(model_uri) and os.path.isfile(model_uri):
                     self.model.load_weights(model_uri)
 
-        self.model.summary()
-        self.logger.set_compile_info(self.model)
+        self.optimizer = self.model.optimizer.get_config()['name']
+        self.learning_rate = self.model.optimizer.get_config()['learning_rate']
+
+        self.summary = []
+        self.model.summary(print_fn=lambda x: self.summary.append(x))
+        self.summary = '\n'.join(self.summary)
 
     def fit(self,
             training_data,
@@ -371,11 +389,6 @@ class Logger():
         Initialize the Logger object.
         """
 
-        self.summary = ''
-
-        self.optimizer = None
-        self.learning_rate = None
-
         self.training_batch_size = 0
         self.training_total_data = 0
         self.training_total_epochs = 0
@@ -415,10 +428,7 @@ class Logger():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
-            'summary': self.summary,
-            'optimizer': self.optimizer,
-            'learning_rate': self.learning_rate,
+        attributes = {
             'training_batch_size': self.training_batch_size,
             'training_total_data': self.training_total_data,
             'training_total_epochs': self.training_total_epochs,
@@ -444,7 +454,9 @@ class Logger():
             'loss_training': self.loss_training,
             'loss_validation': self.loss_validation,
             'loss_history': [','.join([str(y) for y in x]) for x in self.loss_history],
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 
@@ -459,11 +471,6 @@ class Logger():
         """
 
         info = f"""
-            Summary\n\n                        {self.summary}
-
-            Optimizer                          {self.optimizer}
-            Learning Rate                      {self.learning_rate}
-
             Training Information\n
             Training Batch Size                {self.training_batch_size}
             Training Total Data                {self.training_total_data}
@@ -501,23 +508,6 @@ class Logger():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
-
-    def set_compile_info(self, model):
-        """
-        Set the compilation information of the model.
-
-        Parameters
-        ----------
-        model : tf.keras.Model
-            The compiled model.
-        """
-
-        self.optimizer = model.optimizer.get_config()['name']
-        self.learning_rate = model.optimizer.get_config()['learning_rate']
-
-        self.summary = []
-        model.summary(print_fn=lambda x: self.summary.append(x))
-        self.summary = '\n'.join(self.summary)
 
     def set_training_info(self,
                           history,
