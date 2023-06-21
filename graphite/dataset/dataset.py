@@ -111,7 +111,7 @@ class Dataset():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
+        attributes = {
             'source': self.source,
             'level': self.level,
             'training_ratio': self.training_ratio,
@@ -132,7 +132,9 @@ class Dataset():
             'max_rows': self.max_rows,
             'min_cols': self.min_cols,
             'max_cols': self.max_cols,
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 
@@ -754,11 +756,13 @@ class Tokenizer():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
+        attributes = {
             'charset': self.charset,
             'charset_length': len(self.charset),
             'shape': self.shape,
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 

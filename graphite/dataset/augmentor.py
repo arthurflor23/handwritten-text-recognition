@@ -90,7 +90,7 @@ class Augmentor():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
+        attributes = {
             'elastic_transform': self.elastic_transform_params,
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
@@ -105,7 +105,9 @@ class Augmentor():
             'pad_value': self.pad_value,
             'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 

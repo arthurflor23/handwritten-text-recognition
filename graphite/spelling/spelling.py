@@ -55,11 +55,13 @@ class Spelling():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = json.dumps({
+        attributes = {
             'spell_checker': self.spell_checker,
             'env_key': self.env_key,
             'dotenv_path': self.dotenv_path,
-        }, default=lambda x: str(x))
+        }
+
+        attributes = json.dumps(attributes, default=lambda x: str(x))
 
         return attributes
 
