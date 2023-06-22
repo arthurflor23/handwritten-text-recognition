@@ -1,6 +1,8 @@
 import os
+import time
 import json
 import glob
+import datetime
 import importlib
 import numpy as np
 import tensorflow as tf
@@ -37,7 +39,7 @@ class Model():
         """
 
         tf.random.set_seed(seed)
-        # tf.config.set_visible_devices([], 'GPU')
+        tf.config.set_visible_devices([], 'GPU')
 
         self.network = network
         self.tokenizer = tokenizer
@@ -45,12 +47,15 @@ class Model():
         self.artifact_path = artifact_path
         self.seed = seed
 
+        self.evaluate = Evaluate()
+        self.logger = Logger()
+
         self._network = self._import_network(self.network)
         self._network = self._network(self.tokenizer.shape, self.pad_value)
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the Model object.
+        Returns a JSON-formatted string representation of the object.
 
         Returns
         -------
@@ -58,16 +63,18 @@ class Model():
             A JSON-formatted string containing the object's attributes.
         """
 
-        return json.dumps({
+        attributes = json.dumps({
             'network': self.network,
             'tokenizer_shape': self.tokenizer.shape,
             'pad_value': self.pad_value,
             'seed': self.seed,
-        })
+        }, default=lambda x: str(x))
+
+        return attributes
 
     def __str__(self):
         """
-        Returns a string representation of the Model object with useful information.
+        Returns a string representation of the object with useful information.
 
         Returns
         -------
@@ -112,6 +119,7 @@ class Model():
                     self.model.load_weights(model_uri)
 
         self.model.summary()
+        self.logger.set_compile_info(self.model)
 
     def fit(self,
             training_data,
@@ -151,6 +159,8 @@ class Model():
             Verbosity mode, by default 1.
         """
 
+        start_time = time.time()
+
         callbacks = [
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
@@ -180,6 +190,16 @@ class Model():
                                  callbacks=callbacks,
                                  epochs=epochs,
                                  verbose=verbose)
+
+        end_time = time.time()
+        total_time = end_time - start_time
+
+        self.logger.set_training_info(history.history,
+                                      training_data,
+                                      training_steps,
+                                      validation_data,
+                                      validation_steps,
+                                      total_time)
 
         return history
 
@@ -218,7 +238,7 @@ class Model():
             the second array is the probabilities of these predictions.
         """
 
-        beam_width = max(top_paths, beam_width)
+        start_time = time.time()
 
         predicts = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
         predicts = np.log(predicts + 1e-7)
@@ -228,8 +248,10 @@ class Model():
         if ctc_decode:
             progbar = tf.keras.utils.Progbar(target=predicts.shape[1], unit_name='path_decode', verbose=verbose)
 
-            sequence_length = [predicts.shape[2]] * predicts.shape[0]
             decoded_paths, probabilities_list = [], []
+            sequence_length = [predicts.shape[2]] * predicts.shape[0]
+
+            beam_width = max(top_paths, beam_width)
 
             for i in range(predicts.shape[1]):
                 progbar.update(i)
@@ -259,6 +281,11 @@ class Model():
                             for j in range(decoded.shape[1])] for i in range(decoded.shape[0])]
 
                 decoded = np.array(decoded, dtype=object)
+
+        end_time = time.time()
+        total_time = end_time - start_time
+
+        self.logger.set_test_info(test_data, test_steps, total_time)
 
         return decoded, probabilities
 
@@ -326,3 +353,267 @@ class Model():
         loss = tf.reduce_mean(loss)
 
         return loss
+
+
+class Evaluate():
+
+    def __init__(self):
+        print('Evaluate class here...')
+
+
+class Logger():
+    """
+    Class to log and store training, and test information.
+    """
+
+    def __init__(self):
+        """
+        Initialize the Logger object.
+        """
+
+        self.summary = ''
+
+        self.optimizer = None
+        self.learning_rate = None
+
+        self.training_batch_size = 0
+        self.training_total_data = 0
+        self.training_total_epochs = 0
+        self.training_total_steps = 0
+        self.training_time = 0
+        self.training_time_per_epoch = 0
+        self.training_time_per_step = 0
+
+        self.validation_batch_size = 0
+        self.validation_total_data = 0
+        self.validation_total_epochs = 0
+        self.validation_total_steps = 0
+        self.validation_time = 0
+        self.validation_time_per_epoch = 0
+        self.validation_time_per_step = 0
+
+        self.test_batch_size = 0
+        self.test_total_data = 0
+        self.test_total_epochs = 0
+        self.test_total_steps = 0
+        self.test_time = 0
+        self.test_time_per_epoch = 0
+        self.test_time_per_step = 0
+
+        self.loss_epoch = 0
+        self.loss_training = 0
+        self.loss_validation = 0
+        self.loss_history = ''
+
+    def __repr__(self):
+        """
+        Returns a JSON-formatted string representation of the object.
+
+        Returns
+        -------
+        str
+            A JSON-formatted string containing the object's attributes.
+        """
+
+        attributes = json.dumps({
+            'summary': self.summary,
+            'optimizer': self.optimizer,
+            'learning_rate': self.learning_rate,
+            'training_batch_size': self.training_batch_size,
+            'training_total_data': self.training_total_data,
+            'training_total_epochs': self.training_total_epochs,
+            'training_total_steps': self.training_total_steps,
+            'training_time': self.training_time,
+            'training_time_per_epoch': self.training_time_per_epoch,
+            'training_time_per_step': self.training_time_per_step,
+            'validation_batch_size': self.validation_batch_size,
+            'validation_total_data': self.validation_total_data,
+            'validation_total_epochs': self.validation_total_epochs,
+            'validation_total_steps': self.validation_total_steps,
+            'validation_time': self.validation_time,
+            'validation_time_per_epoch': self.validation_time_per_epoch,
+            'validation_time_per_step': self.validation_time_per_step,
+            'test_batch_size': self.test_batch_size,
+            'test_total_data': self.test_total_data,
+            'test_total_epochs': self.test_total_epochs,
+            'test_total_steps': self.test_total_steps,
+            'test_time': self.test_time,
+            'test_time_per_epoch': self.test_time_per_epoch,
+            'test_time_per_step': self.test_time_per_step,
+            'loss_epoch': self.loss_epoch,
+            'loss_training': self.loss_training,
+            'loss_validation': self.loss_validation,
+            'loss_history': [','.join([str(y) for y in x]) for x in self.loss_history],
+        }, default=lambda x: str(x))
+
+        return attributes
+
+    def __str__(self):
+        """
+        Returns a string representation of the object with useful information.
+
+        Returns
+        -------
+        str
+            The string representation of the object.
+        """
+
+        info = f"""
+            Summary\n\n                        {self.summary}
+
+            Optimizer                          {self.optimizer}
+            Learning Rate                      {self.learning_rate}
+
+            Training Information\n
+            Training Batch Size                {self.training_batch_size}
+            Training Total Data                {self.training_total_data}
+            Training Total Epochs              {self.training_total_epochs}
+            Training Total Steps               {self.training_total_steps}
+            Training Time                      {self.training_time}
+            Training Time per Epoch            {self.training_time_per_epoch}
+            Training Time per Step             {self.training_time_per_step}
+
+            Validation Batch Size              {self.validation_batch_size}
+            Validation Total Data              {self.validation_total_data}
+            Validation Total Epochs            {self.validation_total_epochs}
+            Validation Total Steps             {self.validation_total_steps}
+            Validation Time                    {self.validation_time}
+            Validation Time per Epoch          {self.validation_time_per_epoch}
+            Validation Time per Step           {self.validation_time_per_step}
+
+            Test Information\n
+            Test Batch Size                    {self.test_batch_size}
+            Test Total Data                    {self.test_total_data}
+            Test Total Epochs                  {self.test_total_epochs}
+            Test Total Steps                   {self.test_total_steps}
+            Test Time                          {self.test_time}
+            Test Time per Epoch                {self.test_time_per_epoch}
+            Test Time per Step                 {self.test_time_per_step}
+
+            Loss\n
+            Best Loss Epoch                    {self.loss_epoch}
+            Best Loss Training                 {self.loss_training}
+            Best Loss Validation               {self.loss_validation}
+
+            Loss History\n\n                   {self.loss_history}
+        """
+
+        info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        return info
+
+    def set_compile_info(self, model):
+        """
+        Set the compilation information of the model.
+
+        Parameters
+        ----------
+        model : tf.keras.Model
+            The compiled model.
+        """
+
+        self.optimizer = model.optimizer.get_config()['name']
+        self.learning_rate = model.optimizer.get_config()['learning_rate']
+
+        self.summary = []
+        model.summary(print_fn=lambda x: self.summary.append(x))
+        self.summary = '\n'.join(self.summary)
+
+    def set_training_info(self,
+                          history,
+                          training_data,
+                          training_steps,
+                          validation_data,
+                          validation_steps,
+                          total_time):
+        """
+        Set the training information.
+
+        Parameters
+        ----------
+        history : dict
+            The training history object.
+        training_data : data generator
+            The training data.
+        training_steps : int
+            The number of training steps per epoch.
+        validation_data : data generator
+            The validation data.
+        validation_steps : int
+            The number of validation steps per epoch.
+        total_time : float
+            The total training time.
+        """
+
+        loss = history['loss']
+        val_loss = history['val_loss']
+
+        best_val_loss = np.inf
+        best_loss = None
+        best_loss_epoch = -1
+        results = []
+
+        for epoch, (loss_value, val_loss_value) in enumerate(zip(loss, val_loss)):
+            is_best = ''
+
+            if val_loss_value < best_val_loss:
+                is_best = '*'
+                best_loss_epoch = epoch + 1
+                best_loss = loss_value
+                best_val_loss = val_loss_value
+
+            results.append([epoch + 1, loss_value, val_loss_value, is_best])
+
+        self.training_total_epochs = len(results)
+        self.validation_total_epochs = len(results)
+
+        self.loss_history = 'epoch,loss,val_loss,best'
+
+        for result in results:
+            epoch, loss_value, val_loss_value, is_best = result
+            self.loss_history += f"\n{epoch},{loss_value},{val_loss_value},{is_best}"
+
+        self.loss_epoch = best_loss_epoch
+        self.loss_training = best_loss
+        self.loss_validation = best_val_loss
+
+        training_batch_size = len(next(training_data)[0])
+        validation_batch_size = len(next(validation_data)[0])
+
+        self.training_batch_size = training_batch_size
+        self.training_total_data = training_batch_size * training_steps
+        self.training_total_steps = training_steps
+        self.training_time = str(datetime.timedelta(seconds=total_time))
+        self.training_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.training_total_epochs))
+        self.training_time_per_step = str(datetime.timedelta(seconds=total_time / self.training_total_steps))
+
+        self.validation_batch_size = validation_batch_size
+        self.validation_total_data = validation_batch_size * validation_steps
+        self.validation_total_steps = validation_steps
+        self.validation_time = str(datetime.timedelta(seconds=total_time))
+        self.validation_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.validation_total_epochs))
+        self.validation_time_per_step = str(datetime.timedelta(seconds=total_time / self.validation_total_steps))
+
+    def set_test_info(self, test_data, test_steps, total_time):
+        """
+        Set the test information.
+
+        Parameters
+        ----------
+        test_data : data generator
+            The test data.
+        test_steps : int
+            The number of test steps.
+        total_time : float
+            The total test time.
+        """
+
+        test_batch_size = len(next(test_data)[0])
+
+        self.test_batch_size = test_batch_size
+        self.test_total_data = test_batch_size * test_steps
+        self.test_total_epochs = 1
+        self.test_total_steps = test_steps
+        self.test_time = str(datetime.timedelta(seconds=total_time))
+        self.test_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.test_total_epochs))
+        self.test_time_per_step = str(datetime.timedelta(seconds=total_time / self.test_total_steps))
