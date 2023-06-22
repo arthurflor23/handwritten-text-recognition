@@ -252,29 +252,26 @@ class Model():
         Returns
         -------
         tuple of np.ndarray
-            The first array is the decoded predictions, and
-            the second array is the probabilities of these predictions.
+            The first is the predictions, and the second is the probabilities.
         """
 
         start_time = time.time()
 
-        predicts = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
-        predicts = np.log(predicts + 1e-7)
-
-        decoded, probabilities = predicts, np.array([])
+        predictions = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
+        predictions, probabilities = np.log(predictions + 1e-7), np.array([])
 
         if ctc_decode:
-            progbar = tf.keras.utils.Progbar(target=predicts.shape[1], unit_name='path_decode', verbose=verbose)
+            progbar = tf.keras.utils.Progbar(target=predictions.shape[1], unit_name='path_decode', verbose=verbose)
 
             decoded_paths, probabilities_list = [], []
-            sequence_length = [predicts.shape[2]] * predicts.shape[0]
+            sequence_length = [predictions.shape[2]] * predictions.shape[0]
 
             beam_width = max(top_paths, beam_width)
 
-            for i in range(predicts.shape[1]):
+            for i in range(predictions.shape[1]):
                 progbar.update(i)
 
-                inputs = tf.transpose(predicts[:, i, :, :], perm=[1, 0, 2])
+                inputs = tf.transpose(predictions[:, i, :, :], perm=[1, 0, 2])
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
@@ -283,7 +280,7 @@ class Model():
                 decoded_pads = []
                 for j in range(top_paths):
                     sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
-                    paddings = [[0, 0], [0, predicts.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    paddings = [[0, 0], [0, predictions.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
                     decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
 
                 decoded_paths.append(decoded_pads)
@@ -291,21 +288,21 @@ class Model():
 
                 progbar.update(i + 1)
 
-            decoded = np.transpose(tf.stack(decoded_paths, axis=1), (0, 2, 1, 3))
+            predictions = np.transpose(tf.stack(decoded_paths, axis=1), (0, 2, 1, 3))
             probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (2, 0, 1))
 
             if token_decode:
-                decoded = [[self.tokenizer.decode(decoded[i, j, :, :])
-                            for j in range(decoded.shape[1])] for i in range(decoded.shape[0])]
+                predictions = [[self.tokenizer.decode(predictions[i, j, :, :])
+                                for j in range(predictions.shape[1])] for i in range(predictions.shape[0])]
 
-                decoded = np.array(decoded, dtype=object)
+                predictions = np.array(predictions, dtype=object)
 
         end_time = time.time()
         total_time = end_time - start_time
 
         self.logger.set_test_info(test_data, test_steps, total_time)
 
-        return decoded, probabilities
+        return predictions, probabilities
 
     def _import_network(self, network):
         """
