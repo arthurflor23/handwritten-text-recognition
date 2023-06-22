@@ -68,8 +68,8 @@ class InputProcess(tf.keras.layers.Layer):
         inputs.set_shape([None, self.height_shape, self.width_shape, 1])
 
         inputs = tf.image.transpose(inputs)
-        # inputs = tf.image.per_image_standardization(inputs)
-        inputs = tf.math.divide(inputs, 255.)
+        inputs = tf.image.per_image_standardization(inputs)
+        # inputs = tf.math.divide(inputs, 255.)
 
         return inputs
 
