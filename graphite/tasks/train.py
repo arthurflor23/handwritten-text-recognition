@@ -46,17 +46,21 @@ def train(args):
               patience=args.patience,
               verbose=1)
 
-    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=16, augmentor=None)
+    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, augmentor=None)
 
-    predicts, probabilities = model.predict(test_data=test_data,
-                                            test_steps=test_steps,
-                                            top_paths=args.top_paths,
-                                            beam_width=args.beam_width,
-                                            ctc_decode=True,
-                                            token_decode=True,
-                                            verbose=1)
+    predictions, probabilities = model.predict(test_data=test_data,
+                                               test_steps=test_steps,
+                                               top_paths=args.top_paths,
+                                               beam_width=args.beam_width,
+                                               ctc_decode=True,
+                                               token_decode=True,
+                                               verbose=1)
 
-    print(predicts)
-    print(predicts.shape, probabilities.shape)
+    print(predictions)
+    print(predictions.shape, probabilities.shape)
 
     # spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
+    # for prediction in predictions:
+    #     enhanced_prediction = spelling.enhance_text_data(text_data=prediction)
+
+    metrics, samples = model.evaluate(dataset.test, predictions=predictions, samples=10)
