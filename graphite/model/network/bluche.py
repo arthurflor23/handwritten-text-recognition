@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from .layers import InputProcess, GatedConv2D
+from .layers import InputProcessing, GatedConv2D
 
 
 class Network():
@@ -73,9 +73,9 @@ class Network():
 
         inputs = tf.keras.Input(shape=(None, None, 1))
 
-        inproc = InputProcess(height_shape=self.input_shape[1],
-                              width_shape=self.input_shape[0],
-                              pad_value=self.pad_value)(inputs)
+        inproc = InputProcessing(height_shape=self.input_shape[1],
+                                 width_shape=self.input_shape[0],
+                                 pad_value=self.pad_value)(inputs)
 
         tile_shape = (self.input_shape[0] // 2, self.input_shape[1] // 2, self.input_shape[2] * 4)
         cnn = tf.keras.layers.Reshape(target_shape=tile_shape)(inproc)
