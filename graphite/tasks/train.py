@@ -32,26 +32,21 @@ def train(args):
     model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
     model.compile(learning_rate=args.learning_rate, run_index=args.run_index)
 
-    training_data, training_steps = dataset.get_generator(partition='training',
-                                                          batch_size=args.batch_size,
-                                                          augmentor=augmentor)
-
-    validation_data, validation_steps = dataset.get_generator(partition='validation',
-                                                              batch_size=args.batch_size,
-                                                              augmentor=None)
+    train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
+    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
 
     model.fit(epochs=args.epochs,
-              training_data=training_data,
-              training_steps=training_steps,
-              validation_data=validation_data,
-              validation_steps=validation_steps,
+              training_data=train_data,
+              training_steps=train_steps,
+              validation_data=valid_data,
+              validation_steps=valid_steps,
               plateau_factor=args.plateau_factor,
               plateau_cooldown=args.plateau_cooldown,
               plateau_patience=args.plateau_patience,
               patience=args.patience,
               verbose=1)
 
-    test_data, test_steps = dataset.get_generator(partition='test', batch_size=16, augmentor=None)
+    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=16, augmentor=None)
 
     predicts, probabilities = model.predict(test_data=test_data,
                                             test_steps=test_steps,
