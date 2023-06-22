@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class InputProcess(tf.keras.layers.Layer):
+class InputProcessing(tf.keras.layers.Layer):
     """
     This class defines a custom layer for processing.
     """
