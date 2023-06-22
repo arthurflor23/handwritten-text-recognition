@@ -200,8 +200,8 @@ class Dataset():
 
         Parameters
         ----------
-        partition : str
-            The partition type ('training', 'validation', or 'test').
+        partition : dict
+            The dataset partition which will be create the generator.
         batch_size : int, optional
             The number of samples in each batch, default is 16.
         augmentor : Augmentor, optional
@@ -217,11 +217,11 @@ class Dataset():
             A generator for data batches and steps per epoch.
         """
 
-        def generator(dataset, settype, indices):
+        def generator(partition, subset, indices):
             batch_index = 0
 
             while True:
-                if batch_index >= dataset['size']:
+                if batch_index >= partition['size']:
                     if shuffle:
                         np.random.shuffle(indices)
                     batch_index = 0
@@ -229,7 +229,7 @@ class Dataset():
                 batch_indices = indices[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                batch_data = dataset[settype][batch_indices]
+                batch_data = partition[subset][batch_indices]
 
                 x_data = batch_data[:, 0]
                 y_data = batch_data[:, 2]
@@ -246,12 +246,11 @@ class Dataset():
 
                 yield (x_data, y_data)
 
-        dataset = getattr(self, partition)
-        settype = 'raw' if raw_data else 'data'
-        indices = np.arange(dataset['size'])
+        subset = 'raw' if raw_data else 'data'
+        indices = np.arange(partition['size'])
 
-        batch_generator = generator(dataset, settype, indices)
-        steps_per_epoch = np.math.ceil(dataset['size'] / batch_size)
+        batch_generator = generator(partition, subset, indices)
+        steps_per_epoch = np.math.ceil(partition['size'] / batch_size)
 
         return batch_generator, steps_per_epoch
 
