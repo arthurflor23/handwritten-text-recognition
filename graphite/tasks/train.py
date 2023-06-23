@@ -48,25 +48,32 @@ def train(args):
 
     test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, augmentor=None)
 
-    predictions, probabilities = model.predict(test_data=test_data,
-                                               test_steps=test_steps,
-                                               top_paths=args.top_paths,
-                                               beam_width=args.beam_width,
-                                               ctc_decode=True,
-                                               token_decode=True,
-                                               verbose=1)
-
+    predictions, _ = model.predict(test_data=test_data,
+                                   test_steps=test_steps,
+                                   top_paths=args.top_paths,
+                                   beam_width=args.beam_width,
+                                   ctc_decode=True,
+                                   token_decode=True,
+                                   verbose=1)
     print(predictions)
-    print(predictions.shape, probabilities.shape)
 
-    # spelling = Spelling(spell_checker=args.spell_checker, api_key=args.api_key, env_key=args.env_key)
-    # for prediction in predictions:
-    #     enhanced_prediction = spelling.enhance_text_data(text_data=prediction)
-
-    metrics, samples = model.evaluate(dataset.test,
-                                      predictions=predictions,
-                                      prediction_samples=args.prediction_samples,
-                                      best_cumulative_paths=args.best_cumulative_paths)
-
+    metrics, _ = model.evaluate(dataset.test,
+                                predictions=predictions,
+                                share_top_paths=args.share_top_paths,
+                                prediction_samples=args.prediction_samples,
+                                origin='vanilla')
     print(metrics)
-    print(metrics.shape, samples.shape)
+
+    if args.spell_checker:
+        spelling = Spelling(spell_checker=args.spell_checker,
+                            api_key=args.api_key,
+                            env_key=args.env_key)
+
+        enhanced_predictions = spelling.enhance(predictions)
+
+        enhanced_metrics, _ = model.evaluate(dataset.test,
+                                             predictions=enhanced_predictions,
+                                             share_top_paths=args.share_top_paths,
+                                             prediction_samples=args.prediction_samples,
+                                             origin=args.spell_checker)
+        print(enhanced_metrics)
