@@ -63,4 +63,10 @@ def train(args):
     # for prediction in predictions:
     #     enhanced_prediction = spelling.enhance_text_data(text_data=prediction)
 
-    metrics, samples = model.evaluate(dataset.test, predictions=predictions, samples=10)
+    metrics, samples = model.evaluate(dataset.test,
+                                      predictions=predictions,
+                                      prediction_samples=args.prediction_samples,
+                                      best_cumulative_paths=args.best_cumulative_paths)
+
+    print(metrics)
+    print(metrics.shape, samples.shape)
