@@ -566,7 +566,10 @@ class Logger():
         self.loss_epoch = 0
         self.loss_training = 0
         self.loss_validation = 0
-        self.loss_history = ''
+        self.loss_history = []
+
+        self.evaluation = []
+        self.samples = []
 
     def __repr__(self):
         """
@@ -603,7 +606,9 @@ class Logger():
             'loss_epoch': self.loss_epoch,
             'loss_training': self.loss_training,
             'loss_validation': self.loss_validation,
-            'loss_history': [','.join([str(y) for y in x]) for x in self.loss_history],
+            'loss_history': self.loss_history,
+            'evaluation': self.evaluation,
+            'samples': self.samples,
         }
 
         attributes = json.dumps(attributes, default=lambda x: str(x))
@@ -619,6 +624,9 @@ class Logger():
         str
             The string representation of the object.
         """
+
+        loss_history = '\n'.join(self.loss_history)
+        evaluation = '\n'.join(self.evaluation)
 
         info = f"""
             Training Information\n
@@ -652,7 +660,9 @@ class Logger():
             Best Loss Training                 {self.loss_training}
             Best Loss Validation               {self.loss_validation}
 
-            Loss History\n\n                   {self.loss_history}
+            Loss History\n\n                   {loss_history}
+
+            Evaluation\n\n                     {evaluation}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -707,11 +717,11 @@ class Logger():
         self.training_total_epochs = len(results)
         self.validation_total_epochs = len(results)
 
-        self.loss_history = 'epoch,loss,val_loss,best'
+        self.loss_history = ['epoch,loss,val_loss,best']
 
         for result in results:
             epoch, loss_value, val_loss_value, is_best = result
-            self.loss_history += f"\n{epoch},{loss_value},{val_loss_value},{is_best}"
+            self.loss_history += [f"{epoch},{loss_value:.4f},{val_loss_value:.4f},{is_best}"]
 
         self.loss_epoch = best_loss_epoch
         self.loss_training = best_loss
@@ -757,3 +767,36 @@ class Logger():
         self.test_time = str(datetime.timedelta(seconds=total_time))
         self.test_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.test_total_epochs))
         self.test_time_per_step = str(datetime.timedelta(seconds=total_time / self.test_total_steps))
+
+    def set_evaluation_info(self, metrics, samples):
+        """
+        Set the evaluation information.
+
+        Parameters
+        ----------
+        metrics : data generator
+            Error metrics from each top path.
+        samples : int
+            Samples retrieved from prediction.
+        """
+
+        self.evaluation = ['top_path,cer,wer,ler,ser']
+
+        for i, x in enumerate(metrics, start=1):
+            self.evaluation += [f"{i},{x[0]:.4f},{x[1]:.4f},{x[2]:.4f},{x[3]:.4f}"]
+
+        self.samples = []
+
+        for i in range(len(samples)):
+            path = {'top': [], 'mid': [], 'bottom': []}
+
+            for x in samples[i][0]:
+                path['top'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
+
+            for x in samples[i][1]:
+                path['mid'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
+
+            for x in samples[i][2]:
+                path['bottom'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
+
+            self.samples.append({f"top_path_{i}": path})
