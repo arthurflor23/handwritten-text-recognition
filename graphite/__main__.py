@@ -108,10 +108,10 @@ if __name__ == '__main__':
                         help="The width of the beam for the CTC decoder")
 
     parser.add_argument('--top-paths', default=1, type=int,
-                        help="Number of top paths to extract from the predictions")
+                        help="Number of top paths to prediction")
 
-    parser.add_argument('--best-cumulative-paths', default=False, action='store_true',
-                        help="Consider previous top_paths for metrics calculation")
+    parser.add_argument('--share-top-paths', default=True, action='store_true',
+                        help="Consider previous paths for each path metrics")
 
     parser.add_argument('--prediction-samples', default=10, type=int,
                         help="Retrieve N samples from evaluation")
