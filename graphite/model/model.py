@@ -2,9 +2,11 @@ import os
 import time
 import json
 import glob
+import string
 import datetime
 import importlib
 import numpy as np
+import editdistance
 import tensorflow as tf
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -51,7 +53,6 @@ class Model():
         self.learning_rate = None
         self.summary = None
 
-        self.evaluate = Evaluate()
         self.logger = Logger()
 
         self._network = self._import_network(self.network)
@@ -225,7 +226,7 @@ class Model():
                 test_data,
                 test_steps,
                 top_paths=1,
-                beam_width=100,
+                beam_width=25,
                 ctc_decode=True,
                 token_decode=True,
                 verbose=1):
@@ -241,7 +242,7 @@ class Model():
         top_paths : int, optional
             The number of top paths to extract from the predictions, by default 1.
         beam_width : int, optional
-            The width of the beam for the CTC decoder, by default 100.
+            The width of the beam for the CTC decoder, by default 25.
         ctc_decode : bool, optional
             If True, applies CTC decoding to the predictions, by default True.
         token_decode : bool, optional
@@ -292,7 +293,7 @@ class Model():
             probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (2, 0, 1))
 
             if token_decode:
-                predictions = [[self.tokenizer.decode(predictions[i, j, :, :])
+                predictions = [[np.array(self.tokenizer.decode(predictions[i, j, :, :]), dtype=object)
                                 for j in range(predictions.shape[1])] for i in range(predictions.shape[0])]
 
                 predictions = np.array(predictions, dtype=object)
@@ -303,6 +304,97 @@ class Model():
         self.logger.set_test_info(test_data, test_steps, total_time)
 
         return predictions, probabilities
+
+    def evaluate(self,
+                 partition,
+                 predictions,
+                 prediction_samples=10,
+                 best_cumulative_paths=False):
+        """
+        Computes error metrics based on model's predictions.
+
+        Parameters
+        ----------
+        partition : dict
+            The data partition for evaluation.
+        predictions : numpy.ndarray
+            Array of model's predictions.
+        prediction_samples : int, optional
+            Number of samples for retrieve from evaluation. Default is 10.
+        best_cumulative_paths : bool, optional
+            If True, considers all previous paths for each top path. Default is False.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Error metrics and evaluated samples for each top path.
+        """
+
+        top_paths = len(predictions)
+        data_length = len(partition['raw'])
+
+        prediction_samples = min(prediction_samples, data_length)
+
+        metrics = np.zeros((top_paths, 4), dtype=np.float32)
+        samples = np.zeros((top_paths, 3, prediction_samples, 4), dtype=object)
+
+        # Metrics
+        for top_path in range(top_paths):
+            current_pred = self._get_best_predictions(partition, predictions=predictions[:top_path+1]) \
+                if best_cumulative_paths else predictions[top_path:top_path+1]
+
+            samples_error_rate = []
+
+            for index in range(data_length):
+                _, _, label = partition['raw'][index]
+                pred = current_pred[0, index]
+
+                for true_label, pred_label in zip(label, pred):
+                    true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in true_label])
+                    pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in pred_label])
+
+                    # Character
+                    character_error_rate = self._calculate_metric(list(true_label), list(pred_label))
+                    metrics[top_path, 0] += character_error_rate
+
+                    samples_error_rate.append(character_error_rate)
+
+                    # Word
+                    word_error_rate = self._calculate_metric(true_label.split(), pred_label.split())
+                    metrics[top_path, 1] += word_error_rate
+
+                    # Line
+                    line_error_rate = self._calculate_metric([true_label], [pred_label])
+                    metrics[top_path, 2] += line_error_rate / len(label)
+
+                true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(label)])
+                pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(pred)])
+
+                # Sequence
+                sequence_error_rate = self._calculate_metric([true_label], [pred_label])
+                metrics[top_path, 3] += sequence_error_rate
+
+            metrics[top_path, :] /= data_length
+
+            # Samples
+            sorted_indices = np.argsort(samples_error_rate)
+
+            t_samples = sorted_indices[:prediction_samples]
+            b_samples = sorted_indices[-prediction_samples:]
+
+            m_index = (data_length // 2) - (prediction_samples // 2)
+            m_samples = sorted_indices[m_index:m_index + prediction_samples]
+
+            samples_data = np.concatenate((partition['raw'][t_samples], current_pred[0, t_samples]), axis=1)
+            samples[top_path, 0, :, :] = samples_data
+
+            samples_data = np.concatenate((partition['raw'][m_samples], current_pred[0, m_samples]), axis=1)
+            samples[top_path, 1, :, :] = samples_data
+
+            samples_data = np.concatenate((partition['raw'][b_samples], current_pred[0, b_samples]), axis=1)
+            samples[top_path, 2, :, :] = samples_data
+
+        return metrics, samples
 
     def _import_network(self, network):
         """
@@ -326,6 +418,71 @@ class Model():
         network = getattr(module, class_name)
 
         return network
+
+    def _get_best_predictions(self, partition, predictions):
+        """
+        Finds the best predictions based on character error rate.
+
+        Parameters
+        ----------
+        partition : dict
+            The data partition.
+        predictions : numpy.ndarray
+            Array of model's predictions.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of top predictions based on character error rate.
+        """
+
+        best_paths = len(predictions)
+        data_length = len(partition['raw'])
+
+        metrics = np.zeros((best_paths, data_length), dtype=np.float32)
+
+        for best_path in range(best_paths):
+            for index in range(data_length):
+                _, _, labels = partition['raw'][index]
+                predis = predictions[best_path, index]
+
+                true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(labels)])
+                pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(predis)])
+
+                error_rate = self._calculate_metric(list(true_label), list(pred_label))
+                metrics[best_path, index] = error_rate
+
+        best_indices = np.argmin(metrics, axis=0)
+        best_predictions = np.zeros_like(predictions[0])
+
+        for i, best_index in enumerate(best_indices):
+            best_predictions[i] = predictions[best_index, i]
+
+        best_predictions = np.expand_dims(best_predictions, axis=0)
+
+        return best_predictions
+
+    def _calculate_metric(self, true_label, pred_label):
+        """
+        Calculates the error rate between true label and predicted label.
+
+        Parameters
+        ----------
+        true_labels : list
+            List of true labels.
+        pred_label : list
+            List of predicted labels.
+
+        Returns
+        -------
+        float
+            The error rate between true labels and predicted label.
+        """
+
+        distance = editdistance.eval(true_label, pred_label)
+        error_rate = distance / max(len(true_label), len(pred_label))
+
+        return error_rate
 
     @staticmethod
     def ctc_loss_func(y_true, y_pred):
@@ -368,12 +525,6 @@ class Model():
         loss = tf.reduce_mean(loss)
 
         return loss
-
-
-class Evaluate():
-
-    def __init__(self):
-        print('Evaluate class here...')
 
 
 class Logger():
