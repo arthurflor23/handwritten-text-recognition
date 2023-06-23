@@ -385,14 +385,16 @@ class Model():
             m_index = (data_length // 2) - (prediction_samples // 2)
             m_samples = sorted_indices[m_index:m_index + prediction_samples]
 
-            samples_data = np.concatenate((partition['raw'][t_samples], current_pred[0, t_samples]), axis=1)
-            samples[top_path, 0, :, :] = samples_data
+            raw, pred = partition['raw'][t_samples].tolist(), current_pred[0, t_samples].tolist()
+            samples[top_path, 0, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
 
-            samples_data = np.concatenate((partition['raw'][m_samples], current_pred[0, m_samples]), axis=1)
-            samples[top_path, 1, :, :] = samples_data
+            raw, pred = partition['raw'][m_samples].tolist(), current_pred[0, m_samples].tolist()
+            samples[top_path, 1, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
 
-            samples_data = np.concatenate((partition['raw'][b_samples], current_pred[0, b_samples]), axis=1)
-            samples[top_path, 2, :, :] = samples_data
+            raw, pred = partition['raw'][b_samples].tolist(), current_pred[0, b_samples].tolist()
+            samples[top_path, 2, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
+
+        self.logger.set_evaluation_info(metrics, samples)
 
         return metrics, samples
 
