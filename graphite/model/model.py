@@ -308,8 +308,9 @@ class Model():
     def evaluate(self,
                  partition,
                  predictions,
+                 share_top_paths=True,
                  prediction_samples=10,
-                 best_cumulative_paths=False):
+                 origin='vanilla'):
         """
         Computes error metrics based on model's predictions.
 
@@ -319,10 +320,12 @@ class Model():
             The data partition for evaluation.
         predictions : numpy.ndarray
             Array of model's predictions.
+        share_top_paths : bool, optional
+            If True, considers previous paths for each path metrics. Default is True.
         prediction_samples : int, optional
             Number of samples for retrieve from evaluation. Default is 10.
-        best_cumulative_paths : bool, optional
-            If True, considers all previous paths for each top path. Default is False.
+        origin : str, optional
+            Indicates the origin name. Default is vanilla.
 
         Returns
         -------
@@ -341,7 +344,7 @@ class Model():
         # Metrics
         for top_path in range(top_paths):
             current_pred = self._get_best_predictions(partition, predictions=predictions[:top_path+1]) \
-                if best_cumulative_paths else predictions[top_path:top_path+1]
+                if share_top_paths else predictions[top_path:top_path+1]
 
             samples_error_rate = []
 
@@ -394,7 +397,7 @@ class Model():
             raw, pred = partition['raw'][b_samples].tolist(), current_pred[0, b_samples].tolist()
             samples[top_path, 2, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
 
-        self.logger.set_evaluation_info(metrics, samples)
+        self.logger.set_evaluation_info(metrics, samples, origin)
 
         return metrics, samples
 
@@ -568,8 +571,8 @@ class Logger():
         self.loss_validation = 0
         self.loss_history = []
 
-        self.evaluation = []
-        self.samples = []
+        self.evaluation = {}
+        self.samples = {}
 
     def __repr__(self):
         """
@@ -768,7 +771,7 @@ class Logger():
         self.test_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.test_total_epochs))
         self.test_time_per_step = str(datetime.timedelta(seconds=total_time / self.test_total_steps))
 
-    def set_evaluation_info(self, metrics, samples):
+    def set_evaluation_info(self, metrics, samples, origin='vanilla'):
         """
         Set the evaluation information.
 
@@ -778,14 +781,16 @@ class Logger():
             Error metrics from each top path.
         samples : int
             Samples retrieved from prediction.
+        origin : str, optional
+            Indicates the origin name. Default is vanilla.
         """
 
-        self.evaluation = ['top_path,cer,wer,ler,ser']
+        self.evaluation[origin] = ['top_path,cer,wer,ler,ser']
 
         for i, x in enumerate(metrics, start=1):
-            self.evaluation += [f"{i},{x[0]:.4f},{x[1]:.4f},{x[2]:.4f},{x[3]:.4f}"]
+            self.evaluation[origin] += [f"{i},{x[0]:.4f},{x[1]:.4f},{x[2]:.4f},{x[3]:.4f}"]
 
-        self.samples = []
+        self.samples[origin] = []
 
         for i in range(len(samples)):
             path = {'top': [], 'mid': [], 'bottom': []}
@@ -799,4 +804,4 @@ class Logger():
             for x in samples[i][2]:
                 path['bottom'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
 
-            self.samples.append({f"top_path_{i}": path})
+            self.samples[origin].append({f"top_path_{i}": path})
