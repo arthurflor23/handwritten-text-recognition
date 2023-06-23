@@ -5,6 +5,7 @@ import json
 import dotenv
 import importlib
 import concurrent
+import numpy as np
 
 
 class Spelling():
@@ -86,59 +87,67 @@ class Spelling():
 
         return info
 
-    def enhance_text_data(self, text_data, instruction=None):
+    def enhance(self, predictions, instruction=None):
         """
-        Enhances texts by correcting spelling errors.
+        Enhances predictions by correcting spelling errors.
 
         Parameters
         ----------
-        texts : list
-            The texts to be enhanced.
+        predictions : list
+            The predictions to be enhanced.
         instruction : str, optional
             The instruction to be followed by the API.
 
         Returns
         -------
-        enhanced_texts : list
-            The enhanced texts.
+        enhanced : list
+            The enhanced predictions.
         """
 
         if not self.spell_checker:
-            return text_data
+            return predictions
 
-        tokens_length = 0
-        batches = [[]]
+        enhanced = []
 
-        for i, text in enumerate(text_data):
-            for j, line in enumerate(text):
-                pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
-                pp_text_tokens_length = len(pp_text.split())
+        for texts in predictions:
+            tokens_length = 0
+            batches = [[]]
 
-                if tokens_length + pp_text_tokens_length > 1024:
-                    batches.append([])
-                    tokens_length = 0
-                else:
-                    tokens_length += pp_text_tokens_length
+            for i, text in enumerate(texts):
+                for j, line in enumerate(text):
+                    pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
+                    pp_text_tokens_length = len(pp_text.split())
 
-                batches[-1].append(pp_text)
+                    if tokens_length + pp_text_tokens_length > 1024:
+                        batches.append([])
+                        tokens_length = 0
+                    else:
+                        tokens_length += pp_text_tokens_length
 
-        print(f"Total batches: {len(batches)}")
+                    batches[-1].append(pp_text)
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self._spell_checker.enhance_text, '\n'.join(x), instruction) for x in batches]
-            enhanced_batches = [future.result() for future in futures]
+            print(f"Total batches: {len(batches)}")
 
-        enhanced_texts = copy.deepcopy(text_data)
-        pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self._spell_checker.enhance_text,
+                                           '\n'.join(x), instruction) for x in batches]
+                enhanced_batches = [future.result() for future in futures]
 
-        for enhanced_batch in enhanced_batches:
-            matches = pattern.findall(enhanced_batch)
+            enhanced_texts = copy.deepcopy(texts)
+            pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
 
-            for match in matches:
-                tags = [int(x) for x in match[0].split('.')]
-                enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
+            for enhanced_batch in enhanced_batches:
+                matches = pattern.findall(enhanced_batch)
 
-        return enhanced_texts
+                for match in matches:
+                    tags = [int(x) for x in match[0].split('.')]
+                    enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
+
+            enhanced.append(enhanced_texts)
+
+        enhanced = np.array(enhanced, dtype=object)
+
+        return enhanced
 
     def _import_spell_checker(self, spell_checker):
 
