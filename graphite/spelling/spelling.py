@@ -118,7 +118,7 @@ class Spelling():
                     pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
                     pp_text_tokens_length = len(pp_text.split())
 
-                    if tokens_length + pp_text_tokens_length > 1024:
+                    if tokens_length + pp_text_tokens_length > 900:
                         batches.append([])
                         tokens_length = 0
                     else:
