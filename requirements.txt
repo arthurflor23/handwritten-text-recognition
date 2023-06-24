@@ -3,7 +3,6 @@ editdistance==0.6.2
 flake8==6.0.0
 ipykernel==6.23.3
 mlflow==2.4.1
-nltk==3.8.1
 openai==0.27.8
 opencv-python==4.7.0.72
 python-dotenv==1.0.0
