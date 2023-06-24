@@ -41,13 +41,13 @@ def check(args):
                           seed=42)
     print(augmentor)
 
-    src_generator, _ = dataset.get_generator(partition='training',
+    src_generator, _ = dataset.get_generator(dataset.training,
                                              batch_size=args.batch_size,
                                              augmentor=None,
                                              raw_data=True,
                                              shuffle=False)
 
-    aug_generator, _ = dataset.get_generator(partition='training',
+    aug_generator, _ = dataset.get_generator(dataset.training,
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
                                              raw_data=False,
