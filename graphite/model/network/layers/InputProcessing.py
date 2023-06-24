@@ -69,7 +69,6 @@ class InputProcessing(tf.keras.layers.Layer):
 
         inputs = tf.image.transpose(inputs)
         inputs = tf.image.per_image_standardization(inputs)
-        # inputs = tf.math.divide(inputs, 255.)
 
         return inputs
 
