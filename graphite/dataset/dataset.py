@@ -334,7 +334,7 @@ class Dataset():
                 line = detokenizer.detokenize(tokens)
 
                 line = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', line.replace('"', ' " ')).strip()
-                line = line.translate(str.maketrans({punct: f" {punct} " for punct in string.punctuation}))
+                line = line.translate(str.maketrans({char: f" {char} " for char in string.punctuation}))
                 line = re.sub(r'\s+', ' ', line.strip()).strip()
 
                 text[i][j] = line
@@ -732,17 +732,12 @@ class Tokenizer():
         """
 
         self.pad_tk = '¶'
-        self.sos_tk = '◖'
-        self.eos_tk = '◗'
         self.unk_tk = '◬'
 
         self.charset = [self.pad_tk, self.unk_tk] + charset
-        # self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
 
         self.pad_tk_index = self.charset.index(self.pad_tk)
-        # self.sos_tk_index = self.charset.index(self.sos_tk)
-        # self.eos_tk_index = self.charset.index(self.eos_tk)
         self.unk_tk_index = self.charset.index(self.unk_tk)
 
     def __repr__(self):
@@ -805,13 +800,11 @@ class Tokenizer():
 
         for row in label:
             enconded_row = []
-            # enconded_row = [self.sos_tk_index]
 
             for char in row:
                 index = self.charset.index(char) if char in self.charset else self.unk_tk_index
                 enconded_row.append(index)
 
-            # enconded_row += [self.eos_tk_index]
             encoded_label.append(enconded_row)
 
         return encoded_label
@@ -843,8 +836,7 @@ class Tokenizer():
                 row += self.charset[int(enconded_char)]
 
             row = row.replace(self.pad_tk, '')
-            row = row.replace(self.sos_tk, '')
-            row = row.replace(self.eos_tk, '')
+            row = row.replace(self.unk_tk, '_')
 
             label.append(row)
 
