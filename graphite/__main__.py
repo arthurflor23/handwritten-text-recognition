@@ -131,8 +131,11 @@ if __name__ == '__main__':
                         help="Perform data verification")
 
     # Others
+    parser.add_argument('--experiment', default=None,
+                        help="Define MLflow experiment name")
+
     parser.add_argument('--run-index', default=None, type=int,
-                        help="Specify the running index")
+                        help="Specify run index")
 
     args = parser.parse_args()
 
