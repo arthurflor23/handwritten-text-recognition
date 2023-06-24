@@ -836,7 +836,7 @@ class Tokenizer():
                 row += self.charset[int(enconded_char)]
 
             row = row.replace(self.pad_tk, '')
-            row = row.replace(self.unk_tk, '_')
+            row = row.replace(self.unk_tk, '')
 
             label.append(row)
 
