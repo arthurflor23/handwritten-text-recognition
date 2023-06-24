@@ -39,8 +39,9 @@ class SpellChecker():
 
         if instruction is None:
             instruction = """
-                Correct any spelling and accentuation mistakes in the following text,
-                but preserve slang, historical language, and original grammar.
+                Correct any spelling mistakes, including accents, on each of the following texts.
+                Preserve slang, historical language, and original grammar.
+                Treat each tag content as an individual text.
                 Only change text if confident.
             """
 
