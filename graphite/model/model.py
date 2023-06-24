@@ -47,7 +47,7 @@ class Model():
         self.network = network
         self.tokenizer = tokenizer
         self.pad_value = pad_value
-        self.artifact_path = artifact_path
+        self.artifact_path = os.path.join(artifact_path, network)
         self.seed = seed
 
         self.optimizer = None
@@ -126,7 +126,7 @@ class Model():
                                                  loss_func=self.ctc_loss_func)
 
         if run_index is not None:
-            runs = sorted(glob.glob(os.path.join(self.artifact_path, self.network, '*')))
+            runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
 
             if runs and run_index < len(runs):
                 model_uri = os.path.join(runs[run_index], 'model.keras')
