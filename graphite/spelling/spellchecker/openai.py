@@ -39,10 +39,9 @@ class SpellChecker():
 
         if instruction is None:
             instruction = """
-                Correct any spelling errors, including accents.
-                Preserve slang, historical terms, and grammar.
-                Treat the content of each tag as separate.
-                Make only confident changes.
+                Correct spelling errors, including accents.
+                The following texts contain errors from a handwriting recognition model.
+                Preserve slang, historical terms, and grammar. Make only confident changes.
             """
 
         retry_limit = 10
