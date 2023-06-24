@@ -3,7 +3,6 @@ import re
 import cv2
 import json
 import html
-import nltk
 import string
 import importlib
 import concurrent
@@ -254,93 +253,6 @@ class Dataset():
 
         return batch_generator, steps_per_epoch
 
-    def format_text(self, text):
-        """
-        Standardize texts by string formatting.
-
-        Parameters
-        ----------
-        texts : list
-            The texts to be standardized.
-
-        Returns
-        -------
-        list
-            The standardized texts.
-        """
-
-        if isinstance(text, str):
-            text = [text.split('\n')]
-
-        if isinstance(text[0], str):
-            text = [text]
-
-        substitutions = {
-            r'[ ]': ' ',
-            r'[＿]': '_',
-            r'[，]': ',',
-            r'[；]': ';',
-            r'[：]': ':',
-            r'[！﹗]': '!',
-            r'[？﹖]': '?',
-            r'[．。]': '.',
-            r'[＂“”″‶]': '"',
-            r'[（]': '(',
-            r'[）]': ')',
-            r'[［]': '[',
-            r'[］]': ']',
-            r'[｛]': '}',
-            r'[｝]': '{',
-            r'[＠]': '@',
-            r'[＊]': '*',
-            r'[／]': '/',
-            r'[＼]': '\\\\',
-            r'[＆]': '&',
-            r'[＃]': '#',
-            r'[％]': '%',
-            r'[＾]': '^',
-            r'[˗֊‐‑‒–—－−﹣]': '-',
-            r'[＋]': '+',
-            r'[＜]': '<',
-            r'[＝]': '=',
-            r'[＞]': '>',
-            r'[｜]': '|',
-            r'[～]': '~',
-            r'[⋯]': '...',
-            r'[＄]': '$',
-            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
-        }
-
-        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
-
-        tokenizer = nltk.tokenize.TreebankWordTokenizer()
-        detokenizer = nltk.tokenize.TreebankWordDetokenizer()
-
-        for i in range(len(text)):
-            text[i] = [line.strip() for line in text[i] if line.strip()]
-
-            for j, line in enumerate(text[i]):
-                line = html.unescape(line)
-
-                for pattern, replacement in regexes.items():
-                    line = pattern.sub(replacement, line)
-
-                line = re.sub(r'\s+([!?,.;:])', r'\1', line)
-                line = re.sub(r"\b([A-Za-z]+'[A-Za-z]+)\b", r'\1', line)
-                line = re.sub(r'\s+(?=[\'"])', '', line)
-                line = re.sub(r'(?<=[\'"]) +', '', line)
-
-                tokens = tokenizer.tokenize(line)
-                line = detokenizer.detokenize(tokens)
-
-                line = re.sub(r'(.*?)"\s(.*?)\s"(.*?)', r'\1"\2"\3', line.replace('"', ' " ')).strip()
-                line = line.translate(str.maketrans({char: f" {char} " for char in string.punctuation}))
-                line = re.sub(r'\s+', ' ', line.strip()).strip()
-
-                text[i][j] = line
-
-        return text
-
     def read_image(self, image_path, bbox=None):
         """
         Read an image from the given file path and perform optional bbox.
@@ -570,7 +482,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
             return None
 
-        label = self.format_text(label)[0]
+        label = self._format_text(label)
 
         if not infer and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
@@ -579,6 +491,75 @@ class Dataset():
         image = image_path if self.lazy_mode else image
 
         return [image_path, bbox, label], [image, bbox, label]
+
+    def _format_text(self, text):
+        """
+        Clean and format the input text.
+
+        Parameters
+        ----------
+        text : str
+            The input text to be cleaned.
+
+        Returns
+        -------
+        str
+            The formatted text.
+        """
+
+        if isinstance(text, str):
+            text = text.split('\n')
+
+        substitutions = {
+            r'[ ]': ' ',
+            r'[＿]': '_',
+            r'[，]': ',',
+            r'[；]': ';',
+            r'[：]': ':',
+            r'[！﹗]': '!',
+            r'[？﹖]': '?',
+            r'[．。]': '.',
+            r'[＂“”″‶]': '"',
+            r'[（]': '(',
+            r'[）]': ')',
+            r'[［]': '[',
+            r'[］]': ']',
+            r'[｛]': '}',
+            r'[｝]': '{',
+            r'[＠]': '@',
+            r'[＊]': '*',
+            r'[／]': '/',
+            r'[＼]': '\\\\',
+            r'[＆]': '&',
+            r'[＃]': '#',
+            r'[％]': '%',
+            r'[＾]': '^',
+            r'[˗֊‐‑‒–—－−﹣]': '-',
+            r'[＋]': '+',
+            r'[＜]': '<',
+            r'[＝]': '=',
+            r'[＞]': '>',
+            r'[｜]': '|',
+            r'[～]': '~',
+            r'[⋯]': '...',
+            r'[＄]': '$',
+            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
+        }
+
+        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
+
+        for i, line in enumerate(text):
+            line = html.unescape(line)
+
+            for pattern, replacement in regexes.items():
+                line = pattern.sub(replacement, line)
+
+            line = re.sub(f'([{re.escape(string.punctuation)}])', r' \1 ', line)
+            line = re.sub(r'\s+', ' ', line).strip()
+
+            text[i] = line
+
+        return text
 
     def _create_partition(self, partition_data, test=False):
         """
