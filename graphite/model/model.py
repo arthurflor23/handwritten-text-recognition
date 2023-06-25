@@ -78,16 +78,17 @@ class Model():
 
         attributes = {
             'network': self.network,
-            'tokenizer_shape': self.tokenizer.shape,
+            'tokenizer': json.loads(self.tokenizer.__repr__()),
             'pad_value': self.pad_value,
             'experiment': self.experiment,
             'optimizer': self.optimizer,
             'learning_rate': self.learning_rate,
-            'summary': self.summary,
+            'summary': self.summary.split('\n'),
             'seed': self.seed,
+            'logger': json.loads(self.logger.__repr__()),
         }
 
-        attributes = json.dumps(attributes, default=lambda x: str(x))
+        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
@@ -643,7 +644,7 @@ class Logger():
             'samples': self.samples,
         }
 
-        attributes = json.dumps(attributes, default=lambda x: str(x))
+        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 

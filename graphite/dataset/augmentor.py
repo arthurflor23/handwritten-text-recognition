@@ -107,7 +107,7 @@ class Augmentor():
             'seed': self.seed,
         }
 
-        attributes = json.dumps(attributes, default=lambda x: str(x))
+        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 

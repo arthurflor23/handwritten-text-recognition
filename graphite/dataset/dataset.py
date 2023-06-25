@@ -131,9 +131,10 @@ class Dataset():
             'max_rows': self.max_rows,
             'min_cols': self.min_cols,
             'max_cols': self.max_cols,
+            'tokenizer': json.loads(self.tokenizer.__repr__()),
         }
 
-        attributes = json.dumps(attributes, default=lambda x: str(x))
+        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
@@ -732,12 +733,12 @@ class Tokenizer():
         """
 
         attributes = {
-            'charset': self.charset,
+            'charset': ''.join(self.charset),
             'charset_length': len(self.charset),
-            'shape': self.shape,
+            'shape': str(self.shape),
         }
 
-        attributes = json.dumps(attributes, default=lambda x: str(x))
+        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
