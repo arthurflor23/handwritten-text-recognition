@@ -4,6 +4,7 @@ import time
 import json
 import glob
 import string
+import mlflow
 import datetime
 import importlib
 import numpy as np
@@ -22,6 +23,7 @@ class Model():
                  network,
                  tokenizer,
                  pad_value=255,
+                 experiment=None,
                  artifact_path='mlruns',
                  seed=None):
         """
@@ -35,10 +37,12 @@ class Model():
             The Tokenizer object used for tokenizing the input data.
         pad_value : int, optional
             Padding value. Default is 255.
+        experiment : str, optional
+            Specify MLflow experiment name. Default is None.
         artifact_path : str, optional
-            The relative path to the directory where model artifacts are stored, by default 'mlruns'.
+            Path name to track the model. Default is 'mlruns'.
         seed : int, optional
-            The random seed to ensure repeatability of results, by default None.
+            The random seed to ensure repeatability of results. Default is None.
         """
 
         tf.random.set_seed(seed)
@@ -47,7 +51,8 @@ class Model():
         self.network = network
         self.tokenizer = tokenizer
         self.pad_value = pad_value
-        self.artifact_path = os.path.join(artifact_path, network)
+        self.experiment = experiment
+        self.artifact_path = artifact_path
         self.seed = seed
 
         self.optimizer = None
@@ -58,6 +63,8 @@ class Model():
 
         self._network = self._import_network(self.network)
         self._network = self._network(self.tokenizer.shape, self.pad_value)
+
+        mlflow.set_tracking_uri(self.artifact_path)
 
     def __repr__(self):
         """
@@ -73,6 +80,7 @@ class Model():
             'network': self.network,
             'tokenizer_shape': self.tokenizer.shape,
             'pad_value': self.pad_value,
+            'experiment': self.experiment,
             'optimizer': self.optimizer,
             'learning_rate': self.learning_rate,
             'summary': self.summary,
@@ -98,6 +106,7 @@ class Model():
             Network                     {self.network}
             Tokenizer Shape             {self.tokenizer.shape}
             Padding Value               {self.pad_value}
+            Experiment                  {self.experiment}
             Seed                        {self.seed}
 
             Optimizer                   {self.optimizer or '-'}
@@ -125,14 +134,14 @@ class Model():
         self.model = self._network.compile_model(learning_rate=learning_rate,
                                                  loss_func=self.ctc_loss_func)
 
-        if run_index is not None:
-            runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
+        # if run_index is not None:
+        #     runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
 
-            if runs and run_index < len(runs):
-                model_uri = os.path.join(runs[run_index], 'model.keras')
+        #     if runs and run_index < len(runs):
+        #         model_uri = os.path.join(runs[run_index], 'model.keras')
 
-                if os.path.exists(model_uri) and os.path.isfile(model_uri):
-                    self.model.load_weights(model_uri)
+        #         if os.path.exists(model_uri) and os.path.isfile(model_uri):
+        #             self.model.load_weights(model_uri)
 
         self.optimizer = self.model.optimizer.get_config()['name']
         self.learning_rate = self.model.optimizer.get_config()['learning_rate']
