@@ -649,10 +649,10 @@ class Logger():
         """
 
         loss_history = '\n'.join(self.loss_history)
-        evaluation = '\n'.join(self.evaluation)
+        evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
 
         info = f"""
-            Training Information\n
+            Training\n
             Training Batch Size                {self.training_batch_size}
             Training Total Data                {self.training_total_data}
             Training Total Epochs              {self.training_total_epochs}
@@ -669,7 +669,7 @@ class Logger():
             Validation Time per Epoch          {self.validation_time_per_epoch}
             Validation Time per Step           {self.validation_time_per_step}
 
-            Test Information\n
+            Test\n
             Test Batch Size                    {self.test_batch_size}
             Test Total Data                    {self.test_total_data}
             Test Total Epochs                  {self.test_total_epochs}
@@ -680,12 +680,12 @@ class Logger():
 
             Loss\n
             Best Loss Epoch                    {self.loss_epoch}
-            Best Loss Training                 {self.loss_training}
-            Best Loss Validation               {self.loss_validation}
+            Best Loss Training                 {self.loss_training:.4f}
+            Best Loss Validation               {self.loss_validation:.4f}
 
-            Loss History\n\n                   {loss_history}
+            Loss History\n\n                   {loss_history or '-'}
 
-            Evaluation\n\n                     {evaluation}
+            Evaluation\n\n                     {evaluation or '-'}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()])
