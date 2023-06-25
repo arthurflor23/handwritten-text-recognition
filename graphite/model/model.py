@@ -221,8 +221,6 @@ class Model():
                                       validation_steps,
                                       total_time)
 
-        return history
-
     def predict(self,
                 test_data,
                 test_steps,
@@ -338,18 +336,19 @@ class Model():
         prediction_samples = min(prediction_samples, data_length)
 
         metrics = np.zeros((top_paths, 4), dtype=np.float32)
-        samples = np.zeros((top_paths, 3, prediction_samples, 4), dtype=object)
+        samples = np.zeros((top_paths, 3, prediction_samples, 5), dtype=object)
 
         # Metrics
         for top_path in range(top_paths):
             current_pred = self._get_best_predictions(partition, predictions=predictions[:top_path+1]) \
                 if share_top_paths else predictions[top_path:top_path+1]
 
-            samples_error_rate = []
+            samples_error_rates = []
 
             for index in range(data_length):
                 _, _, label = partition['raw'][index]
                 pred = current_pred[0, index]
+                error_rates = [0, 0, 0, 0]
 
                 for true_label, pred_label in zip(label, pred):
                     true_label = self._format_text(true_label)
@@ -357,44 +356,46 @@ class Model():
 
                     # Character
                     character_error_rate = self._calculate_metric(list(true_label), list(pred_label))
-                    metrics[top_path, 0] += character_error_rate
-
-                    samples_error_rate.append(character_error_rate)
+                    error_rates[0] += character_error_rate
 
                     # Word
                     word_error_rate = self._calculate_metric(true_label.split(), pred_label.split())
-                    metrics[top_path, 1] += word_error_rate
+                    error_rates[1] += word_error_rate
 
                     # Line
                     line_error_rate = self._calculate_metric([true_label], [pred_label])
-                    metrics[top_path, 2] += line_error_rate / len(label)
+                    error_rates[2] += line_error_rate / len(label)
 
                 true_label = self._format_text(' '.join(label))
                 pred_label = self._format_text(' '.join(pred))
 
                 # Sequence
                 sequence_error_rate = self._calculate_metric([true_label], [pred_label])
-                metrics[top_path, 3] += sequence_error_rate
+                error_rates[3] += sequence_error_rate
 
-            metrics[top_path, :] /= data_length
+                samples_error_rates.append(error_rates)
+
+            samples_error_rates = np.array(samples_error_rates)
+            metrics[top_path, :] = np.mean(samples_error_rates, axis=0)
 
             # Samples
-            sorted_indices = np.argsort(samples_error_rate)
+            sorted_indices = np.argsort(samples_error_rates[:, 0])
+            middle_index = (data_length // 2) - (prediction_samples // 2)
 
-            t_samples = sorted_indices[:prediction_samples]
-            b_samples = sorted_indices[-prediction_samples:]
+            indices_ranges = [
+                sorted_indices[:prediction_samples],
+                sorted_indices[middle_index:middle_index + prediction_samples],
+                sorted_indices[-prediction_samples:],
+            ]
 
-            m_index = (data_length // 2) - (prediction_samples // 2)
-            m_samples = sorted_indices[m_index:m_index + prediction_samples]
+            for i, indices in enumerate(indices_ranges):
+                raw = partition['raw'][indices].tolist()
+                pred = current_pred[0, indices].tolist()
 
-            raw, pred = partition['raw'][t_samples].tolist(), current_pred[0, t_samples].tolist()
-            samples[top_path, 0, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
+                err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
+                err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
 
-            raw, pred = partition['raw'][m_samples].tolist(), current_pred[0, m_samples].tolist()
-            samples[top_path, 1, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
-
-            raw, pred = partition['raw'][b_samples].tolist(), current_pred[0, b_samples].tolist()
-            samples[top_path, 2, :, :] = np.array([x + [w] for x, w in zip(raw, pred)], dtype=object)
+                samples[top_path, i, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
 
         self.logger.set_evaluation_info(metrics, samples, origin)
 
@@ -814,13 +815,14 @@ class Logger():
         for i in range(len(samples)):
             path = {'top': [], 'mid': [], 'bottom': []}
 
-            for x in samples[i][0]:
-                path['top'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
+            for j, tier in enumerate(path.keys()):
+                for x in samples[i][j]:
+                    path[tier].append({
+                        'image_path': x[0],
+                        'bbox': x[1],
+                        'label': x[2],
+                        'prediction': x[3],
+                        'metric': x[4],
+                    })
 
-            for x in samples[i][1]:
-                path['mid'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
-
-            for x in samples[i][2]:
-                path['bottom'].append({'image_path': x[0], 'bbox': x[1], 'label': x[2], 'prediction': x[3]})
-
-            self.samples[origin].append({f"top_path_{i}": path})
+            self.samples[origin].append({f"top_path_{i + 1}": path})
