@@ -88,23 +88,23 @@ if __name__ == '__main__':
     parser.add_argument('--learning-rate', default=1e-3, type=float,
                         help="Learning rate for the optimizer")
 
-    parser.add_argument('--plateau-factor', default=0.1, type=float,
+    parser.add_argument('--plateau-factor', default=0.5, type=float,
                         help="Factor by which the learning rate will be reduced on a plateau")
 
-    parser.add_argument('--plateau-cooldown', default=0, type=int,
+    parser.add_argument('--plateau-cooldown', default=20, type=int,
                         help="Cooldown period after a learning rate plateau is triggered")
 
-    parser.add_argument('--plateau-patience', default=15, type=int,
+    parser.add_argument('--plateau-patience', default=20, type=int,
                         help="Number of epochs without improvement for the learning rate to be reduced")
 
-    parser.add_argument('--patience', default=20, type=int,
+    parser.add_argument('--patience', default=60, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
     # Test
     parser.add_argument('--test', default=False, action='store_true',
                         help="Perform optical model test")
 
-    parser.add_argument('--beam-width', default=25, type=int,
+    parser.add_argument('--beam-width', default=30, type=int,
                         help="The width of the beam for the CTC decoder")
 
     parser.add_argument('--top-paths', default=1, type=int,
