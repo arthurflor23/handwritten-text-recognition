@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import json
 import glob
@@ -293,10 +294,8 @@ class Model():
             probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (2, 0, 1))
 
             if token_decode:
-                predictions = [[np.array(self.tokenizer.decode(predictions[i, j, :, :]), dtype=object)
-                                for j in range(predictions.shape[1])] for i in range(predictions.shape[0])]
-
-                predictions = np.array(predictions, dtype=object)
+                predictions = np.array([[[self._format_text(line) for line in self.tokenizer.decode(top_path)]
+                                         for top_path in top_paths] for top_paths in predictions], dtype=object)
 
         end_time = time.time()
         total_time = end_time - start_time
@@ -353,8 +352,8 @@ class Model():
                 pred = current_pred[0, index]
 
                 for true_label, pred_label in zip(label, pred):
-                    true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in true_label])
-                    pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in pred_label])
+                    true_label = self._format_text(true_label)
+                    pred_label = self._format_text(pred_label)
 
                     # Character
                     character_error_rate = self._calculate_metric(list(true_label), list(pred_label))
@@ -370,8 +369,8 @@ class Model():
                     line_error_rate = self._calculate_metric([true_label], [pred_label])
                     metrics[top_path, 2] += line_error_rate / len(label)
 
-                true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(label)])
-                pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(pred)])
+                true_label = self._format_text(' '.join(label))
+                pred_label = self._format_text(' '.join(pred))
 
                 # Sequence
                 sequence_error_rate = self._calculate_metric([true_label], [pred_label])
@@ -448,11 +447,11 @@ class Model():
 
         for best_path in range(best_paths):
             for index in range(data_length):
-                _, _, labels = partition['raw'][index]
-                predis = predictions[best_path, index]
+                _, _, label = partition['raw'][index]
+                pred = predictions[best_path, index]
 
-                true_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(labels)])
-                pred_label = ''.join([f' {c} ' if c in string.punctuation else c for c in ' '.join(predis)])
+                true_label = self._format_text(' '.join(label))
+                pred_label = self._format_text(' '.join(pred))
 
                 error_rate = self._calculate_metric(list(true_label), list(pred_label))
                 metrics[best_path, index] = error_rate
@@ -466,6 +465,26 @@ class Model():
         best_predictions = np.expand_dims(best_predictions, axis=0)
 
         return best_predictions
+
+    def _format_text(self, text):
+        """
+        Clean and format the input text.
+
+        Parameters
+        ----------
+        text : str
+            The input text to be cleaned.
+
+        Returns
+        -------
+        str
+            The formatted text.
+        """
+
+        text = re.sub(f'([{re.escape(string.punctuation)}])', r' \1 ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        return text
 
     def _calculate_metric(self, true_label, pred_label):
         """
