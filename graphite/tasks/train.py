@@ -29,7 +29,11 @@ def train(args):
                           seed=42)
     print(augmentor)
 
-    model = Model(network=args.network, tokenizer=dataset.tokenizer, seed=42)
+    model = Model(network=args.network,
+                  tokenizer=dataset.tokenizer,
+                  experiment=args.experiment,
+                  seed=42)
+
     model.compile(learning_rate=args.learning_rate, run_index=args.run_index)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
