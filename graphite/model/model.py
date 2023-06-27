@@ -2,8 +2,8 @@ import os
 import re
 import time
 import json
-import glob
 import string
+import pickle
 import mlflow
 import datetime
 import importlib
@@ -21,9 +21,8 @@ class Model():
 
     def __init__(self,
                  network,
-                 tokenizer,
                  pad_value=255,
-                 experiment=None,
+                 experiment_name='Default',
                  artifact_path='mlruns',
                  seed=None):
         """
@@ -33,12 +32,10 @@ class Model():
         ----------
         network : str
             The name of the network module to be used.
-        tokenizer : object
-            The Tokenizer object used for tokenizing the input data.
         pad_value : int, optional
             Padding value. Default is 255.
-        experiment : str, optional
-            Specify MLflow experiment name. Default is None.
+        experiment_name : str, optional
+            Specify MLflow experiment name. Default is 'Default'.
         artifact_path : str, optional
             Path name to track the model. Default is 'mlruns'.
         seed : int, optional
@@ -48,23 +45,29 @@ class Model():
         tf.random.set_seed(seed)
         # tf.config.set_visible_devices([], 'GPU')
 
+        mlflow.set_tracking_uri(artifact_path)
+
         self.network = network
-        self.tokenizer = tokenizer
         self.pad_value = pad_value
-        self.experiment = experiment
         self.artifact_path = artifact_path
         self.seed = seed
 
+        self.experiment_name = experiment_name
+        self.experiment = mlflow.set_experiment(experiment_name)
+
+        self.run_name = None
+        self.run = None
+
+        self.tokenizer = None
         self.optimizer = None
         self.learning_rate = None
         self.summary = None
 
-        self.logger = Logger()
+        self.training_logger = Logger(role='training')
+        self.test_logger = Logger(role='test')
+        self.samples_logger = Logger(role='samples')
 
         self._network = self._import_network(self.network)
-        self._network = self._network(self.tokenizer.shape, self.pad_value)
-
-        mlflow.set_tracking_uri(self.artifact_path)
 
     def __repr__(self):
         """
@@ -78,17 +81,12 @@ class Model():
 
         attributes = {
             'network': self.network,
-            'tokenizer': json.loads(self.tokenizer.__repr__()),
             'pad_value': self.pad_value,
-            'experiment': self.experiment,
+            'experiment_name': self.experiment_name,
             'optimizer': self.optimizer,
             'learning_rate': self.learning_rate,
-            'summary': self.summary.split('\n'),
             'seed': self.seed,
-            'logger': json.loads(self.logger.__repr__()),
         }
-
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
@@ -105,9 +103,8 @@ class Model():
         info = f"""
             Model Configuration\n
             Network                     {self.network}
-            Tokenizer Shape             {self.tokenizer.shape}
             Padding Value               {self.pad_value}
-            Experiment                  {self.experiment}
+            Experiment Name             {self.experiment_name}
             Seed                        {self.seed}
 
             Optimizer                   {self.optimizer or '-'}
@@ -120,29 +117,22 @@ class Model():
 
         return info
 
-    def compile(self, learning_rate=None, run_index=None):
+    def compile(self, tokenizer, learning_rate=None):
         """
         Compiles the model.
 
         Parameters
         ----------
+        tokenizer : object
+            The Tokenizer object used for tokenizing the input data.
         learning_rate : float, optional
             The learning rate for the optimizer in the model, by default None.
-        run_index : int, optional
-            The index of the run to be loaded, by default None.
         """
 
-        self.model = self._network.compile_model(learning_rate=learning_rate,
-                                                 loss_func=self.ctc_loss_func)
+        self.tokenizer = tokenizer
 
-        # if run_index is not None:
-        #     runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
-
-        #     if runs and run_index < len(runs):
-        #         model_uri = os.path.join(runs[run_index], 'model.keras')
-
-        #         if os.path.exists(model_uri) and os.path.isfile(model_uri):
-        #             self.model.load_weights(model_uri)
+        self.model = self._network(self.tokenizer.shape, self.pad_value)
+        self.model = self.model.compile_model(learning_rate=learning_rate, loss_func=self.ctc_loss_func)
 
         self.optimizer = self.model.optimizer.get_config()['name']
         self.learning_rate = self.model.optimizer.get_config()['learning_rate']
@@ -151,13 +141,126 @@ class Model():
         self.model.summary(print_fn=lambda x: self.summary.append(x))
         self.summary = '\n'.join(self.summary)
 
+    def save_context(self,
+                     dataset=None,
+                     augmentor=None,
+                     metrics=None,
+                     enhanced_metrics=None):
+
+        if self.run is None:
+            self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.run = mlflow.start_run(run_name=self.run_name)
+        else:
+            mlflow.start_run(run_id=self.run.info.run_id)
+
+        artifacts_uri = self.run.info.artifact_uri
+        os.makedirs(artifacts_uri, exist_ok=True)
+
+        # Metrics
+        if metrics is not None:
+            dict_metrics = {}
+
+            for i, metric in enumerate(metrics):
+                dict_metrics[f"top_path_{i+1}_cer"] = metric[0]
+                dict_metrics[f"top_path_{i+1}_wer"] = metric[1]
+                dict_metrics[f"top_path_{i+1}_ler"] = metric[2]
+                dict_metrics[f"top_path_{i+1}_ser"] = metric[3]
+
+            mlflow.log_metrics(metrics=dict_metrics)
+
+        # Enhanced Metrics
+        if enhanced_metrics is not None:
+            dict_enhanced_metrics = {}
+
+            for i, metric in enumerate(enhanced_metrics):
+                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_cer"] = metric[0]
+                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_wer"] = metric[1]
+                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ler"] = metric[2]
+                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ser"] = metric[3]
+
+            mlflow.log_metrics(metrics=dict_enhanced_metrics)
+
+        # Parameters
+        dict_params = {
+            **(dataset.__repr__() if dataset is not None else {}),
+            **(dataset.tokenizer.__repr__() if dataset is not None else {}),
+            **(augmentor.__repr__() if augmentor is not None else {}),
+            **self.__repr__(),
+            **(self.training_logger.__repr__() if self.training_logger.touched else {}),
+            **(self.test_logger.__repr__() if self.test_logger.touched else {}),
+        }
+
+        mlflow.log_params(dict_params)
+
+        # Logs
+        filelogs = [
+            (dataset if dataset is not None else None, 'dataset.log', 'w'),
+            (dataset.tokenizer if dataset is not None else None, 'tokenizer.log', 'w'),
+            (augmentor if augmentor is not None else None, 'augmentor.log', 'w'),
+            (self, 'model.log', 'w'),
+            (self.training_logger if self.training_logger.touched else None, 'training.log', 'w'),
+            (self.test_logger if self.test_logger.touched else None, 'test.log', 'a'),
+            (self.samples_logger if self.samples_logger.touched else None, 'samples.log', 'w'),
+        ]
+
+        for log, filename, open_mode in filelogs:
+            if log is None:
+                continue
+
+            log_uri = os.path.join(artifacts_uri, 'logs', filename)
+            os.makedirs(os.path.dirname(log_uri), exist_ok=True)
+
+            with open(log_uri, open_mode) as f:
+                f.write(str(log))
+
+            mlflow.log_artifact(log_uri, 'logs')
+
+        # Tokenizer
+        if self.tokenizer is not None:
+            tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
+            os.makedirs(os.path.dirname(tokenizer_uri), exist_ok=True)
+
+            with open(tokenizer_uri, 'wb') as f:
+                pickle.dump(self.tokenizer, f)
+
+            mlflow.log_artifact(tokenizer_uri)
+
+        # Model
+        if self.model is not None:
+            model_uri = os.path.join(artifacts_uri, 'model.keras')
+            os.makedirs(os.path.dirname(model_uri), exist_ok=True)
+
+            self.model.save(model_uri)
+            mlflow.log_artifact(model_uri)
+
+        # Tag
+        if self.network is not None:
+            mlflow.set_tags({'mlflow.network': self.network})
+
+        mlflow.end_run()
+
+    # def load_context(self, run_index):
+        # run_index : int, optional
+        #     The index of the run to be loaded, by default None.
+
+    #     if run_index is not None:
+    #         runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
+
+    #         if runs and run_index < len(runs):
+    #             model_uri = os.path.join(runs[run_index], 'model.keras')
+
+    #             if os.path.exists(model_uri) and os.path.isfile(model_uri):
+    #                 self.model.load_weights(model_uri)
+
+    #     self.model.load_weights(context.artifacts['model_uri'])
+
     def fit(self,
             training_data,
             training_steps=None,
             validation_data=None,
             validation_steps=None,
             plateau_factor=0.5,
-            plateau_cooldown=20,
+            plateau_cooldown=10,
             plateau_patience=20,
             patience=60,
             epochs=1000,
@@ -178,7 +281,7 @@ class Model():
         plateau_factor : float, optional
             Factor by which the learning rate will be reduced, by default 0.5.
         plateau_cooldown : int, optional
-            The number of epochs to wait before resuming normal operation after lr has been reduced, by default 20.
+            The number of epochs to wait before resuming normal operation after lr has been reduced, by default 10.
         plateau_patience : int, optional
             The number of epochs with no improvement after which learning rate will be reduced, by default 20.
         patience : int, optional
@@ -187,6 +290,11 @@ class Model():
             The number of epochs to train the model, by default 1000.
         verbose : int, optional
             Verbosity mode, by default 1.
+
+        Returns
+        -------
+        history object
+            Object detailing training and validation progress.
         """
 
         start_time = time.time()
@@ -213,23 +321,30 @@ class Model():
             ),
         ]
 
-        history = self.model.fit(x=training_data,
-                                 steps_per_epoch=training_steps,
-                                 validation_data=validation_data,
-                                 validation_steps=validation_steps,
-                                 callbacks=callbacks,
-                                 epochs=epochs,
-                                 verbose=verbose)
+        self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        with mlflow.start_run(run_name=self.run_name) as run:
+            self.run = run
+
+            history = self.model.fit(x=training_data,
+                                     steps_per_epoch=training_steps,
+                                     validation_data=validation_data,
+                                     validation_steps=validation_steps,
+                                     callbacks=callbacks,
+                                     epochs=epochs,
+                                     verbose=verbose)
 
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.logger.set_training_info(history.history,
-                                      training_data,
-                                      training_steps,
-                                      validation_data,
-                                      validation_steps,
-                                      total_time)
+        self.training_logger.set_training_info(history.history,
+                                               training_data,
+                                               training_steps,
+                                               validation_data,
+                                               validation_steps,
+                                               total_time)
+
+        return history
 
     def predict(self,
                 test_data,
@@ -308,7 +423,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.logger.set_test_info(test_data, test_steps, total_time)
+        self.test_logger.set_test_info(test_data, test_steps, total_time)
 
         return predictions, probabilities
 
@@ -407,7 +522,8 @@ class Model():
 
                 samples[top_path, i, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
 
-        self.logger.set_evaluation_info(metrics, samples, origin)
+        self.test_logger.set_evaluation_info(metrics, origin)
+        self.samples_logger.set_samples_info(samples, origin)
 
         return metrics, samples
 
@@ -564,14 +680,23 @@ class Model():
 
 class Logger():
     """
-    Class to log and store training, and test information.
+    Class to log and store training, test and samples information.
     """
 
-    def __init__(self):
+    def __init__(self, role):
         """
         Initialize the Logger object.
+
+        Parameters
+        ----------
+        role : str
+            The role for which this logger is used.
         """
 
+        self.role = role
+        self.touched = False
+
+        # training
         self.training_batch_size = 0
         self.training_total_data = 0
         self.training_total_epochs = 0
@@ -588,6 +713,12 @@ class Logger():
         self.validation_time_per_epoch = 0
         self.validation_time_per_step = 0
 
+        self.loss_epoch = 0
+        self.loss_training = 0
+        self.loss_validation = 0
+        self.loss_history = []
+
+        # test
         self.test_batch_size = 0
         self.test_total_data = 0
         self.test_total_epochs = 0
@@ -596,12 +727,9 @@ class Logger():
         self.test_time_per_epoch = 0
         self.test_time_per_step = 0
 
-        self.loss_epoch = 0
-        self.loss_training = 0
-        self.loss_validation = 0
-        self.loss_history = []
-
         self.evaluation = {}
+
+        # samples
         self.samples = {}
 
     def __repr__(self):
@@ -614,37 +742,44 @@ class Logger():
             A JSON-formatted string containing the object's attributes.
         """
 
-        attributes = {
-            'training_batch_size': self.training_batch_size,
-            'training_total_data': self.training_total_data,
-            'training_total_epochs': self.training_total_epochs,
-            'training_total_steps': self.training_total_steps,
-            'training_time': self.training_time,
-            'training_time_per_epoch': self.training_time_per_epoch,
-            'training_time_per_step': self.training_time_per_step,
-            'validation_batch_size': self.validation_batch_size,
-            'validation_total_data': self.validation_total_data,
-            'validation_total_epochs': self.validation_total_epochs,
-            'validation_total_steps': self.validation_total_steps,
-            'validation_time': self.validation_time,
-            'validation_time_per_epoch': self.validation_time_per_epoch,
-            'validation_time_per_step': self.validation_time_per_step,
-            'test_batch_size': self.test_batch_size,
-            'test_total_data': self.test_total_data,
-            'test_total_epochs': self.test_total_epochs,
-            'test_total_steps': self.test_total_steps,
-            'test_time': self.test_time,
-            'test_time_per_epoch': self.test_time_per_epoch,
-            'test_time_per_step': self.test_time_per_step,
-            'loss_epoch': self.loss_epoch,
-            'loss_training': self.loss_training,
-            'loss_validation': self.loss_validation,
-            'loss_history': self.loss_history,
-            'evaluation': self.evaluation,
-            'samples': self.samples,
-        }
+        attributes = {}
 
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
+        if self.role == 'training':
+            attributes = {
+                'training_batch_size': self.training_batch_size,
+                'training_total_data': self.training_total_data,
+                'training_total_epochs': self.training_total_epochs,
+                'training_total_steps': self.training_total_steps,
+                'training_time': self.training_time,
+                'training_time_per_epoch': self.training_time_per_epoch,
+                'training_time_per_step': self.training_time_per_step,
+                'validation_batch_size': self.validation_batch_size,
+                'validation_total_data': self.validation_total_data,
+                'validation_total_epochs': self.validation_total_epochs,
+                'validation_total_steps': self.validation_total_steps,
+                'validation_time': self.validation_time,
+                'validation_time_per_epoch': self.validation_time_per_epoch,
+                'validation_time_per_step': self.validation_time_per_step,
+                'loss_epoch': self.loss_epoch,
+                'loss_training': self.loss_training,
+                'loss_validation': self.loss_validation,
+            }
+
+        elif self.role == 'test':
+            attributes = {
+                'test_batch_size': self.test_batch_size,
+                'test_total_data': self.test_total_data,
+                'test_total_epochs': self.test_total_epochs,
+                'test_total_steps': self.test_total_steps,
+                'test_time': self.test_time,
+                'test_time_per_epoch': self.test_time_per_epoch,
+                'test_time_per_step': self.test_time_per_step,
+            }
+
+        elif self.role == 'samples':
+            attributes = {
+                'samples': self.samples,
+            }
 
         return attributes
 
@@ -658,47 +793,59 @@ class Logger():
             The string representation of the object.
         """
 
-        loss_history = '\n'.join(self.loss_history)
-        evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
+        info = ""
 
-        info = f"""
-            Training\n
-            Training Batch Size                {self.training_batch_size}
-            Training Total Data                {self.training_total_data}
-            Training Total Epochs              {self.training_total_epochs}
-            Training Total Steps               {self.training_total_steps}
-            Training Time                      {self.training_time}
-            Training Time per Epoch            {self.training_time_per_epoch}
-            Training Time per Step             {self.training_time_per_step}
+        if self.role == 'training':
+            loss_history = '\n'.join(self.loss_history)
 
-            Validation Batch Size              {self.validation_batch_size}
-            Validation Total Data              {self.validation_total_data}
-            Validation Total Epochs            {self.validation_total_epochs}
-            Validation Total Steps             {self.validation_total_steps}
-            Validation Time                    {self.validation_time}
-            Validation Time per Epoch          {self.validation_time_per_epoch}
-            Validation Time per Step           {self.validation_time_per_step}
+            info = f"""
+                Training\n
+                Training Batch Size                {self.training_batch_size}
+                Training Total Data                {self.training_total_data}
+                Training Total Epochs              {self.training_total_epochs}
+                Training Total Steps               {self.training_total_steps}
+                Training Time                      {self.training_time}
+                Training Time per Epoch            {self.training_time_per_epoch}
+                Training Time per Step             {self.training_time_per_step}
 
-            Test\n
-            Test Batch Size                    {self.test_batch_size}
-            Test Total Data                    {self.test_total_data}
-            Test Total Epochs                  {self.test_total_epochs}
-            Test Total Steps                   {self.test_total_steps}
-            Test Time                          {self.test_time}
-            Test Time per Epoch                {self.test_time_per_epoch}
-            Test Time per Step                 {self.test_time_per_step}
+                Validation Batch Size              {self.validation_batch_size}
+                Validation Total Data              {self.validation_total_data}
+                Validation Total Epochs            {self.validation_total_epochs}
+                Validation Total Steps             {self.validation_total_steps}
+                Validation Time                    {self.validation_time}
+                Validation Time per Epoch          {self.validation_time_per_epoch}
+                Validation Time per Step           {self.validation_time_per_step}
 
-            Loss\n
-            Best Loss Epoch                    {self.loss_epoch}
-            Best Loss Training                 {self.loss_training:.4f}
-            Best Loss Validation               {self.loss_validation:.4f}
+                Loss\n
+                Best Loss Epoch                    {self.loss_epoch}
+                Best Loss Training                 {self.loss_training}
+                Best Loss Validation               {self.loss_validation}
 
-            Loss History\n\n                   {loss_history or '-'}
+                Loss History\n\n                   {loss_history or '-'}
+            """
 
-            Evaluation\n\n                     {evaluation or '-'}
-        """
+            info = '\n'.join([x.strip() for x in info.splitlines()])
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        elif self.role == 'test':
+            evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
+
+            info = f"""
+                Test\n
+                Test Batch Size                    {self.test_batch_size}
+                Test Total Data                    {self.test_total_data}
+                Test Total Epochs                  {self.test_total_epochs}
+                Test Total Steps                   {self.test_total_steps}
+                Test Time                          {self.test_time}
+                Test Time per Epoch                {self.test_time_per_epoch}
+                Test Time per Step                 {self.test_time_per_step}
+
+                Evaluation\n\n                     {evaluation or '-'}
+            """
+
+            info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        elif self.role == 'samples':
+            info = json.dumps(self.samples, indent=2, ensure_ascii=False, default=lambda x: str(x))
 
         return info
 
@@ -754,7 +901,7 @@ class Logger():
 
         for result in results:
             epoch, loss_value, val_loss_value, is_best = result
-            self.loss_history += [f"{epoch},{loss_value:.4f},{val_loss_value:.4f},{is_best}"]
+            self.loss_history += [f"{epoch},{loss_value},{val_loss_value},{is_best}"]
 
         self.loss_epoch = best_loss_epoch
         self.loss_training = best_loss
@@ -776,6 +923,8 @@ class Logger():
         self.validation_time = str(datetime.timedelta(seconds=total_time))
         self.validation_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.validation_total_epochs))
         self.validation_time_per_step = str(datetime.timedelta(seconds=total_time / self.validation_total_steps))
+
+        self.touched = True
 
     def set_test_info(self, test_data, test_steps, total_time):
         """
@@ -801,7 +950,9 @@ class Logger():
         self.test_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.test_total_epochs))
         self.test_time_per_step = str(datetime.timedelta(seconds=total_time / self.test_total_steps))
 
-    def set_evaluation_info(self, metrics, samples, origin='vanilla'):
+        self.touched = True
+
+    def set_evaluation_info(self, metrics, origin='vanilla'):
         """
         Set the evaluation information.
 
@@ -809,8 +960,6 @@ class Logger():
         ----------
         metrics : data generator
             Error metrics from each top path.
-        samples : int
-            Samples retrieved from prediction.
         origin : str, optional
             Indicates the origin name. Default is vanilla.
         """
@@ -819,6 +968,20 @@ class Logger():
 
         for i, x in enumerate(metrics, start=1):
             self.evaluation[origin] += [f"{i},{x[0]:.4f},{x[1]:.4f},{x[2]:.4f},{x[3]:.4f}"]
+
+        self.touched = True
+
+    def set_samples_info(self, samples, origin='vanilla'):
+        """
+        Set the evaluation information.
+
+        Parameters
+        ----------
+        samples : int
+            Samples retrieved from prediction.
+        origin : str, optional
+            Indicates the origin name. Default is vanilla.
+        """
 
         self.samples[origin] = []
 
@@ -836,3 +999,5 @@ class Logger():
                     })
 
             self.samples[origin].append({f"top_path_{i + 1}": path})
+
+        self.touched = True
