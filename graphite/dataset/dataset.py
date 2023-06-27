@@ -1,7 +1,6 @@
 import os
 import re
 import cv2
-import json
 import html
 import string
 import importlib
@@ -120,21 +119,10 @@ class Dataset():
             'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
-            'corpus': self.corpus,
-            'charset': self.charset,
-            'charset_length': len(self.charset),
-            'min_text': self.min_text,
-            'min_text_length': len(self.min_text),
-            'max_text': self.max_text,
-            'max_text_length': len(self.max_text),
-            'min_rows': self.min_rows,
+            'charset': ''.join(self.charset),
             'max_rows': self.max_rows,
-            'min_cols': self.min_cols,
             'max_cols': self.max_cols,
-            'tokenizer': json.loads(self.tokenizer.__repr__()),
         }
-
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
@@ -734,11 +722,8 @@ class Tokenizer():
 
         attributes = {
             'charset': ''.join(self.charset),
-            'charset_length': len(self.charset),
             'shape': str(self.shape),
         }
-
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
