@@ -31,7 +31,7 @@ def train(args):
 
     model = Model(network=args.network,
                   tokenizer=dataset.tokenizer,
-                  experiment=args.experiment,
+                  experiment_name=args.experiment_name,
                   seed=42)
 
     model.compile(learning_rate=args.learning_rate, run_index=args.run_index)
