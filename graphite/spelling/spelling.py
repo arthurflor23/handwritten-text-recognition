@@ -1,7 +1,6 @@
 import os
 import re
 import copy
-import json
 import dotenv
 import importlib
 import concurrent
@@ -61,8 +60,6 @@ class Spelling():
             'env_key': self.env_key,
             'dotenv_path': self.dotenv_path,
         }
-
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
