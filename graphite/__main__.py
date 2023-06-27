@@ -91,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-factor', default=0.5, type=float,
                         help="Factor by which the learning rate will be reduced on a plateau")
 
-    parser.add_argument('--plateau-cooldown', default=20, type=int,
+    parser.add_argument('--plateau-cooldown', default=10, type=int,
                         help="Cooldown period after a learning rate plateau is triggered")
 
     parser.add_argument('--plateau-patience', default=20, type=int,
@@ -131,7 +131,7 @@ if __name__ == '__main__':
                         help="Perform data verification")
 
     # Others
-    parser.add_argument('--experiment', default=None,
+    parser.add_argument('--experiment-name', default='Default',
                         help="Define MLflow experiment name")
 
     parser.add_argument('--run-index', default=None, type=int,
