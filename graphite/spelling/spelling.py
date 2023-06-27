@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import dotenv
+import tiktoken
 import importlib
 import concurrent
 import numpy as np
@@ -104,6 +105,9 @@ class Spelling():
         if not self.spell_checker:
             return predictions
 
+        max_tokens = 3000
+
+        encoding = tiktoken.get_encoding('gpt2')
         enhanced = []
 
         for texts in predictions:
@@ -113,9 +117,9 @@ class Spelling():
             for i, text in enumerate(texts):
                 for j, line in enumerate(text):
                     pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
-                    pp_text_tokens_length = len(pp_text.split())
+                    pp_text_tokens_length = len(encoding.encode(pp_text))
 
-                    if tokens_length + pp_text_tokens_length > 900:
+                    if tokens_length + pp_text_tokens_length > max_tokens:
                         batches.append([])
                         tokens_length = 0
                     else:
