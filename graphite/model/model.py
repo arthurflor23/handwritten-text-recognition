@@ -14,6 +14,17 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
+class Carbon(mlflow.pyfunc.PythonModel):
+    def __init__(self):
+        print('carbon')
+
+    def load_context(self, context):
+        print("load_context")
+
+    def predict(self, data):
+        print("predict")
+
+
 class Model():
     """
     General optical model management.
@@ -161,97 +172,103 @@ class Model():
             The enhanced metrics obtained. Default is None.
         """
 
-        if self.run is None:
-            self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            self.run = mlflow.start_run(run_name=self.run_name)
-        else:
-            mlflow.start_run(run_id=self.run.info.run_id)
+        run_id = None
+        run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        artifacts_uri = self.run.info.artifact_uri
-        os.makedirs(artifacts_uri, exist_ok=True)
+        if self.run is not None:
+            run_id = self.run.info.run_id
+            run_name = self.run.info.run_name
 
-        # Metrics
-        if metrics is not None:
-            dict_metrics = {}
+        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
+            self.run = run
 
-            for i, metric in enumerate(metrics):
-                dict_metrics[f"top_path_{i+1}_cer"] = metric[0]
-                dict_metrics[f"top_path_{i+1}_wer"] = metric[1]
-                dict_metrics[f"top_path_{i+1}_ler"] = metric[2]
-                dict_metrics[f"top_path_{i+1}_ser"] = metric[3]
+            artifacts_uri = self.run.info.artifact_uri
+            os.makedirs(artifacts_uri, exist_ok=True)
 
-            mlflow.log_metrics(metrics=dict_metrics)
-
-        # Enhanced Metrics
-        if enhanced_metrics is not None:
-            dict_enhanced_metrics = {}
-
-            for i, metric in enumerate(enhanced_metrics):
-                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_cer"] = metric[0]
-                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_wer"] = metric[1]
-                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ler"] = metric[2]
-                dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ser"] = metric[3]
-
-            mlflow.log_metrics(metrics=dict_enhanced_metrics)
-
-        # Parameters
-        dict_params = {
-            **(dataset.__repr__() if dataset is not None else {}),
-            **(dataset.tokenizer.__repr__() if dataset is not None else {}),
-            **(augmentor.__repr__() if augmentor is not None else {}),
-            **self.__repr__(),
-            **(self.training_logger.__repr__() if self.training_logger.touched else {}),
-            **(self.test_logger.__repr__() if self.test_logger.touched else {}),
-        }
-
-        mlflow.log_params(dict_params)
-
-        # Logs
-        filelogs = [
-            (dataset if dataset is not None else None, 'dataset.log', 'w'),
-            (dataset.tokenizer if dataset is not None else None, 'tokenizer.log', 'w'),
-            (augmentor if augmentor is not None else None, 'augmentor.log', 'w'),
-            (self, 'model.log', 'w'),
-            (self.training_logger if self.training_logger.touched else None, 'training.log', 'w'),
-            (self.test_logger if self.test_logger.touched else None, 'test.log', 'a'),
-            (self.samples_logger if self.samples_logger.touched else None, 'samples.log', 'w'),
-        ]
-
-        for log, filename, open_mode in filelogs:
-            if log is None:
-                continue
-
-            log_uri = os.path.join(artifacts_uri, 'logs', filename)
-            os.makedirs(os.path.dirname(log_uri), exist_ok=True)
-
-            with open(log_uri, open_mode) as f:
-                f.write(str(log))
-
-            mlflow.log_artifact(log_uri, 'logs')
-
-        # Tokenizer
-        if self.tokenizer is not None:
-            tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
-            os.makedirs(os.path.dirname(tokenizer_uri), exist_ok=True)
-
-            with open(tokenizer_uri, 'wb') as f:
-                pickle.dump(self.tokenizer, f)
-
-            mlflow.log_artifact(tokenizer_uri)
-
-        # Model
-        if self.model is not None:
-            model_uri = os.path.join(artifacts_uri, 'model.keras')
-            os.makedirs(os.path.dirname(model_uri), exist_ok=True)
-
-            self.model.save(model_uri)
-            mlflow.log_artifact(model_uri)
-
-        # Tag
-        if self.network is not None:
+            # Tag
             mlflow.set_tags({'mlflow.network': self.network})
 
-        mlflow.end_run()
+            # Metrics
+            if metrics is not None:
+                dict_metrics = {}
+
+                for i, metric in enumerate(metrics):
+                    dict_metrics[f"top_path_{i+1}_cer"] = metric[0]
+                    dict_metrics[f"top_path_{i+1}_wer"] = metric[1]
+                    dict_metrics[f"top_path_{i+1}_ler"] = metric[2]
+                    dict_metrics[f"top_path_{i+1}_ser"] = metric[3]
+
+                mlflow.log_metrics(metrics=dict_metrics)
+
+            # Enhanced Metrics
+            if enhanced_metrics is not None:
+                dict_enhanced_metrics = {}
+
+                for i, metric in enumerate(enhanced_metrics):
+                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_cer"] = metric[0]
+                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_wer"] = metric[1]
+                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ler"] = metric[2]
+                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ser"] = metric[3]
+
+                mlflow.log_metrics(metrics=dict_enhanced_metrics)
+
+            # Parameters
+            dict_params = {
+                **(dataset.__repr__() if dataset is not None else {}),
+                **(dataset.tokenizer.__repr__() if dataset is not None else {}),
+                **(augmentor.__repr__() if augmentor is not None else {}),
+                **self.__repr__(),
+                **(self.training_logger.__repr__() if self.training_logger.touched else {}),
+                **(self.test_logger.__repr__() if self.test_logger.touched else {}),
+            }
+
+            mlflow.log_params(dict_params)
+
+            # Logs
+            filelogs = [
+                (dataset if dataset is not None else None, 'dataset.log', 'w'),
+                (dataset.tokenizer if dataset is not None else None, 'tokenizer.log', 'w'),
+                (augmentor if augmentor is not None else None, 'augmentor.log', 'w'),
+                (self, 'model.log', 'w'),
+                (self.training_logger if self.training_logger.touched else None, 'training.log', 'w'),
+                (self.test_logger if self.test_logger.touched else None, 'test.log', 'a'),
+                (self.samples_logger if self.samples_logger.touched else None, 'samples.log', 'w'),
+            ]
+
+            for log, filename, open_mode in filelogs:
+                if log is None:
+                    continue
+
+                log_uri = os.path.join(artifacts_uri, 'logs', filename)
+                os.makedirs(os.path.dirname(log_uri), exist_ok=True)
+
+                with open(log_uri, open_mode) as f:
+                    f.write(str(log))
+
+                mlflow.log_artifact(log_uri, 'logs')
+
+            # Tokenizer
+            if self.tokenizer is not None:
+                tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
+                os.makedirs(os.path.dirname(tokenizer_uri), exist_ok=True)
+
+                with open(tokenizer_uri, 'wb') as f:
+                    pickle.dump(self.tokenizer, f)
+
+                mlflow.log_artifact(tokenizer_uri)
+
+            # Model
+            if self.model is not None:
+                model_uri = os.path.join(artifacts_uri, 'artifacts', 'model.keras')
+                os.makedirs(os.path.dirname(model_uri), exist_ok=True)
+
+                self.model.save(model_uri)
+                mlflow.log_artifact(model_uri)
+
+                # Carbon
+                if self.tokenizer is not None:
+                    artifacts = {**self.__repr__(), 'model_uri': model_uri, 'tokenizer_uri': tokenizer_uri}
+                    mlflow.pyfunc.log_model(artifact_path='', artifacts=artifacts, python_model=Carbon())
 
     # def load_context(self, run_index):
         # run_index : int, optional
@@ -335,16 +352,19 @@ class Model():
             ),
         ]
 
-        self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.run = mlflow.start_run(run_name=self.run_name)
+        run_id = None
+        run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        history = self.model.fit(x=training_data,
-                                 steps_per_epoch=training_steps,
-                                 validation_data=validation_data,
-                                 validation_steps=validation_steps,
-                                 callbacks=callbacks,
-                                 epochs=epochs,
-                                 verbose=verbose)
+        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
+            self.run = run
+
+            history = self.model.fit(x=training_data,
+                                     steps_per_epoch=training_steps,
+                                     validation_data=validation_data,
+                                     validation_steps=validation_steps,
+                                     callbacks=callbacks,
+                                     epochs=epochs,
+                                     verbose=verbose)
 
         end_time = time.time()
         total_time = end_time - start_time
@@ -355,8 +375,6 @@ class Model():
                                                validation_data,
                                                validation_steps,
                                                total_time)
-
-        mlflow.end_run()
 
         return history
 
