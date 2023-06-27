@@ -146,6 +146,20 @@ class Model():
                      augmentor=None,
                      metrics=None,
                      enhanced_metrics=None):
+        """
+        Logs the context of the run including metrics, parameters, and artifacts.
+
+        Parameters
+        ----------
+        dataset : object, optional
+            The dataset used in the current run. Default is None.
+        augmentor : object, optional
+            The data augmentor used. Default is None.
+        metrics : list of tuples, optional
+            The metrics obtained. Default is None.
+        enhanced_metrics : list of tuples, optional
+            The enhanced metrics obtained. Default is None.
+        """
 
         if self.run is None:
             self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -322,17 +336,15 @@ class Model():
         ]
 
         self.run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.run = mlflow.start_run(run_name=self.run_name)
 
-        with mlflow.start_run(run_name=self.run_name) as run:
-            self.run = run
-
-            history = self.model.fit(x=training_data,
-                                     steps_per_epoch=training_steps,
-                                     validation_data=validation_data,
-                                     validation_steps=validation_steps,
-                                     callbacks=callbacks,
-                                     epochs=epochs,
-                                     verbose=verbose)
+        history = self.model.fit(x=training_data,
+                                 steps_per_epoch=training_steps,
+                                 validation_data=validation_data,
+                                 validation_steps=validation_steps,
+                                 callbacks=callbacks,
+                                 epochs=epochs,
+                                 verbose=verbose)
 
         end_time = time.time()
         total_time = end_time - start_time
@@ -343,6 +355,8 @@ class Model():
                                                validation_data,
                                                validation_steps,
                                                total_time)
+
+        mlflow.end_run()
 
         return history
 
