@@ -29,12 +29,8 @@ def train(args):
                           seed=42)
     print(augmentor)
 
-    model = Model(network=args.network,
-                  tokenizer=dataset.tokenizer,
-                  experiment_name=args.experiment_name,
-                  seed=42)
-
-    model.compile(learning_rate=args.learning_rate, run_index=args.run_index)
+    model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
+    model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
     valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
@@ -81,3 +77,7 @@ def train(args):
                                              prediction_samples=args.prediction_samples,
                                              origin=args.spell_checker)
         print(enhanced_metrics)
+
+    # model.save_context(dataset=dataset,
+    #                    augmentor=augmentor,
+    #                    metrics=metrics)
