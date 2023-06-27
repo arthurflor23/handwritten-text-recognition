@@ -1,5 +1,4 @@
 import cv2
-import json
 import numpy as np
 
 
@@ -106,8 +105,6 @@ class Augmentor():
             'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
         }
-
-        attributes = json.dumps(attributes, indent=4, ensure_ascii=False, default=lambda x: str(x))
 
         return attributes
 
