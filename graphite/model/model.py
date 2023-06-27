@@ -14,17 +14,6 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-class Carbon(mlflow.pyfunc.PythonModel):
-    def __init__(self):
-        print('carbon')
-
-    def load_context(self, context):
-        print("load_context")
-
-    def predict(self, data):
-        print("predict")
-
-
 class Model():
     """
     General optical model management.
@@ -245,17 +234,17 @@ class Model():
                 with open(log_uri, open_mode) as f:
                     f.write(str(log))
 
-                mlflow.log_artifact(log_uri, 'logs')
+                mlflow.log_artifact(log_uri, artifact_path='logs')
 
             # Tokenizer
             if self.tokenizer is not None:
-                tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
+                tokenizer_uri = os.path.join(artifacts_uri, 'artifacts', 'tokenizer.pkl')
                 os.makedirs(os.path.dirname(tokenizer_uri), exist_ok=True)
 
                 with open(tokenizer_uri, 'wb') as f:
                     pickle.dump(self.tokenizer, f)
 
-                mlflow.log_artifact(tokenizer_uri)
+                mlflow.log_artifact(tokenizer_uri, artifact_path='artifacts')
 
             # Model
             if self.model is not None:
@@ -263,27 +252,41 @@ class Model():
                 os.makedirs(os.path.dirname(model_uri), exist_ok=True)
 
                 self.model.save(model_uri)
-                mlflow.log_artifact(model_uri)
+                mlflow.log_artifact(model_uri, artifact_path='artifacts')
 
-                # Carbon
-                if self.tokenizer is not None:
-                    artifacts = {**self.__repr__(), 'model_uri': model_uri, 'tokenizer_uri': tokenizer_uri}
-                    mlflow.pyfunc.log_model(artifact_path='', artifacts=artifacts, python_model=Carbon())
+    def load_context(self, run_index=None):
 
-    # def load_context(self, run_index):
+        # runs_df = mlflow.search_runs(experiment_ids=[model.experiment.experiment_id],
+        #                      filter_string=f"tags.mlflow.model='{model.network}'",
+        #                      order_by=['tags.mlflow.runName ASC'])
+
+        # run = mlflow.get_run(runs_df.iloc[0]['run_id'])
+        # # runs_df
+
+        # os.path.join(run.info.artifact_uri, 'model.keras')
+
+        # # # predict
+        # # model = mlflow.pyfunc.load_model(model_uri=best_run.info.artifact_uri)
+
+        # # model.predict()
+        # # best_run.info.artifact_uri
+
+        # # df_pred = model.predict(df)
+        # ===============================
+
         # run_index : int, optional
         #     The index of the run to be loaded, by default None.
 
-    #     if run_index is not None:
-    #         runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
+        #     if run_index is not None:
+        #         runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
 
-    #         if runs and run_index < len(runs):
-    #             model_uri = os.path.join(runs[run_index], 'model.keras')
+        #         if runs and run_index < len(runs):
+        #             model_uri = os.path.join(runs[run_index], 'model.keras')
 
-    #             if os.path.exists(model_uri) and os.path.isfile(model_uri):
-    #                 self.model.load_weights(model_uri)
+        #             if os.path.exists(model_uri) and os.path.isfile(model_uri):
+        #                 self.model.load_weights(model_uri)
 
-    #     self.model.load_weights(context.artifacts['model_uri'])
+        #     self.model.load_weights(context.artifacts['model_uri'])
 
     def fit(self,
             training_data,
