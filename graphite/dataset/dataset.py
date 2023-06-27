@@ -739,7 +739,7 @@ class Tokenizer():
 
         info = f"""
             Tokenizer Configuration\n
-            Charset             {self.charset}
+            Charset             {''.join(self.charset)}
             Charset Length      {len(self.charset)}
             Shape               {self.shape}
         """
