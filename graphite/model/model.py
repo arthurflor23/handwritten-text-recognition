@@ -378,8 +378,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.training_logger.set_loss_info(history.history)
-        self.training_logger.set_training_info(training_data, training_steps, total_time)
+        self.training_logger.set_training_info(total_time, history.history, training_data, training_steps)
 
         return history
 
@@ -460,7 +459,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.test_logger.set_test_info(test_data, test_steps, total_time)
+        self.test_logger.set_test_info(total_time, test_data, test_steps)
 
         return predictions, probabilities
 
@@ -864,23 +863,30 @@ class Logger():
 
         return attributes
 
-    def set_loss_info(self, loss_history):
+    def set_training_info(self, total_time, loss_history, training_data, training_steps):
         """
         Set the training information.
 
         Parameters
         ----------
+        total_time : float
+            The total training time.
+        training_data : data generator
+            The training data.
+        training_steps : int
+            The number of training steps.
         loss_history : dict
             The training history object.
         """
 
+        # Loss
         loss = loss_history['loss']
         val_loss = loss_history['val_loss']
 
         best_val_loss = np.inf
         best_loss = None
         best_loss_epoch = -1
-        results = []
+        epochs = []
 
         for epoch, (loss_value, val_loss_value) in enumerate(zip(loss, val_loss)):
             is_best = ''
@@ -891,38 +897,22 @@ class Logger():
                 best_loss = loss_value
                 best_val_loss = val_loss_value
 
-            results.append([epoch + 1, loss_value, val_loss_value, is_best])
-
-        self.training_total_epochs = len(results)
-        self.validation_total_epochs = len(results)
+            epochs.append([epoch + 1, loss_value, val_loss_value, is_best])
 
         self.loss_history = ['epoch,loss,val_loss,best']
 
-        for result in results:
-            epoch, loss_value, val_loss_value, is_best = result
+        for epoch in epochs:
+            epoch, loss_value, val_loss_value, is_best = epoch
             self.loss_history += [f"{epoch},{loss_value},{val_loss_value},{is_best}"]
 
         self.loss_epoch = best_loss_epoch
         self.loss_training = best_loss
         self.loss_validation = best_val_loss
 
-        self.touched = True
-
-    def set_training_info(self, training_data, training_steps, total_time):
-        """
-        Set the training information.
-
-        Parameters
-        ----------
-        training_data : data generator
-            The training data.
-        training_steps : int
-            The number of training steps.
-        total_time : float
-            The total training time.
-        """
-
+        # Training
         training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
+
+        self.training_total_epochs = len(epochs)
 
         self.training_total_data = training_total_data
         self.training_total_steps = training_steps
@@ -940,18 +930,18 @@ class Logger():
 
         self.touched = True
 
-    def set_test_info(self, test_data, test_steps, total_time):
+    def set_test_info(self, total_time, test_data, test_steps):
         """
         Set the test information.
 
         Parameters
         ----------
+        total_time : float
+            The total test time.
         test_data : data generator
             The test data.
         test_steps : int
             The number of test steps.
-        total_time : float
-            The total test time.
         """
 
         test_total_data = np.sum([len(next(test_data)[0]) for _ in range(test_steps)])
