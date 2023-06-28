@@ -5,12 +5,12 @@ from spelling import Spelling
 
 def train(args):
     """
-    Trains a Model using a given Dataset and Augmentor.
+    Performs training and testing phases.
 
     Parameters
     ----------
     args : argparse.Namespace
-        A namespace object that contains all the arguments required for training.
+        A namespace object that contains all the arguments required.
     """
 
     dataset = Dataset(source=args.source,
