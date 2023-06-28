@@ -1,5 +1,8 @@
+import re
+import copy
 import time
 import openai
+import tiktoken
 
 
 class SpellChecker():
@@ -20,16 +23,73 @@ class SpellChecker():
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
 
-    def enhance_text(self, text, instruction):
+    def enhance_predictions(self, instruction, predictions):
+        """
+        Enhances predictions by correcting spelling errors.
+
+        Parameters
+        ----------
+        instruction : str, optional
+            The instruction to be followed by the API.
+        predictions : list
+            The predictions to be enhanced.
+
+        Returns
+        -------
+        enhanced : list
+            The enhanced predictions.
+        """
+
+        encoding = tiktoken.get_encoding('p50k_edit')
+        enhanced_predictions = []
+
+        max_tokens = 2048
+
+        for i, top_path in enumerate(predictions):
+            tokens_length = 0
+            batches = [[]]
+
+            for j, text in enumerate(top_path):
+                for u, line in enumerate(text):
+                    pp_text = f'<{j}.{u}> {line} </{j}.{u}>'
+                    pp_text_tokens_length = len(encoding.encode(pp_text))
+
+                    if tokens_length + pp_text_tokens_length > max_tokens:
+                        batches.append([])
+                        tokens_length = 0
+                    else:
+                        tokens_length += pp_text_tokens_length
+
+                    batches[-1].append(pp_text)
+
+            print(f"Enhance top path {i + 1} (batches: {len(batches)})")
+
+            enhanced_data = '\n'.join([self._request_api(instruction, '\n'.join(x)) for x in batches])
+
+            pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
+            matches = pattern.findall(enhanced_data)
+
+            enhanced_texts = copy.deepcopy(top_path)
+
+            if len(matches) == len(enhanced_texts):
+                for match in matches:
+                    tags = [int(x) for x in match[0].split('.')]
+                    enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
+
+            enhanced_predictions.append(enhanced_texts)
+
+        return enhanced_predictions
+
+    def _request_api(self, instruction, text):
         """
         Makes a request to the OpenAI API.
 
         Parameters
         ----------
-        text : str
-            The prompt for the API.
         instruction : str
             The instruction to be followed by the API.
+        text : str
+            The prompt for the API.
 
         Returns
         -------

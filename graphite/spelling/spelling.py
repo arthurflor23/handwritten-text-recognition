@@ -1,10 +1,6 @@
 import os
-import re
-import copy
 import dotenv
-import tiktoken
 import importlib
-import concurrent
 import numpy as np
 
 
@@ -37,6 +33,8 @@ class Spelling():
         self.api_key = api_key
         self.env_key = env_key
         self.dotenv_path = dotenv_file
+
+        self._spell_checker = None
 
         if self.env_key is not None:
             dotenv.load_dotenv(self.dotenv_path)
@@ -103,9 +101,6 @@ class Spelling():
             The enhanced predictions.
         """
 
-        if not self.spell_checker:
-            return predictions
-
         if instruction is None:
             instruction = """
                 Correct spelling errors, including accents.
@@ -113,50 +108,11 @@ class Spelling():
                 Preserve slang, historical terms, and grammar. Make only confident changes.
             """
 
-        max_tokens = 2560
+        if self.spell_checker is not None:
+            predictions = self._spell_checker.enhance_predictions(instruction, predictions)
+            predictions = np.array(predictions, dtype=object)
 
-        encoding = tiktoken.get_encoding('gpt2')
-        enhanced_top_paths = []
-
-        for i, top_path in enumerate(predictions):
-            tokens_length = 0
-            batches = [[]]
-
-            for j, text in enumerate(top_path):
-                for u, line in enumerate(text):
-                    pp_text = f'<{j}.{u}> {line} </{j}.{u}>'
-                    pp_text_tokens_length = len(encoding.encode(pp_text))
-
-                    if tokens_length + pp_text_tokens_length > max_tokens:
-                        batches.append([])
-                        tokens_length = 0
-                    else:
-                        tokens_length += pp_text_tokens_length
-
-                    batches[-1].append(pp_text)
-
-            print(f"Enhance top path {i + 1} (batches: {len(batches)})")
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._spell_checker.enhance_text,
-                                           '\n'.join(x), instruction) for x in batches]
-                enhanced_data = '\n'.join([future.result() for future in futures])
-
-            pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
-            matches = pattern.findall(enhanced_data)
-
-            enhanced_texts = copy.deepcopy(top_path)
-
-            if len(matches) == len(enhanced_texts):
-                for match in matches:
-                    tags = [int(x) for x in match[0].split('.')]
-                    enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
-
-            enhanced_top_paths.append(enhanced_texts)
-
-        enhanced_top_paths = np.array(enhanced_top_paths, dtype=object)
-
-        return enhanced_top_paths
+        return predictions
 
     def _import_spell_checker(self, spell_checker):
 
