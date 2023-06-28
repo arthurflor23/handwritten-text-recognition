@@ -489,10 +489,8 @@ class Model():
             Error metrics and evaluated samples for each top path.
         """
 
-        prediction_samples = 10
-
         if baseline_predictions is None and spelling_predictions is None:
-            return np.zeros((0, 4), dtype=np.float32), np.zeros((0, 3, prediction_samples, 5), dtype=object)
+            return np.zeros((0, 4), dtype=np.float32), np.zeros((0, len(partition['raw']), 5), dtype=object)
 
         all_predictions = [(baseline_predictions, 'baseline'), (spelling_predictions, 'spelling')]
         results = []
@@ -501,22 +499,17 @@ class Model():
             if predictions is None:
                 continue
 
-            top_paths = len(predictions)
-            data_length = len(partition['raw'])
-
-            prediction_samples = min(prediction_samples, data_length)
-
-            metrics = np.zeros((top_paths, 4), dtype=np.float32)
-            samples = np.zeros((top_paths, 3, prediction_samples, 5), dtype=object)
+            metrics = np.zeros((len(predictions), 4), dtype=np.float32)
+            samples = np.zeros((len(predictions), len(partition['raw']), 5), dtype=object)
 
             # Metrics
-            for top_path in range(top_paths):
+            for top_path in range(len(predictions)):
                 curr_predict = self._get_shared_paths(partition, predictions=predictions[:top_path+1]) \
                     if share_top_paths else predictions[top_path:top_path+1]
 
                 samples_error_rates = []
 
-                for index in range(data_length):
+                for index in range(len(partition['raw'])):
                     _, _, label = partition['raw'][index]
                     pred = curr_predict[0, index]
                     error_rates = [0, 0, 0, 0]
@@ -550,24 +543,15 @@ class Model():
                 metrics[top_path, :] = np.mean(samples_error_rates, axis=0)
 
                 # Samples
-                sorted_indices = np.argsort(samples_error_rates[:, 0])
-                middle_index = (data_length // 2) - (prediction_samples // 2)
+                indices = np.argsort(samples_error_rates[:, 0])
 
-                indices_ranges = [
-                    sorted_indices[:prediction_samples],
-                    sorted_indices[middle_index:middle_index + prediction_samples],
-                    sorted_indices[-prediction_samples:],
-                ]
+                raw = partition['raw'][indices].tolist()
+                pred = curr_predict[0, indices].tolist()
 
-                for i, indices in enumerate(indices_ranges):
-                    raw = partition['raw'][indices].tolist()
-                    pred = curr_predict[0, indices].tolist()
+                err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
+                err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
 
-                    err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
-                    err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
-
-                    samples[top_path, i, :, :] = np.array([r + [p] + [e]
-                                                          for r, p, e in zip(raw, pred, err)], dtype=object)
+                samples[top_path, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
 
             self.test_logger.set_evaluation_info(metrics, origin)
             self.samples_logger.set_samples_info(samples, origin)
@@ -1022,18 +1006,14 @@ class Logger():
 
         self.samples[origin] = []
 
-        for i in range(len(samples)):
-            path = {'top': [], 'mid': [], 'bottom': []}
-
-            for j, tier in enumerate(path.keys()):
-                for x in samples[i][j]:
-                    path[tier].append({
-                        'image_path': x[0],
-                        'bbox': x[1],
-                        'label': x[2],
-                        'prediction': x[3],
-                        'metric': x[4],
-                    })
+        for i, top_path in enumerate(samples):
+            path = [{
+                'image_path': x[0],
+                'bbox': x[1],
+                'label': x[2],
+                'prediction': x[3],
+                'metric': x[4],
+            } for x in top_path]
 
             self.samples[origin].append({f"top_path_{i + 1}": path})
 
