@@ -58,7 +58,9 @@ class Model():
         self.run_name = None
         self.run = None
 
+        self.model = None
         self.tokenizer = None
+
         self.optimizer = None
         self.learning_rate = None
         self.summary = None
@@ -255,38 +257,40 @@ class Model():
                 mlflow.log_artifact(model_uri, artifact_path='artifacts')
 
     def load_context(self, run_index=None):
+        """
+        Load the context from the MLflow experiment.
 
-        # runs_df = mlflow.search_runs(experiment_ids=[model.experiment.experiment_id],
-        #                      filter_string=f"tags.mlflow.model='{model.network}'",
-        #                      order_by=['tags.mlflow.runName ASC'])
+        Parameters
+        ----------
+        run_index : int, optional
+            The run index which the context will be loaded. If None, the last run is used. Default is None.
+        """
 
-        # run = mlflow.get_run(runs_df.iloc[0]['run_id'])
-        # # runs_df
+        runs_df = mlflow.search_runs(experiment_ids=[self.experiment.experiment_id],
+                                     filter_string=f"tags.mlflow.network='{self.network}'",
+                                     order_by=['tags.mlflow.runName ASC'])
 
-        # os.path.join(run.info.artifact_uri, 'model.keras')
+        if runs_df.empty:
+            print("No runs found.")
+            return
 
-        # # # predict
-        # # model = mlflow.pyfunc.load_model(model_uri=best_run.info.artifact_uri)
+        run_index = -1 if run_index is None else run_index
+        run = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
 
-        # # model.predict()
-        # # best_run.info.artifact_uri
+        model_uri = os.path.join(run.info.artifact_uri, 'artifacts', 'model.keras')
+        tokenizer_uri = os.path.join(run.info.artifact_uri, 'artifacts', 'tokenizer.pkl')
 
-        # # df_pred = model.predict(df)
-        # ===============================
+        if not (os.path.isfile(model_uri) and os.path.isfile(tokenizer_uri)):
+            print("Model or tokenizer files do not exist.")
+            return
 
-        # run_index : int, optional
-        #     The index of the run to be loaded, by default None.
+        with open(tokenizer_uri, 'rb') as f:
+            self.tokenizer = pickle.load(f)
 
-        #     if run_index is not None:
-        #         runs = sorted(glob.glob(os.path.join(self.artifact_path, '*')))
+        if self.model is None:
+            self.compile(self.tokenizer)
 
-        #         if runs and run_index < len(runs):
-        #             model_uri = os.path.join(runs[run_index], 'model.keras')
-
-        #             if os.path.exists(model_uri) and os.path.isfile(model_uri):
-        #                 self.model.load_weights(model_uri)
-
-        #     self.model.load_weights(context.artifacts['model_uri'])
+        self.model.load_weights(model_uri)
 
     def fit(self,
             training_data,
@@ -500,14 +504,14 @@ class Model():
 
         # Metrics
         for top_path in range(top_paths):
-            current_pred = self._get_best_predictions(partition, predictions=predictions[:top_path+1]) \
+            curr_predict = self._get_shared_paths(partition, predictions=predictions[:top_path+1]) \
                 if share_top_paths else predictions[top_path:top_path+1]
 
             samples_error_rates = []
 
             for index in range(data_length):
                 _, _, label = partition['raw'][index]
-                pred = current_pred[0, index]
+                pred = curr_predict[0, index]
                 error_rates = [0, 0, 0, 0]
 
                 for true_label, pred_label in zip(label, pred):
@@ -550,7 +554,7 @@ class Model():
 
             for i, indices in enumerate(indices_ranges):
                 raw = partition['raw'][indices].tolist()
-                pred = current_pred[0, indices].tolist()
+                pred = curr_predict[0, indices].tolist()
 
                 err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
                 err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
@@ -585,9 +589,9 @@ class Model():
 
         return network
 
-    def _get_best_predictions(self, partition, predictions):
+    def _get_shared_paths(self, partition, predictions):
         """
-        Finds the best predictions based on character error rate.
+        Finds the best predictions among the top paths.
 
         Parameters
         ----------
@@ -599,7 +603,7 @@ class Model():
         Returns
         -------
         numpy.ndarray
-            Array of top predictions based on character error rate.
+            Array of top predictions.
         """
 
         best_paths = len(predictions)
