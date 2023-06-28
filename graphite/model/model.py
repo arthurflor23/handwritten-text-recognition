@@ -916,7 +916,7 @@ class Logger():
             The total training time.
         """
 
-        training_total_data = np.sum([len(next(training_data)) for _ in training_steps])
+        training_total_data = np.sum([len(next(training_data)) for _ in range(training_steps)])
 
         self.training_total_data = training_total_data
         self.training_total_steps = training_steps
@@ -948,7 +948,7 @@ class Logger():
             The total test time.
         """
 
-        test_total_data = np.sum([len(next(test_data)) for _ in test_steps])
+        test_total_data = np.sum([len(next(test_data)) for _ in range(test_steps)])
 
         self.test_total_data = test_total_data
         self.test_total_epochs = 1
