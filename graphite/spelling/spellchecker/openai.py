@@ -25,25 +25,25 @@ class SpellChecker():
 
     def enhance_predictions(self, instruction, predictions):
         """
-        Enhances predictions by correcting spelling errors.
+        Enhances predictions via encoding, batching, API requesting, and updating.
 
         Parameters
         ----------
-        instruction : str, optional
-            The instruction to be followed by the API.
+        instruction : str
+            Instructions for the API.
         predictions : list
-            The predictions to be enhanced.
+            Predicted paths, each as a list of texts.
 
         Returns
         -------
-        enhanced : list
-            The enhanced predictions.
+        list
+            Enhanced predictions in the same structure as input.
         """
 
         encoding = tiktoken.get_encoding('p50k_edit')
         enhanced_predictions = []
 
-        max_tokens = 2048
+        max_tokens = 2560
 
         for i, top_path in enumerate(predictions):
             tokens_length = 0
