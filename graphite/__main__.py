@@ -120,11 +120,11 @@ if __name__ == '__main__':
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
 
-    # parser.add_argument('--images', default=[], nargs='+',
-    #                     help="Set image path list for handwriting recognition")
+    parser.add_argument('--images', default=[], nargs='+',
+                        help="Set image path list for handwriting recognition")
 
-    # parser.add_argument('--bbox', default=[], nargs='+',
-    #                     help="Set bounding box values (x, y, width, height)")
+    parser.add_argument('--bbox', default=[], nargs='+',
+                        help="Set bounding box values (x, y, width, height)")
 
     # Check
     parser.add_argument('--check', default=False, action='store_true',
