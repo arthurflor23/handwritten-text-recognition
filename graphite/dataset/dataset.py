@@ -127,11 +127,10 @@ class Dataset():
             Validation Size         {self.validation['size']}
             Test Size               {self.test['size']}
 
-            Corpus Length           {len(self.corpus)}
-            Corpus                  {self.corpus[:100]} [...]
-
             Charset Length          {len(self.charset)}
             Charset                 {''.join(self.charset)}
+
+            Corpus Length           {len(self.corpus)}
 
             Min Text Length         {len(self.min_text)}
             Min Text                {self.min_text}
