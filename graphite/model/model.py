@@ -466,10 +466,9 @@ class Model():
 
     def evaluate(self,
                  partition,
-                 predictions,
-                 share_top_paths=True,
-                 prediction_samples=10,
-                 origin='baseline'):
+                 baseline_predictions=None,
+                 spelling_predictions=None,
+                 share_top_paths=True):
         """
         Computes error metrics based on model's predictions.
 
@@ -477,14 +476,12 @@ class Model():
         ----------
         partition : dict
             The data partition for evaluation.
-        predictions : numpy.ndarray
-            Array of model's predictions.
+        baseline_predictions : numpy.ndarray, optional
+            List of baseline predictions.
+        spelling_predictions : numpy.ndarray, optional
+            List of spelling predictions.
         share_top_paths : bool, optional
             If True, considers previous paths for each path metrics. Default is True.
-        prediction_samples : int, optional
-            Number of samples for retrieve from evaluation. Default is 10.
-        origin : str, optional
-            Indicates the origin name. Default is 'baseline'.
 
         Returns
         -------
@@ -492,77 +489,95 @@ class Model():
             Error metrics and evaluated samples for each top path.
         """
 
-        top_paths = len(predictions)
-        data_length = len(partition['raw'])
+        prediction_samples = 10
 
-        prediction_samples = min(prediction_samples, data_length)
+        if baseline_predictions is None and spelling_predictions is None:
+            return np.zeros((0, 4), dtype=np.float32), np.zeros((0, 3, prediction_samples, 5), dtype=object)
 
-        metrics = np.zeros((top_paths, 4), dtype=np.float32)
-        samples = np.zeros((top_paths, 3, prediction_samples, 5), dtype=object)
+        all_predictions = [(baseline_predictions, 'baseline'), (spelling_predictions, 'spelling')]
+        results = []
 
-        # Metrics
-        for top_path in range(top_paths):
-            curr_predict = self._get_shared_paths(partition, predictions=predictions[:top_path+1]) \
-                if share_top_paths else predictions[top_path:top_path+1]
+        for predictions, origin in all_predictions:
+            if predictions is None:
+                continue
 
-            samples_error_rates = []
+            top_paths = len(predictions)
+            data_length = len(partition['raw'])
 
-            for index in range(data_length):
-                _, _, label = partition['raw'][index]
-                pred = curr_predict[0, index]
-                error_rates = [0, 0, 0, 0]
+            prediction_samples = min(prediction_samples, data_length)
 
-                for true_label, pred_label in zip(label, pred):
-                    true_label = self._format_text(true_label)
-                    pred_label = self._format_text(pred_label)
+            metrics = np.zeros((top_paths, 4), dtype=np.float32)
+            samples = np.zeros((top_paths, 3, prediction_samples, 5), dtype=object)
 
-                    # Character
-                    character_error_rate = self._calculate_metric(list(true_label), list(pred_label))
-                    error_rates[0] += character_error_rate
+            # Metrics
+            for top_path in range(top_paths):
+                curr_predict = self._get_shared_paths(partition, predictions=predictions[:top_path+1]) \
+                    if share_top_paths else predictions[top_path:top_path+1]
 
-                    # Word
-                    word_error_rate = self._calculate_metric(true_label.split(), pred_label.split())
-                    error_rates[1] += word_error_rate
+                samples_error_rates = []
 
-                    # Line
-                    line_error_rate = self._calculate_metric([true_label], [pred_label])
-                    error_rates[2] += line_error_rate / len(label)
+                for index in range(data_length):
+                    _, _, label = partition['raw'][index]
+                    pred = curr_predict[0, index]
+                    error_rates = [0, 0, 0, 0]
 
-                true_label = self._format_text(' '.join(label))
-                pred_label = self._format_text(' '.join(pred))
+                    for true_label, pred_label in zip(label, pred):
+                        true_label = self._format_text(true_label)
+                        pred_label = self._format_text(pred_label)
 
-                # Sequence
-                sequence_error_rate = self._calculate_metric([true_label], [pred_label])
-                error_rates[3] += sequence_error_rate
+                        # Character
+                        character_error_rate = self._calculate_metric(list(true_label), list(pred_label))
+                        error_rates[0] += character_error_rate
 
-                samples_error_rates.append(error_rates)
+                        # Word
+                        word_error_rate = self._calculate_metric(true_label.split(), pred_label.split())
+                        error_rates[1] += word_error_rate
 
-            samples_error_rates = np.array(samples_error_rates)
-            metrics[top_path, :] = np.mean(samples_error_rates, axis=0)
+                        # Line
+                        line_error_rate = self._calculate_metric([true_label], [pred_label])
+                        error_rates[2] += line_error_rate / len(label)
 
-            # Samples
-            sorted_indices = np.argsort(samples_error_rates[:, 0])
-            middle_index = (data_length // 2) - (prediction_samples // 2)
+                    true_label = self._format_text(' '.join(label))
+                    pred_label = self._format_text(' '.join(pred))
 
-            indices_ranges = [
-                sorted_indices[:prediction_samples],
-                sorted_indices[middle_index:middle_index + prediction_samples],
-                sorted_indices[-prediction_samples:],
-            ]
+                    # Sequence
+                    sequence_error_rate = self._calculate_metric([true_label], [pred_label])
+                    error_rates[3] += sequence_error_rate
 
-            for i, indices in enumerate(indices_ranges):
-                raw = partition['raw'][indices].tolist()
-                pred = curr_predict[0, indices].tolist()
+                    samples_error_rates.append(error_rates)
 
-                err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
-                err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
+                samples_error_rates = np.array(samples_error_rates)
+                metrics[top_path, :] = np.mean(samples_error_rates, axis=0)
 
-                samples[top_path, i, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
+                # Samples
+                sorted_indices = np.argsort(samples_error_rates[:, 0])
+                middle_index = (data_length // 2) - (prediction_samples // 2)
 
-        self.test_logger.set_evaluation_info(metrics, origin)
-        self.samples_logger.set_samples_info(samples, origin)
+                indices_ranges = [
+                    sorted_indices[:prediction_samples],
+                    sorted_indices[middle_index:middle_index + prediction_samples],
+                    sorted_indices[-prediction_samples:],
+                ]
 
-        return metrics, samples
+                for i, indices in enumerate(indices_ranges):
+                    raw = partition['raw'][indices].tolist()
+                    pred = curr_predict[0, indices].tolist()
+
+                    err = [','.join([f"{y:.4f}" for y in x]) for x in samples_error_rates[indices].tolist()]
+                    err = [['top_path,cer,wer,ler,ser', f"{top_path + 1},{x}"] for x in err]
+
+                    samples[top_path, i, :, :] = np.array([r + [p] + [e]
+                                                          for r, p, e in zip(raw, pred, err)], dtype=object)
+
+            self.test_logger.set_evaluation_info(metrics, origin)
+            self.samples_logger.set_samples_info(samples, origin)
+
+            results.append((metrics, samples))
+
+        if len(results) == 1:
+            results = results[0]
+
+        return results
 
     def _import_network(self, network):
         """
