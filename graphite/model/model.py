@@ -467,7 +467,7 @@ class Model():
                  partition,
                  baseline_predictions=None,
                  spelling_predictions=None,
-                 share_top_paths=True):
+                 share_top_paths=False):
         """
         Computes error metrics based on model's predictions.
 
@@ -480,7 +480,7 @@ class Model():
         spelling_predictions : numpy.ndarray, optional
             List of spelling predictions.
         share_top_paths : bool, optional
-            If True, considers previous paths for each path metrics. Default is True.
+            If True, consider previous paths to the metrics. Default is False.
 
         Returns
         -------
