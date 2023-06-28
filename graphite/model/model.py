@@ -273,7 +273,7 @@ class Model():
                                      filter_string=f"tags.mlflow.network='{self.network}'",
                                      order_by=['tags.mlflow.runName ASC'])
 
-        if runs_df.empty:
+        if runs_df.empty or run_index not in runs_df.index:
             print("No runs found.")
             return
 
