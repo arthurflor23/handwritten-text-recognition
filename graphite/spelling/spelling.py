@@ -34,11 +34,11 @@ class Spelling():
         self.env_key = env_key
         self.dotenv_path = dotenv_file
 
-        self._spell_checker = None
-
         if self.env_key is not None:
             dotenv.load_dotenv(self.dotenv_path)
             self.api_key = os.environ[self.env_key]
+
+        self._spell_checker = None
 
         if spell_checker:
             self._spell_checker = self._import_spell_checker(self.spell_checker)
