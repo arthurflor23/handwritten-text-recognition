@@ -120,7 +120,7 @@ class Dataset():
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
-            \nDataset Information\n
+            Dataset Information\n
             Total Size              {self.size}
 
             Training Size           {self.training['size']}
