@@ -101,33 +101,6 @@ class Dataset():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {
-            'source': self.source,
-            'level': self.level,
-            'training_ratio': self.training_ratio,
-            'validation_ratio': self.validation_ratio,
-            'test_ratio': self.test_ratio,
-            'pad_value': self.pad_value,
-            'lazy_mode': self.lazy_mode,
-            'seed': self.seed,
-            'size': self.size,
-            'charset': ''.join(self.charset),
-            'max_rows': self.max_rows,
-            'max_cols': self.max_cols,
-        }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -176,6 +149,33 @@ class Dataset():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {
+            'source': self.source,
+            'level': self.level,
+            'training_ratio': self.training_ratio,
+            'validation_ratio': self.validation_ratio,
+            'test_ratio': self.test_ratio,
+            'pad_value': self.pad_value,
+            'lazy_mode': self.lazy_mode,
+            'seed': self.seed,
+            'size': self.size,
+            'charset': ''.join(self.charset),
+            'max_rows': self.max_rows,
+            'max_cols': self.max_cols,
+        }
+
+        return attributes
 
     def get_generator(self,
                       partition,
@@ -712,23 +712,6 @@ class Tokenizer():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {
-            'charset': ''.join(self.charset),
-            'shape': str(self.shape),
-        }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -747,6 +730,23 @@ class Tokenizer():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {
+            'charset': ''.join(self.charset),
+            'shape': str(self.shape),
+        }
+
+        return attributes
 
     def encode(self, label):
         """

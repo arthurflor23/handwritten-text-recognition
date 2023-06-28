@@ -48,24 +48,6 @@ class Spelling():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {
-            'spell_checker': self.spell_checker,
-            'env_key': self.env_key,
-            'dotenv_path': self.dotenv_path,
-        }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -84,6 +66,24 @@ class Spelling():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {
+            'spell_checker': self.spell_checker,
+            'env_key': self.env_key,
+            'dotenv_path': self.dotenv_path,
+        }
+
+        return attributes
 
     def enhance(self, predictions, instruction=None):
         """

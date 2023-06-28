@@ -73,27 +73,6 @@ class Model():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {
-            'network': self.network,
-            'pad_value': self.pad_value,
-            'experiment_name': self.experiment_name,
-            'optimizer': self.optimizer,
-            'learning_rate': self.learning_rate,
-            'seed': self.seed,
-        }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -118,6 +97,27 @@ class Model():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {
+            'network': self.network,
+            'pad_value': self.pad_value,
+            'experiment_name': self.experiment_name,
+            'optimizer': self.optimizer,
+            'learning_rate': self.learning_rate,
+            'seed': self.seed,
+        }
+
+        return attributes
 
     def compile(self, tokenizer, learning_rate=None):
         """
@@ -205,12 +205,12 @@ class Model():
 
             # Parameters
             dict_params = {
-                **(dataset.__repr__() if dataset is not None else {}),
-                **(dataset.tokenizer.__repr__() if dataset is not None else {}),
-                **(augmentor.__repr__() if augmentor is not None else {}),
-                **self.__repr__(),
-                **(self.training_logger.__repr__() if self.training_logger.touched else {}),
-                **(self.test_logger.__repr__() if self.test_logger.touched else {}),
+                **(dataset.to_dict() if dataset is not None else {}),
+                **(dataset.tokenizer.to_dict() if dataset is not None else {}),
+                **(augmentor.to_dict() if augmentor is not None else {}),
+                **self.to_dict(),
+                **(self.training_logger.to_dict() if self.training_logger.touched else {}),
+                **(self.test_logger.to_dict() if self.test_logger.touched else {}),
             }
 
             mlflow.log_params(dict_params)
@@ -772,57 +772,6 @@ class Logger():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {}
-
-        if self.role == 'training':
-            attributes = {
-                'training_batch_size': self.training_batch_size,
-                'training_total_data': self.training_total_data,
-                'training_total_epochs': self.training_total_epochs,
-                'training_total_steps': self.training_total_steps,
-                'training_time': self.training_time,
-                'training_time_per_epoch': self.training_time_per_epoch,
-                'training_time_per_step': self.training_time_per_step,
-                'validation_batch_size': self.validation_batch_size,
-                'validation_total_data': self.validation_total_data,
-                'validation_total_epochs': self.validation_total_epochs,
-                'validation_total_steps': self.validation_total_steps,
-                'validation_time': self.validation_time,
-                'validation_time_per_epoch': self.validation_time_per_epoch,
-                'validation_time_per_step': self.validation_time_per_step,
-                'loss_epoch': self.loss_epoch,
-                'loss_training': self.loss_training,
-                'loss_validation': self.loss_validation,
-            }
-
-        elif self.role == 'test':
-            attributes = {
-                'test_batch_size': self.test_batch_size,
-                'test_total_data': self.test_total_data,
-                'test_total_epochs': self.test_total_epochs,
-                'test_total_steps': self.test_total_steps,
-                'test_time': self.test_time,
-                'test_time_per_epoch': self.test_time_per_epoch,
-                'test_time_per_step': self.test_time_per_step,
-            }
-
-        elif self.role == 'samples':
-            attributes = {
-                'samples': self.samples,
-            }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -887,6 +836,57 @@ class Logger():
             info = json.dumps(self.samples, indent=2, ensure_ascii=False, default=lambda x: str(x))
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {}
+
+        if self.role == 'training':
+            attributes = {
+                'training_batch_size': self.training_batch_size,
+                'training_total_data': self.training_total_data,
+                'training_total_epochs': self.training_total_epochs,
+                'training_total_steps': self.training_total_steps,
+                'training_time': self.training_time,
+                'training_time_per_epoch': self.training_time_per_epoch,
+                'training_time_per_step': self.training_time_per_step,
+                'validation_batch_size': self.validation_batch_size,
+                'validation_total_data': self.validation_total_data,
+                'validation_total_epochs': self.validation_total_epochs,
+                'validation_total_steps': self.validation_total_steps,
+                'validation_time': self.validation_time,
+                'validation_time_per_epoch': self.validation_time_per_epoch,
+                'validation_time_per_step': self.validation_time_per_step,
+                'loss_epoch': self.loss_epoch,
+                'loss_training': self.loss_training,
+                'loss_validation': self.loss_validation,
+            }
+
+        elif self.role == 'test':
+            attributes = {
+                'test_batch_size': self.test_batch_size,
+                'test_total_data': self.test_total_data,
+                'test_total_epochs': self.test_total_epochs,
+                'test_total_steps': self.test_total_steps,
+                'test_time': self.test_time,
+                'test_time_per_epoch': self.test_time_per_epoch,
+                'test_time_per_step': self.test_time_per_step,
+            }
+
+        elif self.role == 'samples':
+            attributes = {
+                'samples': self.samples,
+            }
+
+        return attributes
 
     def set_training_info(self,
                           history,

@@ -81,35 +81,6 @@ class Augmentor():
 
     def __repr__(self):
         """
-        Returns a JSON-formatted string representation of the object.
-
-        Returns
-        -------
-        str
-            A JSON-formatted string containing the object's attributes.
-        """
-
-        attributes = {
-            'elastic_transform': self.elastic_transform_params,
-            'erosion': self.erosion_params,
-            'dilation': self.dilation_params,
-            'mixup': self.mixup_params,
-            'perspective_transform': self.perspective_transform_params,
-            'gaussian_blur': self.gaussian_blur_params,
-            'shearing': self.shearing_params,
-            'scaling': self.scaling_params,
-            'rotation': self.rotation_params,
-            'translation': self.translation_params,
-            'salt_and_pepper': self.salt_and_pepper_params,
-            'pad_value': self.pad_value,
-            'disable_augmentation': self.disable_augmentation,
-            'seed': self.seed,
-        }
-
-        return attributes
-
-    def __str__(self):
-        """
         Returns a string representation of the object with useful information.
 
         Returns
@@ -143,6 +114,35 @@ class Augmentor():
         info = '\n'.join([x.strip() for x in info.splitlines()])
 
         return info
+
+    def to_dict(self):
+        """
+        Convert the class object attributes to a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary with the class attributes.
+        """
+
+        attributes = {
+            'elastic_transform': self.elastic_transform_params,
+            'erosion': self.erosion_params,
+            'dilation': self.dilation_params,
+            'mixup': self.mixup_params,
+            'perspective_transform': self.perspective_transform_params,
+            'gaussian_blur': self.gaussian_blur_params,
+            'shearing': self.shearing_params,
+            'scaling': self.scaling_params,
+            'rotation': self.rotation_params,
+            'translation': self.translation_params,
+            'salt_and_pepper': self.salt_and_pepper_params,
+            'pad_value': self.pad_value,
+            'disable_augmentation': self.disable_augmentation,
+            'seed': self.seed,
+        }
+
+        return attributes
 
     def augmentation(self, image, batch_images=None):
         """
