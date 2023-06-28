@@ -115,8 +115,8 @@ if __name__ == '__main__':
     parser.add_argument('--top-paths', default=1, type=int,
                         help="Number of top paths to prediction")
 
-    parser.add_argument('--share-top-paths', default=True, action='store_true',
-                        help="Consider previous paths for each path metrics")
+    parser.add_argument('--share-top-paths', default=False, action='store_true',
+                        help="Consider previous paths to the metrics")
 
     # Inference
     parser.add_argument('--infer', default=False, action='store_true',
