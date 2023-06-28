@@ -776,6 +776,7 @@ class Logger():
                 Total Data                  {self.training_total_data}
                 Total Epochs                {self.training_total_epochs}
                 Total Steps                 {self.training_total_steps}
+
                 Time                        {self.training_time}
                 Time per Epoch              {self.training_time_per_epoch}
                 Time per Step               {self.training_time_per_step}
@@ -799,6 +800,7 @@ class Logger():
                 Total Data                  {self.test_total_data}
                 Total Epochs                {self.test_total_epochs}
                 Total Steps                 {self.test_total_steps}
+
                 Time                        {self.test_time}
                 Time per Epoch              {self.test_time_per_epoch}
                 Time per Step               {self.test_time_per_step}
@@ -916,7 +918,7 @@ class Logger():
             The total training time.
         """
 
-        training_total_data = np.sum([len(next(training_data)) for _ in range(training_steps)])
+        training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
 
         self.training_total_data = training_total_data
         self.training_total_steps = training_steps
@@ -948,7 +950,7 @@ class Logger():
             The total test time.
         """
 
-        test_total_data = np.sum([len(next(test_data)) for _ in range(test_steps)])
+        test_total_data = np.sum([len(next(test_data)[0]) for _ in range(test_steps)])
 
         self.test_total_data = test_total_data
         self.test_total_epochs = 1
