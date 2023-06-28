@@ -74,10 +74,8 @@ def train(args):
                                    verbose=1)
 
     baseline_metrics, _ = model.evaluate(dataset.test,
-                                         predictions=predictions,
-                                         share_top_paths=args.share_top_paths,
-                                         prediction_samples=args.prediction_samples,
-                                         origin='baseline')
+                                         baseline_predictions=predictions,
+                                         share_top_paths=args.share_top_paths)
 
     model.save_context(dataset=dataset, augmentor=augmentor, baseline_metrics=baseline_metrics)
 
@@ -89,10 +87,8 @@ def train(args):
         spelling_predictions = spelling.enhance(predictions)
 
         spelling_metrics, _ = model.evaluate(dataset.test,
-                                             predictions=spelling_predictions,
-                                             share_top_paths=args.share_top_paths,
-                                             prediction_samples=args.prediction_samples,
-                                             origin=args.spell_checker)
+                                             spelling_predictions=spelling_predictions,
+                                             share_top_paths=args.share_top_paths)
 
         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
