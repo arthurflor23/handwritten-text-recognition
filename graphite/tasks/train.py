@@ -94,6 +94,6 @@ def train(args):
                                              prediction_samples=args.prediction_samples,
                                              origin=args.spell_checker)
 
-        model.save_context(spelling_metrics=spelling_metrics)
+        model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
     print(model.test_logger)
