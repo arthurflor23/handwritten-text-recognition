@@ -118,9 +118,6 @@ if __name__ == '__main__':
     parser.add_argument('--share-top-paths', default=True, action='store_true',
                         help="Consider previous paths for each path metrics")
 
-    parser.add_argument('--prediction-samples', default=10, type=int,
-                        help="Retrieve N samples from evaluation")
-
     # Inference
     parser.add_argument('--infer', default=False, action='store_true',
                         help="Perform inference process")
