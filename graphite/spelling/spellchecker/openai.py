@@ -20,7 +20,7 @@ class SpellChecker():
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
 
-    def enhance_text(self, text, instruction=None):
+    def enhance_text(self, text, instruction):
         """
         Makes a request to the OpenAI API.
 
@@ -28,7 +28,7 @@ class SpellChecker():
         ----------
         text : str
             The prompt for the API.
-        instruction : str, optional
+        instruction : str
             The instruction to be followed by the API.
 
         Returns
@@ -36,13 +36,6 @@ class SpellChecker():
         response : str
             The API response.
         """
-
-        if instruction is None:
-            instruction = """
-                Correct spelling errors, including accents.
-                The following texts contain errors from a handwriting recognition model.
-                Preserve slang, historical terms, and grammar. Make only confident changes.
-            """
 
         retry_limit = 10
         retry_sleep = 10
@@ -52,7 +45,7 @@ class SpellChecker():
             try:
                 response = openai.Edit.create(engine='text-davinci-edit-001',
                                               instruction=' '.join(instruction.split()),
-                                              input=text or '',
+                                              input=text,
                                               temperature=0,
                                               top_p=1,
                                               n=1)
@@ -65,7 +58,7 @@ class SpellChecker():
                 print(err)
                 print(f"Request failed. Retrying... (Attempt {retry_count}/{retry_limit})")
 
-                retry_sleep += 30
+                retry_sleep += 10
                 time.sleep(retry_sleep)
 
         return text

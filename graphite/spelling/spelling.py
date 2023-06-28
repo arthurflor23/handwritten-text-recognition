@@ -59,6 +59,7 @@ class Spelling():
         info = f"""
             Spelling Configuration\n
             Spell Checker           {self.spell_checker}
+            API Key                 {'*****' if self.api_key else '-'}
             Environment Key         {self.env_key or '-'}
             Environment Path        {self.dotenv_path or '-'}
         """
@@ -105,18 +106,25 @@ class Spelling():
         if not self.spell_checker:
             return predictions
 
-        max_tokens = 2048
+        if instruction is None:
+            instruction = """
+                Correct spelling errors, including accents.
+                The following texts contain errors from a handwriting recognition model.
+                Preserve slang, historical terms, and grammar. Make only confident changes.
+            """
+
+        max_tokens = 2560
 
         encoding = tiktoken.get_encoding('gpt2')
         enhanced = []
 
-        for texts in predictions:
+        for i, top_path in enumerate(predictions):
             tokens_length = 0
             batches = [[]]
 
-            for i, text in enumerate(texts):
-                for j, line in enumerate(text):
-                    pp_text = f'<{i}.{j}>{line}</{i}.{j}>'
+            for j, text in enumerate(top_path):
+                for u, line in enumerate(text):
+                    pp_text = f'<{j}.{u}> {line} </{j}.{u}>'
                     pp_text_tokens_length = len(encoding.encode(pp_text))
 
                     if tokens_length + pp_text_tokens_length > max_tokens:
@@ -127,19 +135,19 @@ class Spelling():
 
                     batches[-1].append(pp_text)
 
-            print(f"Total batches: {len(batches)}")
+            print(f"Enhance top path {i + 1} (batches: {len(batches)})")
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(self._spell_checker.enhance_text,
                                            '\n'.join(x), instruction) for x in batches]
-                enhanced_batches = [future.result() for future in futures]
+                enhanced_data = '\n'.join([future.result() for future in futures])
 
-            enhanced_texts = copy.deepcopy(texts)
             pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
+            matches = pattern.findall(enhanced_data)
 
-            for enhanced_batch in enhanced_batches:
-                matches = pattern.findall(enhanced_batch)
+            enhanced_texts = copy.deepcopy(top_path)
 
+            if len(matches) == len(enhanced_texts):
                 for match in matches:
                     tags = [int(x) for x in match[0].split('.')]
                     enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
