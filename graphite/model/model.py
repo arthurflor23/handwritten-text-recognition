@@ -144,6 +144,7 @@ class Model():
     def save_context(self,
                      dataset=None,
                      augmentor=None,
+                     spelling=None,
                      baseline_metrics=None,
                      spelling_metrics=None):
         """
@@ -152,9 +153,11 @@ class Model():
         Parameters
         ----------
         dataset : object, optional
-            The dataset used in the current run. Default is None.
+            The dataset used. Default is None.
         augmentor : object, optional
             The data augmentor used. Default is None.
+        spelling : object, optional
+            The spelling used. Default is None.
         baseline_metrics : list of tuples, optional
             The metrics obtained. Default is None.
         spelling_metrics : list of tuples, optional
@@ -206,6 +209,7 @@ class Model():
                 **(dataset.to_dict() if dataset is not None else {}),
                 **(dataset.tokenizer.to_dict() if dataset is not None else {}),
                 **(augmentor.to_dict() if augmentor is not None else {}),
+                **(spelling.to_dict() if spelling is not None else {}),
                 **self.to_dict(),
                 **(self.training_logger.to_dict() if self.training_logger.touched else {}),
                 **(self.test_logger.to_dict() if self.test_logger.touched else {}),
@@ -218,6 +222,7 @@ class Model():
                 (dataset if dataset is not None else None, 'dataset.log'),
                 (dataset.tokenizer if dataset is not None else None, 'tokenizer.log'),
                 (augmentor if augmentor is not None else None, 'augmentor.log'),
+                (spelling if spelling is not None else None, 'spelling.log'),
                 (self, 'model.log'),
                 (self.training_logger if self.training_logger.touched else None, 'training.log'),
                 (self.test_logger if self.test_logger.touched else None, 'test.log'),
