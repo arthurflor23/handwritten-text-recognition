@@ -3,6 +3,11 @@ import argparse
 
 
 if __name__ == '__main__':
+    """
+    Main entry point of the program. It parses the command-line arguments and
+    triggers the appropriate task (train, test, infer, or check) based on those arguments.
+    """
+
     parser = argparse.ArgumentParser()
 
     # Dataset
