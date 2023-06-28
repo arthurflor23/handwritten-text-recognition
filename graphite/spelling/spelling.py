@@ -116,7 +116,7 @@ class Spelling():
         max_tokens = 2560
 
         encoding = tiktoken.get_encoding('gpt2')
-        enhanced = []
+        enhanced_top_paths = []
 
         for i, top_path in enumerate(predictions):
             tokens_length = 0
@@ -152,11 +152,11 @@ class Spelling():
                     tags = [int(x) for x in match[0].split('.')]
                     enhanced_texts[tags[0]][tags[1]] = match[1].replace('\n', '').strip()
 
-            enhanced.append(enhanced_texts)
+            enhanced_top_paths.append(enhanced_texts)
 
-        enhanced = np.array(enhanced, dtype=object)
+        enhanced_top_paths = np.array(enhanced_top_paths, dtype=object)
 
-        return enhanced
+        return enhanced_top_paths
 
     def _import_spell_checker(self, spell_checker):
 
