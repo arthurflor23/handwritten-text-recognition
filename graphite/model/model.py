@@ -11,8 +11,6 @@ import numpy as np
 import editdistance
 import tensorflow as tf
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 
 class Model():
     """
@@ -375,12 +373,8 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.training_logger.set_training_info(history.history,
-                                               training_data,
-                                               training_steps,
-                                               validation_data,
-                                               validation_steps,
-                                               total_time)
+        self.training_logger.set_loss_info(history.history)
+        self.training_logger.set_training_info(training_data, training_steps, total_time)
 
         return history
 
@@ -734,40 +728,32 @@ class Logger():
         self.role = role
         self.touched = False
 
-        # training
-        self.training_batch_size = 0
+        # Training
         self.training_total_data = 0
         self.training_total_epochs = 0
         self.training_total_steps = 0
         self.training_time = 0
         self.training_time_per_epoch = 0
         self.training_time_per_step = 0
-
-        self.validation_batch_size = 0
-        self.validation_total_data = 0
-        self.validation_total_epochs = 0
-        self.validation_total_steps = 0
-        self.validation_time = 0
-        self.validation_time_per_epoch = 0
-        self.validation_time_per_step = 0
+        self.training_time_per_item = 0
 
         self.loss_epoch = 0
         self.loss_training = 0
         self.loss_validation = 0
         self.loss_history = []
 
-        # test
-        self.test_batch_size = 0
+        # Test
         self.test_total_data = 0
         self.test_total_epochs = 0
         self.test_total_steps = 0
         self.test_time = 0
         self.test_time_per_epoch = 0
         self.test_time_per_step = 0
+        self.test_time_per_item = 0
 
         self.evaluation = {}
 
-        # samples
+        # Evaluations
         self.samples = {}
 
     def __repr__(self):
@@ -787,22 +773,13 @@ class Logger():
 
             info = f"""
                 Training\n
-                Batch Size                  {self.training_batch_size}
                 Total Data                  {self.training_total_data}
                 Total Epochs                {self.training_total_epochs}
                 Total Steps                 {self.training_total_steps}
                 Time                        {self.training_time}
                 Time per Epoch              {self.training_time_per_epoch}
                 Time per Step               {self.training_time_per_step}
-
-                Validation\n
-                Batch Size                  {self.validation_batch_size}
-                Total Data                  {self.validation_total_data}
-                Total Epochs                {self.validation_total_epochs}
-                Total Steps                 {self.validation_total_steps}
-                Time                        {self.validation_time}
-                Time per Epoch              {self.validation_time_per_epoch}
-                Time per Step               {self.validation_time_per_step}
+                Time per Item               {self.training_time_per_item}
 
                 Loss\n
                 Best Epoch Loss             {self.loss_epoch}
@@ -819,13 +796,13 @@ class Logger():
 
             info = f"""
                 Test\n
-                Batch Size                  {self.test_batch_size}
                 Total Data                  {self.test_total_data}
                 Total Epochs                {self.test_total_epochs}
                 Total Steps                 {self.test_total_steps}
                 Time                        {self.test_time}
                 Time per Epoch              {self.test_time_per_epoch}
                 Time per Step               {self.test_time_per_step}
+                Time per Item               {self.test_time_per_item}
 
                 Evaluation\n\n              {evaluation or '-'}
             """
@@ -851,20 +828,13 @@ class Logger():
 
         if self.role == 'training':
             attributes = {
-                'training_batch_size': self.training_batch_size,
                 'training_total_data': self.training_total_data,
                 'training_total_epochs': self.training_total_epochs,
                 'training_total_steps': self.training_total_steps,
                 'training_time': self.training_time,
                 'training_time_per_epoch': self.training_time_per_epoch,
                 'training_time_per_step': self.training_time_per_step,
-                'validation_batch_size': self.validation_batch_size,
-                'validation_total_data': self.validation_total_data,
-                'validation_total_epochs': self.validation_total_epochs,
-                'validation_total_steps': self.validation_total_steps,
-                'validation_time': self.validation_time,
-                'validation_time_per_epoch': self.validation_time_per_epoch,
-                'validation_time_per_step': self.validation_time_per_step,
+                'training_time_per_item': self.training_time_per_item,
                 'loss_epoch': self.loss_epoch,
                 'loss_training': self.loss_training,
                 'loss_validation': self.loss_validation,
@@ -872,13 +842,13 @@ class Logger():
 
         elif self.role == 'test':
             attributes = {
-                'test_batch_size': self.test_batch_size,
                 'test_total_data': self.test_total_data,
                 'test_total_epochs': self.test_total_epochs,
                 'test_total_steps': self.test_total_steps,
                 'test_time': self.test_time,
                 'test_time_per_epoch': self.test_time_per_epoch,
                 'test_time_per_step': self.test_time_per_step,
+                'test_time_per_item': self.test_time_per_item,
             }
 
         elif self.role == 'samples':
@@ -888,34 +858,18 @@ class Logger():
 
         return attributes
 
-    def set_training_info(self,
-                          history,
-                          training_data,
-                          training_steps,
-                          validation_data,
-                          validation_steps,
-                          total_time):
+    def set_loss_info(self, loss_history):
         """
         Set the training information.
 
         Parameters
         ----------
-        history : dict
+        loss_history : dict
             The training history object.
-        training_data : data generator
-            The training data.
-        training_steps : int
-            The number of training steps per epoch.
-        validation_data : data generator
-            The validation data.
-        validation_steps : int
-            The number of validation steps per epoch.
-        total_time : float
-            The total training time.
         """
 
-        loss = history['loss']
-        val_loss = history['val_loss']
+        loss = loss_history['loss']
+        val_loss = loss_history['val_loss']
 
         best_val_loss = np.inf
         best_loss = None
@@ -946,22 +900,37 @@ class Logger():
         self.loss_training = best_loss
         self.loss_validation = best_val_loss
 
-        training_batch_size = len(next(training_data)[0])
-        validation_batch_size = len(next(validation_data)[0])
+        self.touched = True
 
-        self.training_batch_size = training_batch_size
-        self.training_total_data = training_batch_size * training_steps
+    def set_training_info(self, training_data, training_steps, total_time):
+        """
+        Set the training information.
+
+        Parameters
+        ----------
+        training_data : data generator
+            The training data.
+        training_steps : int
+            The number of training steps.
+        total_time : float
+            The total training time.
+        """
+
+        training_total_data = np.sum([len(next(training_data)) for _ in training_steps])
+
+        self.training_total_data = training_total_data
         self.training_total_steps = training_steps
-        self.training_time = str(datetime.timedelta(seconds=total_time))
-        self.training_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.training_total_epochs))
-        self.training_time_per_step = str(datetime.timedelta(seconds=total_time / self.training_total_steps))
 
-        self.validation_batch_size = validation_batch_size
-        self.validation_total_data = validation_batch_size * validation_steps
-        self.validation_total_steps = validation_steps
-        self.validation_time = str(datetime.timedelta(seconds=total_time))
-        self.validation_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.validation_total_epochs))
-        self.validation_time_per_step = str(datetime.timedelta(seconds=total_time / self.validation_total_steps))
+        self.training_time = str(datetime.timedelta(seconds=total_time))
+
+        time_per_epoch = total_time / self.training_total_epochs
+        self.training_time_per_epoch = str(datetime.timedelta(seconds=time_per_epoch))
+
+        time_per_step = total_time / self.training_total_steps
+        self.training_time_per_step = str(datetime.timedelta(seconds=time_per_step))
+
+        time_per_item = total_time / (self.training_total_epochs * self.training_total_data)
+        self.training_time_per_item = str(datetime.timedelta(seconds=time_per_item))
 
         self.touched = True
 
@@ -979,15 +948,22 @@ class Logger():
             The total test time.
         """
 
-        test_batch_size = len(next(test_data)[0])
+        test_total_data = np.sum([len(next(test_data)) for _ in test_steps])
 
-        self.test_batch_size = test_batch_size
-        self.test_total_data = test_batch_size * test_steps
+        self.test_total_data = test_total_data
         self.test_total_epochs = 1
-        self.test_total_steps = test_steps
+        self.test_total_steps = self.test_total_epochs * test_steps
+
         self.test_time = str(datetime.timedelta(seconds=total_time))
-        self.test_time_per_epoch = str(datetime.timedelta(seconds=total_time / self.test_total_epochs))
-        self.test_time_per_step = str(datetime.timedelta(seconds=total_time / self.test_total_steps))
+
+        time_per_epoch = total_time / self.test_total_epochs
+        self.test_time_per_epoch = str(datetime.timedelta(seconds=time_per_epoch))
+
+        time_per_step = total_time / self.test_total_steps
+        self.test_time_per_step = str(datetime.timedelta(seconds=time_per_step))
+
+        time_per_item = total_time / (self.test_total_epochs * self.test_total_data)
+        self.test_time_per_item = str(datetime.timedelta(seconds=time_per_item))
 
         self.touched = True
 
