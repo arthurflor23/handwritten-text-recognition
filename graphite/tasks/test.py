@@ -26,7 +26,7 @@ def test(args):
     print(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
-    model.load_context(run_index=args.run_index)
+    model.compile(run_index=args.run_index)
 
     print(model)
 

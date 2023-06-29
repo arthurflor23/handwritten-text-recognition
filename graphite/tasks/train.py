@@ -40,9 +40,7 @@ def train(args):
     print(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
-
-    model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
-    model.load_context(run_index=args.run_index)
+    model.compile(run_index=args.run_index, tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
 
     print(model)
 
