@@ -148,6 +148,9 @@ if __name__ == '__main__':
     if args.train or args.test or args.infer:
         assert args.network is not None, "network must be defined"
 
+    if args.test or args.infer:
+        assert args.run_index is not None, "run index must be defined"
+
     # Tasks
     if args.train:
         tasks.train(args)
