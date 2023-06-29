@@ -151,6 +151,9 @@ if __name__ == '__main__':
     if args.test or args.infer:
         assert args.run_index is not None, "run index must be defined"
 
+    if args.infer:
+        assert len(args.images) > 0, "images must be defined"
+
     # Tasks
     if args.train:
         tasks.train(args)
