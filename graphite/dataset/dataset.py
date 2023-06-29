@@ -81,6 +81,8 @@ class Dataset():
         self.max_cols = -np.inf
 
         if infer_data is None:
+            self._extract_data(self.source)
+
             self._source = self._import_source(self.source)
             self._source = self._source(self.artifact_path)
 
@@ -222,7 +224,7 @@ class Dataset():
                 y_data = batch_data[:, 2]
 
                 if self.lazy_mode:
-                    x_data = [self.read_image(data[0], data[1]) for data in batch_data]
+                    x_data = [self._read_image(data[0], data[1]) for data in batch_data]
 
                 if augmentor:
                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
@@ -241,68 +243,21 @@ class Dataset():
 
         return batch_generator, steps_per_epoch
 
-    def read_image(self, image_path, bbox=None):
+    def _extract_data(self, source):
         """
-        Read an image from the given file path and perform optional bbox.
+        Extracts a .zip file into a directory if the directory doesn't exist yet.
 
         Parameters
         ----------
-        image_path : str
-            The path to the image file.
-        bbox : tuple, optional
-            The bbox coordinates (x, y, width, height). Default is None.
-
-        Returns
-        -------
-        numpy.ndarray
-            The loaded image as a NumPy array.
+        source : str
+            The base name of the .zip file and target directory.
         """
 
-        if not isinstance(image_path, str):
-            return image_path
+        data_folder = os.path.join(self.artifact_path, source)
+        data_zip = os.path.join(self.artifact_path, f"{source}.zip")
 
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-        if bbox is None or len(bbox) != 4:
-            return image
-
-        x, y, width, height = bbox
-
-        # String
-        if isinstance(x, str):
-            x = float(x) if '.' in x else int(x)
-
-        if isinstance(y, str):
-            y = float(y) if '.' in y else int(y)
-
-        if isinstance(width, str):
-            width = float(width) if '.' in width else int(width)
-
-        if isinstance(height, str):
-            height = float(height) if '.' in height else int(height)
-
-        # Number
-        if isinstance(x, float):
-            x = int(x * image.shape[1])
-
-        if isinstance(y, float):
-            y = int(y * image.shape[0])
-
-        if isinstance(width, float):
-            width = int(width * image.shape[1])
-
-        if isinstance(height, float):
-            height = int(height * image.shape[0])
-
-        y = max(0, abs(y - 10))
-        x = max(0, abs(x - 10))
-
-        height = min(image.shape[0], (height + 10))
-        width = min(image.shape[1], (width + 10))
-
-        image = image[y:y+height, x:x+width]
-
-        return image
+        if not os.path.exists(data_folder) and os.path.isfile(data_zip):
+            os.system(f'unzip -q "{data_zip}" -d "{self.artifact_path}"')
 
     def _import_source(self, source):
         """
@@ -472,15 +427,15 @@ class Dataset():
         image_path, bbox, label = item
         image = None
 
-        if os.path.exists(image_path) and os.path.isfile(image_path):
+        if os.path.exists(image_path):
             try:
-                image = self.read_image(image_path, bbox)
+                image = self._read_image(image_path, bbox)
 
             except Exception:
                 print(f"Image `{os.path.basename(image_path)}` cannot be read.")
                 return None
         else:
-            print(f"Image `{os.path.basename(image_path)}` does not exist or is not a file.")
+            print(f"Image `{os.path.basename(image_path)}` does not exist.")
             return None
 
         if image is None or image.size == 0:
@@ -496,6 +451,69 @@ class Dataset():
         image = image_path if self.lazy_mode else image
 
         return [image_path, bbox, label], [image, bbox, label]
+
+    def _read_image(self, image_path, bbox=None):
+        """
+        Read an image from the given file path and perform optional bbox.
+
+        Parameters
+        ----------
+        image_path : str
+            The path to the image file.
+        bbox : tuple, optional
+            The bbox coordinates (x, y, width, height). Default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            The loaded image as a NumPy array.
+        """
+
+        if not isinstance(image_path, str):
+            return image_path
+
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+        if bbox is None or len(bbox) != 4:
+            return image
+
+        x, y, width, height = bbox
+
+        # String
+        if isinstance(x, str):
+            x = float(x) if '.' in x else int(x)
+
+        if isinstance(y, str):
+            y = float(y) if '.' in y else int(y)
+
+        if isinstance(width, str):
+            width = float(width) if '.' in width else int(width)
+
+        if isinstance(height, str):
+            height = float(height) if '.' in height else int(height)
+
+        # Number
+        if isinstance(x, float):
+            x = int(x * image.shape[1])
+
+        if isinstance(y, float):
+            y = int(y * image.shape[0])
+
+        if isinstance(width, float):
+            width = int(width * image.shape[1])
+
+        if isinstance(height, float):
+            height = int(height * image.shape[0])
+
+        y = max(0, abs(y - 10))
+        x = max(0, abs(x - 10))
+
+        height = min(image.shape[0], (height + 10))
+        width = min(image.shape[1], (width + 10))
+
+        image = image[y:y+height, x:x+width]
+
+        return image
 
     def _format_text(self, text):
         """
