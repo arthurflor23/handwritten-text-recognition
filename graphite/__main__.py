@@ -132,12 +132,19 @@ if __name__ == '__main__':
     parser.add_argument('--check', default=False, action='store_true',
                         help="Perform data verification")
 
-    # Others
+    # MLflow
     parser.add_argument('--experiment-name', default='Default',
                         help="Define MLflow experiment name")
 
     parser.add_argument('--run-index', default=None, type=int,
                         help="Specify run index")
+
+    # Others
+    parser.add_argument('--seed', default=42, type=int,
+                        help="Seed value for training process")
+
+    parser.add_argument('--verbose', default=1, type=int,
+                        help="Verbosity mode")
 
     args = parser.parse_args()
 
