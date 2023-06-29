@@ -146,8 +146,8 @@ class Model():
     def save_context(self,
                      dataset=None,
                      augmentor=None,
-                     metrics=None,
-                     enhanced_metrics=None):
+                     baseline_metrics=None,
+                     spelling_metrics=None):
         """
         Logs the context of the run including metrics, parameters, and artifacts.
 
@@ -157,10 +157,10 @@ class Model():
             The dataset used in the current run. Default is None.
         augmentor : object, optional
             The data augmentor used. Default is None.
-        metrics : list of tuples, optional
+        baseline_metrics : list of tuples, optional
             The metrics obtained. Default is None.
-        enhanced_metrics : list of tuples, optional
-            The enhanced metrics obtained. Default is None.
+        spelling_metrics : list of tuples, optional
+            The metrics obtained from spelling. Default is None.
         """
 
         run_id = None
@@ -180,28 +180,28 @@ class Model():
             mlflow.set_tags({'mlflow.network': self.network})
 
             # Metrics
-            if metrics is not None:
+            if baseline_metrics is not None:
                 dict_metrics = {}
 
-                for i, metric in enumerate(metrics):
-                    dict_metrics[f"top_path_{i+1}_cer"] = metric[0]
-                    dict_metrics[f"top_path_{i+1}_wer"] = metric[1]
-                    dict_metrics[f"top_path_{i+1}_ler"] = metric[2]
-                    dict_metrics[f"top_path_{i+1}_ser"] = metric[3]
+                for i, metric in enumerate(baseline_metrics):
+                    dict_metrics[f"baseline_top_path_{i+1}_cer"] = metric[0]
+                    dict_metrics[f"baseline_top_path_{i+1}_wer"] = metric[1]
+                    dict_metrics[f"baseline_top_path_{i+1}_ler"] = metric[2]
+                    dict_metrics[f"baseline_top_path_{i+1}_ser"] = metric[3]
 
                 mlflow.log_metrics(metrics=dict_metrics)
 
-            # Enhanced Metrics
-            if enhanced_metrics is not None:
-                dict_enhanced_metrics = {}
+            # Metrics from spelling
+            if spelling_metrics is not None:
+                dict_metrics = {}
 
-                for i, metric in enumerate(enhanced_metrics):
-                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_cer"] = metric[0]
-                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_wer"] = metric[1]
-                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ler"] = metric[2]
-                    dict_enhanced_metrics[f"enhanced_top_path_{i+1}_ser"] = metric[3]
+                for i, metric in enumerate(spelling_metrics):
+                    dict_metrics[f"spelling_top_path_{i+1}_cer"] = metric[0]
+                    dict_metrics[f"spelling_top_path_{i+1}_wer"] = metric[1]
+                    dict_metrics[f"spelling_top_path_{i+1}_ler"] = metric[2]
+                    dict_metrics[f"spelling_top_path_{i+1}_ser"] = metric[3]
 
-                mlflow.log_metrics(metrics=dict_enhanced_metrics)
+                mlflow.log_metrics(metrics=dict_metrics)
 
             # Parameters
             dict_params = {
@@ -217,24 +217,24 @@ class Model():
 
             # Logs
             filelogs = [
-                (dataset if dataset is not None else None, 'dataset.log', 'w'),
-                (dataset.tokenizer if dataset is not None else None, 'tokenizer.log', 'w'),
-                (augmentor if augmentor is not None else None, 'augmentor.log', 'w'),
-                (self, 'model.log', 'w'),
-                (self.training_logger if self.training_logger.touched else None, 'training.log', 'w'),
-                (self.test_logger if self.test_logger.touched else None, 'test.log', 'a'),
-                (self.samples_logger if self.samples_logger.touched else None, 'samples.log', 'w'),
+                (dataset if dataset is not None else None, 'dataset.log'),
+                (dataset.tokenizer if dataset is not None else None, 'tokenizer.log'),
+                (augmentor if augmentor is not None else None, 'augmentor.log'),
+                (self, 'model.log'),
+                (self.training_logger if self.training_logger.touched else None, 'training.log'),
+                (self.test_logger if self.test_logger.touched else None, 'test.log'),
+                (self.samples_logger if self.samples_logger.touched else None, 'samples.log'),
             ]
 
-            for log, filename, open_mode in filelogs:
+            for log, filename in filelogs:
                 if log is None:
                     continue
 
                 log_uri = os.path.join(artifacts_uri, 'logs', filename)
                 os.makedirs(os.path.dirname(log_uri), exist_ok=True)
 
-                with open(log_uri, open_mode) as f:
-                    f.write(str(log))
+                with open(log_uri, 'w') as f:
+                    f.write(str(log).strip())
 
                 mlflow.log_artifact(log_uri, artifact_path='logs')
 
@@ -256,14 +256,14 @@ class Model():
                 self.model.save(model_uri)
                 mlflow.log_artifact(model_uri, artifact_path='artifacts')
 
-    def load_context(self, run_index=None):
+    def load_context(self, run_index):
         """
         Load the context from the MLflow experiment.
 
         Parameters
         ----------
-        run_index : int, optional
-            The run index which the context will be loaded. If None, the last run is used. Default is None.
+        run_index : int
+            The run index which the context will be loaded.
         """
 
         runs_df = mlflow.search_runs(experiment_ids=[self.experiment.experiment_id],
@@ -274,7 +274,6 @@ class Model():
             print("No runs found.")
             return
 
-        run_index = -1 if run_index is None else run_index
         run = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
 
         model_uri = os.path.join(run.info.artifact_uri, 'artifacts', 'model.keras')
@@ -471,7 +470,7 @@ class Model():
                  predictions,
                  share_top_paths=True,
                  prediction_samples=10,
-                 origin='vanilla'):
+                 origin='baseline'):
         """
         Computes error metrics based on model's predictions.
 
@@ -486,7 +485,7 @@ class Model():
         prediction_samples : int, optional
             Number of samples for retrieve from evaluation. Default is 10.
         origin : str, optional
-            Indicates the origin name. Default is vanilla.
+            Indicates the origin name. Default is 'baseline'.
 
         Returns
         -------
@@ -839,28 +838,29 @@ class Logger():
 
             info = f"""
                 Training\n
-                Training Batch Size                {self.training_batch_size}
-                Training Total Data                {self.training_total_data}
-                Training Total Epochs              {self.training_total_epochs}
-                Training Total Steps               {self.training_total_steps}
-                Training Time                      {self.training_time}
-                Training Time per Epoch            {self.training_time_per_epoch}
-                Training Time per Step             {self.training_time_per_step}
+                Batch Size                  {self.training_batch_size}
+                Total Data                  {self.training_total_data}
+                Total Epochs                {self.training_total_epochs}
+                Total Steps                 {self.training_total_steps}
+                Time                        {self.training_time}
+                Time per Epoch              {self.training_time_per_epoch}
+                Time per Step               {self.training_time_per_step}
 
-                Validation Batch Size              {self.validation_batch_size}
-                Validation Total Data              {self.validation_total_data}
-                Validation Total Epochs            {self.validation_total_epochs}
-                Validation Total Steps             {self.validation_total_steps}
-                Validation Time                    {self.validation_time}
-                Validation Time per Epoch          {self.validation_time_per_epoch}
-                Validation Time per Step           {self.validation_time_per_step}
+                Validation\n
+                Batch Size                  {self.validation_batch_size}
+                Total Data                  {self.validation_total_data}
+                Total Epochs                {self.validation_total_epochs}
+                Total Steps                 {self.validation_total_steps}
+                Time                        {self.validation_time}
+                Time per Epoch              {self.validation_time_per_epoch}
+                Time per Step               {self.validation_time_per_step}
 
                 Loss\n
-                Best Loss Epoch                    {self.loss_epoch}
-                Best Loss Training                 {self.loss_training}
-                Best Loss Validation               {self.loss_validation}
+                Best Epoch Loss             {self.loss_epoch}
+                Best Training Loss          {self.loss_training}
+                Best Validation Loss        {self.loss_validation}
 
-                Loss History\n\n                   {loss_history or '-'}
+                Loss History\n\n            {loss_history or '-'}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -870,15 +870,15 @@ class Logger():
 
             info = f"""
                 Test\n
-                Test Batch Size                    {self.test_batch_size}
-                Test Total Data                    {self.test_total_data}
-                Test Total Epochs                  {self.test_total_epochs}
-                Test Total Steps                   {self.test_total_steps}
-                Test Time                          {self.test_time}
-                Test Time per Epoch                {self.test_time_per_epoch}
-                Test Time per Step                 {self.test_time_per_step}
+                Batch Size                  {self.test_batch_size}
+                Total Data                  {self.test_total_data}
+                Total Epochs                {self.test_total_epochs}
+                Total Steps                 {self.test_total_steps}
+                Time                        {self.test_time}
+                Time per Epoch              {self.test_time_per_epoch}
+                Time per Step               {self.test_time_per_step}
 
-                Evaluation\n\n                     {evaluation or '-'}
+                Evaluation\n\n              {evaluation or '-'}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -991,7 +991,7 @@ class Logger():
 
         self.touched = True
 
-    def set_evaluation_info(self, metrics, origin='vanilla'):
+    def set_evaluation_info(self, metrics, origin='baseline'):
         """
         Set the evaluation information.
 
@@ -1000,7 +1000,7 @@ class Logger():
         metrics : data generator
             Error metrics from each top path.
         origin : str, optional
-            Indicates the origin name. Default is vanilla.
+            Indicates the origin name. Default is 'baseline'.
         """
 
         self.evaluation[origin] = ['top_path,cer,wer,ler,ser']
@@ -1010,7 +1010,7 @@ class Logger():
 
         self.touched = True
 
-    def set_samples_info(self, samples, origin='vanilla'):
+    def set_samples_info(self, samples, origin='baseline'):
         """
         Set the evaluation information.
 
@@ -1019,7 +1019,7 @@ class Logger():
         samples : int
             Samples retrieved from prediction.
         origin : str, optional
-            Indicates the origin name. Default is vanilla.
+            Indicates the origin name. Default is 'baseline'.
         """
 
         self.samples[origin] = []
