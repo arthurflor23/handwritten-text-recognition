@@ -816,8 +816,6 @@ class Logger():
                 Best Epoch Loss             {self.loss_epoch}
                 Best Training Loss          {self.loss_training}
                 Best Validation Loss        {self.loss_validation}
-
-                Loss History\n\n            {loss_history or '-'}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()])
@@ -907,7 +905,6 @@ class Logger():
             The training history object.
         """
 
-        # Loss
         loss = loss_history['loss']
         val_loss = loss_history['val_loss']
 
@@ -955,7 +952,6 @@ class Logger():
             The number of training steps.
         """
 
-        # Training
         training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
 
         self.training_total_epochs = len(loss_history['loss'])
