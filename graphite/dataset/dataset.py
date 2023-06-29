@@ -3,6 +3,7 @@ import re
 import cv2
 import html
 import string
+import zipfile
 import importlib
 import concurrent
 import numpy as np
@@ -257,7 +258,8 @@ class Dataset():
         data_zip = os.path.join(self.artifact_path, f"{source}.zip")
 
         if not os.path.exists(data_folder) and os.path.isfile(data_zip):
-            os.system(f'unzip -q "{data_zip}" -d "{self.artifact_path}"')
+            with zipfile.ZipFile(data_zip, 'r') as zip_ref:
+                zip_ref.extractall(self.artifact_path)
 
     def _import_source(self, source):
         """
