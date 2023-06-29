@@ -53,7 +53,7 @@ def check(args):
                                              raw_data=False,
                                              shuffle=False)
 
-    print("Checking samples...\n")
+    print("\nChecking samples...\n")
 
     while True:
         src_images, src_labels = next(src_generator)
@@ -75,7 +75,7 @@ def check(args):
                 print("Length", len(aug_labels[i][j]))
                 print([list(x) for x in aug_labels[i][j]])
 
-            print("\nPress Enter to continue or Esc to stop...\n")
+            print("\n\nPress Enter to continue or Esc to stop...\n")
             key = cv2.waitKey(0)
 
             if key == 27:
