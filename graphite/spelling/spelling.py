@@ -105,7 +105,7 @@ class Spelling():
         if not self.spell_checker:
             return predictions
 
-        max_tokens = 3000
+        max_tokens = 2048
 
         encoding = tiktoken.get_encoding('gpt2')
         enhanced = []
