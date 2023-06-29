@@ -22,7 +22,7 @@ class SpellChecker():
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
 
-    def enhance_predictions(self, instruction, predictions):
+    def enhance_predictions(self, instruction, predictions, verbose=1):
         """
         Enhances predictions via encoding, batching, API requesting, and updating.
 
@@ -32,6 +32,8 @@ class SpellChecker():
             Instructions for the API.
         predictions : list
             Predicted paths, each as a list of texts.
+        verbose : int, optional
+            Verbosity mode, by default 1.
 
         Returns
         -------
@@ -61,7 +63,8 @@ class SpellChecker():
 
                     batches[-1].append(pp_text)
 
-            print(f"Enhance top path {i + 1} (batches: {len(batches)})")
+            if verbose:
+                print(f"Enhance top path {i + 1} (batches: {len(batches)})")
 
             enhanced_data = '\n'.join([self._request_api(instruction, '\n'.join(x)) for x in batches])
 

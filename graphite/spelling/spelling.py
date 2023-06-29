@@ -84,7 +84,7 @@ class Spelling():
 
         return attributes
 
-    def enhance(self, predictions, instruction=None):
+    def enhance(self, predictions, instruction=None, verbose=1):
         """
         Enhances predictions by correcting spelling errors.
 
@@ -94,6 +94,8 @@ class Spelling():
             The predictions to be enhanced.
         instruction : str, optional
             The instruction to be followed by the API.
+        verbose : int, optional
+            Verbosity mode, by default 1.
 
         Returns
         -------
@@ -109,7 +111,7 @@ class Spelling():
             """
 
         if self.spell_checker is not None:
-            predictions = self._spell_checker.enhance_predictions(instruction, predictions)
+            predictions = self._spell_checker.enhance_predictions(instruction, predictions, verbose)
             predictions = np.array(predictions, dtype=object)
 
         return predictions
