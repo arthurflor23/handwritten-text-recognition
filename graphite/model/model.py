@@ -120,22 +120,52 @@ class Model():
 
         return attributes
 
-    def compile(self, tokenizer, learning_rate=1e-3):
+    def compile(self, run_index=None, tokenizer=None, learning_rate=1e-3):
         """
         Compiles the model.
 
         Parameters
         ----------
+        run_index : int
+            The run index which the context will be loaded. Default is None.
         tokenizer : object
-            The Tokenizer object used for tokenizing the input data.
+            The Tokenizer object used for tokenizing the input data. Default is None.
         learning_rate : float, optional
-            The learning rate for the optimizer in the model, by default 1e-3.
+            The learning rate for the optimizer in the model. Default is 1e-3.
         """
+
+        model_uri = None
+
+        if run_index is not None:
+            runs_df = mlflow.search_runs(experiment_ids=[self.experiment.experiment_id],
+                                         filter_string=f"tags.mlflow.network='{self.network}'",
+                                         order_by=['tags.mlflow.runName ASC'])
+
+            if not runs_df.empty and run_index < len(runs_df):
+                self.run_context = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
+                artifacts_uri = os.path.join(self.run_context.info.artifact_uri, 'artifacts')
+
+                model_uri = os.path.join(artifacts_uri, 'model.keras')
+                tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
+
+                if os.path.isfile(model_uri) and os.path.isfile(tokenizer_uri):
+                    with open(tokenizer_uri, 'rb') as f:
+                        tokenizer = pickle.load(f)
+                else:
+                    print("Model or tokenizer files do not exist.")
+                    model_uri = None
+
+        if tokenizer is None:
+            print("Tokenizer is required.")
+            return
 
         self.tokenizer = tokenizer
 
         self.model = self._network(self.tokenizer.shape, self.pad_value)
         self.model = self.model.compile_model(learning_rate=learning_rate, loss_func=self.ctc_loss_func)
+
+        if model_uri is not None:
+            self.model.load_weights(model_uri)
 
         self.optimizer = self.model.optimizer.get_config()['name']
         self.learning_rate = self.model.optimizer.get_config()['learning_rate']
@@ -143,43 +173,6 @@ class Model():
         self.summary = []
         self.model.summary(print_fn=lambda x: self.summary.append(x))
         self.summary = '\n'.join(self.summary)
-
-    def load_context(self, run_index):
-        """
-        Load and compile the context from the MLflow experiment.
-
-        Parameters
-        ----------
-        run_index : int
-            The run index which the context will be loaded.
-        """
-
-        if run_index is None:
-            return
-
-        runs_df = mlflow.search_runs(experiment_ids=[self.experiment.experiment_id],
-                                     filter_string=f"tags.mlflow.network='{self.network}'",
-                                     order_by=['tags.mlflow.runName ASC'])
-
-        if runs_df.empty or run_index >= len(runs_df):
-            print("No runs found.")
-            return
-
-        self.run_context = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
-        artifacts_uri = os.path.join(self.run_context.info.artifact_uri, 'artifacts')
-
-        model_uri = os.path.join(artifacts_uri, 'model.keras')
-        tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
-
-        if not (os.path.isfile(model_uri) and os.path.isfile(tokenizer_uri)):
-            print("Model or tokenizer files do not exist.")
-            return
-
-        with open(tokenizer_uri, 'rb') as f:
-            self.tokenizer = pickle.load(f)
-
-        self.compile(self.tokenizer)
-        self.model.load_weights(model_uri)
 
     def save_context(self,
                      dataset=None,
