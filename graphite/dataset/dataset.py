@@ -20,7 +20,7 @@ class Dataset():
                  validation_ratio=None,
                  test_ratio=None,
                  pad_value=255,
-                 lazy_mode=True,
+                 lazy_mode=False,
                  infer_data=None,
                  artifact_path='data',
                  seed=None):
@@ -42,7 +42,7 @@ class Dataset():
         pad_value : int, optional
             Padding value. Default is 255.
         lazy_mode : bool, optional
-            Lazy mode flag for lazy loading process. Default is True.
+            Lazy mode flag for lazy loading process. Default is False.
         infer_data : list, optional
             Custom data for inference mode. Default is None.
         artifact_path : str, optional
