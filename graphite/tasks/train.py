@@ -40,12 +40,11 @@ def train(args):
     print(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
+
     model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
+    model.load_context(run_index=args.run_index)
 
     print(model)
-
-    if args.run_index is not None:
-        model.load_context(run_index=args.run_index)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
     valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
