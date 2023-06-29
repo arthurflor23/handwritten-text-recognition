@@ -20,12 +20,11 @@ def test(args):
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
-                      lazy_mode=args.lazy_mode,
-                      seed=42)
+                      lazy_mode=args.lazy_mode)
 
     print(dataset)
 
-    model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
+    model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
     print(model)
@@ -76,8 +75,6 @@ def test(args):
                 image = batch_data[i]
                 label = dataset.tokenizer.decode(batch_labels[i])
 
-                cv2.imshow("Test Image", image)
-
                 print("\nTest Label")
                 print('\n'.join(label))
 
@@ -91,6 +88,8 @@ def test(args):
                 pred_index += 1
 
                 print("\n\nPress Enter to continue or Esc to stop...\n")
+
+                cv2.imshow("Image", image)
                 key = cv2.waitKey(0)
 
                 if key == 27:
