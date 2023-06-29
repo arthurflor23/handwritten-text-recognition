@@ -19,9 +19,10 @@ def train(args):
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
-                      seed=42)
+                      seed=args.seed)
 
-    print(dataset)
+    if args.verbose:
+        print(dataset)
 
     augmentor = Augmentor(elastic_transform=args.elastic_transform,
                           erosion=args.erosion,
@@ -35,14 +36,16 @@ def train(args):
                           rotation=args.rotation,
                           translation=args.translation,
                           disable_augmentation=args.disable_augmentation,
-                          seed=42)
+                          seed=args.seed)
 
-    print(augmentor)
+    if args.verbose:
+        print(augmentor)
 
-    model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
+    model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
     model.compile(run_index=args.run_index, tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
 
-    print(model)
+    if args.verbose:
+        print(model)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
     valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size)
@@ -56,9 +59,10 @@ def train(args):
               plateau_cooldown=args.plateau_cooldown,
               plateau_patience=args.plateau_patience,
               patience=args.patience,
-              verbose=1)
+              verbose=args.verbose)
 
-    print(model.training_logger)
+    if args.verbose:
+        print(model.training_logger)
 
     test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size)
 
@@ -68,7 +72,7 @@ def train(args):
                                    beam_width=args.beam_width,
                                    ctc_decode=True,
                                    token_decode=True,
-                                   verbose=1)
+                                   verbose=args.verbose)
 
     baseline_metrics, _ = model.evaluate(dataset.test,
                                          baseline_predictions=predictions,
@@ -81,7 +85,7 @@ def train(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        spelling_predictions = spelling.enhance(predictions)
+        spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
         spelling_metrics, _ = model.evaluate(dataset.test,
                                              spelling_predictions=spelling_predictions,
@@ -89,4 +93,5 @@ def train(args):
 
         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
-    print(model.test_logger)
+    if args.verbose:
+        print(model.test_logger)

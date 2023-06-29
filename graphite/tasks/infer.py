@@ -20,12 +20,14 @@ def infer(args):
 
     dataset = Dataset(infer_data=infer_data)
 
-    print(dataset)
+    if args.verbose:
+        print(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
-    print(model)
+    if args.verbose:
+        print(model)
 
     infer_data, infer_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, shuffle=False)
 
@@ -35,17 +37,17 @@ def infer(args):
                                                beam_width=args.beam_width,
                                                ctc_decode=True,
                                                token_decode=True,
-                                               verbose=1)
+                                               verbose=args.verbose)
 
     if args.spell_checker:
         spelling = Spelling(spell_checker=args.spell_checker,
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        predictions = spelling.enhance(predictions)
+        predictions = spelling.enhance(predictions, verbose=args.verbose)
 
     for i in range(dataset.test['size']):
-        print("\nPath   Probability   Predict")
+        print("Path   Probability   Predict")
 
         for j in range(args.top_paths):
             probability = np.mean(probabilities[j][i])
@@ -54,7 +56,7 @@ def infer(args):
             print(f"{j+1:>4}   {probability:>11.2%}   {predict}")
 
         if args.check:
-            print("\n\nPress Enter to continue or Esc to stop...\n")
+            print("\nPress Enter to continue or Esc to stop...\n")
 
             cv2.imshow("Image", dataset.test['data'][i][0])
             key = cv2.waitKey(0)

@@ -22,12 +22,14 @@ def test(args):
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode)
 
-    print(dataset)
+    if args.verbose:
+        print(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
-    print(model)
+    if args.verbose:
+        print(model)
 
     test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, shuffle=False)
 
@@ -37,7 +39,7 @@ def test(args):
                                    beam_width=args.beam_width,
                                    ctc_decode=True,
                                    token_decode=True,
-                                   verbose=1)
+                                   verbose=args.verbose)
 
     baseline_metrics, _ = model.evaluate(dataset.test,
                                          baseline_predictions=predictions,
@@ -51,7 +53,7 @@ def test(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        spelling_predictions = spelling.enhance(predictions)
+        spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
         spelling_metrics, _ = model.evaluate(dataset.test,
                                              spelling_predictions=spelling_predictions,
@@ -60,7 +62,8 @@ def test(args):
         if not args.check:
             model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
-    print(model.test_logger)
+    if args.verbose:
+        print(model.test_logger)
 
     if args.check:
         print("\nChecking samples...\n")
