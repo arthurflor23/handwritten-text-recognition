@@ -268,6 +268,20 @@ class Dataset():
 
         x, y, width, height = bbox
 
+        # String
+        if isinstance(x, str):
+            x = float(x) if '.' in x else int(x)
+
+        if isinstance(y, str):
+            y = float(y) if '.' in y else int(y)
+
+        if isinstance(width, str):
+            width = float(width) if '.' in width else int(width)
+
+        if isinstance(height, str):
+            height = float(height) if '.' in height else int(height)
+
+        # Number
         if isinstance(x, float):
             x = int(x * image.shape[1])
 
@@ -451,6 +465,9 @@ class Dataset():
         tuple
             The loaded and validated data item.
         """
+
+        if len(item) == 0:
+            return [[], [], []], [[], [], []]
 
         image_path, bbox, label = item
         image = None
