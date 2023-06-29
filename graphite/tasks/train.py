@@ -4,6 +4,14 @@ from spelling import Spelling
 
 
 def train(args):
+    """
+    Trains a Model using a given Dataset and Augmentor.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        A namespace object that contains all the arguments required for training.
+    """
 
     dataset = Dataset(source=args.source,
                       level=args.level,
@@ -12,6 +20,7 @@ def train(args):
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
                       seed=42)
+
     print(dataset)
 
     augmentor = Augmentor(elastic_transform=args.elastic_transform,
@@ -27,10 +36,16 @@ def train(args):
                           translation=args.translation,
                           disable_augmentation=args.disable_augmentation,
                           seed=42)
+
     print(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=42)
     model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
+
+    print(model)
+
+    if args.run_index is not None:
+        model.load_context(run_index=args.run_index)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
     valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
@@ -46,6 +61,8 @@ def train(args):
               patience=args.patience,
               verbose=1)
 
+    print(model.training_logger)
+
     test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, augmentor=None)
 
     predictions, _ = model.predict(test_data=test_data,
@@ -55,29 +72,28 @@ def train(args):
                                    ctc_decode=True,
                                    token_decode=True,
                                    verbose=1)
-    print(predictions)
 
-    metrics, _ = model.evaluate(dataset.test,
-                                predictions=predictions,
-                                share_top_paths=args.share_top_paths,
-                                prediction_samples=args.prediction_samples,
-                                origin='vanilla')
-    print(metrics)
+    baseline_metrics, _ = model.evaluate(dataset.test,
+                                         predictions=predictions,
+                                         share_top_paths=args.share_top_paths,
+                                         prediction_samples=args.prediction_samples,
+                                         origin='baseline')
+
+    model.save_context(dataset=dataset, augmentor=augmentor, baseline_metrics=baseline_metrics)
 
     if args.spell_checker:
         spelling = Spelling(spell_checker=args.spell_checker,
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        enhanced_predictions = spelling.enhance(predictions)
+        spelling_predictions = spelling.enhance(predictions)
 
-        enhanced_metrics, _ = model.evaluate(dataset.test,
-                                             predictions=enhanced_predictions,
+        spelling_metrics, _ = model.evaluate(dataset.test,
+                                             predictions=spelling_predictions,
                                              share_top_paths=args.share_top_paths,
                                              prediction_samples=args.prediction_samples,
                                              origin=args.spell_checker)
-        print(enhanced_metrics)
 
-    # model.save_context(dataset=dataset,
-    #                    augmentor=augmentor,
-    #                    metrics=metrics)
+        model.save_context(spelling_metrics=spelling_metrics)
+
+    print(model.test_logger)
