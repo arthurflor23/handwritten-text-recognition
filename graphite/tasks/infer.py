@@ -1,3 +1,64 @@
+import cv2
+import numpy as np
+
+from dataset import Dataset
+from model import Model
+from spelling import Spelling
+
 
 def infer(args):
-    print("infer", args)
+    """
+    Performs inference phase.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        A namespace object that contains all the arguments required.
+    """
+
+    infer_data = [[image, args.bbox, ['']] for image in args.images]
+
+    dataset = Dataset(infer_data=infer_data)
+
+    print(dataset)
+
+    model = Model(network=args.network, experiment_name=args.experiment_name)
+    model.compile(run_index=args.run_index)
+
+    print(model)
+
+    infer_data, infer_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, shuffle=False)
+
+    predictions, probabilities = model.predict(test_data=infer_data,
+                                               test_steps=infer_steps,
+                                               top_paths=args.top_paths,
+                                               beam_width=args.beam_width,
+                                               ctc_decode=True,
+                                               token_decode=True,
+                                               verbose=1)
+
+    if args.spell_checker:
+        spelling = Spelling(spell_checker=args.spell_checker,
+                            api_key=args.api_key,
+                            env_key=args.env_key)
+
+        predictions = spelling.enhance(predictions)
+
+    for i in range(dataset.test['size']):
+        print("\nPath   Probability   Predict")
+
+        for j in range(args.top_paths):
+            probability = np.mean(probabilities[j][i])
+            predict = '\n'.join(predictions[j][i])
+
+            print(f"{j+1:>4}   {probability:>11.2%}   {predict}")
+
+        if args.check:
+            print("\n\nPress Enter to continue or Esc to stop...\n")
+
+            cv2.imshow("Image", dataset.test['data'][i][0])
+            key = cv2.waitKey(0)
+
+            if key == 27:
+                cv2.destroyAllWindows()
+                return
