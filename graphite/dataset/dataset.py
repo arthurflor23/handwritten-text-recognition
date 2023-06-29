@@ -467,7 +467,7 @@ class Dataset():
         """
 
         if len(item) == 0:
-            return [[], [], []], [[], [], []]
+            return None
 
         image_path, bbox, label = item
         image = None
