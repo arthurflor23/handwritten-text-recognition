@@ -48,7 +48,7 @@ class Dataset():
         artifact_path : str, optional
             Path name to fetch the data. Default is 'data'.
         seed : int, optional
-            The random seed. Default is None.
+            Seed for random shuffles. Default is None.
 
         Returns
         -------

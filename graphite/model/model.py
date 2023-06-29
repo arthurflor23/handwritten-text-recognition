@@ -38,7 +38,7 @@ class Model():
         artifact_path : str, optional
             Path name to track the model. Default is 'mlruns'.
         seed : int, optional
-            The random seed to ensure repeatability of results. Default is None.
+            Seed for tensorflow operations. Default is None.
         """
 
         tf.random.set_seed(seed)
