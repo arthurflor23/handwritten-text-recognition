@@ -3,6 +3,7 @@ import re
 import time
 import json
 import string
+import shutil
 import pickle
 import mlflow
 import datetime
@@ -55,6 +56,7 @@ class Model():
 
         self.run_name = None
         self.run = None
+        self.run_context = None
 
         self.model = None
         self.tokenizer = None
@@ -63,6 +65,7 @@ class Model():
         self.learning_rate = None
         self.summary = None
 
+        self.loss_logger = Logger(role='loss')
         self.training_logger = Logger(role='training')
         self.test_logger = Logger(role='test')
         self.samples_logger = Logger(role='samples')
@@ -215,6 +218,9 @@ class Model():
                 **(self.test_logger.to_dict() if self.test_logger.touched else {}),
             }
 
+            if self.run_context is not None:
+                dict_params = {**self.run_context.data.params, **dict_params}
+
             mlflow.log_params(dict_params)
 
             # Logs
@@ -224,22 +230,31 @@ class Model():
                 (augmentor if augmentor is not None else None, 'augmentor.log'),
                 (spelling if spelling is not None else None, 'spelling.log'),
                 (self, 'model.log'),
+                (self.loss_logger if self.loss_logger.touched else None, 'loss.log'),
                 (self.training_logger if self.training_logger.touched else None, 'training.log'),
                 (self.test_logger if self.test_logger.touched else None, 'test.log'),
                 (self.samples_logger if self.samples_logger.touched else None, 'samples.log'),
             ]
 
             for log, filename in filelogs:
-                if log is None:
+                if log is None and self.run_context is None:
                     continue
 
                 log_uri = os.path.join(artifacts_uri, 'logs', filename)
                 os.makedirs(os.path.dirname(log_uri), exist_ok=True)
 
-                with open(log_uri, 'w') as f:
-                    f.write(str(log).strip())
+                if log is None:
+                    log_context = os.path.join(self.run_context.info.artifact_uri, 'logs', filename)
 
-                mlflow.log_artifact(log_uri, artifact_path='logs')
+                    if os.path.isfile(log_context):
+                        shutil.copyfile(log_context, log_uri)
+                        mlflow.log_artifact(log_uri, artifact_path='logs')
+
+                else:
+                    with open(log_uri, 'w') as f:
+                        f.write(str(log).strip())
+
+                    mlflow.log_artifact(log_uri, artifact_path='logs')
 
             # Tokenizer
             if self.tokenizer is not None:
@@ -269,18 +284,22 @@ class Model():
             The run index which the context will be loaded.
         """
 
+        if run_index is None:
+            return
+
         runs_df = mlflow.search_runs(experiment_ids=[self.experiment.experiment_id],
                                      filter_string=f"tags.mlflow.network='{self.network}'",
                                      order_by=['tags.mlflow.runName ASC'])
 
-        if runs_df.empty or run_index not in runs_df.index:
+        if runs_df.empty or run_index >= len(runs_df):
             print("No runs found.")
             return
 
-        run = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
+        self.run_context = mlflow.get_run(runs_df.iloc[run_index]['run_id'])
+        artifacts_uri = os.path.join(self.run_context.info.artifact_uri, 'artifacts')
 
-        model_uri = os.path.join(run.info.artifact_uri, 'artifacts', 'model.keras')
-        tokenizer_uri = os.path.join(run.info.artifact_uri, 'artifacts', 'tokenizer.pkl')
+        model_uri = os.path.join(artifacts_uri, 'model.keras')
+        tokenizer_uri = os.path.join(artifacts_uri, 'tokenizer.pkl')
 
         if not (os.path.isfile(model_uri) and os.path.isfile(tokenizer_uri)):
             print("Model or tokenizer files do not exist.")
@@ -361,10 +380,9 @@ class Model():
             ),
         ]
 
-        run_id = None
         run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
+        with mlflow.start_run(run_name=run_name) as run:
             self.run = run
 
             history = self.model.fit(x=training_data,
@@ -378,6 +396,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
+        self.loss_logger.set_loss_info(history.history)
         self.training_logger.set_training_info(total_time, history.history, training_data, training_steps)
 
         return history
@@ -731,6 +750,12 @@ class Logger():
         self.role = role
         self.touched = False
 
+        # Loss
+        self.loss_epoch = 0
+        self.loss_training = 0
+        self.loss_validation = 0
+        self.loss_history = []
+
         # Training
         self.training_total_data = 0
         self.training_total_epochs = 0
@@ -739,11 +764,6 @@ class Logger():
         self.training_time_per_epoch = 0
         self.training_time_per_step = 0
         self.training_time_per_item = 0
-
-        self.loss_epoch = 0
-        self.loss_training = 0
-        self.loss_validation = 0
-        self.loss_history = []
 
         # Test
         self.test_total_data = 0
@@ -771,9 +791,16 @@ class Logger():
 
         info = ""
 
-        if self.role == 'training':
+        if self.role == 'loss':
             loss_history = '\n'.join(self.loss_history)
 
+            info = f"""
+                Loss History\n\n            {loss_history or '-'}
+            """
+
+            info = '\n'.join([x.strip() for x in info.splitlines()])
+
+        elif self.role == 'training':
             info = f"""
                 Training\n
                 Total Data                  {self.training_total_data}
@@ -831,7 +858,14 @@ class Logger():
 
         attributes = {}
 
-        if self.role == 'training':
+        if self.role == 'loss':
+            attributes = {
+                'loss_epoch': self.loss_epoch,
+                'loss_training': self.loss_training,
+                'loss_validation': self.loss_validation,
+            }
+
+        elif self.role == 'training':
             attributes = {
                 'training_total_data': self.training_total_data,
                 'training_total_epochs': self.training_total_epochs,
@@ -863,18 +897,12 @@ class Logger():
 
         return attributes
 
-    def set_training_info(self, total_time, loss_history, training_data, training_steps):
+    def set_loss_info(self, loss_history):
         """
         Set the training information.
 
         Parameters
         ----------
-        total_time : float
-            The total training time.
-        training_data : data generator
-            The training data.
-        training_steps : int
-            The number of training steps.
         loss_history : dict
             The training history object.
         """
@@ -909,10 +937,28 @@ class Logger():
         self.loss_training = best_loss
         self.loss_validation = best_val_loss
 
+        self.touched = True
+
+    def set_training_info(self, total_time, loss_history, training_data, training_steps):
+        """
+        Set the training information.
+
+        Parameters
+        ----------
+        total_time : float
+            The total training time.
+        loss_history : dict
+            The training history object.
+        training_data : data generator
+            The training data.
+        training_steps : int
+            The number of training steps.
+        """
+
         # Training
         training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
 
-        self.training_total_epochs = len(epochs)
+        self.training_total_epochs = len(loss_history['loss'])
 
         self.training_total_data = training_total_data
         self.training_total_steps = training_steps
