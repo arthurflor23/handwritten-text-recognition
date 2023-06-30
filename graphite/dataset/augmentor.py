@@ -8,11 +8,11 @@ class Augmentor():
     """
 
     def __init__(self,
-                 elastic_transform=None,
                  erosion=None,
                  dilation=None,
-                 mixup=None,
+                 elastic_transform=None,
                  perspective_transform=None,
+                 mixup=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
                  shearing=None,
@@ -27,16 +27,16 @@ class Augmentor():
 
         Parameters
         ----------
-        elastic_transform : dict or None, optional
-            Parameters for elastic transformation, by default None.
         erosion : dict or None, optional
             Parameters for erosion transformation, by default None.
         dilation : dict or None, optional
             Parameters for dilation transformation, by default None.
-        mixup : dict or None, optional
-            Parameters for mixup transformation, by default None.
+        elastic_transform : dict or None, optional
+            Parameters for elastic transformation, by default None.
         perspective_transform : dict or None, optional
             Parameters for perspective transform transformation, by default None.
+        mixup : dict or None, optional
+            Parameters for mixup transformation, by default None.
         gaussian_noise : dict or None, optional
             Parameters for gaussian noise, by default None.
         gaussian_blur : dict or None, optional
@@ -63,11 +63,11 @@ class Augmentor():
 
         np.random.seed(seed)
 
-        self.elastic_transform_params = elastic_transform
         self.erosion_params = erosion
         self.dilation_params = dilation
-        self.mixup_params = mixup
+        self.elastic_transform_params = elastic_transform
         self.perspective_transform_params = perspective_transform
+        self.mixup_params = mixup
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
@@ -91,12 +91,13 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
-            Elastic Transform       {self.elastic_transform_params}
             Erosion                 {self.erosion_params}
             Dilation                {self.dilation_params}
 
-            Mixup                   {self.mixup_params}
+            Elastic Transform       {self.elastic_transform_params}
             Perspective Transform   {self.perspective_transform_params}
+
+            Mixup                   {self.mixup_params}
 
             Gaussian Noise          {self.gaussian_noise_params}
             Gaussian Blur           {self.gaussian_blur_params}
@@ -126,11 +127,11 @@ class Augmentor():
         """
 
         attributes = {
-            'elastic_transform': self.elastic_transform_params,
             'erosion': self.erosion_params,
             'dilation': self.dilation_params,
-            'mixup': self.mixup_params,
+            'elastic_transform': self.elastic_transform_params,
             'perspective_transform': self.perspective_transform_params,
+            'mixup': self.mixup_params,
             'gaussian_blur': self.gaussian_blur_params,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
@@ -163,11 +164,11 @@ class Augmentor():
 
         if not self.disable_augmentation:
             transformations = [
-                # (self.elastic_transform, self.elastic_transform_params),
                 # (self.erosion, self.erosion_params),
                 # (self.dilation, self.dilation_params),
-                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+                # (self.elastic_transform, self.elastic_transform_params),
                 # (self.perspective_transform, self.perspective_transform_params),
+                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 (self.gaussian_noise, self.gaussian_noise_params),
                 # (self.gaussian_blur, self.gaussian_blur_params),
                 # (self.shearing, self.shearing_params),
@@ -285,6 +286,56 @@ class Augmentor():
 
         return image
 
+    def perspective_transform(self, image, alpha, radius=True):
+        """
+        Apply perspective transform to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be transformed.
+        alpha : float
+            Factor of perspective transform.
+        radius : bool, optional
+            Whether to use range radius for type and alpha, by default True.
+
+        Returns
+        -------
+        ndarray
+            Transformed image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(0.0, alpha)
+
+        height, width = image.shape[:2]
+
+        max_offset = min(height, width)
+        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
+        max_offset = int(np.ceil(max_offset * alpha * max_offset_factor))
+
+        src_points = np.array([
+            (0, 0),
+            (width - 1, 0),
+            (width - 1, height - 1),
+            (0, height - 1),
+        ], dtype=np.float32)
+
+        dst_points = np.array([
+            (np.random.randint(0, max_offset), np.random.randint(0, max_offset)),
+            (np.random.randint(width - max_offset, width), np.random.randint(0, max_offset)),
+            (np.random.randint(width - max_offset, width), np.random.randint(height - max_offset, height)),
+            (np.random.randint(0, max_offset), np.random.randint(height - max_offset, height)),
+        ], dtype=np.float32)
+
+        M = cv2.getPerspectiveTransform(src_points, dst_points)
+
+        image = cv2.warpPerspective(image, M, (width, height),
+                                    borderMode=cv2.BORDER_CONSTANT,
+                                    borderValue=self.pad_value)
+
+        return image
+
     def mixup(self, image, opacity, iterations, batch_images=None, radius=True):
         """
         Apply mixup augmentation to the image.
@@ -339,56 +390,6 @@ class Augmentor():
                                          value=np.mean(image))
 
                 image = cv2.addWeighted(image, 1 - opc, img, opc, 0)
-
-        return image
-
-    def perspective_transform(self, image, alpha, radius=True):
-        """
-        Apply perspective transform to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be transformed.
-        alpha : float
-            Factor of perspective transform.
-        radius : bool, optional
-            Whether to use range radius for type and alpha, by default True.
-
-        Returns
-        -------
-        ndarray
-            Transformed image.
-        """
-
-        if radius:
-            alpha = np.random.uniform(0.0, alpha)
-
-        height, width = image.shape[:2]
-
-        max_offset = min(height, width)
-        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
-        max_offset = int(np.ceil(max_offset * alpha * max_offset_factor))
-
-        src_points = np.array([
-            (0, 0),
-            (width - 1, 0),
-            (width - 1, height - 1),
-            (0, height - 1),
-        ], dtype=np.float32)
-
-        dst_points = np.array([
-            (np.random.randint(0, max_offset), np.random.randint(0, max_offset)),
-            (np.random.randint(width - max_offset, width), np.random.randint(0, max_offset)),
-            (np.random.randint(width - max_offset, width), np.random.randint(height - max_offset, height)),
-            (np.random.randint(0, max_offset), np.random.randint(height - max_offset, height)),
-        ], dtype=np.float32)
-
-        M = cv2.getPerspectiveTransform(src_points, dst_points)
-
-        image = cv2.warpPerspective(image, M, (width, height),
-                                    borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=self.pad_value)
 
         return image
 
