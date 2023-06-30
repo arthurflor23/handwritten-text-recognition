@@ -32,7 +32,7 @@ def check(args):
                           dilation=args.dilation,
                           mixup=args.mixup,
                           perspective_transform=args.perspective_transform,
-                          salt_and_pepper=args.salt_and_pepper,
+                          gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
                           shearing=args.shearing,
                           scaling=args.scaling,
