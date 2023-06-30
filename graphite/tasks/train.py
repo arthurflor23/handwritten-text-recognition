@@ -24,11 +24,11 @@ def train(args):
     if args.verbose:
         print(dataset)
 
-    augmentor = Augmentor(elastic_transform=args.elastic_transform,
-                          erosion=args.erosion,
+    augmentor = Augmentor(erosion=args.erosion,
                           dilation=args.dilation,
-                          mixup=args.mixup,
+                          elastic_transform=args.elastic_transform,
                           perspective_transform=args.perspective_transform,
+                          mixup=args.mixup,
                           gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
                           shearing=args.shearing,
