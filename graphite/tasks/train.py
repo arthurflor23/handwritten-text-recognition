@@ -47,7 +47,7 @@ def train(args):
     print(model)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
-    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
+    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size)
 
     model.fit(epochs=args.epochs,
               training_data=train_data,
@@ -62,7 +62,7 @@ def train(args):
 
     print(model.training_logger)
 
-    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, augmentor=None)
+    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size)
 
     predictions, _ = model.predict(test_data=test_data,
                                    test_steps=test_steps,
