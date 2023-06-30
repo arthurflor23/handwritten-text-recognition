@@ -1,5 +1,4 @@
 import re
-import copy
 import time
 import openai
 import tiktoken
@@ -69,7 +68,7 @@ class SpellChecker():
             pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
             matches = pattern.findall(enhanced_data)
 
-            enhanced_texts = copy.deepcopy(top_path)
+            enhanced_texts = [list(sublist) for sublist in top_path]
 
             if len(matches) == len(enhanced_texts):
                 for match in matches:
