@@ -13,7 +13,7 @@ class Augmentor():
                  dilation=None,
                  mixup=None,
                  perspective_transform=None,
-                 salt_and_pepper=None,
+                 gaussian_noise=None,
                  gaussian_blur=None,
                  shearing=None,
                  scaling=None,
@@ -37,8 +37,8 @@ class Augmentor():
             Parameters for mixup transformation, by default None.
         perspective_transform : dict or None, optional
             Parameters for perspective transform transformation, by default None.
-        salt_and_pepper : dict or None, optional
-            Parameters for salt and pepper noise, by default None.
+        gaussian_noise : dict or None, optional
+            Parameters for gaussian noise, by default None.
         gaussian_blur : dict or None, optional
             Parameters for Gaussian blur transformation, by default None.
         shearing : dict or None, optional
@@ -68,7 +68,7 @@ class Augmentor():
         self.dilation_params = dilation
         self.mixup_params = mixup
         self.perspective_transform_params = perspective_transform
-        self.salt_and_pepper_params = salt_and_pepper
+        self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
         self.scaling_params = scaling
@@ -98,7 +98,7 @@ class Augmentor():
             Mixup                   {self.mixup_params}
             Perspective Transform   {self.perspective_transform_params}
 
-            Salt and Pepper Noise   {self.salt_and_pepper_params}
+            Gaussian Noise          {self.gaussian_noise_params}
             Gaussian Blur           {self.gaussian_blur_params}
 
             Shearing                {self.shearing_params}
@@ -136,7 +136,7 @@ class Augmentor():
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
             'translation': self.translation_params,
-            'salt_and_pepper': self.salt_and_pepper_params,
+            'gaussian_noise': self.gaussian_noise_params,
             'pad_value': self.pad_value,
             'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
@@ -164,16 +164,16 @@ class Augmentor():
         if not self.disable_augmentation:
             transformations = [
                 # (self.elastic_transform, self.elastic_transform_params),
-                (self.erosion, self.erosion_params),
-                (self.dilation, self.dilation_params),
+                # (self.erosion, self.erosion_params),
+                # (self.dilation, self.dilation_params),
                 # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
                 # (self.perspective_transform, self.perspective_transform_params),
-                # (self.salt_and_pepper, self.salt_and_pepper_params),
+                (self.gaussian_noise, self.gaussian_noise_params),
                 # (self.gaussian_blur, self.gaussian_blur_params),
                 # (self.shearing, self.shearing_params),
-                (self.scaling, self.scaling_params),
-                (self.rotation, self.rotation_params),
-                (self.translation, self.translation_params),
+                # (self.scaling, self.scaling_params),
+                # (self.rotation, self.rotation_params),
+                # (self.translation, self.translation_params),
             ]
 
             for transform_func, params in transformations:
@@ -392,33 +392,38 @@ class Augmentor():
 
         return image
 
-    def salt_and_pepper(self, image, alpha, radius=True):
+    def gaussian_noise(self, image, alpha, radius=True):
         """
-        Apply Gaussian noise to the image.
+        Adds Gaussian noise to an image.
 
         Parameters
         ----------
-        image : ndarray
-            Input image to be noised.
+        image : numpy.ndarray
+            The input grayscale image.
         alpha : float
-            Percentage of pixels to add noise to (between 0 and 1).
+            Noise level factor, where larger alpha adds more noise.
         radius : bool, optional
-            Whether to use range radius for noise_percentage, by default True.
+            Whether to use range radius for kernel size and iterations, by default True.
 
         Returns
         -------
-        ndarray
-            Noised image.
+        numpy.ndarray
+            The noisy image.
         """
 
         if radius:
             alpha = np.random.uniform(0.0, alpha)
 
-        noise_mask = self._cv2_randu(image.shape[:2], 0.0, 1.0)
-        alpha *= 0.25
+        height, width = image.shape
 
-        image = np.where(noise_mask < alpha, 0, image)
-        image = np.where(noise_mask > (1 - alpha), 255, image)
+        mean = np.mean(image)
+        std = np.std(image) * alpha
+
+        gauss = np.random.normal(mean, std, (height, width))
+        gauss = gauss.reshape(height, width)
+
+        image = np.add(image, gauss)
+        image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
 
         return image
 
