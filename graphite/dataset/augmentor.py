@@ -20,7 +20,6 @@ class Augmentor():
                  rotation=None,
                  translation=None,
                  pad_value=255,
-                 disable_augmentation=False,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -51,8 +50,6 @@ class Augmentor():
             Parameters for vertical and horizontal translation transformation, by default None.
         pad_value : int, optional
             Padding value. Default is 255.
-        disable_augmentation : bool,
-            Flag to disable augmentation, by default False.
         seed : int or None, optional
             Seed for random number generation, by default None.
 
@@ -76,7 +73,6 @@ class Augmentor():
         self.translation_params = translation
 
         self.pad_value = pad_value
-        self.disable_augmentation = disable_augmentation
         self.seed = seed
 
     def __repr__(self):
@@ -108,7 +104,6 @@ class Augmentor():
             Translation             {self.translation_params}
 
             Padding Value           {self.pad_value}
-            Augmentation Disabled   {self.disable_augmentation}
             Seed                    {self.seed}
         """
 
@@ -139,7 +134,6 @@ class Augmentor():
             'translation': self.translation_params,
             'gaussian_noise': self.gaussian_noise_params,
             'pad_value': self.pad_value,
-            'disable_augmentation': self.disable_augmentation,
             'seed': self.seed,
         }
 
@@ -162,24 +156,23 @@ class Augmentor():
             Transformed image.
         """
 
-        if not self.disable_augmentation:
-            transformations = [
-                (self.erosion, self.erosion_params),
-                (self.dilation, self.dilation_params),
-                # (self.elastic_transform, self.elastic_transform_params),
-                # (self.perspective_transform, self.perspective_transform_params),
-                # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
-                # (self.gaussian_noise, self.gaussian_noise_params),
-                # (self.gaussian_blur, self.gaussian_blur_params),
-                # (self.shearing, self.shearing_params),
-                (self.scaling, self.scaling_params),
-                (self.rotation, self.rotation_params),
-                (self.translation, self.translation_params),
-            ]
+        transformations = [
+            (self.erosion, self.erosion_params),
+            (self.dilation, self.dilation_params),
+            (self.elastic_transform, self.elastic_transform_params),
+            (self.perspective_transform, self.perspective_transform_params),
+            (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+            (self.gaussian_noise, self.gaussian_noise_params),
+            (self.gaussian_blur, self.gaussian_blur_params),
+            (self.shearing, self.shearing_params),
+            (self.scaling, self.scaling_params),
+            (self.rotation, self.rotation_params),
+            (self.translation, self.translation_params),
+        ]
 
-            for transform_func, params in transformations:
-                if params and np.random.random() < params[0]:
-                    image = transform_func(image, *params[1:])
+        for transform_func, params in transformations:
+            if params and np.random.random() < params[0]:
+                image = transform_func(image, *params[1:])
 
         return image
 
