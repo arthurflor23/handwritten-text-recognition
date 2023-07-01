@@ -120,18 +120,18 @@ class Model():
 
         return attributes
 
-    def compile(self, run_index=None, tokenizer=None, learning_rate=1e-3):
+    def compile(self, tokenizer=None, learning_rate=1e-3, run_index=None):
         """
         Compiles the model.
 
         Parameters
         ----------
-        run_index : int
-            The run index which the context will be loaded. Default is None.
         tokenizer : object
             The Tokenizer object used for tokenizing the input data. Default is None.
         learning_rate : float, optional
             The learning rate for the optimizer in the model. Default is 1e-3.
+        run_index : int
+            The run index which the context will be loaded. Default is None.
         """
 
         model_uri = None
