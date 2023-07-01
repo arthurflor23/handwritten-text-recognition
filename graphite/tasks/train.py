@@ -49,8 +49,13 @@ def train(args):
     if args.verbose:
         print(model)
 
-    train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
-    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
+    train_data, train_steps = dataset.get_generator(partition=dataset.training,
+                                                    batch_size=args.batch_size,
+                                                    augmentor=augmentor)
+
+    valid_data, valid_steps = dataset.get_generator(partition=dataset.validation,
+                                                    batch_size=args.batch_size,
+                                                    augmentor=None)
 
     model.fit(epochs=args.epochs,
               training_data=train_data,
@@ -66,7 +71,9 @@ def train(args):
     if args.verbose:
         print(model.training_logger)
 
-    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size)
+    test_data, test_steps = dataset.get_generator(partition=dataset.test,
+                                                  batch_size=args.batch_size,
+                                                  shuffle=False)
 
     predictions, _ = model.predict(test_data=test_data,
                                    test_steps=test_steps,
@@ -76,9 +83,9 @@ def train(args):
                                    token_decode=True,
                                    verbose=args.verbose)
 
-    baseline_metrics, _ = model.evaluate(dataset.test,
-                                         baseline_predictions=predictions,
-                                         share_top_paths=args.share_top_paths)
+    baseline_metrics = model.evaluate(partition=dataset.test,
+                                      baseline_predictions=predictions,
+                                      share_top_paths=args.share_top_paths)
 
     model.save_context(dataset=dataset, augmentor=augmentor, baseline_metrics=baseline_metrics)
 
@@ -89,9 +96,9 @@ def train(args):
 
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
-        spelling_metrics, _ = model.evaluate(dataset.test,
-                                             spelling_predictions=spelling_predictions,
-                                             share_top_paths=args.share_top_paths)
+        spelling_metrics = model.evaluate(partition=dataset.test,
+                                          spelling_predictions=spelling_predictions,
+                                          share_top_paths=args.share_top_paths)
 
         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
