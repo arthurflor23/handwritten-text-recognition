@@ -31,7 +31,9 @@ def test(args):
     if args.verbose:
         print(model)
 
-    test_data, test_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, shuffle=False)
+    test_data, test_steps = dataset.get_generator(partition=dataset.test,
+                                                  batch_size=args.batch_size,
+                                                  shuffle=False)
 
     predictions, _ = model.predict(test_data=test_data,
                                    test_steps=test_steps,
@@ -41,9 +43,9 @@ def test(args):
                                    token_decode=True,
                                    verbose=args.verbose)
 
-    baseline_metrics, _ = model.evaluate(dataset.test,
-                                         baseline_predictions=predictions,
-                                         share_top_paths=args.share_top_paths)
+    baseline_metrics = model.evaluate(partition=dataset.test,
+                                      baseline_predictions=predictions,
+                                      share_top_paths=args.share_top_paths)
 
     if not args.check:
         model.save_context(dataset=dataset, baseline_metrics=baseline_metrics)
@@ -55,9 +57,9 @@ def test(args):
 
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
-        spelling_metrics, _ = model.evaluate(dataset.test,
-                                             spelling_predictions=spelling_predictions,
-                                             share_top_paths=args.share_top_paths)
+        spelling_metrics = model.evaluate(partition=dataset.test,
+                                          spelling_predictions=spelling_predictions,
+                                          share_top_paths=args.share_top_paths)
 
         if not args.check:
             model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
