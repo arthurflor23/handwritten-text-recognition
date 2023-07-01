@@ -29,7 +29,9 @@ def infer(args):
     if args.verbose:
         print(model)
 
-    infer_data, infer_steps = dataset.get_generator(dataset.test, batch_size=args.batch_size, shuffle=False)
+    infer_data, infer_steps = dataset.get_generator(partition=dataset.test,
+                                                    batch_size=args.batch_size,
+                                                    shuffle=False)
 
     predictions, probabilities = model.predict(test_data=infer_data,
                                                test_steps=infer_steps,
