@@ -24,22 +24,24 @@ def train(args):
     if args.verbose:
         print(dataset)
 
-    augmentor = Augmentor(erosion=args.erosion,
-                          dilation=args.dilation,
-                          elastic_transform=args.elastic_transform,
-                          perspective_transform=args.perspective_transform,
-                          mixup=args.mixup,
-                          gaussian_noise=args.gaussian_noise,
-                          gaussian_blur=args.gaussian_blur,
-                          shearing=args.shearing,
-                          scaling=args.scaling,
-                          rotation=args.rotation,
-                          translation=args.translation,
-                          disable_augmentation=args.disable_augmentation,
-                          seed=args.seed)
+    augmentor = None
 
-    if args.verbose:
-        print(augmentor)
+    if not args.disable_augmentation:
+        augmentor = Augmentor(erosion=args.erosion,
+                              dilation=args.dilation,
+                              elastic_transform=args.elastic_transform,
+                              perspective_transform=args.perspective_transform,
+                              mixup=args.mixup,
+                              gaussian_noise=args.gaussian_noise,
+                              gaussian_blur=args.gaussian_blur,
+                              shearing=args.shearing,
+                              scaling=args.scaling,
+                              rotation=args.rotation,
+                              translation=args.translation,
+                              seed=args.seed)
+
+        if args.verbose:
+            print(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
     model.compile(run_index=args.run_index, tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
@@ -48,7 +50,7 @@ def train(args):
         print(model)
 
     train_data, train_steps = dataset.get_generator(dataset.training, batch_size=args.batch_size, augmentor=augmentor)
-    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size)
+    valid_data, valid_steps = dataset.get_generator(dataset.validation, batch_size=args.batch_size, augmentor=None)
 
     model.fit(epochs=args.epochs,
               training_data=train_data,
