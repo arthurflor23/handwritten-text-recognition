@@ -22,7 +22,7 @@ class Source():
         """
 
         self.artifact_path = artifact_path
-        self.base_path = os.path.join(self.artifact_path, 'orand-car-2014', 'cvl-digits')
+        self.base_path = os.path.join(self.artifact_path, 'icfhr2014-hdsr', 'cvl-digits')
 
         self.training_path = os.path.join(self.base_path, 'cvl-strings', 'train', '**', '*.png')
         self.test_path = os.path.join(self.base_path, 'cvl-strings-eval', '**', '*.png')

@@ -21,7 +21,7 @@ class Source():
         """
 
         self.artifact_path = artifact_path
-        self.base_path = os.path.join(self.artifact_path, 'orand-car-2014', 'CAR-A')
+        self.base_path = os.path.join(self.artifact_path, 'icfhr2014-hdsr', 'CAR-A')
 
         self.training_path = os.path.join(self.base_path, 'a_train_images')
         self.test_path = os.path.join(self.base_path, 'a_test_images')
