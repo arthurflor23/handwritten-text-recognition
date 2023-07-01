@@ -44,7 +44,7 @@ def train(args):
             print(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
-    model.compile(run_index=args.run_index, tokenizer=dataset.tokenizer, learning_rate=args.learning_rate)
+    model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
     if args.verbose:
         print(model)
