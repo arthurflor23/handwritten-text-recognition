@@ -495,7 +495,7 @@ class Model():
         Returns
         -------
         tuple of numpy.ndarray
-            Error metrics and evaluated samples for each top path.
+            Error metrics for each top path.
         """
 
         if baseline_predictions is None and spelling_predictions is None:
@@ -565,7 +565,7 @@ class Model():
             self.test_logger.set_evaluation_info(metrics, origin)
             self.samples_logger.set_samples_info(samples, origin)
 
-            results.append((metrics, samples))
+            results.append(metrics)
 
         if len(results) == 1:
             results = results[0]
