@@ -46,6 +46,9 @@ def test(args):
                                    token_decode=True,
                                    verbose=args.verbose)
 
+    if args.verbose:
+        print_section(model.test_logger)
+
     baseline_metrics = model.evaluate(partition=dataset.test,
                                       baseline_predictions=predictions,
                                       share_top_paths=args.share_top_paths)
@@ -71,7 +74,7 @@ def test(args):
             model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
     if args.verbose:
-        print_section(model.test_logger)
+        print_section(model.evaluation_logger)
 
     if args.check:
         print("\nChecking samples...\n")

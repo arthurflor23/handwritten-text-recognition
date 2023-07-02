@@ -43,6 +43,9 @@ def infer(args):
                                                token_decode=True,
                                                verbose=args.verbose)
 
+    if args.verbose:
+        print_section(model.test_logger)
+
     if args.spell_checker:
         spelling = Spelling(spell_checker=args.spell_checker,
                             api_key=args.api_key,
