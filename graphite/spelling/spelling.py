@@ -62,7 +62,7 @@ class Spelling():
             Environment Path        {self.dotenv_path or '-'}
         """
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 

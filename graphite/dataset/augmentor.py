@@ -107,7 +107,7 @@ class Augmentor():
             Seed                    {self.seed}
         """
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 

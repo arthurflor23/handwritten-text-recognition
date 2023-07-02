@@ -95,7 +95,7 @@ class Model():
             Summary\n\n                 {self.summary or '-'}
         """
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
@@ -789,7 +789,7 @@ class Logger():
                 Loss History\n\n            {loss_history or '-'}
             """
 
-            info = '\n'.join([x.strip() for x in info.splitlines()])
+            info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'training':
             info = f"""
@@ -809,7 +809,7 @@ class Logger():
                 Best Validation Loss        {self.loss_validation}
             """
 
-            info = '\n'.join([x.strip() for x in info.splitlines()])
+            info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'test':
             evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
@@ -828,7 +828,7 @@ class Logger():
                 Evaluation\n\n              {evaluation or '-'}
             """
 
-            info = '\n'.join([x.strip() for x in info.splitlines()])
+            info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'samples':
             info = json.dumps(self.samples, indent=2, ensure_ascii=False, default=lambda x: str(x))

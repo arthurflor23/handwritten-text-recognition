@@ -148,7 +148,7 @@ class Dataset():
             Max Columns             {self.max_cols}
         """
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
@@ -763,7 +763,7 @@ class Tokenizer():
             Shape               {self.shape}
         """
 
-        info = '\n'.join([x.strip() for x in info.splitlines()])
+        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
