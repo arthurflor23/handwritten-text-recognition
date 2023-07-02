@@ -786,6 +786,11 @@ class Logger():
             loss_history = '\n'.join(self.loss_history)
 
             info = f"""
+                Loss\n
+                Best Epoch Loss             {self.loss_epoch}
+                Best Training Loss          {self.loss_training}
+                Best Validation Loss        {self.loss_validation}
+
                 Loss History\n\n            {loss_history or '-'}
             """
 
@@ -802,11 +807,6 @@ class Logger():
                 Time per Epoch              {self.training_time_per_epoch}
                 Time per Step               {self.training_time_per_step}
                 Time per Item               {self.training_time_per_item}
-
-                Loss\n
-                Best Epoch Loss             {self.loss_epoch}
-                Best Training Loss          {self.loss_training}
-                Best Validation Loss        {self.loss_validation}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
