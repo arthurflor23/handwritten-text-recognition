@@ -68,6 +68,7 @@ class Model():
         self.loss_logger = Logger(role='loss')
         self.training_logger = Logger(role='training')
         self.test_logger = Logger(role='test')
+        self.evaluation_logger = Logger(role='evaluation')
         self.samples_logger = Logger(role='samples')
 
         self._network = self._import_network(self.network)
@@ -263,6 +264,7 @@ class Model():
                 (self.loss_logger if self.loss_logger.touched else None, 'loss.log'),
                 (self.training_logger if self.training_logger.touched else None, 'training.log'),
                 (self.test_logger if self.test_logger.touched else None, 'test.log'),
+                (self.evaluation_logger if self.evaluation_logger.touched else None, 'evaluation.log'),
                 (self.samples_logger if self.samples_logger.touched else None, 'samples.log'),
             ]
 
@@ -562,7 +564,7 @@ class Model():
 
                 samples[top_path, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
 
-            self.test_logger.set_evaluation_info(metrics, origin)
+            self.evaluation_logger.set_evaluation_info(metrics, origin)
             self.samples_logger.set_samples_info(samples, origin)
 
             results.append(metrics)
@@ -765,9 +767,10 @@ class Logger():
         self.test_time_per_step = 0
         self.test_time_per_item = 0
 
+        # Evaluation
         self.evaluation = {}
 
-        # Evaluations
+        # Samples
         self.samples = {}
 
     def __repr__(self):
@@ -812,8 +815,6 @@ class Logger():
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'test':
-            evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
-
             info = f"""
                 Test\n
                 Total Data                  {self.test_total_data}
@@ -824,7 +825,14 @@ class Logger():
                 Time per Epoch              {self.test_time_per_epoch}
                 Time per Step               {self.test_time_per_step}
                 Time per Item               {self.test_time_per_item}
+            """
 
+            info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
+
+        elif self.role == 'evaluation':
+            evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
+
+            info = f"""
                 Evaluation\n\n              {evaluation or '-'}
             """
 
@@ -863,9 +871,6 @@ class Logger():
                 'training_time_per_epoch': self.training_time_per_epoch,
                 'training_time_per_step': self.training_time_per_step,
                 'training_time_per_item': self.training_time_per_item,
-                'loss_epoch': self.loss_epoch,
-                'loss_training': self.loss_training,
-                'loss_validation': self.loss_validation,
             }
 
         elif self.role == 'test':
