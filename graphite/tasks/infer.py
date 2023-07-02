@@ -16,18 +16,20 @@ def infer(args):
         A namespace object that contains all the arguments required.
     """
 
-    infer_data = [[image, args.bbox, ['']] for image in args.images]
+    def print_section(content):
+        print(f"\n{'=' * 65}\n{content}\n{'=' * 65}\n")
 
+    infer_data = [[image, args.bbox, ['']] for image in args.images]
     dataset = Dataset(infer_data=infer_data)
 
     if args.verbose:
-        print(dataset)
+        print_section(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
     if args.verbose:
-        print(model)
+        print_section(model)
 
     infer_data, infer_steps = dataset.get_generator(partition=dataset.test,
                                                     batch_size=args.batch_size,
@@ -45,6 +47,9 @@ def infer(args):
         spelling = Spelling(spell_checker=args.spell_checker,
                             api_key=args.api_key,
                             env_key=args.env_key)
+
+        if args.verbose:
+            print_section(spelling)
 
         predictions = spelling.enhance(predictions, verbose=args.verbose)
 

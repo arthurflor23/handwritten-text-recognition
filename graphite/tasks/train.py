@@ -13,6 +13,9 @@ def train(args):
         A namespace object that contains all the arguments required.
     """
 
+    def print_section(content):
+        print(f"\n{'=' * 65}\n{content}\n{'=' * 65}\n")
+
     dataset = Dataset(source=args.source,
                       level=args.level,
                       training_ratio=args.training_ratio,
@@ -22,7 +25,7 @@ def train(args):
                       seed=args.seed)
 
     if args.verbose:
-        print(dataset)
+        print_section(dataset)
 
     augmentor = None
 
@@ -41,13 +44,13 @@ def train(args):
                               seed=args.seed)
 
         if args.verbose:
-            print(augmentor)
+            print_section(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
     model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
     if args.verbose:
-        print(model)
+        print_section(model)
 
     train_data, train_steps = dataset.get_generator(partition=dataset.training,
                                                     batch_size=args.batch_size,
@@ -69,7 +72,7 @@ def train(args):
               verbose=args.verbose)
 
     if args.verbose:
-        print(model.training_logger)
+        print_section(model.training_logger)
 
     test_data, test_steps = dataset.get_generator(partition=dataset.test,
                                                   batch_size=args.batch_size,
@@ -94,6 +97,9 @@ def train(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
+        if args.verbose:
+            print_section(spelling)
+
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
         spelling_metrics = model.evaluate(partition=dataset.test,
@@ -103,4 +109,4 @@ def train(args):
         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
     if args.verbose:
-        print(model.test_logger)
+        print_section(model.test_logger)

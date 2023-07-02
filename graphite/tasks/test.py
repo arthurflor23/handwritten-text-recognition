@@ -15,6 +15,9 @@ def test(args):
         A namespace object that contains all the arguments required.
     """
 
+    def print_section(content):
+        print(f"\n{'=' * 65}\n{content}\n{'=' * 65}\n")
+
     dataset = Dataset(source=args.source,
                       level=args.level,
                       training_ratio=args.training_ratio,
@@ -23,13 +26,13 @@ def test(args):
                       lazy_mode=args.lazy_mode)
 
     if args.verbose:
-        print(dataset)
+        print_section(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
     if args.verbose:
-        print(model)
+        print_section(model)
 
     test_data, test_steps = dataset.get_generator(partition=dataset.test,
                                                   batch_size=args.batch_size,
@@ -55,6 +58,9 @@ def test(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
+        if args.verbose:
+            print_section(spelling)
+
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
         spelling_metrics = model.evaluate(partition=dataset.test,
@@ -65,7 +71,7 @@ def test(args):
             model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
     if args.verbose:
-        print(model.test_logger)
+        print_section(model.test_logger)
 
     if args.check:
         print("\nChecking samples...\n")
