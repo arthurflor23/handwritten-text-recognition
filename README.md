@@ -124,7 +124,7 @@ The Graphite project offers various command-line parameters that can be used to 
 - `--seed`: Seed value for the training process.
 - `--verbose`: Verbosity mode.
 
-Feel free to experiment with these parameters to customize the behavior of project according to your specific needs.
+Feel free to experiment with the parameters to find the ones that best fit your specific needs.
 
 ## Call to Contribute
 
