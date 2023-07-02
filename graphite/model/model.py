@@ -389,8 +389,8 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.loss_logger.set_loss_info(history.history)
-        self.training_logger.set_training_info(total_time, history.history, training_data, training_steps)
+        self.loss_logger.log_loss(history.history)
+        self.training_logger.log_training(total_time, history.history, training_data, training_steps)
 
         return history
 
@@ -471,7 +471,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.test_logger.set_test_info(total_time, test_data, test_steps)
+        self.test_logger.log_test(total_time, test_data, test_steps)
 
         return predictions, probabilities
 
@@ -564,8 +564,8 @@ class Model():
 
                 samples[top_path, :, :] = np.array([r + [p] + [e] for r, p, e in zip(raw, pred, err)], dtype=object)
 
-            self.evaluation_logger.set_evaluation_info(metrics, origin)
-            self.samples_logger.set_samples_info(samples, origin)
+            self.evaluation_logger.log_evaluation(metrics, origin)
+            self.samples_logger.log_samples(samples, origin)
 
             results.append(metrics)
 
@@ -830,7 +830,8 @@ class Logger():
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'evaluation':
-            evaluation = '\n\n'.join([f"{i}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()])
+            evaluation = [f"{i}\n{'-' * 65}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()]
+            evaluation = '\n\n'.join(evaluation)
 
             info = f"""
                 Evaluation\n\n              {evaluation or '-'}
@@ -891,7 +892,7 @@ class Logger():
 
         return attributes
 
-    def set_loss_info(self, loss_history):
+    def log_loss(self, loss_history):
         """
         Set the training information.
 
@@ -932,7 +933,7 @@ class Logger():
 
         self.touched = True
 
-    def set_training_info(self, total_time, loss_history, training_data, training_steps):
+    def log_training(self, total_time, loss_history, training_data, training_steps):
         """
         Set the training information.
 
@@ -968,7 +969,7 @@ class Logger():
 
         self.touched = True
 
-    def set_test_info(self, total_time, test_data, test_steps):
+    def log_test(self, total_time, test_data, test_steps):
         """
         Set the test information.
 
@@ -1001,7 +1002,7 @@ class Logger():
 
         self.touched = True
 
-    def set_evaluation_info(self, metrics, origin='baseline'):
+    def log_evaluation(self, metrics, origin='baseline'):
         """
         Set the evaluation information.
 
@@ -1013,14 +1014,14 @@ class Logger():
             Indicates the origin name. Default is 'baseline'.
         """
 
-        self.evaluation[origin] = ['top_path,cer,wer,ler,ser']
+        self.evaluation[origin] = [f"{'top_path':<9} {'cer':<9} {'wer':<9} {'ler':<9} {'ser':<9}"]
 
         for i, x in enumerate(metrics, start=1):
-            self.evaluation[origin] += [f"{i},{x[0]:.4f},{x[1]:.4f},{x[2]:.4f},{x[3]:.4f}"]
+            self.evaluation[origin] += [f"{i:<9} {x[0]:<9.2%} {x[1]:<9.2%} {x[2]:<9.2%} {x[3]:<9.2%}"]
 
         self.touched = True
 
-    def set_samples_info(self, samples, origin='baseline'):
+    def log_samples(self, samples, origin='baseline'):
         """
         Set the evaluation information.
 
