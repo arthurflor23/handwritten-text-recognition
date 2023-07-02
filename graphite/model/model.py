@@ -494,8 +494,8 @@ class Model():
 
         Returns
         -------
-        tuple of numpy.ndarray
-            Error metrics for each top path.
+        numpy.ndarray
+            Array of error metrics for each top path.
         """
 
         if baseline_predictions is None and spelling_predictions is None:
