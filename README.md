@@ -59,15 +59,15 @@ The project offers various functionalities that can be accessed through command-
 python main.py --train --source iam --level line --network flor --epochs 1000 --batch-size 16
 ```
 
-This command will train the optical model on the IAM dataset at the line level for 1000 epochs with batch size of 16.
+This command will train the optical model on the IAM dataset at the line level for 1000 epochs and batch size of 16.
 
 **Example 2: Perform optical model testing**
 
 ```bash
-python main.py --test --source iam --network flor --beam-width 30 --top-paths 3 --run-index -1
+python main.py --test --source iam --level line --network flor --beam-width 30 --top-paths 3 --run-index -1
 ```
 
-This will perform testing on the IAM dataset using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The optical model loaded is indicated by the run index, where -1 represents the last trained one.
+This will perform testing on the IAM dataset at the line level using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The selected optical model is indicated by the run index, which loads the last trained one.
 
 **Example 3: Perform optical model inference**
 
@@ -75,7 +75,7 @@ This will perform testing on the IAM dataset using the Flor optical network arch
 python main.py --infer --network flor --images path/to/image1.png path/to/image2.png --beam-width 30 --top-paths 3 --run-index -1
 ```
 
-This will perform inferenceon the specified images using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The optical model loaded is indicated by the run index, where -1 represents the last trained one.
+This will perform inferenceon the specified images using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The selected optical model is indicated by the run index, which loads the last trained one.
 
 ## Parameters
 
