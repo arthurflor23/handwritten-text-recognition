@@ -13,12 +13,12 @@ class Augmentor():
                  elastic_transform=None,
                  perspective_transform=None,
                  mixup=None,
-                 gaussian_noise=None,
-                 gaussian_blur=None,
                  shearing=None,
                  scaling=None,
                  rotation=None,
                  translation=None,
+                 gaussian_noise=None,
+                 gaussian_blur=None,
                  pad_value=255,
                  seed=None):
         """
@@ -36,10 +36,6 @@ class Augmentor():
             Parameters for perspective transform transformation, by default None.
         mixup : dict or None, optional
             Parameters for mixup transformation, by default None.
-        gaussian_noise : dict or None, optional
-            Parameters for gaussian noise, by default None.
-        gaussian_blur : dict or None, optional
-            Parameters for Gaussian blur transformation, by default None.
         shearing : dict or None, optional
             Parameters for shearing transformation, by default None.
         scaling : dict or None, optional
@@ -48,6 +44,10 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
+        gaussian_noise : dict or None, optional
+            Parameters for gaussian noise, by default None.
+        gaussian_blur : dict or None, optional
+            Parameters for Gaussian blur transformation, by default None.
         pad_value : int, optional
             Padding value. Default is 255.
         seed : int or None, optional
@@ -65,12 +65,12 @@ class Augmentor():
         self.elastic_transform_params = elastic_transform
         self.perspective_transform_params = perspective_transform
         self.mixup_params = mixup
-        self.gaussian_noise_params = gaussian_noise
-        self.gaussian_blur_params = gaussian_blur
         self.shearing_params = shearing
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
+        self.gaussian_noise_params = gaussian_noise
+        self.gaussian_blur_params = gaussian_blur
 
         self.pad_value = pad_value
         self.seed = seed
@@ -95,13 +95,13 @@ class Augmentor():
 
             Mixup                   {self.mixup_params}
 
-            Gaussian Noise          {self.gaussian_noise_params}
-            Gaussian Blur           {self.gaussian_blur_params}
-
             Shearing                {self.shearing_params}
             Scaling                 {self.scaling_params}
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
+
+            Gaussian Noise          {self.gaussian_noise_params}
+            Gaussian Blur           {self.gaussian_blur_params}
 
             Padding Value           {self.pad_value}
             Seed                    {self.seed}
@@ -127,12 +127,12 @@ class Augmentor():
             'elastic_transform': self.elastic_transform_params,
             'perspective_transform': self.perspective_transform_params,
             'mixup': self.mixup_params,
-            'gaussian_blur': self.gaussian_blur_params,
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
             'translation': self.translation_params,
             'gaussian_noise': self.gaussian_noise_params,
+            'gaussian_blur': self.gaussian_blur_params,
             'pad_value': self.pad_value,
             'seed': self.seed,
         }
@@ -159,15 +159,15 @@ class Augmentor():
         transformations = [
             (self.erosion, self.erosion_params),
             (self.dilation, self.dilation_params),
-            (self.elastic_transform, self.elastic_transform_params),
-            (self.perspective_transform, self.perspective_transform_params),
-            (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
-            (self.gaussian_noise, self.gaussian_noise_params),
-            (self.gaussian_blur, self.gaussian_blur_params),
+            # (self.elastic_transform, self.elastic_transform_params),
+            # (self.perspective_transform, self.perspective_transform_params),
+            # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
             (self.translation, self.translation_params),
+            # (self.gaussian_noise, self.gaussian_noise_params),
+            # (self.gaussian_blur, self.gaussian_blur_params),
         ]
 
         for transform_func, params in transformations:
@@ -386,74 +386,6 @@ class Augmentor():
 
         return image
 
-    def gaussian_noise(self, image, alpha, radius=True):
-        """
-        Adds Gaussian noise to an image.
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            The input grayscale image.
-        alpha : float
-            Noise level factor, where larger alpha adds more noise.
-        radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
-
-        Returns
-        -------
-        numpy.ndarray
-            The noisy image.
-        """
-
-        if radius:
-            alpha = np.random.uniform(0.0, alpha)
-
-        height, width = image.shape
-
-        mean = np.mean(image)
-        std = np.std(image) * alpha
-
-        gauss = np.random.normal(mean, std, (height, width))
-        gauss = gauss.reshape(height, width)
-
-        image = np.add(image, gauss)
-        image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
-
-        return image
-
-    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
-        """
-        Apply Gaussian blur to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be blurred.
-        kernel_size : int
-            Kernel size for Gaussian blur.
-        iterations : int
-            Number of iterations for Gaussian blur.
-        radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
-
-        Returns
-        -------
-        ndarray
-            Blurred image.
-        """
-
-        if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
-            iterations = np.random.randint(1, iterations + 1)
-
-        if kernel_size % 2 == 0:
-            kernel_size += 1
-
-        for _ in range(iterations):
-            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
-
-        return image
-
     def shearing(self, image, angle, radius=True):
         """
         Apply shearing to the image.
@@ -616,6 +548,74 @@ class Augmentor():
                                borderValue=self.pad_value)
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+
+        return image
+
+    def gaussian_noise(self, image, alpha, radius=True):
+        """
+        Adds Gaussian noise to an image.
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            The input grayscale image.
+        alpha : float
+            Noise level factor, where larger alpha adds more noise.
+        radius : bool, optional
+            Whether to use range radius for kernel size and iterations, by default True.
+
+        Returns
+        -------
+        numpy.ndarray
+            The noisy image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(0.0, alpha)
+
+        height, width = image.shape
+
+        mean = np.mean(image)
+        std = np.std(image) * alpha
+
+        gauss = np.random.normal(mean, std, (height, width))
+        gauss = gauss.reshape(height, width)
+
+        image = np.add(image, gauss)
+        image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+
+        return image
+
+    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
+        """
+        Apply Gaussian blur to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be blurred.
+        kernel_size : int
+            Kernel size for Gaussian blur.
+        iterations : int
+            Number of iterations for Gaussian blur.
+        radius : bool, optional
+            Whether to use range radius for kernel size and iterations, by default True.
+
+        Returns
+        -------
+        ndarray
+            Blurred image.
+        """
+
+        if radius:
+            kernel_size = np.random.randint(1, kernel_size + 1)
+            iterations = np.random.randint(1, iterations + 1)
+
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+
+        for _ in range(iterations):
+            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
         return image
 

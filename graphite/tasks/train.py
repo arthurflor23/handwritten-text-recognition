@@ -32,12 +32,12 @@ def train(args):
                               elastic_transform=args.elastic_transform,
                               perspective_transform=args.perspective_transform,
                               mixup=args.mixup,
-                              gaussian_noise=args.gaussian_noise,
-                              gaussian_blur=args.gaussian_blur,
                               shearing=args.shearing,
                               scaling=args.scaling,
                               rotation=args.rotation,
                               translation=args.translation,
+                              gaussian_noise=args.gaussian_noise,
+                              gaussian_blur=args.gaussian_blur,
                               seed=args.seed)
 
         if args.verbose:

@@ -45,12 +45,6 @@ if __name__ == '__main__':
     parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
                         help="Apply mixup augmentation (probability, opacity, iterations)")
 
-    parser.add_argument('--gaussian-noise', default=[0.99, 0.75], nargs='+', type=float,
-                        help="Apply Gaussian noise (probability, alpha)")
-
-    parser.add_argument('--gaussian-blur', default=[0.99, 11, 1], nargs='+', type=float,
-                        help="Apply Gaussian blur (probability, kernel size, iterations)")
-
     parser.add_argument('--shearing', default=[0.99, 30], nargs='+', type=float,
                         help="Apply shearing transformation (probability, angle)")
 
@@ -62,6 +56,12 @@ if __name__ == '__main__':
 
     parser.add_argument('--translation', default=[0.99, 0.025, 0.05], nargs='+', type=float,
                         help="Apply vertical and horizontal translation (probability, y-alpha, x-alpha)")
+
+    parser.add_argument('--gaussian-noise', default=[0.99, 0.75], nargs='+', type=float,
+                        help="Apply Gaussian noise (probability, alpha)")
+
+    parser.add_argument('--gaussian-blur', default=[0.99, 11, 1], nargs='+', type=float,
+                        help="Apply Gaussian blur (probability, kernel size, iterations)")
 
     parser.add_argument('--disable-augmentation', default=False, action='store_true',
                         help="Disable data augmentation completely")
