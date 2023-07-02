@@ -159,15 +159,15 @@ class Augmentor():
         transformations = [
             (self.erosion, self.erosion_params),
             (self.dilation, self.dilation_params),
-            # (self.elastic_transform, self.elastic_transform_params),
-            # (self.perspective_transform, self.perspective_transform_params),
-            # (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+            (self.elastic_transform, self.elastic_transform_params),
+            (self.perspective_transform, self.perspective_transform_params),
+            (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
             (self.translation, self.translation_params),
-            # (self.gaussian_noise, self.gaussian_noise_params),
-            # (self.gaussian_blur, self.gaussian_blur_params),
+            (self.gaussian_noise, self.gaussian_noise_params),
+            (self.gaussian_blur, self.gaussian_blur_params),
         ]
 
         for transform_func, params in transformations:
