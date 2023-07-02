@@ -59,7 +59,7 @@ The project offers various functionalities that can be accessed through command-
 python main.py --train --source iam --level line --network flor --epochs 1000 --batch-size 16
 ```
 
-This command will train the optical model on the IAM dataset at the line level for 1000 epochs with a batch size of 16.
+This command will train the optical model on the IAM dataset at the line level for 1000 epochs with batch size of 16.
 
 **Example 2: Perform optical model testing**
 
