@@ -804,12 +804,17 @@ class Logger():
                 Training\n
                 Total Data                  {self.training_total_data}
                 Total Epochs                {self.training_total_epochs}
-                Total Steps                 {self.training_total_steps}
+                Total Steps                 {self.training_total_steps} ({self.training_steps}/epoch)
 
                 Time                        {self.training_time}
                 Time per Epoch              {self.training_time_per_epoch}
                 Time per Step               {self.training_time_per_step}
                 Time per Item               {self.training_time_per_item}
+
+                Loss\n
+                Best Epoch Loss             {self.loss_epoch}
+                Best Training Loss          {self.loss_training}
+                Best Validation Loss        {self.loss_validation}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
@@ -819,7 +824,7 @@ class Logger():
                 Test\n
                 Total Data                  {self.test_total_data}
                 Total Epochs                {self.test_total_epochs}
-                Total Steps                 {self.test_total_steps}
+                Total Steps                 {self.test_total_steps} ({self.test_steps}/epoch)
 
                 Time                        {self.test_time}
                 Time per Epoch              {self.test_time_per_epoch}
@@ -868,6 +873,7 @@ class Logger():
                 'training_total_data': self.training_total_data,
                 'training_total_epochs': self.training_total_epochs,
                 'training_total_steps': self.training_total_steps,
+                'training_steps': self.training_steps,
                 'training_time': self.training_time,
                 'training_time_per_epoch': self.training_time_per_epoch,
                 'training_time_per_step': self.training_time_per_step,
@@ -879,6 +885,7 @@ class Logger():
                 'test_total_data': self.test_total_data,
                 'test_total_epochs': self.test_total_epochs,
                 'test_total_steps': self.test_total_steps,
+                'test_steps': self.test_steps,
                 'test_time': self.test_time,
                 'test_time_per_epoch': self.test_time_per_epoch,
                 'test_time_per_step': self.test_time_per_step,
@@ -952,9 +959,10 @@ class Logger():
         training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
 
         self.training_total_epochs = len(loss_history['loss'])
-
         self.training_total_data = training_total_data
-        self.training_total_steps = training_steps
+
+        self.training_steps = training_steps
+        self.training_total_steps = self.training_total_epochs * training_steps
 
         self.training_time = str(datetime.timedelta(seconds=total_time))
 
@@ -966,6 +974,8 @@ class Logger():
 
         time_per_item = total_time / (self.training_total_epochs * self.training_total_data)
         self.training_time_per_item = str(datetime.timedelta(seconds=time_per_item))
+
+        self.log_loss(loss_history)
 
         self.touched = True
 
@@ -987,6 +997,8 @@ class Logger():
 
         self.test_total_data = test_total_data
         self.test_total_epochs = 1
+
+        self.test_steps = test_steps
         self.test_total_steps = self.test_total_epochs * test_steps
 
         self.test_time = str(datetime.timedelta(seconds=total_time))
