@@ -19,8 +19,8 @@ def infer(args):
     def print_section(content):
         print(f"\n{'=' * 65}\n{content}\n{'=' * 65}\n")
 
-    infer_data = [[image, args.bbox, ['']] for image in args.images]
-    dataset = Dataset(infer_data=infer_data)
+    data = [[image, args.bbox, ['']] for image in args.images]
+    dataset = Dataset(data=data)
 
     if args.verbose:
         print_section(dataset)

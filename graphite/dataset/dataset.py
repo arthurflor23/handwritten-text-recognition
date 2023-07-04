@@ -22,7 +22,7 @@ class Dataset():
                  test_ratio=None,
                  pad_value=255,
                  lazy_mode=False,
-                 infer_data=None,
+                 data=None,
                  artifact_path='data',
                  seed=None):
         """
@@ -44,7 +44,7 @@ class Dataset():
             Padding value. Default is 255.
         lazy_mode : bool, optional
             Lazy mode flag for lazy loading process. Default is False.
-        infer_data : list, optional
+        data : list, optional
             Custom data for inference mode. Default is None.
         artifact_path : str, optional
             Path name to fetch the data. Default is 'data'.
@@ -81,7 +81,9 @@ class Dataset():
         self.min_cols = np.inf
         self.max_cols = -np.inf
 
-        if infer_data is None:
+        if data is not None:
+            data = self._prepare_source_data(data, infer=True)
+        else:
             self._extract_data(self.source)
 
             self._source = self._import_source(self.source)
@@ -89,8 +91,6 @@ class Dataset():
 
             data = self._source.fetch_data(self.level)
             data = self._prepare_source_data(data, infer=False)
-        else:
-            data = self._prepare_source_data(infer_data, infer=True)
 
         self.training = self._create_partition(data[0], test=False)
         self.validation = self._create_partition(data[1], test=False)
