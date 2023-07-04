@@ -87,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=1000, type=int,
                         help="Epochs for the training")
 
-    parser.add_argument('--batch-size', default=16, type=int,
+    parser.add_argument('--batch-size', default=8, type=int,
                         help="Batch size for the generator")
 
     parser.add_argument('--learning-rate', default=1e-3, type=float,
@@ -96,13 +96,13 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-factor', default=0.5, type=float,
                         help="Factor by which the learning rate will be reduced on a plateau")
 
-    parser.add_argument('--plateau-cooldown', default=10, type=int,
+    parser.add_argument('--plateau-cooldown', default=0, type=int,
                         help="Cooldown period after a learning rate plateau is triggered")
 
-    parser.add_argument('--plateau-patience', default=20, type=int,
+    parser.add_argument('--plateau-patience', default=10, type=int,
                         help="Number of epochs without improvement for the learning rate to be reduced")
 
-    parser.add_argument('--patience', default=60, type=int,
+    parser.add_argument('--patience', default=20, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
     # Test
