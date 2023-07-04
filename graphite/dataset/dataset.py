@@ -181,7 +181,7 @@ class Dataset():
 
     def get_generator(self,
                       partition,
-                      batch_size=16,
+                      batch_size=8,
                       augmentor=None,
                       raw_data=False,
                       shuffle=True):
@@ -193,7 +193,7 @@ class Dataset():
         partition : dict
             The dataset partition which will be create the generator.
         batch_size : int, optional
-            The number of samples in each batch, default is 16.
+            The number of samples in each batch, default is 8.
         augmentor : Augmentor, optional
             The Augmentor class. Default is None.
         raw_data : bool, optional
