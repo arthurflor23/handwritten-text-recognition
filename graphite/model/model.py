@@ -312,9 +312,9 @@ class Model():
             validation_data=None,
             validation_steps=None,
             plateau_factor=0.5,
-            plateau_cooldown=10,
-            plateau_patience=20,
-            patience=60,
+            plateau_cooldown=0,
+            plateau_patience=10,
+            patience=20,
             epochs=1000,
             verbose=1):
         """
@@ -333,11 +333,11 @@ class Model():
         plateau_factor : float, optional
             Factor by which the learning rate will be reduced, by default 0.5.
         plateau_cooldown : int, optional
-            The number of epochs to wait before resuming normal operation after lr has been reduced, by default 10.
+            The number of epochs to wait before resuming normal operation after lr has been reduced, by default 0.
         plateau_patience : int, optional
-            The number of epochs with no improvement after which learning rate will be reduced, by default 20.
+            The number of epochs with no improvement after which learning rate will be reduced, by default 10.
         patience : int, optional
-            The number of epochs with no improvement after which training will be stopped, by default 60.
+            The number of epochs with no improvement after which training will be stopped, by default 20.
         epochs : int, optional
             The number of epochs to train the model, by default 1000.
         verbose : int, optional
