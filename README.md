@@ -51,7 +51,7 @@ venv\Scripts\activate
 
 ### Usage
 
-The project offers various functionalities that can be accessed through command-line parameters. Below are some examples of how to use the project:
+The project has various functionalities that can be accessed through command-line parameters. Below are some examples of how to use:
 
 **Example 1: Perform optical model training**
 
@@ -79,7 +79,7 @@ This will perform inferenceon the specified images using the Flor optical networ
 
 ## Parameters
 
-The Graphite project offers various command-line parameters that can be used to customize its behavior. Here is a list of the available parameters along with their descriptions:
+The project has various command-line parameters that can be used to customize its behavior. Here is a list of the available parameters along with their descriptions:
 
 - `--source`: Define the source data (e.g., iam, rimes).
 - `--level`: Define the recognition level (e.g., line, paragraph).
@@ -126,25 +126,9 @@ The Graphite project offers various command-line parameters that can be used to 
 
 Feel free to experiment with the parameters to find the ones that best fit your specific needs.
 
-## Call to Contribute
-
-The Graphite is an ongoing project, and contributions are welcome. If you're interested in contributing to the project, here are a few ways you can get involved:
-
-- **Bug Reports**: If you come across any bugs or issues while using the project, please report them on the [issue tracker](https://github.com/arthurflor23/handwritten-text-recognition/issues). Include as much detail as possible to help us reproduce and address the problem.
-
-- **Feature Requests**: If you have any ideas or suggestions for new features or improvements, please submit them on the [issue tracker](https://github.com/arthurflor23/handwritten-text-recognition/issues). We appreciate your input and will review them for future development.
-
-- **Pull Requests**: Contributions to the project are highly appreciated! If you would like to contribute code or any other improvements, please consider submitting a pull request.
-
-- **Documentation**: Improving documentation is always valuable. If you notice any areas that can be clarified or expanded upon, please feel free to submit documentation updates or create new documentation pages.
-
-- **Contact**: If you have any questions, need clarifications, or want to discuss any aspect of the project, feel free to get in touch. You can reach out via [email](mailto:afsn@ecomp.poli.br).
-
-By contributing to Graphite, you'll be helping to improve the project for everyone. We appreciate your support and look forward to your contributions!
-
 ## Tutorial Notebook
 
-To help you get started, a tutorial material has been created. This tutorial provides a step-by-step guide to exploring the end-to-end pipeline of the Handwritten Text Recognition project. 
+To help you get started, a tutorial material has been created. This tutorial provides a step-by-step guide to exploring the end-to-end pipeline of the project.
 
 The tutorial material is designed to be beginner-friendly and can be easily run on [Google Colab](https://research.google.com/colaboratory/), a cloud-based Jupyter notebook environment. It provides a hands-on experience of using the project's features and demonstrates the usage of various parameters and functionalities.
 
@@ -160,17 +144,31 @@ By following the tutorial, you will be able to:
 
 To access the tutorial material, please refer to the [Tutorial Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project's repository. Follow the instructions within the notebook to run the code and explore the functionalities.
 
+## Call to Contribute
+
+The Graphite is an ongoing project, and contributions are welcome. If you're interested in contributing to the project, here are a few ways you can get involved:
+
+- **Bug Reports**: If you come across any bugs or issues while using the project, please report them on the [issue tracker](https://github.com/arthurflor23/handwritten-text-recognition/issues). Include as much detail as possible to help us reproduce and address the problem.
+
+- **Feature Requests**: If you have any ideas or suggestions for new features or improvements, please submit them on the [issue tracker](https://github.com/arthurflor23/handwritten-text-recognition/issues). We appreciate your input and will review them for future development.
+
+- **Pull Requests**: Contributions to the project are highly appreciated! If you would like to contribute code or any other improvements, please consider submitting a pull request.
+
+- **Documentation**: Improving documentation is always valuable. If you notice any areas that can be clarified or expanded upon, please feel free to submit documentation updates or create new documentation pages.
+
+By contributing to Graphite, you'll be helping to improve the project for everyone. We appreciate your support and look forward to your contributions!
+
 ## Sponsor
 
 This project is part of my PhD work and is currently under development. Your support would greatly contribute to its progress and success. If you find this project valuable or if it has helped you in any way, please consider showing your support by sponsoring it. Your sponsorship will help me dedicate more time and resources to enhance the project, implement new features, and conduct further research.
 
-You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Every contribution is greatly appreciated and motivates me to continue working on the project.
+You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Every contribution is greatly appreciated and motivates me to continue working on the project. Thank you for considering sponsorship and for being a part of this journey!
 
-Thank you for considering sponsorship and for being a part of this journey!
+Finally, if you have any questions, need clarification or would like to discuss any aspect of the project, feel free to get in touch. You can reach out via [email](mailto:afsn@ecomp.poli.br).
 
 ## References
 
-If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may find the following references:
+If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may be interested in the following references:
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models.](https://doi.org/10.1145/3395027.3419603) Proceedings of the ACM Symposium on Document Engineering, 2020.
 
