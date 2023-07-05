@@ -835,7 +835,7 @@ class Logger():
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'evaluation':
-            evaluation = [f"{i}\n{'-' * 65}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()]
+            evaluation = [f"{i}\n{'-' * 70}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()]
             evaluation = '\n\n'.join(evaluation)
 
             info = f"""
@@ -1026,10 +1026,10 @@ class Logger():
             Indicates the origin name. Default is 'baseline'.
         """
 
-        self.evaluation[origin] = [f"{'top_path':<9} {'cer':<9} {'wer':<9} {'ler':<9} {'ser':<9}"]
+        self.evaluation[origin] = [f"{'top_path':<8}\t{'cer':<8}\t{'wer':<8}\t{'ler':<8}\t{'ser':<8}"]
 
         for i, x in enumerate(metrics, start=1):
-            self.evaluation[origin] += [f"{i:<9} {x[0]:<9.2%} {x[1]:<9.2%} {x[2]:<9.2%} {x[3]:<9.2%}"]
+            self.evaluation[origin] += [f"{i:<8}\t{x[0]:<8.2%}\t{x[1]:<8.2%}\t{x[2]:<8.2%}\t{x[3]:<8.2%}"]
 
         self.touched = True
 
