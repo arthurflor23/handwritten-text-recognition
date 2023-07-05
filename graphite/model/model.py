@@ -835,7 +835,7 @@ class Logger():
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         elif self.role == 'evaluation':
-            evaluation = [f"{i}\n{'-' * 70}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()]
+            evaluation = [f"{i}\n{'-' * 72}\n" + '\n'.join(self.evaluation[i]) for i in self.evaluation.keys()]
             evaluation = '\n\n'.join(evaluation)
 
             info = f"""
