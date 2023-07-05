@@ -140,7 +140,7 @@ if __name__ == '__main__':
                         help="Specify run index")
 
     # Others
-    parser.add_argument('--seed', default=42, type=int,
+    parser.add_argument('--seed', default=None, type=int,
                         help="Seed value for training process")
 
     parser.add_argument('--verbose', default=1, type=int,
