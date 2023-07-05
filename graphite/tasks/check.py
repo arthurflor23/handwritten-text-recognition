@@ -24,7 +24,7 @@ def check(args):
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       lazy_mode=True,
-                      seed=42)
+                      seed=args.seed)
     print(dataset)
 
     augmentor = Augmentor(elastic_transform=args.elastic_transform,
@@ -38,7 +38,7 @@ def check(args):
                           scaling=args.scaling,
                           rotation=args.rotation,
                           translation=args.translation,
-                          seed=42)
+                          seed=args.seed)
     print(augmentor)
 
     src_generator, _ = dataset.get_generator(dataset.training,
