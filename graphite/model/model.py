@@ -41,7 +41,8 @@ class Model():
             Seed for tensorflow operations. Default is None.
         """
 
-        tf.random.set_seed(seed)
+        np.random.seed(seed or 0)
+        tf.random.set_seed(seed or 0)
         # tf.config.set_visible_devices([], 'GPU')
 
         mlflow.set_tracking_uri(artifact_path)
