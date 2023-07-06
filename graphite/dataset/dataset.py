@@ -685,7 +685,7 @@ class Dataset():
 
         return partition
 
-    def _pad_batch_data(self, batch_data, pad_value=255, dtype=None):
+    def _pad_batch_data(self, batch_data, pad_value, dtype=None):
         """
         Pads each 2D sub-array in the batch data to the maximum height and width.
 
@@ -694,7 +694,7 @@ class Dataset():
         data : list
             List of 2D sub-arrays to be padded.
         pad_value : int, optional
-            Padding value. Default is 255.
+            Padding value.
         dtype : data-type, optional
             Desired data type of output array.
 
