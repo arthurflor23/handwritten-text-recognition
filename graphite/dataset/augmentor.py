@@ -58,7 +58,7 @@ class Augmentor():
         None
         """
 
-        np.random.seed(seed)
+        np.random.seed(seed or 0)
 
         self.erosion_params = erosion
         self.dilation_params = dilation
@@ -264,7 +264,7 @@ class Augmentor():
         if kernel_size % 2 == 0:
             kernel_size += 1
 
-        dxy = self._cv2_randu(image.shape[:2], -1.0, 1.0)
+        dxy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
         dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * alpha)
 
         org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
@@ -618,34 +618,3 @@ class Augmentor():
             image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
         return image
-
-    def _cv2_randu(self, shape, low, high):
-        """
-        Generate an array of random numbers using OpenCV's function.
-
-        Parameters
-        ----------
-        shape : tuple
-            Shape of the output array.
-        low : float or int
-            Lower bound of the random number range.
-        high : float or int
-            Upper bound of the random number range.
-
-        Returns
-        -------
-        ndarray
-            Array of random numbers with the specified shape and range.
-        """
-
-        try:
-            self._cv2_seed += 1
-            cv2.setRNGSeed(self._cv2_seed)
-
-        except Exception:
-            self._cv2_seed = self.seed or 0
-            cv2.setRNGSeed(self._cv2_seed)
-
-        rand = cv2.randu(np.empty(shape), low, high)
-
-        return rand
