@@ -27,17 +27,17 @@ def check(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(elastic_transform=args.elastic_transform,
-                          erosion=args.erosion,
+    augmentor = Augmentor(erosion=args.erosion,
                           dilation=args.dilation,
-                          mixup=args.mixup,
+                          elastic_transform=args.elastic_transform,
                           perspective_transform=args.perspective_transform,
-                          gaussian_noise=args.gaussian_noise,
-                          gaussian_blur=args.gaussian_blur,
+                          mixup=args.mixup,
                           shearing=args.shearing,
                           scaling=args.scaling,
                           rotation=args.rotation,
                           translation=args.translation,
+                          gaussian_noise=args.gaussian_noise,
+                          gaussian_blur=args.gaussian_blur,
                           seed=args.seed)
     print(augmentor)
 
