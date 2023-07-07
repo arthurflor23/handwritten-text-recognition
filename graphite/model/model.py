@@ -256,6 +256,7 @@ class Model():
             if self.run_context is not None:
                 dict_params = {**self.run_context.data.params, **dict_params}
 
+            # MLflow doesn't allow to update params
             if run_id is None:
                 mlflow.log_params(dict_params)
             else:
