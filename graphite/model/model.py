@@ -1049,17 +1049,33 @@ class Logger():
             Indicates the origin name. Default is 'baseline'.
         """
 
-        self.samples[origin] = []
-
         for i, top_path in enumerate(samples):
-            path = [{
-                'image_path': x[0],
-                'bbox': x[1],
-                'label': x[2],
-                'prediction': x[3],
-                'metric': x[4],
-            } for x in top_path]
+            path_key = f"top_path_{i + 1}"
 
-            self.samples[origin].append({f"top_path_{i + 1}": path})
+            if path_key not in self.samples:
+                self.samples[path_key] = []
+
+            image_paths = [item['image_path'] for item in self.samples[path_key]]
+
+            for item in top_path:
+                index = -1
+
+                if item[0] in image_paths:
+                    index = image_paths.index(item[0])
+
+                if index > -1:
+                    self.samples[path_key][index] = {
+                        **self.samples[path_key][index],
+                        f"{origin}_prediction": item[3],
+                        f"{origin}_metric": item[4],
+                    }
+                else:
+                    self.samples[path_key].append({
+                        "image_path": item[0],
+                        "bbox": item[1],
+                        "label": item[2],
+                        f"{origin}_prediction": item[3],
+                        f"{origin}_metric": item[4],
+                    })
 
         self.touched = True
