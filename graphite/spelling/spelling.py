@@ -103,13 +103,6 @@ class Spelling():
             The enhanced predictions.
         """
 
-        if instruction is None:
-            instruction = """
-                Correct spelling errors, including accents.
-                The following texts contain errors from a handwriting recognition model.
-                Preserve slang, historical terms, and grammar. Make only confident changes.
-            """
-
         if self.spell_checker is not None and self.api_key is not None:
             predictions = self._spell_checker.enhance_predictions(instruction, predictions, verbose)
             predictions = np.array(predictions, dtype=object)
