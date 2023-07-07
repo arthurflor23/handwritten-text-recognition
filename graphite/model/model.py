@@ -256,7 +256,14 @@ class Model():
             if self.run_context is not None:
                 dict_params = {**self.run_context.data.params, **dict_params}
 
-            mlflow.log_params(dict_params)
+            if run_id is None:
+                mlflow.log_params(dict_params)
+            else:
+                params_path = os.path.join(os.path.dirname(artifacts_uri), 'params')
+
+                for key in dict_params.keys():
+                    with open(os.path.join(params_path, key), 'w') as f:
+                        f.write(str(dict_params[key]).strip())
 
             # Logs
             filelogs = [
@@ -1052,7 +1059,7 @@ class Logger():
         for i, top_path in enumerate(samples):
             path_key = f"top_path_{i + 1}"
 
-            if path_key not in self.samples:
+            if path_key not in self.samples.keys():
                 self.samples[path_key] = []
 
             image_paths = [item['image_path'] for item in self.samples[path_key]]
