@@ -16,7 +16,7 @@ def test(args):
     """
 
     def print_section(content):
-        print(f"\n{'=' * 65}\n{content}\n{'=' * 65}\n")
+        print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
     dataset = Dataset(source=args.source,
                       level=args.level,
