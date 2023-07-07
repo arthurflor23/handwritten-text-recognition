@@ -19,6 +19,8 @@ class SpellChecker():
             The API key to interact with the OpenAI API.
         """
 
+        self.max_tokens = 4048
+
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
 
@@ -45,13 +47,12 @@ class SpellChecker():
             instruction = """
                 Correct spelling errors, including accents.
                 The following texts contain errors from a handwriting recognition model.
-                Preserve slang, historical terms, and grammar. Make only confident changes.
+                Preserve tags, slang, historical terms, and grammar.
+                Make only confident changes.
             """
 
         encoding = tiktoken.get_encoding('p50k_base')
         enhanced_predictions = []
-
-        max_tokens = 4048
 
         for i, top_path in enumerate(predictions):
             tokens_length = 0
@@ -62,7 +63,7 @@ class SpellChecker():
                     pp_text = f'<{j}.{u}>{line}</{j}.{u}>'
                     pp_text_tokens_length = len(encoding.encode(pp_text))
 
-                    if tokens_length + pp_text_tokens_length > max_tokens:
+                    if tokens_length + pp_text_tokens_length > (self.max_tokens // 2):
                         batches.append([])
                         tokens_length = 0
                     else:
@@ -119,8 +120,13 @@ class SpellChecker():
 
         while retry_count < retry_limit:
             try:
-                response = openai.ChatCompletion.create(model=model, messages=messages, temperature=0)
-                response = response.choices[0].message['content'].strip()
+                response = openai.ChatCompletion.create(model=model,
+                                                        messages=messages,
+                                                        max_tokens=self.max_tokens // 2,
+                                                        temperature=0)
+
+                response = response.choices[0]['message']['content'].strip()
+
                 return response
 
             except Exception as err:
