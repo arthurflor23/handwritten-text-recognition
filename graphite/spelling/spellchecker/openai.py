@@ -20,7 +20,8 @@ class SpellChecker():
             The API key to interact with the OpenAI API.
         """
 
-        self.max_tokens = 4048
+        self.max_tokens = 16e+3
+        self.model = 'gpt-3.5-turbo-16k-0613'
 
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
@@ -64,7 +65,7 @@ class SpellChecker():
                     pp_text = f'<{j}.{u}>{line}</{j}.{u}>'
                     pp_text_tokens_length = len(encoding.encode(pp_text))
 
-                    if tokens_length + pp_text_tokens_length > (self.max_tokens // 2):
+                    if tokens_length + pp_text_tokens_length > int(self.max_tokens / 2):
                         batches.append([])
                         tokens_length = 0
                     else:
@@ -114,8 +115,6 @@ class SpellChecker():
         retry_sleep = 10
         retry_count = 0
 
-        model = 'gpt-3.5-turbo'
-
         messages = [
             {'role': 'system', 'content': ' '.join(instruction.split())},
             {'role': 'user', 'content': text}
@@ -123,9 +122,9 @@ class SpellChecker():
 
         while retry_count < retry_limit:
             try:
-                response = openai.ChatCompletion.create(model=model,
+                response = openai.ChatCompletion.create(model=self.model,
                                                         messages=messages,
-                                                        max_tokens=self.max_tokens // 2,
+                                                        max_tokens=int(self.max_tokens / 2),
                                                         temperature=0)
 
                 response = response.choices[0]['message']['content'].strip()
