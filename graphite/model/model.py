@@ -162,9 +162,12 @@ class Model():
             return
 
         self.tokenizer = tokenizer
+        self._network = self._network(self.tokenizer.shape, self.pad_value)
 
-        self.model = self._network(self.tokenizer.shape, self.pad_value)
-        self.model = self.model.compile_model(learning_rate=learning_rate, loss_func=self.ctc_loss_func)
+        tf.keras.backend.clear_session()
+
+        self.model = self._network.compile_model(learning_rate=learning_rate,
+                                                 loss_func=self.ctc_loss_func)
 
         if model_uri is not None:
             self.model.load_weights(model_uri)
