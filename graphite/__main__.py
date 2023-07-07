@@ -1,3 +1,5 @@
+import os
+import sys
 import tasks
 import argparse
 
@@ -147,6 +149,9 @@ if __name__ == '__main__':
                         help="Verbosity mode")
 
     args = parser.parse_args()
+
+    # Turn jupyter notebook compatible
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
     # Turn required parameters
     if args.check or args.train or args.test:
