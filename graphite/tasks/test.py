@@ -29,7 +29,7 @@ def test(args):
         print_section(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
-    model.compile(run_index=args.run_index)
+    model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
     if args.verbose:
         print_section(model)
