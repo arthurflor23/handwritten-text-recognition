@@ -41,10 +41,17 @@ class SpellChecker():
             Enhanced predictions in the same structure as input.
         """
 
-        encoding = tiktoken.get_encoding('p50k_edit')
+        if instruction is None:
+            instruction = """
+                Correct spelling errors, including accents.
+                The following texts contain errors from a handwriting recognition model.
+                Preserve slang, historical terms, and grammar. Make only confident changes.
+            """
+
+        encoding = tiktoken.get_encoding('p50k_base')
         enhanced_predictions = []
 
-        max_tokens = 2560
+        max_tokens = 4048
 
         for i, top_path in enumerate(predictions):
             tokens_length = 0
@@ -52,7 +59,7 @@ class SpellChecker():
 
             for j, text in enumerate(top_path):
                 for u, line in enumerate(text):
-                    pp_text = f'<{j}.{u}> {line} </{j}.{u}>'
+                    pp_text = f'<{j}.{u}>{line}</{j}.{u}>'
                     pp_text_tokens_length = len(encoding.encode(pp_text))
 
                     if tokens_length + pp_text_tokens_length > max_tokens:
@@ -103,16 +110,17 @@ class SpellChecker():
         retry_sleep = 10
         retry_count = 0
 
+        model = 'gpt-3.5-turbo'
+
+        messages = [
+            {'role': 'system', 'content': ' '.join(instruction.split())},
+            {'role': 'user', 'content': text}
+        ]
+
         while retry_count < retry_limit:
             try:
-                response = openai.Edit.create(engine='text-davinci-edit-001',
-                                              instruction=' '.join(instruction.split()),
-                                              input=text,
-                                              temperature=0,
-                                              top_p=1,
-                                              n=1)
-
-                response = response.choices[0].text.strip()
+                response = openai.ChatCompletion.create(model=model, messages=messages, temperature=0)
+                response = response.choices[0].message['content'].strip()
                 return response
 
             except Exception as err:
