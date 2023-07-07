@@ -128,11 +128,11 @@ class Model():
 
         Parameters
         ----------
-        tokenizer : object
+        tokenizer : object, optional
             The Tokenizer object used for tokenizing the input data. Default is None.
         learning_rate : float, optional
             The learning rate for the optimizer in the model. Default is 1e-3.
-        run_index : int
+        run_index : int, optional
             The run index which the context will be loaded. Default is None.
         """
 
@@ -159,7 +159,7 @@ class Model():
 
         if tokenizer is None:
             print("Tokenizer is required.")
-            return
+            exit()
 
         self.tokenizer = tokenizer
         self._network = self._network(self.tokenizer.shape, self.pad_value)
