@@ -2,6 +2,7 @@ import re
 import time
 import openai
 import tiktoken
+import concurrent
 
 
 class SpellChecker():
@@ -51,7 +52,7 @@ class SpellChecker():
                 Make only confident changes.
             """
 
-        encoding = tiktoken.get_encoding('p50k_base')
+        encoding = tiktoken.get_encoding('cl100k_base')
         enhanced_predictions = []
 
         for i, top_path in enumerate(predictions):
@@ -74,7 +75,9 @@ class SpellChecker():
             if verbose:
                 print(f"Enhance top path {i + 1} (batches: {len(batches)})")
 
-            enhanced_data = '\n'.join([self._request_api(instruction, '\n'.join(x)) for x in batches])
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self._request_api, instruction, '\n'.join(x)) for x in batches]
+                enhanced_data = '\n'.join([future.result() for future in futures])
 
             pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
             matches = pattern.findall(enhanced_data)
