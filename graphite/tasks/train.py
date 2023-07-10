@@ -39,6 +39,7 @@ def train(args):
                               scaling=args.scaling,
                               rotation=args.rotation,
                               translation=args.translation,
+                              salt_and_pepper=args.salt_and_pepper,
                               gaussian_noise=args.gaussian_noise,
                               gaussian_blur=args.gaussian_blur,
                               seed=args.seed)
