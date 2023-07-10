@@ -17,6 +17,7 @@ class Augmentor():
                  scaling=None,
                  rotation=None,
                  translation=None,
+                 salt_and_pepper=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
                  pad_value=255,
@@ -44,6 +45,8 @@ class Augmentor():
             Parameters for rotation transformation, by default None.
         translation : dict or None, optional
             Parameters for vertical and horizontal translation transformation, by default None.
+        salt_and_pepper : dict or None, optional
+            Parameters for salt and pepper noise, by default None.
         gaussian_noise : dict or None, optional
             Parameters for gaussian noise, by default None.
         gaussian_blur : dict or None, optional
@@ -69,6 +72,7 @@ class Augmentor():
         self.scaling_params = scaling
         self.rotation_params = rotation
         self.translation_params = translation
+        self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
 
@@ -100,6 +104,7 @@ class Augmentor():
             Rotation                {self.rotation_params}
             Translation             {self.translation_params}
 
+            Salt and Pepper Noise   {self.salt_and_pepper_params}
             Gaussian Noise          {self.gaussian_noise_params}
             Gaussian Blur           {self.gaussian_blur_params}
 
@@ -131,6 +136,7 @@ class Augmentor():
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
             'translation': self.translation_params,
+            'salt_and_pepper': self.salt_and_pepper_params,
             'gaussian_noise': self.gaussian_noise_params,
             'gaussian_blur': self.gaussian_blur_params,
             'pad_value': self.pad_value,
@@ -166,6 +172,7 @@ class Augmentor():
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
             (self.translation, self.translation_params),
+            (self.salt_and_pepper, self.salt_and_pepper_params),
             (self.gaussian_noise, self.gaussian_noise_params),
             (self.gaussian_blur, self.gaussian_blur_params),
         ]
@@ -548,6 +555,36 @@ class Augmentor():
                                borderValue=self.pad_value)
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+
+        return image
+
+    def salt_and_pepper(self, image, alpha, radius=True):
+        """
+        Apply salt and pepper noise to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be noised.
+        alpha : float
+            Percentage of pixels to add noise to.
+        radius : bool, optional
+            Whether to use range radius for alpha, by default True.
+
+        Returns
+        -------
+        numpy.ndarray
+            The noisy image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(0.0, alpha)
+
+        noise_mask = np.random.uniform(0.0, 1.0, size=image.shape[:2])
+        alpha *= 0.25
+
+        image = np.where(noise_mask < alpha, 0, image)
+        image = np.where(noise_mask > (1 - alpha), 255, image)
 
         return image
 
