@@ -162,12 +162,15 @@ class Augmentor():
             Transformed image.
         """
 
+        if self.mixup_params is not None:
+            self.mixup_params = self.mixup_params[2:] + [batch_images] + self.mixup_params[2:]
+
         transformations = [
             (self.erosion, self.erosion_params),
             (self.dilation, self.dilation_params),
             (self.elastic_transform, self.elastic_transform_params),
             (self.perspective_transform, self.perspective_transform_params),
-            (self.mixup, self.mixup_params + [batch_images] if self.mixup_params else None),
+            (self.mixup, self.mixup_params),
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
@@ -178,12 +181,12 @@ class Augmentor():
         ]
 
         for transform_func, params in transformations:
-            if params and np.random.random() < params[0]:
+            if params is not None and len(params) > 1 and np.random.random() < params[0]:
                 image = transform_func(image, *params[1:])
 
         return image
 
-    def erosion(self, image, kernel_size, iterations, radius=True):
+    def erosion(self, image, kernel_size, iterations=1, radius=True):
         """
         Apply Erosion to the image.
 
@@ -194,7 +197,7 @@ class Augmentor():
         kernel_size : int
             Kernel size for erosion.
         iterations : int
-            Number of iterations for erosion.
+            Number of iterations for erosion, by default 1.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
@@ -213,7 +216,7 @@ class Augmentor():
 
         return image
 
-    def dilation(self, image, kernel_size, iterations, radius=True):
+    def dilation(self, image, kernel_size, iterations=1, radius=True):
         """
         Apply Dilation to the image.
 
@@ -224,7 +227,7 @@ class Augmentor():
         kernel_size : int
             Kernel size for dilation.
         iterations : int
-            Number of iterations for dilation.
+            Number of iterations for dilation, by default 1.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
@@ -243,7 +246,7 @@ class Augmentor():
 
         return image
 
-    def elastic_transform(self, image, kernel_size, alpha, radius=True):
+    def elastic_transform(self, image, kernel_size, alpha=1.0, radius=True):
         """
         Apply elastic transform to the image.
 
@@ -254,9 +257,9 @@ class Augmentor():
         kernel_size : int
             Kernel size for elastic transform.
         alpha : float
-            Factor of elastic transform.
+            Factor of elastic transform, by default 1.0.
         radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
+            Whether to use range radius for kernel size and alpha, by default True.
 
         Returns
         -------
@@ -336,7 +339,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, opacity, iterations, batch_images=None, radius=True):
+    def mixup(self, image, opacity, batch_images, iterations=1, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -346,10 +349,10 @@ class Augmentor():
             Input image to be mixed.
         opacity : float
             Opacity of the mixup effect.
-        iterations : int
-            Number of images for the mixup operation.
         batch_images : list
             List of additional images for mixing.
+        iterations : int
+            Number of images for the mixup operation, by default 1.
         radius : bool, optional
             Whether to use range radius for opacity and iterations, by default True.
 
@@ -358,6 +361,9 @@ class Augmentor():
         ndarray
             Mixed image.
         """
+
+        if batch_images is None or len(batch_images) == 0:
+            return image
 
         height, width = image.shape[:2]
 
@@ -623,7 +629,7 @@ class Augmentor():
 
         return image
 
-    def gaussian_blur(self, image, kernel_size, iterations, radius=True):
+    def gaussian_blur(self, image, kernel_size, iterations=1, radius=True):
         """
         Apply Gaussian blur to the image.
 
@@ -634,7 +640,7 @@ class Augmentor():
         kernel_size : int
             Kernel size for Gaussian blur.
         iterations : int
-            Number of iterations for Gaussian blur.
+            Number of iterations for Gaussian blur, by default 1.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations, by default True.
 
