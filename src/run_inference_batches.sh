@@ -14,9 +14,21 @@ column=$2
 weights="../weights/$3.hdf5"
 csv_path="$4/$column"
 column_directory="$snippets_path/$column"
+extract=$5
 
-module load python/3.8
-source /shared/home/cyclemgmt/FlorHTR_env/bin/activate
+n=0
+if [ $extract = "T" ]; then
+  mkdir "$column_directory/Batch_$n"
 
-python3 main.py "--source" "$column_directory" "--weights" "$weights" "--csv" "$csv_path" "--append"
+  for f in $(find $column_directory \ (-name '*.jpg'  -o -name '*.jp2'\ )); do
+    cat $f
+    if (( $(ls "$column_directory/Batch_$n" | wc -l) >= 20000 )); then
+      ((++n));
+      cat $n
+      mkdir "$column_directory/Batch_$n"
+    fi
+    cp $f "$column_directory/Batch_$n"
+  done
+fi
 
+#find "${column_directory}" -type f -exec sbatch run_batch.sh {} $weights $csv_path \;
