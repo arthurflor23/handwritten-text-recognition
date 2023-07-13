@@ -2,7 +2,7 @@ import re
 import time
 import openai
 import tiktoken
-import concurrent
+import concurrent.futures
 
 
 class SpellChecker():
