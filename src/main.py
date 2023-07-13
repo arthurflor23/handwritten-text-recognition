@@ -60,7 +60,15 @@ if __name__ == "__main__":
     start_time = time.time()
 
     if args.transform:
+
         dataset_path = "../data/" + str.split(os.path.basename(args.labels), ".")[0] + ".hdf5"
+
+        print('Transforming')
+        print('Source Path:', source_path)
+        print('Architecture:', args.arch)
+        print('Labels:', args.labels)
+        print('Dataset Path:', dataset_path)
+
         ds = Dataset(source="census", name="census", images=args.source, labels=args.labels)
         ds.read_partitions()
         ds.save_partitions(dataset_path, input_size, max_text_length)
@@ -76,6 +84,9 @@ if __name__ == "__main__":
                               charset=charset_base,
                               max_text_length=max_text_length)
 
+        print('Training')
+        print('Dataset:', args.train)
+        print('Weights Path:', weights_path)
         print(f"Train images: {dtgen.size['train']}")
         print(f"Validation images: {dtgen.size['valid']}")
         print(f"Test images: {dtgen.size['test']}")
@@ -138,10 +149,8 @@ if __name__ == "__main__":
         print('Append:', args.append)
         print('Parquet:', args.parquet)
         print('Test:', args.test)
-        
                 
         final_predicts = []
-
         images = []
         
         if args.archive:
@@ -157,7 +166,6 @@ if __name__ == "__main__":
                         # skip directories
                         if not filename:
                             continue
-
                         # copy file (taken from zipfile's extract)
                         source = zip_file.open(member)
                         target = open(os.path.join(folder_path, filename), "wb")
@@ -194,19 +202,19 @@ if __name__ == "__main__":
 
         blank_model = xgb.XGBClassifier()
         blank_model.load_model("./blank_detector.json")
+        supported_extensions = ["jpg", "jpeg", "jpe", "jp2", "png"]
         
-        
-        images = [x for x in images if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
-        # images = [x for x in os.listdir(folder_path) if x.split(".")[-1] == "jpg" or x.split(".")[-1] == "jp2"]
+        images = [x for x in images if x.split(".")[-1] in supported_extensions]
         if args.test:
             images = images[:args.test]
 
         total = len(images)
         print('Total images:', total)
-        print('\n-----------------')
+        print('-----------------')
+        time.sleep(0.25)
         
-        pbar = tqdm(images) # tqdm(total=total)
-        
+        pbar = tqdm(images)
+
         out_path = None
         bad_path = os.path.join(args.csv, 'predicts_bad.csv')
         if args.csv:
@@ -217,15 +225,10 @@ if __name__ == "__main__":
                 bad_path = args.csv.replace(".csv", "_bad.csv")
         elif args.parquet:
             out_path = os.path.join(args.csv, 'predicts.parquet')
-                # bad_path = args.csv.replace(".csv", "_bad.csv")
-            
-            
-        # for image_name in images:
+
+
         for i, image_name in enumerate(pbar):
-        # for image_name in pbar: 
-            pbar.set_description(f'{image_name}') # f'Image: {image_name} ({i})'
-            # print(f'{image_name} ({i} / {total})')
-            
+            pbar.set_description(f'{image_name}')
             image_path = os.path.join(folder_path, image_name)
 
             try:
@@ -259,8 +262,17 @@ if __name__ == "__main__":
             vertical_crop = int(img.shape[0] * 0.1375)
             horizontal_crop = int(img.shape[1] * 0.2375)
 
-            cropped_image = img[vertical_crop:-vertical_crop, horizontal_crop:-horizontal_crop]
-            gray = cv2.cvtColor(cropped_image, cv2.COLOR_RGB2GRAY)
+            try:
+                cropped_image = img[vertical_crop:-vertical_crop, horizontal_crop:-horizontal_crop]
+                gray = cv2.cvtColor(cropped_image, cv2.COLOR_RGB2GRAY)
+            except:
+                non_image_value = "<IMAGE_WAS_NONE>"
+                if WRITE_BAD_TO_OWN_FILE:
+                    with open(bad_path, 'a') as f:
+                        f.write(f"{image_name},{non_image_value},0,0\n")
+                else:
+                    final_predicts.append([image_name, non_image_value, 0, 0])
+                continue
 
             thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 19, 5)
 
@@ -297,24 +309,11 @@ if __name__ == "__main__":
 
             img = pp.preprocess(image_path, input_size=input_size)
             x_test = pp.normalization([img])
-
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
-
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
-            # pbar.update(1)
+
             if i != 0 and i % BATCH_SIZE == 0:
-                # if args.csv:
-                #     if args.csv.split(".")[-1] != "csv":
-                #         csv_path = os.path.join(args.csv, "predicts.csv")
-                #     else:
-                #         csv_path = args.csv
-                #     with open(csv_path, 'a', newline='') as csvfile:
-                #         writer = csv.writer(csvfile)
-                #         writer.writerows(final_predicts)
-                # elif args.parquet:
-                #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
-                #     fastparquet.write(parquet_path, final_predicts)
                 if args.csv:
                     with open(out_path, 'a+', newline='') as csvfile:
                         writer = csv.writer(csvfile)
@@ -323,17 +322,6 @@ if __name__ == "__main__":
                     fastparquet.write(out_path, final_predicts)
                 final_predicts = []
 
-        # if args.csv:
-        #     if args.csv.split(".")[-1] != "csv":
-        #         csv_path = os.path.join(args.csv, "predicts.csv")
-        #     else:
-        #         csv_path = args.csv
-        #     with open(csv_path, 'a', newline='') as csvfile:
-        #         writer = csv.writer(csvfile)
-        #         writer.writerows(final_predicts)
-        # elif args.parquet:
-        #     parquet_path = os.path.join(args.csv, 'predicts.parquet')
-        #     fastparquet.write(parquet_path, final_predicts)
 
         if args.csv:
             with open(out_path, 'a', newline='') as csvfile:
