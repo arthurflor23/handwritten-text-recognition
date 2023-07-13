@@ -5,8 +5,8 @@ import html
 import string
 import zipfile
 import importlib
-import concurrent
 import numpy as np
+import concurrent.futures
 
 
 class Dataset():
