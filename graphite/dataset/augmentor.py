@@ -246,7 +246,7 @@ class Augmentor():
 
         return image
 
-    def elastic_transform(self, image, kernel_size, alpha=1.0, radius=True):
+    def elastic_transform(self, image, kernel_size, alpha, radius=True):
         """
         Apply elastic transform to the image.
 
@@ -257,7 +257,7 @@ class Augmentor():
         kernel_size : int
             Kernel size for elastic transform.
         alpha : float
-            Factor of elastic transform, by default 1.0.
+            Factor of elastic transform.
         radius : bool, optional
             Whether to use range radius for kernel size and alpha, by default True.
 
