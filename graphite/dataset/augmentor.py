@@ -16,7 +16,8 @@ class Augmentor():
                  shearing=None,
                  scaling=None,
                  rotation=None,
-                 translation=None,
+                 shift_y=None,
+                 shift_x=None,
                  salt_and_pepper=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
@@ -43,8 +44,10 @@ class Augmentor():
             Parameters for scaling transformation, by default None.
         rotation : dict or None, optional
             Parameters for rotation transformation, by default None.
-        translation : dict or None, optional
-            Parameters for vertical and horizontal translation transformation, by default None.
+        shift_y : dict or None, optional
+            Parameters for vertical translation transformation, by default None.
+        shift_x : dict or None, optional
+            Parameters for horizontal translation transformation, by default None.
         salt_and_pepper : dict or None, optional
             Parameters for salt and pepper noise, by default None.
         gaussian_noise : dict or None, optional
@@ -71,7 +74,8 @@ class Augmentor():
         self.shearing_params = shearing
         self.scaling_params = scaling
         self.rotation_params = rotation
-        self.translation_params = translation
+        self.shift_y_params = shift_y
+        self.shift_x_params = shift_x
         self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
@@ -102,7 +106,9 @@ class Augmentor():
             Shearing                {self.shearing_params}
             Scaling                 {self.scaling_params}
             Rotation                {self.rotation_params}
-            Translation             {self.translation_params}
+
+            Shift-y                 {self.shift_y_params}
+            Shift-x                 {self.shift_x_params}
 
             Salt and Pepper Noise   {self.salt_and_pepper_params}
             Gaussian Noise          {self.gaussian_noise_params}
@@ -135,7 +141,8 @@ class Augmentor():
             'shearing': self.shearing_params,
             'scaling': self.scaling_params,
             'rotation': self.rotation_params,
-            'translation': self.translation_params,
+            'shift_y': self.shift_y_params,
+            'shift_x': self.shift_x_params,
             'salt_and_pepper': self.salt_and_pepper_params,
             'gaussian_noise': self.gaussian_noise_params,
             'gaussian_blur': self.gaussian_blur_params,
@@ -174,7 +181,8 @@ class Augmentor():
             (self.shearing, self.shearing_params),
             (self.scaling, self.scaling_params),
             (self.rotation, self.rotation_params),
-            (self.translation, self.translation_params),
+            (self.shift_y, self.shift_y_params),
+            (self.shift_x, self.shift_x_params),
             (self.salt_and_pepper, self.salt_and_pepper_params),
             (self.gaussian_noise, self.gaussian_noise_params),
             (self.gaussian_blur, self.gaussian_blur_params),
@@ -518,17 +526,56 @@ class Augmentor():
 
         return image
 
-    def translation(self, image, y_alpha, x_alpha, radius=True):
+    def shift_y(self, image, alpha, radius=True):
         """
-        Apply Y and X-axis translation to the image.
+        Apply Y-axis translation to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be translated.
-        y_alpha : float
+        alpha : float
             Y-axis translation factor.
-        x_alpha : float
+        radius : bool, optional
+            Whether to use range radius for alphas, by default True.
+
+        Returns
+        -------
+        ndarray
+            Translated image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(0.0, alpha)
+
+        height, width = image.shape[:2]
+
+        max_offset = min(height, width)
+        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
+
+        y_translation = int(np.ceil(max_offset * alpha * max_offset_factor))
+
+        M = np.float32([[1, 0, 0], [0, 1, y_translation]])
+
+        new_height = height + abs(y_translation)
+
+        image = cv2.warpAffine(image, M, (width, new_height),
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=self.pad_value)
+
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+
+        return image
+
+    def shift_x(self, image, alpha, radius=True):
+        """
+        Apply X-axis translation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be translated.
+        alpha : float
             X-axis translation factor.
         radius : bool, optional
             Whether to use range radius for alphas, by default True.
@@ -540,23 +587,20 @@ class Augmentor():
         """
 
         if radius:
-            y_alpha = np.random.uniform(0.0, y_alpha)
-            x_alpha = np.random.uniform(0.0, x_alpha)
+            alpha = np.random.uniform(0.0, alpha)
 
         height, width = image.shape[:2]
 
         max_offset = min(height, width)
         max_offset_factor = (1 - (max_offset / (height + width))) ** 4
 
-        y_translation = int(np.ceil(max_offset * y_alpha * max_offset_factor))
-        x_translation = int(np.ceil(max_offset * x_alpha * max_offset_factor))
+        x_translation = int(np.ceil(max_offset * alpha * max_offset_factor))
 
-        M = np.float32([[1, 0, x_translation], [0, 1, y_translation]])
+        M = np.float32([[1, 0, x_translation], [0, 1, 0]])
 
-        new_height = height + abs(y_translation)
         new_width = width + abs(x_translation)
 
-        image = cv2.warpAffine(image, M, (new_width, new_height),
+        image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=self.pad_value)
 
