@@ -95,7 +95,9 @@ The project has various command-line parameters that can be used to customize it
 - `--shearing`: Apply shearing transformation augmentation (probability, angle).
 - `--scaling`: Apply scaling transformation augmentation (probability, scale alpha).
 - `--rotation`: Apply rotation transformation augmentation (probability, angle).
-- `--translation`: Apply vertical and horizontal translation augmentation (probability, y-alpha, x-alpha).
+- `--shift-y`: Apply vertical translation augmentation (probability, y-alpha).
+- `--shift-x`: Apply horizontal translation augmentation (probability, x-alpha).
+- `--salt-and-pepper`: Apply Salt and Pepper noise augmentation (probability, alpha).
 - `--gaussian-noise`: Apply Gaussian noise augmentation (probability, alpha).
 - `--gaussian-blur`: Apply Gaussian blur augmentation (probability, kernel size, iterations).
 - `--disable-augmentation`: Disable data augmentation completely.
