@@ -56,8 +56,11 @@ if __name__ == '__main__':
     parser.add_argument('--rotation', default=[0.99, 0.5], nargs='+', type=float,
                         help="Apply rotation transformation (probability, angle)")
 
-    parser.add_argument('--translation', default=[0.99, 0.025, 0.05], nargs='+', type=float,
-                        help="Apply vertical and horizontal translation (probability, y-alpha, x-alpha)")
+    parser.add_argument('--shift-y', default=[0.99, 0.5], nargs='+', type=float,
+                        help="Apply vertical translation (probability, y-alpha)")
+
+    parser.add_argument('--shift-x', default=[0.99, 0.5], nargs='+', type=float,
+                        help="Apply horizontal translation (probability, x-alpha)")
 
     parser.add_argument('--salt-and-pepper', default=[0.99, 0.3], nargs='+', type=float,
                         help="Apply salt and pepper noise (probability, alpha)")
