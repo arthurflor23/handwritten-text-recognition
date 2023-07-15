@@ -8,14 +8,14 @@ class Augmentor():
     """
 
     def __init__(self,
-                 erosion=None,
-                 dilation=None,
-                 elastic_transform=None,
-                 perspective_transform=None,
+                 erode=None,
+                 dilate=None,
+                 elastic=None,
+                 perspective=None,
                  mixup=None,
-                 shearing=None,
-                 scaling=None,
-                 rotation=None,
+                 shear=None,
+                 scale=None,
+                 rotate=None,
                  shift_y=None,
                  shift_x=None,
                  salt_and_pepper=None,
@@ -28,22 +28,22 @@ class Augmentor():
 
         Parameters
         ----------
-        erosion : dict or None, optional
-            Parameters for erosion transformation, by default None.
-        dilation : dict or None, optional
-            Parameters for dilation transformation, by default None.
-        elastic_transform : dict or None, optional
+        erode : dict or None, optional
+            Parameters for erode transformation, by default None.
+        dilate : dict or None, optional
+            Parameters for dilate transformation, by default None.
+        elastic : dict or None, optional
             Parameters for elastic transformation, by default None.
-        perspective_transform : dict or None, optional
+        perspective : dict or None, optional
             Parameters for perspective transform transformation, by default None.
         mixup : dict or None, optional
             Parameters for mixup transformation, by default None.
-        shearing : dict or None, optional
-            Parameters for shearing transformation, by default None.
-        scaling : dict or None, optional
-            Parameters for scaling transformation, by default None.
-        rotation : dict or None, optional
-            Parameters for rotation transformation, by default None.
+        shear : dict or None, optional
+            Parameters for shear transformation, by default None.
+        scale : dict or None, optional
+            Parameters for scale transformation, by default None.
+        rotate : dict or None, optional
+            Parameters for rotate transformation, by default None.
         shift_y : dict or None, optional
             Parameters for vertical translation transformation, by default None.
         shift_x : dict or None, optional
@@ -66,14 +66,14 @@ class Augmentor():
 
         np.random.seed(seed or 0)
 
-        self.erosion_params = erosion
-        self.dilation_params = dilation
-        self.elastic_transform_params = elastic_transform
-        self.perspective_transform_params = perspective_transform
+        self.erode_params = erode
+        self.dilate_params = dilate
+        self.elastic_params = elastic
+        self.perspective_params = perspective
         self.mixup_params = mixup
-        self.shearing_params = shearing
-        self.scaling_params = scaling
-        self.rotation_params = rotation
+        self.shear_params = shear
+        self.scale_params = scale
+        self.rotate_params = rotate
         self.shift_y_params = shift_y
         self.shift_x_params = shift_x
         self.salt_and_pepper_params = salt_and_pepper
@@ -95,27 +95,27 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
-            Erosion                 {self.erosion_params}
-            Dilation                {self.dilation_params}
+            Erode                       {self.erode_params}
+            Dilate                      {self.dilate_params}
 
-            Elastic Transform       {self.elastic_transform_params}
-            Perspective Transform   {self.perspective_transform_params}
+            Elastic                     {self.elastic_params}
+            Perspective                 {self.perspective_params}
 
-            Mixup                   {self.mixup_params}
+            Mixup                       {self.mixup_params}
 
-            Shearing                {self.shearing_params}
-            Scaling                 {self.scaling_params}
-            Rotation                {self.rotation_params}
+            Shear                       {self.shear_params}
+            Scale                       {self.scale_params}
+            Rotate                      {self.rotate_params}
 
-            Shift-y                 {self.shift_y_params}
-            Shift-x                 {self.shift_x_params}
+            Shift-y                     {self.shift_y_params}
+            Shift-x                     {self.shift_x_params}
 
-            Salt and Pepper Noise   {self.salt_and_pepper_params}
-            Gaussian Noise          {self.gaussian_noise_params}
-            Gaussian Blur           {self.gaussian_blur_params}
+            Salt and Pepper Noise       {self.salt_and_pepper_params}
+            Gaussian Noise              {self.gaussian_noise_params}
+            Gaussian Blur               {self.gaussian_blur_params}
 
-            Padding Value           {self.pad_value}
-            Seed                    {self.seed}
+            Padding Value               {self.pad_value}
+            Seed                        {self.seed}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
@@ -133,14 +133,14 @@ class Augmentor():
         """
 
         attributes = {
-            'erosion': self.erosion_params,
-            'dilation': self.dilation_params,
-            'elastic_transform': self.elastic_transform_params,
-            'perspective_transform': self.perspective_transform_params,
+            'erode': self.erode_params,
+            'dilate': self.dilate_params,
+            'elastic': self.elastic_params,
+            'perspective': self.perspective_params,
             'mixup': self.mixup_params,
-            'shearing': self.shearing_params,
-            'scaling': self.scaling_params,
-            'rotation': self.rotation_params,
+            'shear': self.shear_params,
+            'scale': self.scale_params,
+            'rotate': self.rotate_params,
             'shift_y': self.shift_y_params,
             'shift_x': self.shift_x_params,
             'salt_and_pepper': self.salt_and_pepper_params,
@@ -173,14 +173,14 @@ class Augmentor():
             self.mixup_params = self.mixup_params[2:] + [batch_images] + self.mixup_params[2:]
 
         transformations = [
-            (self.erosion, self.erosion_params),
-            (self.dilation, self.dilation_params),
-            (self.elastic_transform, self.elastic_transform_params),
-            (self.perspective_transform, self.perspective_transform_params),
+            (self.erode, self.erode_params),
+            (self.dilate, self.dilate_params),
+            (self.elastic, self.elastic_params),
+            (self.perspective, self.perspective_params),
             (self.mixup, self.mixup_params),
-            (self.shearing, self.shearing_params),
-            (self.scaling, self.scaling_params),
-            (self.rotation, self.rotation_params),
+            (self.shear, self.shear_params),
+            (self.scale, self.scale_params),
+            (self.rotate, self.rotate_params),
             (self.shift_y, self.shift_y_params),
             (self.shift_x, self.shift_x_params),
             (self.salt_and_pepper, self.salt_and_pepper_params),
@@ -194,9 +194,9 @@ class Augmentor():
 
         return image
 
-    def erosion(self, image, kernel_size, iterations=1, radius=True):
+    def erode(self, image, kernel_size, iterations=1, radius=True):
         """
-        Apply Erosion to the image.
+        Apply erode transformation to the image.
 
         Parameters
         ----------
@@ -224,9 +224,9 @@ class Augmentor():
 
         return image
 
-    def dilation(self, image, kernel_size, iterations=1, radius=True):
+    def dilate(self, image, kernel_size, iterations=1, radius=True):
         """
-        Apply Dilation to the image.
+        Apply dilate transformation to the image.
 
         Parameters
         ----------
@@ -254,7 +254,7 @@ class Augmentor():
 
         return image
 
-    def elastic_transform(self, image, kernel_size, alpha, radius=True):
+    def elastic(self, image, kernel_size, alpha, radius=True):
         """
         Apply elastic transform to the image.
 
@@ -297,16 +297,16 @@ class Augmentor():
 
         return image
 
-    def perspective_transform(self, image, alpha, radius=True):
+    def perspective(self, image, alpha, radius=True):
         """
-        Apply perspective transform to the image.
+        Apply perspective transformation to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be transformed.
         alpha : float
-            Factor of perspective transform.
+            Factor of perspective transformation.
         radius : bool, optional
             Whether to use range radius for type and alpha, by default True.
 
@@ -407,16 +407,16 @@ class Augmentor():
 
         return image
 
-    def shearing(self, image, angle, radius=True):
+    def shear(self, image, angle, radius=True):
         """
-        Apply shearing to the image.
+        Apply shear transformation to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be sheared.
         angle : float
-            Shearing angle in degrees.
+            shear angle in degrees.
         radius : bool, optional
             Whether to use range radius for angle, by default True.
 
@@ -448,16 +448,16 @@ class Augmentor():
 
         return image
 
-    def scaling(self, image, alpha, radius=True):
+    def scale(self, image, alpha, radius=True):
         """
-        Apply scaling to the image.
+        Apply scale to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be scaled.
         alpha : float
-            Scaling alpha.
+            scale alpha.
         radius : bool, optional
             Whether to use range radius for alpha, by default True.
 
@@ -482,16 +482,16 @@ class Augmentor():
 
         return image
 
-    def rotation(self, image, angle, radius=True):
+    def rotate(self, image, angle, radius=True):
         """
-        Apply rotation to the image.
+        Apply rotate to the image.
 
         Parameters
         ----------
         image : ndarray
             Input image to be rotated.
         angle : float
-            Rotation angle in degrees.
+            rotate angle in degrees.
         radius : bool, optional
             Whether to use range radius for angle, by default True.
 
