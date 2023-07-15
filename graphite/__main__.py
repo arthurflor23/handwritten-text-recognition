@@ -32,29 +32,29 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
-    parser.add_argument('--erosion', default=[0.99, 5, 1], nargs='+', type=float,
-                        help="Apply dilation (probability, kernel size, iterations)")
+    parser.add_argument('--erode', default=[0.99, 5, 1], nargs='+', type=float,
+                        help="Apply erode transformation (probability, kernel size, iterations)")
 
-    parser.add_argument('--dilation', default=[0.99, 2, 1], nargs='+', type=float,
-                        help="Apply dilation (probability, kernel size, iterations)")
+    parser.add_argument('--dilate', default=[0.99, 2, 1], nargs='+', type=float,
+                        help="Apply dilate transformation (probability, kernel size, iterations)")
 
-    parser.add_argument('--elastic-transform', default=[0.99, 43, 1.0], nargs='+', type=float,
-                        help="Apply elastic transform (probability, kernel size, alpha)")
+    parser.add_argument('--elastic', default=[0.99, 43, 1.0], nargs='+', type=float,
+                        help="Apply elastic transformation (probability, kernel size, alpha)")
 
-    parser.add_argument('--perspective-transform', default=[0.99, 0.4], nargs='+', type=float,
+    parser.add_argument('--perspective', default=[0.99, 0.4], nargs='+', type=float,
                         help="Apply perspective transformation (probability, alpha)")
 
     parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
-                        help="Apply mixup augmentation (probability, opacity, iterations)")
+                        help="Apply mixup transformation (probability, opacity, iterations)")
 
-    parser.add_argument('--shearing', default=[0.99, 30], nargs='+', type=float,
-                        help="Apply shearing transformation (probability, angle)")
+    parser.add_argument('--shear', default=[0.99, 30], nargs='+', type=float,
+                        help="Apply shear transformation (probability, angle)")
 
-    parser.add_argument('--scaling', default=[0.99, 0.05], nargs='+', type=float,
-                        help="Apply scaling transformation (probability, scale alpha)")
+    parser.add_argument('--scale', default=[0.99, 0.05], nargs='+', type=float,
+                        help="Apply scale transformation (probability, scale alpha)")
 
-    parser.add_argument('--rotation', default=[0.99, 0.5], nargs='+', type=float,
-                        help="Apply rotation transformation (probability, angle)")
+    parser.add_argument('--rotate', default=[0.99, 0.5], nargs='+', type=float,
+                        help="Apply rotate transformation (probability, angle)")
 
     parser.add_argument('--shift-y', default=[0.99, 0.5], nargs='+', type=float,
                         help="Apply vertical translation (probability, y-alpha)")
