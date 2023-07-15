@@ -87,19 +87,19 @@ The project has various command-line parameters that can be used to customize it
 - `--validation-ratio`: Set the validation partition ratio.
 - `--test-ratio`: Set the test partition ratio.
 - `--lazy-mode`: Enable lazy loading.
-- `--erosion`: Apply erosion augmentation (probability, kernel size, iterations).
-- `--dilation`: Apply dilation augmentation (probability, kernel size, iterations).
-- `--elastic-transform`: Apply elastic transform augmentation (probability, kernel size, alpha).
-- `--perspective-transform`: Apply perspective transformation augmentation (probability, alpha).
-- `--mixup`: Apply mixup augmentation (probability, opacity, iterations).
-- `--shearing`: Apply shearing transformation augmentation (probability, angle).
-- `--scaling`: Apply scaling transformation augmentation (probability, scale alpha).
-- `--rotation`: Apply rotation transformation augmentation (probability, angle).
-- `--shift-y`: Apply vertical translation augmentation (probability, y-alpha).
-- `--shift-x`: Apply horizontal translation augmentation (probability, x-alpha).
-- `--salt-and-pepper`: Apply Salt and Pepper noise augmentation (probability, alpha).
-- `--gaussian-noise`: Apply Gaussian noise augmentation (probability, alpha).
-- `--gaussian-blur`: Apply Gaussian blur augmentation (probability, kernel size, iterations).
+- `--erode`: Apply erode transformation (probability, kernel size, iterations).
+- `--dilate`: Apply dilate transformation (probability, kernel size, iterations).
+- `--elastic`: Apply elastic transformation (probability, kernel size, alpha).
+- `--perspective`: Apply perspective transformation (probability, alpha).
+- `--mixup`: Apply mixup transformation (probability, opacity, iterations).
+- `--shear`: Apply shear transformation (probability, angle).
+- `--scale`: Apply scale transformation (probability, scale alpha).
+- `--rotate`: Apply rotate transformation (probability, angle).
+- `--shift-y`: Apply vertical translation (probability, y-alpha).
+- `--shift-x`: Apply horizontal translation (probability, x-alpha).
+- `--salt-and-pepper`: Apply Salt and Pepper noise (probability, alpha).
+- `--gaussian-noise`: Apply Gaussian noise (probability, alpha).
+- `--gaussian-blur`: Apply Gaussian blur (probability, kernel size, iterations).
 - `--disable-augmentation`: Disable data augmentation completely.
 - `--network`: Define the optical network (e.g., bluche, flor, puigcerver).
 - `--spell-checker`: Define the spell checker (e.g., openai).
