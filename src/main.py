@@ -50,8 +50,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     source_path = args.source
-#     weights_path = os.path.join("../weights", args.weights)
-    weights_path = args.weights
+    weights_path = os.path.join("../weights", args.weights)
 
     input_size = (1024, 128, 1)
     max_text_length = 50
@@ -321,7 +320,6 @@ if __name__ == "__main__":
                 elif args.parquet:
                     fastparquet.write(out_path, final_predicts)
                 final_predicts = []
-
 
         if args.csv:
             with open(out_path, 'a', newline='') as csvfile:
