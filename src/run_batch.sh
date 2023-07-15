@@ -5,6 +5,7 @@
 #SBATCH -J "Flor-Batch"   # job name
 #SBATCH -e /shared/home/cyclemgmt/handwritten-text-recognition-master/src/flor_out/%j-err.txt
 #SBATCH -o /shared/home/cyclemgmt/handwritten-text-recognition-master/src/flor_out/%j-out.txt
+#SBATCH -p htc
 
 
 module load python/3.8

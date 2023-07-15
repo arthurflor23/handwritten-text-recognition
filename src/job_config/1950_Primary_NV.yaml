@@ -1,0 +1,18 @@
+snippet_path : "/nfsdata/nv_snippets/"
+output_path : "/nfsdata/HWR_out"
+
+year : 1950
+archive: False
+run_batches: False
+column_model_list:
+  - Name: # Each column needs the name of the subdirectory it's saved under, usually the column name from the Segmenter
+      - "T1940_A1950_Name_Prod" # The full name of the weights model, except for the .hdf5 at the end
+      - "LastDetector_Prod" # You can do multiple models for the same
+  - Age:
+      - "T1940_A1950_Age_Prod"
+  - Marital_Status:
+      - "T1940_A1950_MS_Prod"
+  - POB:
+      - "T1940_A1950_POB_Prod"
+  - Race:
+      - "T1940_A1950_Race_Prod"
