@@ -27,14 +27,14 @@ def check(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(erosion=args.erosion,
-                          dilation=args.dilation,
-                          elastic_transform=args.elastic_transform,
-                          perspective_transform=args.perspective_transform,
+    augmentor = Augmentor(erode=args.erode,
+                          dilate=args.dilate,
+                          elastic=args.elastic,
+                          perspective=args.perspective,
                           mixup=args.mixup,
-                          shearing=args.shearing,
-                          scaling=args.scaling,
-                          rotation=args.rotation,
+                          shear=args.shear,
+                          scale=args.scale,
+                          rotate=args.rotate,
                           shift_y=args.shift_y,
                           shift_x=args.shift_x,
                           salt_and_pepper=args.salt_and_pepper,
