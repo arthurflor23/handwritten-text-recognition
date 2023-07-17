@@ -1,6 +1,5 @@
 snippet_path : "/nfsdata/nv_snippets/"
 output_path : "/nfsdata/HWR_out"
-
 year : 1950
 archive: False
 run_batches: False

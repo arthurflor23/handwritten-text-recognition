@@ -30,12 +30,11 @@ def main():
         for column_name in column_dict:
             model_list = column_dict[column_name]
             input_path = os.path.join(snippet_path, column_name)
-            output_path = os.path.join(output_path, str(year), sub_name, column_name)
-
             os.makedirs(output_path, exist_ok=True)
 
             for model in model_list:
-                command = "sbatch run_batch.sh " + " ".join((input_path, model, output_path))
+                model_output_path = os.path.join(output_path, str(year), sub_name, column_name, model)
+                command = "sbatch run_batch.sh " + " ".join((input_path, model, model_output_path))
                 os.system(command)
 
 
