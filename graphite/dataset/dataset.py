@@ -81,20 +81,20 @@ class Dataset():
         self.min_cols = np.inf
         self.max_cols = -np.inf
 
-        if data is not None:
-            data = self._prepare_source_data(data, infer=True)
-        else:
+        if data is None:
             self._extract_data(self.source)
 
             self._source = self._import_source(self.source)
             self._source = self._source(self.artifact_path)
 
             data = self._source.fetch_data(self.level)
-            data = self._prepare_source_data(data, infer=False)
+            data = self._prepare_source_data(data, training=True)
+        else:
+            data = self._prepare_source_data(data, training=False)
 
-        self.training = self._create_partition(data[0], test=False)
-        self.validation = self._create_partition(data[1], test=False)
-        self.test = self._create_partition(data[2], test=True)
+        self.training = self._create_partition(data[0], training=True)
+        self.validation = self._create_partition(data[1], training=True)
+        self.test = self._create_partition(data[2], training=False)
 
         self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
@@ -294,7 +294,7 @@ class Dataset():
 
         return source
 
-    def _prepare_source_data(self, data, infer=False):
+    def _prepare_source_data(self, data, training=False):
         """
         Prepares the data for partitioning.
 
@@ -302,8 +302,8 @@ class Dataset():
         ----------
         data : tuple
             The input data (training, validation, test).
-        infer : bool, optional
-            Flag for inference mode. Default is False.
+        training : bool, optional
+            If True, the function will handle the partition as training. Default is False.
 
         Returns
         -------
@@ -316,7 +316,7 @@ class Dataset():
         if not 1 <= len(data) <= 3:
             raise ValueError("input data must have 1 to 3 partition lists")
 
-        if infer:
+        if not training:
             data = [[], [], data]
 
         for i in range(len(data)):
@@ -401,12 +401,12 @@ class Dataset():
             np.random.shuffle(data[i])
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._unpack_data_item, x) for x in data[i]]
+                futures = [executor.submit(self._unpack_data_item, x, training) for x in data[i]]
                 data[i] = [list(x) for x in [future.result() for future in futures] if x]
 
         return data
 
-    def _unpack_data_item(self, item, infer=False):
+    def _unpack_data_item(self, item, training=False):
         """
         Load and validate data item.
 
@@ -414,8 +414,8 @@ class Dataset():
         ----------
         item : tuple
             The data item to validate.
-        infer : bool, optional
-            Flag for inference mode. Default is False.
+        training : bool, optional
+            If True, the function will handle the partition as training. Default is False.
 
         Returns
         -------
@@ -446,7 +446,7 @@ class Dataset():
 
         label = self._format_text(label)
 
-        if not infer and not label:
+        if training and not label:
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
@@ -586,7 +586,7 @@ class Dataset():
 
         return text
 
-    def _create_partition(self, partition_data, test=False):
+    def _create_partition(self, partition_data, training=False):
         """
         Creates a partition dictionary from the given partition data.
 
@@ -594,8 +594,8 @@ class Dataset():
         ----------
         partition_data : tuple
             The partition data containing labels, images, and bbox information.
-        test : bool, optional
-            If set to True, the function will handle the partition data as test data. Default is False.
+        training : bool, optional
+            If True, the function will handle the partition as training. Default is False.
 
         Returns
         -------
@@ -635,7 +635,7 @@ class Dataset():
 
         self.size += dct['size']
 
-        if not test:
+        if training:
             self.corpus = f"{self.corpus} {dct['corpus']}".strip()
             self.charset = sorted(set(self.charset + dct['charset']))
 
