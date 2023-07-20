@@ -169,12 +169,15 @@ class Augmentor():
             Transformed image.
         """
 
+        mixup_params = self.mixup_params if self.mixup_params is None else \
+            self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
+
         transformations = [
             (self.erode, self.erode_params),
             (self.dilate, self.dilate_params),
             (self.elastic, self.elastic_params),
             (self.perspective, self.perspective_params),
-            (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
+            (self.mixup, mixup_params),
             (self.shear, self.shear_params),
             (self.scale, self.scale_params),
             (self.rotate, self.rotate_params),
