@@ -169,15 +169,12 @@ class Augmentor():
             Transformed image.
         """
 
-        if self.mixup_params is not None:
-            self.mixup_params = self.mixup_params[2:] + [batch_images] + self.mixup_params[2:]
-
         transformations = [
             (self.erode, self.erode_params),
             (self.dilate, self.dilate_params),
             (self.elastic, self.elastic_params),
             (self.perspective, self.perspective_params),
-            (self.mixup, self.mixup_params),
+            (self.mixup, self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]),
             (self.shear, self.shear_params),
             (self.scale, self.scale_params),
             (self.rotate, self.rotate_params),
@@ -347,7 +344,7 @@ class Augmentor():
 
         return image
 
-    def mixup(self, image, opacity, batch_images, iterations=1, radius=True):
+    def mixup(self, image, batch_images, opacity, iterations=1, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -355,10 +352,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be mixed.
-        opacity : float
-            Opacity of the mixup effect.
         batch_images : list
             List of additional images for mixing.
+        opacity : float
+            Opacity of the mixup effect.
         iterations : int
             Number of images for the mixup operation, by default 1.
         radius : bool, optional
