@@ -8,7 +8,6 @@
 #SBATCH -p htc
 
 
-module load python/3.8
 source /shared/home/cyclemgmt/FlorHTR_env/bin/activate
 
 python3 main.py "--source" "$1" "--weights" "$2" "--csv" "$3" "--append"
