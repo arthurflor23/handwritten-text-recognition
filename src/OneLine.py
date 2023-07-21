@@ -35,8 +35,10 @@ def main():
             for model in model_list:
                 model_output_name = model + '_' + column_name + '.csv'
                 model_output_path = os.path.join(output_path, str(year), sub_name, column_name,
-                                                 model, model_output_name)
-                command = "sbatch run_batch.sh " + " ".join((input_path, model, model_output_path))
+                                                 model)
+                os.makedirs(model_output_path, exist_ok=True)
+                full_model_output = os.path.join(model_output_path, model_output_name)
+                command = "sbatch run_batch.sh " + " ".join((input_path, model, full_model_output))
                 os.system(command)
 
 
