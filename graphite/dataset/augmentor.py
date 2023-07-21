@@ -64,7 +64,7 @@ class Augmentor():
         None
         """
 
-        np.random.seed(seed or 0)
+        np.random.seed(seed)
 
         self.erode_params = erode
         self.dilate_params = dilate

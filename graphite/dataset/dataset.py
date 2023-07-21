@@ -56,7 +56,7 @@ class Dataset():
         None
         """
 
-        np.random.seed(seed or 0)
+        np.random.seed(seed)
 
         self.source = source
         self.level = level
