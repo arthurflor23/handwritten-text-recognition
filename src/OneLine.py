@@ -38,7 +38,7 @@ def main():
                                                  model)
                 os.makedirs(model_output_path, exist_ok=True)
                 full_model_output = os.path.join(model_output_path, model_output_name)
-                command = "sbatch run_batch.sh " + " ".join((input_path, model+".weights", full_model_output))
+                command = "sbatch run_batch.sh " + " ".join((input_path, model+".hdf5", full_model_output))
                 os.system(command)
 
 
