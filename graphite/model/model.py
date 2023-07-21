@@ -43,7 +43,6 @@ class Model():
 
         np.random.seed(seed)
         tf.random.set_seed(seed)
-        # tf.config.set_visible_devices([], 'GPU')
 
         mlflow.set_tracking_uri(artifact_path)
 

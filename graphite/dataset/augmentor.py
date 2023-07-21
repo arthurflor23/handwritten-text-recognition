@@ -57,7 +57,7 @@ class Augmentor():
         pad_value : int, optional
             Padding value. Default is 255.
         seed : int or None, optional
-            Seed for random number generation, by default None.
+            Seed for random values from numpy, by default None.
 
         Returns
         -------
