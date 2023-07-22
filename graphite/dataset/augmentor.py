@@ -403,7 +403,7 @@ class Augmentor():
                                          borderType=cv2.BORDER_CONSTANT,
                                          value=np.mean(image))
 
-                image = cv2.addWeighted(image, 1 - opc, img, opc, 0)
+                image = cv2.addWeighted(image, 1 - opc, img.astype(image.dtype), opc, 0)
 
         return image
 
