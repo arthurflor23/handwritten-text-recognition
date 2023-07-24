@@ -188,6 +188,7 @@ if __name__ == "__main__":
             folder_path = args.source
             images = glob.iglob(f'{folder_path}/*')
 
+        os.environ["TF_ENABLE_AUTO_GC"] = "1"
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
