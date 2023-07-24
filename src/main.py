@@ -29,9 +29,6 @@ WRITE_BAD_TO_OWN_FILE = False # True
 
 if __name__ == "__main__":
 
-    # pr = cProfile.Profile()
-    # pr.enable()
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--transform", action="store_true", default=False)
@@ -290,6 +287,3 @@ if __name__ == "__main__":
         print("Images Processed: ", len(images))
         print("Total Time elapsed: ", total_time / 60, " minutes")
         print("Time per image: ", total_time / len(images), "seconds")
-
-    # pr.create_stats()
-    # pr.print_stats()
