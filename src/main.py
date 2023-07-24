@@ -207,7 +207,6 @@ if __name__ == "__main__":
         supported_extensions = ["jpg", "jpeg", "jpe", "jp2", "png"]
         total = len(os.listdir(folder_path))
 
-        del supported_extensions
         print('Total images:', total)
         print('-----------------')
         time.sleep(0.25)
