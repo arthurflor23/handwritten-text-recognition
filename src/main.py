@@ -262,7 +262,7 @@ if __name__ == "__main__":
 
             img = pp.preprocess(image_path, input_size=input_size)
             x_test = pp.normalization([img])
-            # predicts, probabilities = model.predict(x_test, ctc_decode=True)
+            predicts, probabilities = model.predict(x_test, ctc_decode=True)
             # predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
             # final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             _ = gc.collect()
