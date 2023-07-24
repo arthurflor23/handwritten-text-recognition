@@ -15,3 +15,9 @@ column_model_list:
       - "T1940_A1950_POB_Prod"
   - Race:
       - "T1940_A1950_Race_Prod"
+  - House_Visit_Index:
+      - "1940_A1950_CombinedDigit_65_Prod"
+  - Relationship_To_Head:
+      - "T1940_A1950_Relation_Prod"
+  - Sex:
+      - "T1940_A1950_Sex_Prod"
