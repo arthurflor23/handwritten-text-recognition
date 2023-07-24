@@ -8,6 +8,7 @@ import fastparquet
 import shutil
 import csv
 import psutil
+import gc
 import glob
 import cv2
 import matplotlib.pyplot as plt
@@ -263,6 +264,7 @@ if __name__ == "__main__":
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
+            _ = gc.collect()
 
             if i != 0 and i % BATCH_SIZE == 0:
                 print('RAM Used (GB):', psutil.virtual_memory()[3] / 1000000000)
