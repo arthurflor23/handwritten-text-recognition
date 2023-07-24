@@ -205,8 +205,9 @@ if __name__ == "__main__":
 
         blank_detector = BlankDetector("./blank_detector.json")
         supported_extensions = ["jpg", "jpeg", "jpe", "jp2", "png"]
-
         total = len(os.listdir(folder_path))
+
+        del supported_extensions
         print('Total images:', total)
         print('-----------------')
         time.sleep(0.25)
@@ -260,11 +261,11 @@ if __name__ == "__main__":
 
             predicted_blank = blank_detector.predictBlank(img)
 
-            img = pp.preprocess(image_path, input_size=input_size)
-            x_test = pp.normalization([img])
-            predicts, probabilities = model.predict(x_test, ctc_decode=True)
-            predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
-            final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
+            # img = pp.preprocess(image_path, input_size=input_size)
+            # x_test = pp.normalization([img])
+            # predicts, probabilities = model.predict(x_test, ctc_decode=True)
+            # predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
+            # final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
             _ = gc.collect()
 
             if i != 0 and i % BATCH_SIZE == 0:
