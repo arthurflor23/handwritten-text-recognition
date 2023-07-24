@@ -190,6 +190,7 @@ if __name__ == "__main__":
             images = glob.iglob(f'{folder_path}/*')
 
         os.environ["TF_ENABLE_AUTO_GC"] = "1"
+        os.environ["TF_RUN_EAGER_OP_AS_FUNCTION"] = 'false'
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
