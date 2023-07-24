@@ -275,7 +275,7 @@ if __name__ == "__main__":
                 final_predicts = []
 
         if args.csv:
-            with open(out_path, 'a', newline='') as csvfile:
+            with open(out_path, 'a+', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(final_predicts)
                 csvfile.close()
