@@ -366,7 +366,7 @@ class Model():
             tf.keras.callbacks.EarlyStopping(
                 mode='min',
                 monitor='val_loss',
-                min_delta=1e-4,
+                min_delta=1e-8,
                 patience=patience,
                 start_from_epoch=0,
                 restore_best_weights=True,
@@ -376,7 +376,7 @@ class Model():
                 mode='min',
                 monitor='val_loss',
                 min_lr=1e-4,
-                min_delta=1e-4,
+                min_delta=1e-8,
                 factor=plateau_factor,
                 cooldown=plateau_cooldown,
                 patience=plateau_patience,
