@@ -288,6 +288,6 @@ if __name__ == "__main__":
 
         finish_time = time.time()
         total_time = finish_time - start_time
-        print("Images Processed: ", len(images))
+        print("Images Processed: ", total)
         print("Total Time elapsed: ", total_time / 60, " minutes")
         print("Time per image: ", total_time / len(images), "seconds")
