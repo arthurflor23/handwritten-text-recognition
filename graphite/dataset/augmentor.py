@@ -22,6 +22,7 @@ class Augmentor():
                  gaussian_noise=None,
                  gaussian_blur=None,
                  pad_value=255,
+                 shuffle=False,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -56,6 +57,8 @@ class Augmentor():
             Parameters for Gaussian blur transformation, by default None.
         pad_value : int, optional
             Padding value. Default is 255.
+        shuffle : bool, optional
+            Define whether operations will be shuffled. The default is True.
         seed : int or None, optional
             Seed for random values from numpy, by default None.
 
@@ -81,6 +84,7 @@ class Augmentor():
         self.gaussian_blur_params = gaussian_blur
 
         self.pad_value = pad_value
+        self.shuffle = shuffle
         self.seed = seed
 
     def __repr__(self):
@@ -115,6 +119,7 @@ class Augmentor():
             Gaussian Blur               {self.gaussian_blur_params}
 
             Padding Value               {self.pad_value}
+            Shuffle                     {self.shuffle}
             Seed                        {self.seed}
         """
 
@@ -147,6 +152,7 @@ class Augmentor():
             'gaussian_noise': self.gaussian_noise_params,
             'gaussian_blur': self.gaussian_blur_params,
             'pad_value': self.pad_value,
+            'shuffle': self.shuffle,
             'seed': self.seed,
         }
 
@@ -187,6 +193,9 @@ class Augmentor():
             (self.gaussian_noise, self.gaussian_noise_params),
             (self.gaussian_blur, self.gaussian_blur_params),
         ]
+
+        if self.shuffle:
+            np.random.shuffle(transformations)
 
         for transform_func, params in transformations:
             if params is not None and len(params) > 1 and np.random.random() < params[0]:
