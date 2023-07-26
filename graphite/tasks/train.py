@@ -43,6 +43,7 @@ def train(args):
                               salt_and_pepper=args.salt_and_pepper,
                               gaussian_noise=args.gaussian_noise,
                               gaussian_blur=args.gaussian_blur,
+                              shuffle=(not args.sequential_augmentation),
                               seed=args.seed)
 
         if args.verbose:
