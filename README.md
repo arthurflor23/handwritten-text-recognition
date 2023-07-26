@@ -1,4 +1,4 @@
-# Handwritten Text Recognition: Graphite
+# Handwritten Text Recognition with Graphite
 
 This project aims to provide a comprehensive and end-to-end solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition, such as line and paragraph level.
 
@@ -100,6 +100,7 @@ The project has various command-line parameters that can be used to customize it
 - `--salt-and-pepper`: Apply Salt and Pepper noise (probability, alpha).
 - `--gaussian-noise`: Apply Gaussian noise (probability, alpha).
 - `--gaussian-blur`: Apply Gaussian blur (probability, kernel size, iterations).
+- `--sequential-augmentation`: Apply sequential operations on data augmentation.
 - `--disable-augmentation`: Disable data augmentation completely.
 - `--network`: Define the optical network (e.g., bluche, flor, puigcerver).
 - `--spell-checker`: Define the spell checker (e.g., openai).
