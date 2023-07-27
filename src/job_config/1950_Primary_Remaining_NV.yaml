@@ -1,0 +1,12 @@
+snippet_path : "/nfsdata/nv_snippets/"
+output_path : "/nfsdata/HWR_out"
+year : 1950
+archive: False
+run_batches: False
+column_model_list:
+  - Name:
+      - "T1940_A1950_Name_Prod"
+  - Age:
+      - "T1950_A1950_BirthMonth_Prod"
+      - "BirthMonthDetector_Prod"
+

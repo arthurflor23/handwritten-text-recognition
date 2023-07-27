@@ -240,7 +240,6 @@ if __name__ == "__main__":
                 try:
                     img = plt.imread(image_path)
                 except:
-                    # [image_name, predicts[0][0], probabilities[0][0], predicted_blank]
                     failed_to_open_value = "<FAILED_TO_OPEN>"
                     if WRITE_BAD_TO_OWN_FILE:
                         with open(bad_path, 'a') as f:
@@ -290,4 +289,4 @@ if __name__ == "__main__":
         total_time = finish_time - start_time
         print("Images Processed: ", total)
         print("Total Time elapsed: ", total_time / 60, " minutes")
-        print("Time per image: ", total_time / len(images), "seconds")
+        print("Time per image: ", total_time / total, "seconds")
