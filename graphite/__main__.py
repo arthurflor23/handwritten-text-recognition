@@ -71,9 +71,6 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian-blur', default=[0.99, 11, 1], nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
 
-    parser.add_argument('--sequential-augmentation', default=False, action='store_true',
-                        help="Apply sequential operations on data augmentation")
-
     parser.add_argument('--disable-augmentation', default=False, action='store_true',
                         help="Disable data augmentation completely")
 
