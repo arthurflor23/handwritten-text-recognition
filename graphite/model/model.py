@@ -322,7 +322,7 @@ class Model():
             training_steps=None,
             validation_data=None,
             validation_steps=None,
-            plateau_factor=0.5,
+            plateau_factor=0.1,
             plateau_cooldown=0,
             plateau_patience=10,
             patience=20,
@@ -342,7 +342,7 @@ class Model():
         validation_steps : int, optional
             The number of steps for each validation run, by default None.
         plateau_factor : float, optional
-            Factor by which the learning rate will be reduced, by default 0.5.
+            Factor by which the learning rate will be reduced, by default 0.1.
         plateau_cooldown : int, optional
             The number of epochs to wait before resuming normal operation after lr has been reduced, by default 0.
         plateau_patience : int, optional
