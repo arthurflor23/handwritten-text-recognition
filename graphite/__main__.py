@@ -32,43 +32,43 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
-    parser.add_argument('--erode', default=[0.99, 5, 1], nargs='+', type=float,
+    parser.add_argument('--erode', default=[0.66, 3, 1], nargs='+', type=float,
                         help="Apply erode transformation (probability, kernel size, iterations)")
 
-    parser.add_argument('--dilate', default=[0.99, 2, 1], nargs='+', type=float,
+    parser.add_argument('--dilate', default=[0.33, 2, 1], nargs='+', type=float,
                         help="Apply dilate transformation (probability, kernel size, iterations)")
 
-    parser.add_argument('--elastic', default=[0.99, 43, 1.0], nargs='+', type=float,
+    parser.add_argument('--elastic', default=[0.66, 29, 1.0], nargs='+', type=float,
                         help="Apply elastic transformation (probability, kernel size, alpha)")
 
-    parser.add_argument('--perspective', default=[0.99, 0.4], nargs='+', type=float,
+    parser.add_argument('--perspective', default=[0.66, 0.4], nargs='+', type=float,
                         help="Apply perspective transformation (probability, alpha)")
 
-    parser.add_argument('--mixup', default=[0.99, 0.3, 1], nargs='+', type=float,
+    parser.add_argument('--mixup', default=None, nargs='+', type=float,
                         help="Apply mixup transformation (probability, opacity, iterations)")
 
-    parser.add_argument('--shear', default=[0.99, 30], nargs='+', type=float,
+    parser.add_argument('--shear', default=[0.33, 15], nargs='+', type=float,
                         help="Apply shear transformation (probability, angle)")
 
-    parser.add_argument('--scale', default=[0.99, 0.05], nargs='+', type=float,
+    parser.add_argument('--scale', default=[0.33, 0.1], nargs='+', type=float,
                         help="Apply scale transformation (probability, scale alpha)")
 
-    parser.add_argument('--rotate', default=[0.99, 0.5], nargs='+', type=float,
+    parser.add_argument('--rotate', default=[0.33, 1.0], nargs='+', type=float,
                         help="Apply rotate transformation (probability, angle)")
 
-    parser.add_argument('--shift-y', default=[0.99, 0.5], nargs='+', type=float,
+    parser.add_argument('--shift-y', default=None, nargs='+', type=float,
                         help="Apply vertical translation (probability, y-alpha)")
 
-    parser.add_argument('--shift-x', default=[0.99, 0.5], nargs='+', type=float,
+    parser.add_argument('--shift-x', default=None, nargs='+', type=float,
                         help="Apply horizontal translation (probability, x-alpha)")
 
-    parser.add_argument('--salt-and-pepper', default=[0.99, 0.3], nargs='+', type=float,
+    parser.add_argument('--salt-and-pepper', default=None, nargs='+', type=float,
                         help="Apply salt and pepper noise (probability, alpha)")
 
-    parser.add_argument('--gaussian-noise', default=[0.99, 0.3], nargs='+', type=float,
+    parser.add_argument('--gaussian-noise', default=None, nargs='+', type=float,
                         help="Apply Gaussian noise (probability, alpha)")
 
-    parser.add_argument('--gaussian-blur', default=[0.99, 11, 1], nargs='+', type=float,
+    parser.add_argument('--gaussian-blur', default=None, nargs='+', type=float,
                         help="Apply Gaussian blur (probability, kernel size, iterations)")
 
     parser.add_argument('--disable-augmentation', default=False, action='store_true',
@@ -95,33 +95,33 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=1000, type=int,
                         help="Epochs for the training")
 
-    parser.add_argument('--batch-size', default=8, type=int,
+    parser.add_argument('--batch-size', default=4, type=int,
                         help="Batch size for the generator")
 
     parser.add_argument('--learning-rate', default=1e-3, type=float,
                         help="Learning rate for the optimizer")
 
-    parser.add_argument('--plateau-factor', default=0.5, type=float,
+    parser.add_argument('--plateau-factor', default=0.1, type=float,
                         help="Factor by which the learning rate will be reduced on a plateau")
 
     parser.add_argument('--plateau-cooldown', default=0, type=int,
                         help="Cooldown period after a learning rate plateau is triggered")
 
-    parser.add_argument('--plateau-patience', default=10, type=int,
+    parser.add_argument('--plateau-patience', default=20, type=int,
                         help="Number of epochs without improvement for the learning rate to be reduced")
 
-    parser.add_argument('--patience', default=20, type=int,
+    parser.add_argument('--patience', default=40, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
     # Test
     parser.add_argument('--test', default=False, action='store_true',
                         help="Perform optical model test")
 
-    parser.add_argument('--beam-width', default=30, type=int,
-                        help="The width of the beam for the CTC decoder")
-
     parser.add_argument('--top-paths', default=1, type=int,
                         help="Number of top paths to prediction")
+
+    parser.add_argument('--beam-width', default=30, type=int,
+                        help="The width of the beam for the CTC decoder")
 
     parser.add_argument('--share-top-paths', default=False, action='store_true',
                         help="Consider previous paths to the metrics")
