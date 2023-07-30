@@ -16,7 +16,6 @@ def main():
     with open(yaml_path, "r") as f:
         job_config = yaml.safe_load(f)
 
-    print(job_config)
     snippet_path = job_config['snippet_path']
     output_path = job_config['output_path']
     year = job_config['year']
