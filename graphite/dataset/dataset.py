@@ -373,26 +373,34 @@ class Dataset():
                 merged = []
 
                 for i, ratio in enumerate(ratios):
-                    if ratio is not None:
-                        np.random.shuffle(data[i])
-                        merged.extend(data[i])
+                    if ratio is None:
+                        continue
 
-                if merged:
-                    total_merged = len(merged)
+                    np.random.shuffle(data[i])
+                    merged.extend(data[i])
 
+                total_merged = len(merged)
+
+                if total_merged > 0:
                     for i, ratio in enumerate(ratios):
-                        if ratio is not None:
-                            np.random.shuffle(merged)
-                            index = round((ratio + 1e-8) * total_merged)
-                            data[i] = merged[:index]
-                            merged = merged[index:]
+                        if ratio is None:
+                            continue
+
+                        np.random.shuffle(merged)
+                        index = round((ratio + 1e-8) * total_merged)
+
+                        data[i] = merged[:index]
+                        merged = merged[index:]
 
             else:
                 for i, ratio in enumerate(ratios):
-                    if ratio is not None:
-                        np.random.shuffle(data[i])
-                        index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
-                        data[i] = data[i][:index]
+                    if ratio is None:
+                        continue
+
+                    np.random.shuffle(data[i])
+                    index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
+
+                    data[i] = data[i][:index]
 
         for i in range(len(data)):
             if not data[i]:
