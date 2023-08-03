@@ -21,13 +21,13 @@ class Source():
         """
 
         self.artifact_path = artifact_path
-        self.base_path = os.path.join(self.artifact_path, 'icfhr2014-hdsr', 'CAR-A')
+        self.base_path = os.path.join(self.artifact_path, 'orand')
 
-        self.training_path = os.path.join(self.base_path, 'a_train_images')
-        self.test_path = os.path.join(self.base_path, 'a_test_images')
+        self.training_path = os.path.join(self.base_path, 'CAR-A', 'a_train_images')
+        self.test_path = os.path.join(self.base_path, 'CAR-A', 'a_test_images')
 
-        self.training_file_path = os.path.join(self.base_path, 'a_train_gt.txt')
-        self.test_file_path = os.path.join(self.base_path, 'a_test_gt.txt')
+        self.training_file_path = os.path.join(self.base_path, 'CAR-A', 'a_train_gt.txt')
+        self.test_file_path = os.path.join(self.base_path, 'CAR-A', 'a_test_gt.txt')
 
     def fetch_data(self, _):
         """
