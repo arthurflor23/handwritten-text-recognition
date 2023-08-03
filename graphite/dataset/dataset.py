@@ -82,10 +82,10 @@ class Dataset():
         self.max_cols = -np.inf
 
         if data is None:
-            self._extract_data(self.source)
-
             self._source = self._import_source(self.source)
             self._source = self._source(self.artifact_path)
+
+            self._extract_data(self._source.base_path)
 
             data = self._source.fetch_data(self.level)
             data = self._prepare_source_data(data, training=True)
@@ -254,11 +254,11 @@ class Dataset():
             The base name of the .zip file and target directory.
         """
 
-        data_folder = os.path.join(self.artifact_path, source)
-        data_zip = os.path.join(self.artifact_path, f"{source}.zip")
+        if not source.startswith(self.artifact_path):
+            source = os.path.join(self.artifact_path, source)
 
-        if not os.path.exists(data_folder) and os.path.isfile(data_zip):
-            with zipfile.ZipFile(data_zip, 'r') as zip_ref:
+        if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
+            with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
                 zip_ref.extractall(self.artifact_path)
 
     def _import_source(self, source):
