@@ -17,6 +17,8 @@ def main():
         job_config = yaml.safe_load(f)
 
     snippet_path = job_config['snippet_path']
+    finished_path = job_config['finished_path']
+    delete_finished = job_config["delete_finished"]
     output_path = job_config['output_path']
     year = job_config['year']
     archive = job_config['archive']
@@ -37,7 +39,8 @@ def main():
                                                  model)
                 os.makedirs(model_output_path, exist_ok=True)
                 full_model_output = os.path.join(model_output_path, model_output_name)
-                command = "sbatch run_batch.sh " + " ".join((input_path, model+".hdf5", full_model_output))
+                command = "sbatch run_batch.sh " + " ".join((input_path, model+".hdf5", full_model_output,
+                                                             finished_path, delete_finished))
                 os.system(command)
 
 

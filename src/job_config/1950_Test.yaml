@@ -1,8 +1,10 @@
 snippet_path : "/nfsdata/nv_snippets/"
+finished_path : "/nfsdata/finished_snippets"
 output_path : "/nfsdata/HWR_out"
 year : 1950
 archive: False
 run_batches: False
+delete_snippets : False
 column_model_list:
   - Name:
       - "T1940_A1950_Name_Prod"

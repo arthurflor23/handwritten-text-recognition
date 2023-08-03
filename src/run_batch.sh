@@ -10,4 +10,11 @@
 
 source /shared/home/cyclemgmt/FlorHTR_env/bin/activate
 
-python3 -u main.py "--source" "$1" "--weights" "$2" "--csv" "$3" "--append"
+delete_finished = $5
+
+if [$delete_finished]; then
+  python3 -u main.py "--source" "$1" "--weights" "$2" "--csv" "$3" "--append" "--finished" "$4" "--delete_finished"
+  exit
+fi
+
+python3 -u main.py "--source" "$1" "--weights" "$2" "--csv" "$3" "--append" "--finished" "$4"

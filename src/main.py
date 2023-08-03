@@ -34,13 +34,17 @@ if __name__ == "__main__":
 
     parser.add_argument("--transform", action="store_true", default=False)
     parser.add_argument("--labels", type=str)
+
     parser.add_argument("--train", type=str, default="")
 
     parser.add_argument("--source", type=str)
+    parser.add_argument("--archive", type=bool, default=False)
+    parser.add_argument("--finished", type=str, default=None)
+    parser.add_argument("--delete_finished", action="store_true", default=False)
+
     parser.add_argument("--weights", type=str, default="")
     parser.add_argument("--arch", type=str, default="flor")
 
-    parser.add_argument("--archive", type=bool, default=False)
     parser.add_argument("--csv", type=str, default="")
     parser.add_argument("--append", action="store_true", default=False)
     parser.add_argument("--parquet", type=str, default="")
@@ -191,6 +195,9 @@ if __name__ == "__main__":
 
         os.environ["TF_ENABLE_AUTO_GC"] = "1"
         os.environ["TF_RUN_EAGER_OP_AS_FUNCTION"] = 'false'
+
+        finished_path = os.path.join(folder_path, 'finished')
+
         tokenizer = Tokenizer(chars=charset_base, max_text_length=max_text_length)
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
@@ -264,7 +271,9 @@ if __name__ == "__main__":
             predicts, probabilities = model.predict(x_test, ctc_decode=True)
             predicts = [[tokenizer.decode(x) for x in y] for y in predicts]
             final_predicts.append([image_name, predicts[0][0], probabilities[0][0], predicted_blank])
-            _ = gc.collect()
+
+            image_finished_path = os.path.join(finished_path, image_name)
+            shutil.move(image_path, image_finished_path)
 
             if i != 0 and i % BATCH_SIZE == 0:
                 print('RAM Used (GB):', psutil.virtual_memory()[3] / 1000000000)
@@ -276,6 +285,13 @@ if __name__ == "__main__":
                 elif args.parquet:
                     fastparquet.write(out_path, final_predicts)
                 final_predicts = []
+
+            # move or delete images based on settings
+            if args.finished:
+                new_image_path = os.path.join(args.finished, image_name)
+                shutil.move(image_path, new_image_path)
+            elif args.delete_finished:
+                os.remove(image_path)
 
         if args.csv:
             with open(out_path, 'a+', newline='') as csvfile:
