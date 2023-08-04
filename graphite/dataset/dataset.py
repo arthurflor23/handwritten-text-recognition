@@ -356,6 +356,15 @@ class Dataset():
 
         data.extend([[]] * (3 - len(data)))
 
+        if training and len(data[1]) == 0:
+            np.random.shuffle(data[0])
+            index = round((self.validation_ratio or 0.1) * len(data[0]))
+
+            data[1] = data[0][:index]
+            data[0] = data[0][index:]
+
+            self.validation_ratio = None
+
         ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
         ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
 
