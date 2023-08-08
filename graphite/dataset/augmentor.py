@@ -8,6 +8,7 @@ class Augmentor():
     """
 
     def __init__(self,
+                 otsu=None,
                  erode=None,
                  dilate=None,
                  elastic=None,
@@ -28,6 +29,8 @@ class Augmentor():
 
         Parameters
         ----------
+        otsu : dict or None, optional
+            Parameters for Otsu's binarization, by default None.
         erode : dict or None, optional
             Parameters for erode transformation, by default None.
         dilate : dict or None, optional
@@ -66,6 +69,7 @@ class Augmentor():
 
         np.random.seed(seed)
 
+        self.otsu_params = otsu
         self.erode_params = erode
         self.dilate_params = dilate
         self.elastic_params = elastic
@@ -95,6 +99,8 @@ class Augmentor():
 
         info = f"""
             Augmentor Configuration\n
+            Otsu's Binarization         {self.otsu_params}
+
             Erode                       {self.erode_params}
             Dilate                      {self.dilate_params}
 
@@ -133,6 +139,7 @@ class Augmentor():
         """
 
         attributes = {
+            'otsu': self.otsu_params,
             'erode': self.erode_params,
             'dilate': self.dilate_params,
             'elastic': self.elastic_params,
@@ -173,6 +180,7 @@ class Augmentor():
             self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
 
         transformations = [
+            (self.otsu, self.otsu_params),
             (self.erode, self.erode_params),
             (self.dilate, self.dilate_params),
             (self.elastic, self.elastic_params),
@@ -189,8 +197,27 @@ class Augmentor():
         ]
 
         for transform_func, params in transformations:
-            if params is not None and len(params) > 1 and np.random.random() < params[0]:
+            if params is not None and len(params) > 0 and np.random.random() < params[0]:
                 image = transform_func(image, *params[1:])
+
+        return image
+
+    def otsu(self, image):
+        """
+        Apply Otsu's binarization to an image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be binarized.
+
+        Returns
+        ----------
+        ndarray
+            Binarized image.
+        """
+
+        _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         return image
 
