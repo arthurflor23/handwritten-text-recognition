@@ -30,7 +30,8 @@ def train(args):
     augmentor = None
 
     if not args.disable_augmentation:
-        augmentor = Augmentor(erode=args.erode,
+        augmentor = Augmentor(otsu=args.otsu,
+                              erode=args.erode,
                               dilate=args.dilate,
                               elastic=args.elastic,
                               perspective=args.perspective,

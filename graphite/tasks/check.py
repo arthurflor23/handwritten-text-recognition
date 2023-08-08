@@ -27,7 +27,8 @@ def check(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(erode=args.erode,
+    augmentor = Augmentor(otsu=args.otsu,
+                          erode=args.erode,
                           dilate=args.dilate,
                           elastic=args.elastic,
                           perspective=args.perspective,
