@@ -32,6 +32,9 @@ if __name__ == '__main__':
                         help="Enable lazy loading")
 
     # Data augmentation
+    parser.add_argument('--otsu', default=None, nargs='+', type=float,
+                        help="Apply Otsu's binarization (probability)")
+
     parser.add_argument('--erode', default=[0.66, 3, 1], nargs='+', type=float,
                         help="Apply erode transformation (probability, kernel size, iterations)")
 
