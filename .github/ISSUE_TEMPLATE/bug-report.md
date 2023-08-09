@@ -1,5 +1,5 @@
 ---
-name: Bug report
+name: 🐛 Bug report
 about: Use this template to report issues
 title: ''
 labels: type:bug

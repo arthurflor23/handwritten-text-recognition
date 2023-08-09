@@ -1,5 +1,5 @@
 ---
-name: Discussion/Help
+name: 💬 Discussion/Help
 about: Start a discussion or ask for help regarding the project
 title: ''
 labels: type:discussion

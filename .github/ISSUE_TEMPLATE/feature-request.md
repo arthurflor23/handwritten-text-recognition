@@ -1,5 +1,5 @@
 ---
-name: Feature request
+name: ✨ Feature request
 about: Use this template to suggest a feature
 title: ''
 labels: type:feature
