@@ -167,8 +167,6 @@ This project is part of my PhD work and is currently under development. Your sup
 
 You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Every contribution is greatly appreciated and motivates me to continue working on the project. Thank you for considering sponsorship and for being a part of this journey!
 
-Finally, if you have any questions, need clarification or would like to discuss any aspect of the project, feel free to get in touch. You can reach out via [email](mailto:afsn@ecomp.poli.br).
-
 ## References
 
 If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may be interested in the following references:
