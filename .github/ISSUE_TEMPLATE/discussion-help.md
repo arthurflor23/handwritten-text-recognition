@@ -1,6 +1,6 @@
 ---
 name: 💬 Discussion/Help
-about: Start a discussion or ask for help regarding the project
+about: Use this template to start a discussion or ask for help
 title: ''
 labels: type:discussion
 assignees: ''
