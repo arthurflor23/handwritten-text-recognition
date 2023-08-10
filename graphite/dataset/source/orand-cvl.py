@@ -44,7 +44,8 @@ class Source():
 
         def process_file(file_path):
             base_name = os.path.basename(file_path)
-            label = base_name.split('-')[0]
+            label = ' '.join(list(base_name.split('-')[0]))
+
             return [file_path, [], label]
 
         training_files = glob.glob(self.training_path, recursive=True)

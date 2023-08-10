@@ -46,7 +46,11 @@ class Source():
 
         def process_row(row, file_path):
             row = row.strip().split('\t')
-            return [os.path.join(file_path, row[0]), [], row[1]]
+
+            path = os.path.join(file_path, row[0])
+            label = ' '.join(list(row[1]))
+
+            return [path, [], label]
 
         with open(self.training_file_path, 'r') as training_file:
             training_data = [process_row(row, self.training_path) for row in training_file.readlines()]
