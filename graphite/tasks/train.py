@@ -21,7 +21,7 @@ def train(args):
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
-                      lazy_mode=args.lazy_mode,
+                      eager_mode=args.eager_mode,
                       seed=args.seed)
 
     if args.verbose:

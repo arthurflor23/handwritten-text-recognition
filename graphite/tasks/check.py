@@ -23,7 +23,7 @@ def check(args):
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
-                      lazy_mode=True,
+                      eager_mode=args.eager_mode,
                       seed=args.seed)
     print(dataset)
 
