@@ -28,8 +28,8 @@ if __name__ == '__main__':
     parser.add_argument('--test-ratio', default=None,
                         help="Set the test partition ratio")
 
-    parser.add_argument('--lazy-mode', default=False, action='store_true',
-                        help="Enable lazy loading")
+    parser.add_argument('--eager-mode', default=False, action='store_true',
+                        help="Load all data into memory")
 
     # Data augmentation
     parser.add_argument('--otsu', default=None, nargs='+', type=float,
