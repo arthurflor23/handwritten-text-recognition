@@ -166,8 +166,8 @@ class Augmentor():
             self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
 
         transformations = [
-            # (self.erode, self.erode_params),
-            # (self.dilate, self.dilate_params),
+            (self.erode, self.erode_params),
+            (self.dilate, self.dilate_params),
             (self.elastic, self.elastic_params),
             (self.perspective, self.perspective_params),
             (self.mixup, mixup_params),
