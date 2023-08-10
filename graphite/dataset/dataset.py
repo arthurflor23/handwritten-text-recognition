@@ -21,7 +21,7 @@ class Dataset():
                  validation_ratio=None,
                  test_ratio=None,
                  pad_value=255,
-                 lazy_mode=False,
+                 eager_mode=False,
                  data=None,
                  artifact_path='data',
                  seed=None):
@@ -42,8 +42,8 @@ class Dataset():
             The test ratio for resample. Default is None.
         pad_value : int, optional
             Padding value. Default is 255.
-        lazy_mode : bool, optional
-            Lazy mode flag for lazy loading process. Default is False.
+        eager_mode : bool, optional
+            Eager mode flag for load all data into memory. Default is False.
         data : list, optional
             Custom data for inference mode. Default is None.
         artifact_path : str, optional
@@ -64,7 +64,7 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.pad_value = pad_value
-        self.lazy_mode = lazy_mode
+        self.eager_mode = eager_mode
         self.artifact_path = artifact_path
         self.seed = seed
 
@@ -120,7 +120,7 @@ class Dataset():
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
             Padding Value           {self.pad_value}
-            Lazy Mode               {self.lazy_mode}
+            Eager Mode              {self.eager_mode}
             Seed                    {self.seed}
 
             Dataset Information\n
@@ -169,7 +169,7 @@ class Dataset():
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
             'pad_value': self.pad_value,
-            'lazy_mode': self.lazy_mode,
+            'eager_mode': self.eager_mode,
             'seed': self.seed,
             'size': self.size,
             'charset': ''.join(self.charset),
@@ -224,7 +224,7 @@ class Dataset():
                 x_data = batch_data[:, 0]
                 y_data = batch_data[:, 2]
 
-                if self.lazy_mode:
+                if not self.eager_mode:
                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
 
                 if augmentor:
@@ -467,7 +467,8 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
-        image = image_path if self.lazy_mode else image
+        if not self.eager_mode:
+            image = image_path
 
         return [image_path, bbox, label], [image, bbox, label]
 
