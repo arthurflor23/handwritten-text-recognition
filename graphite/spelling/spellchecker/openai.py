@@ -2,7 +2,6 @@ import re
 import time
 import openai
 import tiktoken
-import concurrent.futures
 
 
 class SpellChecker():
@@ -20,8 +19,8 @@ class SpellChecker():
             The API key to interact with the OpenAI API.
         """
 
-        self.max_tokens = 16e+3
-        self.model = 'gpt-3.5-turbo-16k-0613'
+        self.max_tokens = 16000
+        self.model = 'gpt-3.5-turbo-16k'
 
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
@@ -76,13 +75,10 @@ class SpellChecker():
             if verbose:
                 print(f"Enhance top path {i + 1} (batches: {len(batches)})")
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._request_api, instruction, '\n'.join(x)) for x in batches]
-                enhanced_data = '\n'.join([future.result() for future in futures])
-
+            enhanced_data = '\n'.join([self._request_api(instruction, '\n'.join(x)) for x in batches])
             pattern = re.compile(r'<([0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
-            matches = pattern.findall(enhanced_data)
 
+            matches = pattern.findall(enhanced_data)
             enhanced_texts = [list(sublist) for sublist in top_path]
 
             if len(matches) == len(enhanced_texts):
@@ -136,7 +132,7 @@ class SpellChecker():
                 print(err)
                 print(f"Request failed. Retrying... (Attempt {retry_count}/{retry_limit})")
 
-                retry_sleep += 10
+                retry_sleep += 60
                 time.sleep(retry_sleep)
 
         return text
