@@ -46,8 +46,7 @@ class SpellChecker():
 
         if instruction is None:
             instruction = """
-                Correct all spelling errors, including accents.
-                The following texts contain errors from a handwriting recognition model.
+                Correct spelling errors, including accents.
                 Preserve tags, slang, historical terms, and grammar.
                 Make only confident changes.
             """
