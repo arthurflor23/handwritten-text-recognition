@@ -318,8 +318,8 @@ class Model():
             validation_steps=None,
             plateau_factor=0.1,
             plateau_cooldown=0,
-            plateau_patience=10,
-            patience=20,
+            plateau_patience=20,
+            patience=30,
             epochs=1000,
             verbose=1):
         """

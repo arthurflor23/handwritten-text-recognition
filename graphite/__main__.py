@@ -28,8 +28,8 @@ if __name__ == '__main__':
     parser.add_argument('--test-ratio', default=None,
                         help="Set the test partition ratio")
 
-    parser.add_argument('--binarization', default=None,
-                        help="Apply binarization method (otsu)")
+    parser.add_argument('--binarization', default=False, action='store_true',
+                        help="Apply binarization method")
 
     parser.add_argument('--eager-mode', default=False, action='store_true',
                         help="Load all data into memory")
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-patience', default=20, type=int,
                         help="Number of epochs without improvement for the learning rate to be reduced")
 
-    parser.add_argument('--patience', default=40, type=int,
+    parser.add_argument('--patience', default=30, type=int,
                         help="Number of epochs with no improvement after which training will be stopped")
 
     # Test
