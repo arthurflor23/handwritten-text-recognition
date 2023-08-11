@@ -20,7 +20,7 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
-                 binarization=None,
+                 binarization=False,
                  eager_mode=False,
                  data=None,
                  artifact_path='data',
@@ -40,8 +40,8 @@ class Dataset():
             The validation ratio for resample. Default is None.
         test_ratio : float or int, optional
             The test ratio for resample. Default is None.
-        binarization : str or None, optional
-            Binarization method to be applied, by default None.
+        binarization : bool, optional
+            Binarization method to be applied. Default is False.
         eager_mode : bool, optional
             Eager mode flag for load all data into memory. Default is False.
         data : list, optional
@@ -70,7 +70,7 @@ class Dataset():
 
         self.size = 0
         self.corpus = ''
-        self.charset = [' ']
+        self.charset = []
 
         self.min_text = ''
         self.max_text = ''
@@ -224,7 +224,7 @@ class Dataset():
                 x_data = batch_data[:, 0]
                 y_data = batch_data[:, 2]
 
-                if not self.eager_mode:
+                if not self.eager_mode or raw_data:
                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
 
                 if self.binarization:
@@ -708,7 +708,7 @@ class Dataset():
 
     def _binarization(self, image):
         """
-        Apply a binarization method to an image.
+        Apply binarization method to an image.
 
         Parameters
         ----------
@@ -721,8 +721,7 @@ class Dataset():
             Binarized image.
         """
 
-        if self.binarization == 'otsu':
-            _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         return image
 
