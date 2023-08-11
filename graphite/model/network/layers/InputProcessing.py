@@ -6,7 +6,7 @@ class InputProcessing(tf.keras.layers.Layer):
     This class defines a custom layer for processing.
     """
 
-    def __init__(self, height_shape=None, width_shape=None, pad_value=255, **kwargs):
+    def __init__(self, height_shape=None, width_shape=None, **kwargs):
         """
         Initialize the InputProcess class.
 
@@ -16,8 +16,6 @@ class InputProcessing(tf.keras.layers.Layer):
             Target height shape for resizing operation. Default is None.
         width_shape : int
             Target width shape for resizing operation. Default is None.
-        pad_value : int, optional
-            Padding value. Default is 255.
         **kwargs :
             Variable length argument list for parent class.
         """
@@ -25,7 +23,6 @@ class InputProcessing(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.height_shape = height_shape
         self.width_shape = width_shape
-        self.pad_value = pad_value
 
     def call(self, inputs):
         """
@@ -63,7 +60,7 @@ class InputProcessing(tf.keras.layers.Layer):
             padding_width = self.width_shape - width
 
             paddings = [[0, 0], [0, padding_height], [0, padding_width], [0, 0]]
-            inputs = tf.pad(inputs, paddings, constant_values=self.pad_value)
+            inputs = tf.pad(inputs, paddings, mode='CONSTANT', constant_values=255)
 
         inputs.set_shape([None, self.height_shape, self.width_shape, 1])
 
@@ -87,7 +84,6 @@ class InputProcessing(tf.keras.layers.Layer):
         config.update({
             'height_shape': self.height_shape,
             'width_shape': self.width_shape,
-            'pad_value': self.pad_value,
         })
 
         return config

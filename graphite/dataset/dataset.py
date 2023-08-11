@@ -20,7 +20,6 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
-                 pad_value=255,
                  binarization=None,
                  eager_mode=False,
                  data=None,
@@ -41,8 +40,6 @@ class Dataset():
             The validation ratio for resample. Default is None.
         test_ratio : float or int, optional
             The test ratio for resample. Default is None.
-        pad_value : int, optional
-            Padding value. Default is 255.
         binarization : str or None, optional
             Binarization method to be applied, by default None.
         eager_mode : bool, optional
@@ -66,7 +63,6 @@ class Dataset():
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-        self.pad_value = pad_value
         self.binarization = binarization
         self.eager_mode = eager_mode
         self.artifact_path = artifact_path
@@ -74,7 +70,7 @@ class Dataset():
 
         self.size = 0
         self.corpus = ''
-        self.charset = []
+        self.charset = [' ']
 
         self.min_text = ''
         self.max_text = ''
@@ -123,7 +119,6 @@ class Dataset():
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
-            Padding Value           {self.pad_value}
             Binarization            {self.binarization}
             Eager Mode              {self.eager_mode}
             Seed                    {self.seed}
@@ -173,7 +168,6 @@ class Dataset():
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
-            'pad_value': self.pad_value,
             'binarization': self.binarization,
             'eager_mode': self.eager_mode,
             'seed': self.seed,
@@ -240,7 +234,7 @@ class Dataset():
                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
 
                 if not raw_data:
-                    x_data = self._pad_batch_data(x_data, self.pad_value, np.uint8)
+                    x_data = self._pad_batch_data(x_data, 255, np.uint8)
                     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
 
                 yield (x_data, y_data)

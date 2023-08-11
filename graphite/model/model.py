@@ -20,7 +20,6 @@ class Model():
 
     def __init__(self,
                  network,
-                 pad_value=255,
                  experiment_name='Default',
                  artifact_path='mlruns',
                  seed=None):
@@ -31,8 +30,6 @@ class Model():
         ----------
         network : str
             The name of the network module to be used.
-        pad_value : int, optional
-            Padding value. Default is 255.
         experiment_name : str, optional
             Specify MLflow experiment name. Default is 'Default'.
         artifact_path : str, optional
@@ -47,7 +44,6 @@ class Model():
         mlflow.set_tracking_uri(artifact_path)
 
         self.network = network
-        self.pad_value = pad_value
         self.artifact_path = artifact_path
         self.seed = seed
 
@@ -86,7 +82,6 @@ class Model():
         info = f"""
             Model Configuration\n
             Network                     {self.network}
-            Padding Value               {self.pad_value}
             Experiment Name             {self.experiment_name}
             Seed                        {self.seed}
 
@@ -112,7 +107,6 @@ class Model():
 
         attributes = {
             'network': self.network,
-            'pad_value': self.pad_value,
             'experiment_name': self.experiment_name,
             'optimizer': self.optimizer,
             'learning_rate': self.learning_rate,
@@ -161,7 +155,7 @@ class Model():
             exit()
 
         self.tokenizer = tokenizer
-        self._network = self._network(self.tokenizer.shape, self.pad_value)
+        self._network = self._network(self.tokenizer.shape)
 
         tf.keras.backend.clear_session()
 
