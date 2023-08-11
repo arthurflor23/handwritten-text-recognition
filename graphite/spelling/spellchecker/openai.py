@@ -19,8 +19,8 @@ class SpellChecker():
             The API key to interact with the OpenAI API.
         """
 
-        self.max_tokens = 4000
-        self.model = 'gpt-3.5-turbo-0613'
+        self.max_tokens = 16000
+        self.model = 'gpt-3.5-turbo-16k-0613'
 
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
