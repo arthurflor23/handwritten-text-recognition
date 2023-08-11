@@ -86,7 +86,7 @@ The project has various command-line parameters that can be used to customize it
 - `--training-ratio`: Set the training partition ratio.
 - `--validation-ratio`: Set the validation partition ratio.
 - `--test-ratio`: Set the test partition ratio.
-- `--lazy-mode`: Enable lazy loading.
+- `--eager-mode`: Load all data into memory.
 - `--otsu`: Apply Otsu's binarization (probability).
 - `--erode`: Apply erode transformation (probability, kernel size, iterations).
 - `--dilate`: Apply dilate transformation (probability, kernel size, iterations).
