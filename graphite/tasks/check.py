@@ -18,6 +18,9 @@ def check(args):
         This function does not return any value.
     """
 
+    def print_section(content):
+        print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
+
     dataset = Dataset(source=args.source,
                       level=args.level,
                       training_ratio=args.training_ratio,
@@ -26,7 +29,9 @@ def check(args):
                       binarization=args.binarization,
                       eager_mode=args.eager_mode,
                       seed=args.seed)
-    print(dataset)
+
+    if args.verbose:
+        print_section(dataset)
 
     augmentor = Augmentor(erode=args.erode,
                           dilate=args.dilate,
@@ -42,7 +47,9 @@ def check(args):
                           gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
                           seed=args.seed)
-    print(augmentor)
+
+    if args.verbose:
+        print_section(augmentor)
 
     src_generator, _ = dataset.get_generator(dataset.training,
                                              batch_size=args.batch_size,
