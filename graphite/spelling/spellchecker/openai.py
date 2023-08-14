@@ -46,7 +46,8 @@ class SpellChecker():
 
         if instruction is None:
             instruction = """
-                Correct spelling errors, including accents.
+                Correct all spelling errors, including accents.
+                The following texts contain errors from a handwriting recognition model.
                 Preserve tags, slang, historical terms, and grammar.
                 Make only confident changes.
             """
@@ -71,7 +72,7 @@ class SpellChecker():
 
                     batches[-1].append(pp_text)
 
-            if verbose:
+            if verbose > 0:
                 print(f"Enhance top path {i + 1} (batches: {len(batches)})")
 
             enhanced_data = '\n'.join([self._request_api(instruction, '\n'.join(x)) for x in batches])
