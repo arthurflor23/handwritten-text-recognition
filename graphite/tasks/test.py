@@ -27,13 +27,13 @@ def test(args):
                       eager_mode=args.eager_mode,
                       seed=args.seed)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
     model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
-    if args.verbose:
+    if args.verbose > 1:
         print_section(model)
 
     test_data, test_steps = dataset.get_generator(partition=dataset.test,
@@ -48,7 +48,7 @@ def test(args):
                                    token_decode=True,
                                    verbose=args.verbose)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.test_logger)
 
     baseline_metrics = model.evaluate(partition=dataset.test,
@@ -63,7 +63,7 @@ def test(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        if args.verbose:
+        if args.verbose > 1:
             print_section(spelling)
 
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
@@ -75,7 +75,7 @@ def test(args):
         if not args.check:
             model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.evaluation_logger)
 
     if args.check:

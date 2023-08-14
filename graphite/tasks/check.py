@@ -30,7 +30,7 @@ def check(args):
                       eager_mode=args.eager_mode,
                       seed=args.seed)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(dataset)
 
     augmentor = Augmentor(erode=args.erode,
@@ -48,7 +48,7 @@ def check(args):
                           gaussian_blur=args.gaussian_blur,
                           seed=args.seed)
 
-    if args.verbose:
+    if args.verbose > 1:
         print_section(augmentor)
 
     src_generator, _ = dataset.get_generator(dataset.training,

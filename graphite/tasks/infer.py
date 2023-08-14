@@ -27,13 +27,13 @@ def infer(args):
                       eager_mode=args.eager_mode,
                       seed=args.seed)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(dataset)
 
     model = Model(network=args.network, experiment_name=args.experiment_name)
     model.compile(run_index=args.run_index)
 
-    if args.verbose:
+    if args.verbose > 1:
         print_section(model)
 
     infer_data, infer_steps = dataset.get_generator(partition=dataset.test,
@@ -48,7 +48,7 @@ def infer(args):
                                                token_decode=True,
                                                verbose=args.verbose)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.test_logger)
 
     if args.spell_checker:
@@ -56,7 +56,7 @@ def infer(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        if args.verbose:
+        if args.verbose > 1:
             print_section(spelling)
 
         predictions = spelling.enhance(predictions, verbose=args.verbose)

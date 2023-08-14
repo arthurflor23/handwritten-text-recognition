@@ -25,7 +25,7 @@ def train(args):
                       eager_mode=args.eager_mode,
                       seed=args.seed)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(dataset)
 
     augmentor = None
@@ -46,13 +46,13 @@ def train(args):
                               gaussian_blur=args.gaussian_blur,
                               seed=args.seed)
 
-        if args.verbose:
+        if args.verbose > 1:
             print_section(augmentor)
 
     model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
     model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
-    if args.verbose:
+    if args.verbose > 1:
         print_section(model)
 
     train_data, train_steps = dataset.get_generator(partition=dataset.training,
@@ -74,7 +74,7 @@ def train(args):
               patience=args.patience,
               verbose=args.verbose)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.training_logger)
 
     test_data, test_steps = dataset.get_generator(partition=dataset.test,
@@ -89,7 +89,7 @@ def train(args):
                                    token_decode=True,
                                    verbose=args.verbose)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.test_logger)
 
     baseline_metrics = model.evaluate(partition=dataset.test,
@@ -103,7 +103,7 @@ def train(args):
                             api_key=args.api_key,
                             env_key=args.env_key)
 
-        if args.verbose:
+        if args.verbose > 1:
             print_section(spelling)
 
         spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
@@ -114,5 +114,5 @@ def train(args):
 
         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
-    if args.verbose:
+    if args.verbose > 0:
         print_section(model.evaluation_logger)
