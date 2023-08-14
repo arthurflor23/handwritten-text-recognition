@@ -65,11 +65,11 @@ class Model():
         self.learning_rate = None
         self.summary = None
 
-        self.loss_logger = None
-        self.training_logger = None
-        self.test_logger = None
-        self.evaluation_logger = None
-        self.samples_logger = None
+        self.loss_logger = Logger(role='loss')
+        self.training_logger = Logger(role='training')
+        self.test_logger = Logger(role='test')
+        self.evaluation_logger = Logger(role='evaluation')
+        self.samples_logger = Logger(role='samples')
 
         self._network = self._import_network(self.network)
 
@@ -366,9 +366,6 @@ class Model():
             Object detailing training and validation progress.
         """
 
-        self.loss_logger = Logger(role='loss')
-        self.training_logger = Logger(role='training')
-
         start_time = time.time()
 
         callbacks = [
@@ -448,8 +445,6 @@ class Model():
             The first is the predictions, and the second is the probabilities.
         """
 
-        self.test_logger = Logger(role='test')
-
         start_time = time.time()
 
         predictions = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
@@ -521,9 +516,6 @@ class Model():
         ndarray
             Array of error metrics for each top path.
         """
-
-        self.evaluation_logger = Logger(role='evaluation')
-        self.samples_logger = Logger(role='samples')
 
         if baseline_predictions is None and spelling_predictions is None:
             return np.zeros((0, 4), dtype=np.float32), np.zeros((0, len(partition['raw']), 5), dtype=object)
