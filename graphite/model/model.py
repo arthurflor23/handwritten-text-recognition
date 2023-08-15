@@ -240,22 +240,19 @@ class Model():
                 mlflow.log_metrics(metrics=dict_metrics)
 
             # Parameters
-            def to_dict_item(obj, attribute=None):
-                if obj:
-                    if attribute and hasattr(obj, attribute) and getattr(obj, attribute):
-                        return getattr(obj, attribute).to_dict()
-                    else:
-                        return obj.to_dict() if hasattr(obj, 'to_dict') else {}
+            def to_dict_item(obj, check_touched=False):
+                if obj is not None and (not check_touched or getattr(obj, 'touched', False)):
+                    return obj.to_dict()
                 return {}
 
             dict_params = {
                 **to_dict_item(dataset),
-                **to_dict_item(dataset, 'tokenizer'),
+                **to_dict_item(getattr(dataset, 'tokenizer', None)),
                 **to_dict_item(augmentor),
                 **to_dict_item(spelling),
                 **to_dict_item(self),
-                **to_dict_item(self.training_logger, 'touched'),
-                **to_dict_item(self.test_logger, 'touched'),
+                **to_dict_item(self.training_logger, check_touched=True),
+                **to_dict_item(self.test_logger, check_touched=True),
             }
 
             if self.run_context is not None:
@@ -273,7 +270,7 @@ class Model():
 
             # Logs
             def log_item(obj, attribute=None):
-                return (getattr(obj, attribute) if attribute and hasattr(obj, attribute) else obj) if obj else None
+                return (obj if attribute and getattr(obj, attribute, False) else obj) if obj else None
 
             filelogs = [
                 (log_item(dataset), 'dataset.log'),
@@ -370,7 +367,9 @@ class Model():
         """
 
         self.loss_logger = Logger(role='loss')
-        self.training_logger = Logger(role='training', training_steps=training_steps, training_data=training_data)
+        self.training_logger = Logger(role='training')
+
+        start_time = time.time()
 
         callbacks = [
             tf.keras.callbacks.EarlyStopping(
@@ -394,7 +393,6 @@ class Model():
             ),
         ]
 
-        start_time = time.time()
         run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         with mlflow.start_run(run_name=run_name) as run:
@@ -412,7 +410,7 @@ class Model():
         total_time = end_time - start_time
 
         self.loss_logger.log_loss(history.history)
-        self.training_logger.log_training(total_time, history.history)
+        self.training_logger.log_training(total_time, training_steps, history.history)
 
         return history
 
@@ -450,7 +448,8 @@ class Model():
             The first is the predictions, and the second is the probabilities.
         """
 
-        self.test_logger = Logger(role='test', test_steps=test_steps, test_data=test_data)
+        self.test_logger = Logger(role='test')
+
         start_time = time.time()
 
         predictions = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
@@ -494,7 +493,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.test_logger.log_test(total_time)
+        self.test_logger.log_test(total_time, test_steps)
 
         return predictions, probabilities
 
@@ -756,12 +755,7 @@ class Logger():
     Class to log and store training, test and samples information.
     """
 
-    def __init__(self,
-                 role,
-                 training_steps=0,
-                 training_data=None,
-                 test_steps=0,
-                 test_data=None):
+    def __init__(self, role):
         """
         Initialize the Logger object.
 
@@ -769,14 +763,6 @@ class Logger():
         ----------
         role : str
             The role for which this logger is used.
-        training_steps : int, optional
-            The number of training steps. Default is 0.
-        training_data : training generator, optional
-            The training data. Default is None
-        test_steps : int, optional
-            The number of test steps. Default is 0.
-        test_data : test generator, optional
-            The test data. Default is None.
         """
 
         self.role = role
@@ -789,30 +775,20 @@ class Logger():
         self.loss_history = []
 
         # Training
-        self.training_steps = training_steps
-        self.training_total_data = 0
+        self.training_steps = 0
         self.training_total_epochs = 0
         self.training_total_steps = 0
         self.training_time = 0
         self.training_time_per_epoch = 0
         self.training_time_per_step = 0
-        self.training_time_per_item = 0
-
-        if training_steps and training_data:
-            self.training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
 
         # Test
-        self.test_steps = test_steps
-        self.test_total_data = 0
+        self.test_steps = 0
         self.test_total_epochs = 0
         self.test_total_steps = 0
         self.test_time = 0
         self.test_time_per_epoch = 0
         self.test_time_per_step = 0
-        self.test_time_per_item = 0
-
-        if test_steps and test_data:
-            self.test_total_data = np.sum([len(next(test_data)[0]) for _ in range(test_steps)])
 
         # Evaluation
         self.evaluation = {}
@@ -849,14 +825,12 @@ class Logger():
         elif self.role == 'training':
             info = f"""
                 Training\n
-                Total Data                  {self.training_total_data}
                 Total Epochs                {self.training_total_epochs}
                 Total Steps                 {self.training_total_steps} ({self.training_steps}/epoch)
 
                 Time                        {self.training_time}
                 Time per Epoch              {self.training_time_per_epoch}
                 Time per Step               {self.training_time_per_step}
-                Time per Item               {self.training_time_per_item}
 
                 Loss\n
                 Best Epoch Loss             {self.loss_epoch}
@@ -869,14 +843,12 @@ class Logger():
         elif self.role == 'test':
             info = f"""
                 Test\n
-                Total Data                  {self.test_total_data}
                 Total Epochs                {self.test_total_epochs}
                 Total Steps                 {self.test_total_steps} ({self.test_steps}/epoch)
 
                 Time                        {self.test_time}
                 Time per Epoch              {self.test_time_per_epoch}
                 Time per Step               {self.test_time_per_step}
-                Time per Item               {self.test_time_per_item}
             """
 
             info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
@@ -917,26 +889,22 @@ class Logger():
 
         elif self.role == 'training':
             attributes = {
-                'training_total_data': self.training_total_data,
                 'training_total_epochs': self.training_total_epochs,
                 'training_total_steps': self.training_total_steps,
                 'training_steps': self.training_steps,
                 'training_time': self.training_time,
                 'training_time_per_epoch': self.training_time_per_epoch,
                 'training_time_per_step': self.training_time_per_step,
-                'training_time_per_item': self.training_time_per_item,
             }
 
         elif self.role == 'test':
             attributes = {
-                'test_total_data': self.test_total_data,
                 'test_total_epochs': self.test_total_epochs,
                 'test_total_steps': self.test_total_steps,
                 'test_steps': self.test_steps,
                 'test_time': self.test_time,
                 'test_time_per_epoch': self.test_time_per_epoch,
                 'test_time_per_step': self.test_time_per_step,
-                'test_time_per_item': self.test_time_per_item,
             }
 
         elif self.role == 'samples':
@@ -987,7 +955,7 @@ class Logger():
 
         self.touched = True
 
-    def log_training(self, total_time, loss_history):
+    def log_training(self, total_time, training_steps, loss_history):
         """
         Set the training information.
 
@@ -995,13 +963,16 @@ class Logger():
         ----------
         total_time : float
             The total training time.
+        training_steps : int
+            The number of training steps.
         loss_history : dict
             The training history object.
         """
 
         self.training_total_epochs = len(loss_history['loss'])
-        self.training_total_steps = self.training_total_epochs * self.training_steps
+        self.training_steps = training_steps
 
+        self.training_total_steps = self.training_total_epochs * self.training_steps
         self.training_time = str(datetime.timedelta(seconds=total_time))
 
         time_per_epoch = total_time / self.training_total_epochs
@@ -1010,14 +981,11 @@ class Logger():
         time_per_step = total_time / self.training_total_steps
         self.training_time_per_step = str(datetime.timedelta(seconds=time_per_step))
 
-        time_per_item = total_time / (self.training_total_epochs * self.training_total_data)
-        self.training_time_per_item = str(datetime.timedelta(seconds=time_per_item))
-
         self.log_loss(loss_history)
 
         self.touched = True
 
-    def log_test(self, total_time):
+    def log_test(self, total_time, test_steps):
         """
         Set the test information.
 
@@ -1025,11 +993,14 @@ class Logger():
         ----------
         total_time : float
             The total test time.
+        test_steps : int
+            The number of test steps.
         """
 
         self.test_total_epochs = 1
-        self.test_total_steps = self.test_total_epochs * self.test_steps
+        self.test_steps = test_steps
 
+        self.test_total_steps = self.test_total_epochs * self.test_steps
         self.test_time = str(datetime.timedelta(seconds=total_time))
 
         time_per_epoch = total_time / self.test_total_epochs
@@ -1037,9 +1008,6 @@ class Logger():
 
         time_per_step = total_time / self.test_total_steps
         self.test_time_per_step = str(datetime.timedelta(seconds=time_per_step))
-
-        time_per_item = total_time / (self.test_total_epochs * self.test_total_data)
-        self.test_time_per_item = str(datetime.timedelta(seconds=time_per_item))
 
         self.touched = True
 
