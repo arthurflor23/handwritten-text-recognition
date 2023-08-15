@@ -14,10 +14,10 @@ if __name__ == '__main__':
 
     # Dataset
     parser.add_argument('--source', default=None,
-                        help="Define the source data (iam, rimes)")
+                        help="Define the source data (bentham, iam, parzival, rimes, saintgall, washington)")
 
     parser.add_argument('--level', default='line',
-                        help="Define the recoginition level (line, paragraph)")
+                        help="Define the recoginition level (character, word, line, paragraph)")
 
     parser.add_argument('--training-ratio', default=None,
                         help="Set the training partition ratio")
@@ -28,13 +28,13 @@ if __name__ == '__main__':
     parser.add_argument('--test-ratio', default=None,
                         help="Set the test partition ratio")
 
+    parser.add_argument('--binarization', default=None,
+                        help="Apply binarization method (otsu)")
+
     parser.add_argument('--eager-mode', default=False, action='store_true',
                         help="Load all data into memory")
 
     # Data augmentation
-    parser.add_argument('--otsu', default=None, nargs='+', type=float,
-                        help="Apply Otsu's binarization (probability)")
-
     parser.add_argument('--erode', default=[0.66, 3, 1], nargs='+', type=float,
                         help="Apply erode transformation (probability, kernel size, iterations)")
 
