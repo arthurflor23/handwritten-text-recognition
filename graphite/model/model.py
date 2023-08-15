@@ -65,11 +65,11 @@ class Model():
         self.learning_rate = None
         self.summary = None
 
-        self.loss_logger = Logger(role='loss')
-        self.training_logger = Logger(role='training')
-        self.test_logger = Logger(role='test')
-        self.evaluation_logger = Logger(role='evaluation')
-        self.samples_logger = Logger(role='samples')
+        self.loss_logger = None
+        self.training_logger = None
+        self.test_logger = None
+        self.evaluation_logger = None
+        self.samples_logger = None
 
         self._network = self._import_network(self.network)
 
@@ -240,14 +240,22 @@ class Model():
                 mlflow.log_metrics(metrics=dict_metrics)
 
             # Parameters
+            def to_dict_item(obj, attribute=None):
+                if obj:
+                    if attribute and hasattr(obj, attribute) and getattr(obj, attribute):
+                        return getattr(obj, attribute).to_dict()
+                    else:
+                        return obj.to_dict() if hasattr(obj, 'to_dict') else {}
+                return {}
+
             dict_params = {
-                **(dataset.to_dict() if dataset is not None else {}),
-                **(dataset.tokenizer.to_dict() if dataset is not None else {}),
-                **(augmentor.to_dict() if augmentor is not None else {}),
-                **(spelling.to_dict() if spelling is not None else {}),
-                **self.to_dict(),
-                **(self.training_logger.to_dict() if self.training_logger.touched else {}),
-                **(self.test_logger.to_dict() if self.test_logger.touched else {}),
+                **to_dict_item(dataset),
+                **to_dict_item(dataset, 'tokenizer'),
+                **to_dict_item(augmentor),
+                **to_dict_item(spelling),
+                **to_dict_item(self),
+                **to_dict_item(self.training_logger, 'touched'),
+                **to_dict_item(self.test_logger, 'touched'),
             }
 
             if self.run_context is not None:
@@ -264,17 +272,20 @@ class Model():
                         f.write(str(dict_params[key]).strip())
 
             # Logs
+            def log_item(obj, attribute=None):
+                return (getattr(obj, attribute) if attribute and hasattr(obj, attribute) else obj) if obj else None
+
             filelogs = [
-                (dataset if dataset is not None else None, 'dataset.log'),
-                (dataset.tokenizer if dataset is not None else None, 'tokenizer.log'),
-                (augmentor if augmentor is not None else None, 'augmentor.log'),
-                (spelling if spelling is not None else None, 'spelling.log'),
-                (self, 'model.log'),
-                (self.loss_logger if self.loss_logger.touched else None, 'loss.log'),
-                (self.training_logger if self.training_logger.touched else None, 'training.log'),
-                (self.test_logger if self.test_logger.touched else None, 'test.log'),
-                (self.evaluation_logger if self.evaluation_logger.touched else None, 'evaluation.log'),
-                (self.samples_logger if self.samples_logger.touched else None, 'samples.log'),
+                (log_item(dataset), 'dataset.log'),
+                (log_item(dataset, 'tokenizer'), 'tokenizer.log'),
+                (log_item(augmentor), 'augmentor.log'),
+                (log_item(spelling), 'spelling.log'),
+                (log_item(self), 'model.log'),
+                (log_item(self.loss_logger, 'touched'), 'loss.log'),
+                (log_item(self.training_logger, 'touched'), 'training.log'),
+                (log_item(self.test_logger, 'touched'), 'test.log'),
+                (log_item(self.evaluation_logger, 'touched'), 'evaluation.log'),
+                (log_item(self.samples_logger, 'touched'), 'samples.log'),
             ]
 
             for log, filename in filelogs:
@@ -358,7 +369,8 @@ class Model():
             Object detailing training and validation progress.
         """
 
-        start_time = time.time()
+        self.loss_logger = Logger(role='loss')
+        self.training_logger = Logger(role='training', training_steps=training_steps, training_data=training_data)
 
         callbacks = [
             tf.keras.callbacks.EarlyStopping(
@@ -382,6 +394,7 @@ class Model():
             ),
         ]
 
+        start_time = time.time()
         run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         with mlflow.start_run(run_name=run_name) as run:
@@ -399,7 +412,7 @@ class Model():
         total_time = end_time - start_time
 
         self.loss_logger.log_loss(history.history)
-        self.training_logger.log_training(total_time, history.history, training_data, training_steps)
+        self.training_logger.log_training(total_time, history.history)
 
         return history
 
@@ -437,6 +450,7 @@ class Model():
             The first is the predictions, and the second is the probabilities.
         """
 
+        self.test_logger = Logger(role='test', test_steps=test_steps, test_data=test_data)
         start_time = time.time()
 
         predictions = self.model.predict(x=test_data, steps=test_steps, verbose=verbose)
@@ -480,7 +494,7 @@ class Model():
         end_time = time.time()
         total_time = end_time - start_time
 
-        self.test_logger.log_test(total_time, test_data, test_steps)
+        self.test_logger.log_test(total_time)
 
         return predictions, probabilities
 
@@ -508,6 +522,9 @@ class Model():
         ndarray
             Array of error metrics for each top path.
         """
+
+        self.evaluation_logger = Logger(role='evaluation')
+        self.samples_logger = Logger(role='samples')
 
         if baseline_predictions is None and spelling_predictions is None:
             return np.zeros((0, 4), dtype=np.float32), np.zeros((0, len(partition['raw']), 5), dtype=object)
@@ -739,7 +756,12 @@ class Logger():
     Class to log and store training, test and samples information.
     """
 
-    def __init__(self, role):
+    def __init__(self,
+                 role,
+                 training_steps=0,
+                 training_data=None,
+                 test_steps=0,
+                 test_data=None):
         """
         Initialize the Logger object.
 
@@ -747,6 +769,14 @@ class Logger():
         ----------
         role : str
             The role for which this logger is used.
+        training_steps : int, optional
+            The number of training steps. Default is 0.
+        training_data : training generator, optional
+            The training data. Default is None
+        test_steps : int, optional
+            The number of test steps. Default is 0.
+        test_data : test generator, optional
+            The test data. Default is None.
         """
 
         self.role = role
@@ -759,6 +789,7 @@ class Logger():
         self.loss_history = []
 
         # Training
+        self.training_steps = training_steps
         self.training_total_data = 0
         self.training_total_epochs = 0
         self.training_total_steps = 0
@@ -767,7 +798,11 @@ class Logger():
         self.training_time_per_step = 0
         self.training_time_per_item = 0
 
+        if training_steps and training_data:
+            self.training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
+
         # Test
+        self.test_steps = test_steps
         self.test_total_data = 0
         self.test_total_epochs = 0
         self.test_total_steps = 0
@@ -775,6 +810,9 @@ class Logger():
         self.test_time_per_epoch = 0
         self.test_time_per_step = 0
         self.test_time_per_item = 0
+
+        if test_steps and test_data:
+            self.test_total_data = np.sum([len(next(test_data)[0]) for _ in range(test_steps)])
 
         # Evaluation
         self.evaluation = {}
@@ -949,7 +987,7 @@ class Logger():
 
         self.touched = True
 
-    def log_training(self, total_time, loss_history, training_data, training_steps):
+    def log_training(self, total_time, loss_history):
         """
         Set the training information.
 
@@ -959,19 +997,10 @@ class Logger():
             The total training time.
         loss_history : dict
             The training history object.
-        training_data : data generator
-            The training data.
-        training_steps : int
-            The number of training steps.
         """
 
-        training_total_data = np.sum([len(next(training_data)[0]) for _ in range(training_steps)])
-
         self.training_total_epochs = len(loss_history['loss'])
-        self.training_total_data = training_total_data
-
-        self.training_steps = training_steps
-        self.training_total_steps = self.training_total_epochs * training_steps
+        self.training_total_steps = self.training_total_epochs * self.training_steps
 
         self.training_time = str(datetime.timedelta(seconds=total_time))
 
@@ -988,7 +1017,7 @@ class Logger():
 
         self.touched = True
 
-    def log_test(self, total_time, test_data, test_steps):
+    def log_test(self, total_time):
         """
         Set the test information.
 
@@ -996,19 +1025,10 @@ class Logger():
         ----------
         total_time : float
             The total test time.
-        test_data : data generator
-            The test data.
-        test_steps : int
-            The number of test steps.
         """
 
-        test_total_data = np.sum([len(next(test_data)[0]) for _ in range(test_steps)])
-
-        self.test_total_data = test_total_data
         self.test_total_epochs = 1
-
-        self.test_steps = test_steps
-        self.test_total_steps = self.test_total_epochs * test_steps
+        self.test_total_steps = self.test_total_epochs * self.test_steps
 
         self.test_time = str(datetime.timedelta(seconds=total_time))
 
