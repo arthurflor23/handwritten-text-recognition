@@ -23,6 +23,7 @@ def test(args):
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
+                      binarization=args.binarization,
                       eager_mode=args.eager_mode,
                       seed=args.seed)
 
