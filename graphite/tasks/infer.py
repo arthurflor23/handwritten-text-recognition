@@ -20,7 +20,12 @@ def infer(args):
         print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
     data = [[image, args.bbox, ['']] for image in args.images]
-    dataset = Dataset(data=data)
+
+    dataset = Dataset(data=data,
+                      level=args.level,
+                      binarization=args.binarization,
+                      eager_mode=args.eager_mode,
+                      seed=args.seed)
 
     if args.verbose:
         print_section(dataset)
