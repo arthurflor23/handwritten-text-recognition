@@ -498,16 +498,16 @@ class Model():
         ----------
         partition : dict
             The data partition for evaluation.
-        baseline_predictions : numpy.ndarray, optional
+        baseline_predictions : ndarray, optional
             List of baseline predictions.
-        spelling_predictions : numpy.ndarray, optional
+        spelling_predictions : ndarray, optional
             List of spelling predictions.
         share_top_paths : bool, optional
             If True, consider previous paths to the metrics. Default is False.
 
         Returns
         -------
-        numpy.ndarray
+        ndarray
             Array of error metrics for each top path.
         """
 
@@ -616,12 +616,12 @@ class Model():
         ----------
         partition : dict
             The data partition.
-        predictions : numpy.ndarray
+        predictions : ndarray
             Array of model's predictions.
 
         Returns
         -------
-        numpy.ndarray
+        ndarray
             Array of top predictions.
         """
 
