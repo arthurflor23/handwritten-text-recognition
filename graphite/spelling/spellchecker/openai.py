@@ -19,8 +19,8 @@ class SpellChecker():
             The API key to interact with the OpenAI API.
         """
 
-        self.max_tokens = 16000
-        self.model = 'gpt-3.5-turbo-16k'
+        self.max_tokens = 4000
+        self.model = 'gpt-3.5-turbo-0613'
 
         # https://platform.openai.com/account/api-keys
         openai.api_key = api_key
@@ -46,7 +46,7 @@ class SpellChecker():
 
         if instruction is None:
             instruction = """
-                Correct spelling errors, including accents.
+                Correct all spelling errors, including accents.
                 The following texts contain errors from a handwriting recognition model.
                 Preserve tags, slang, historical terms, and grammar.
                 Make only confident changes.
