@@ -712,7 +712,7 @@ class Dataset():
 
         return partition
 
-    def _binarization(self, method, image):
+    def _binarization(self, image):
         """
         Apply a binarization method to an image.
 
@@ -727,7 +727,7 @@ class Dataset():
             Binarized image.
         """
 
-        if method == 'otsu':
+        if self.binarization == 'otsu':
             _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         return image
