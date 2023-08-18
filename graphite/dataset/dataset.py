@@ -21,6 +21,7 @@ class Dataset():
                  validation_ratio=None,
                  test_ratio=None,
                  pad_value=255,
+                 binarization=None,
                  eager_mode=False,
                  data=None,
                  artifact_path='data',
@@ -42,6 +43,8 @@ class Dataset():
             The test ratio for resample. Default is None.
         pad_value : int, optional
             Padding value. Default is 255.
+        binarization : str or None, optional
+            Binarization method to be applied, by default None.
         eager_mode : bool, optional
             Eager mode flag for load all data into memory. Default is False.
         data : list, optional
@@ -64,6 +67,7 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.pad_value = pad_value
+        self.binarization = binarization
         self.eager_mode = eager_mode
         self.artifact_path = artifact_path
         self.seed = seed
@@ -120,6 +124,7 @@ class Dataset():
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
             Padding Value           {self.pad_value}
+            Binarization            {self.binarization}
             Eager Mode              {self.eager_mode}
             Seed                    {self.seed}
 
@@ -169,6 +174,7 @@ class Dataset():
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
             'pad_value': self.pad_value,
+            'binarization': self.binarization,
             'eager_mode': self.eager_mode,
             'seed': self.seed,
             'size': self.size,
@@ -226,6 +232,9 @@ class Dataset():
 
                 if not self.eager_mode:
                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
+
+                if self.binarization:
+                    x_data = [self._binarization(x) for x in x_data]
 
                 if augmentor:
                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
@@ -485,7 +494,7 @@ class Dataset():
 
         Returns
         -------
-        numpy.ndarray
+        ndarray
             The loaded image as a NumPy array.
         """
 
@@ -703,6 +712,26 @@ class Dataset():
 
         return partition
 
+    def _binarization(self, method, image):
+        """
+        Apply a binarization method to an image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be binarized.
+
+        Returns
+        ----------
+        ndarray
+            Binarized image.
+        """
+
+        if method == 'otsu':
+            _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        return image
+
     def _pad_batch_data(self, batch_data, pad_value, dtype=None):
         """
         Pads each 2D sub-array in the batch data to the maximum height and width.
@@ -718,7 +747,7 @@ class Dataset():
 
         Returns
         -------
-        numpy.ndarray
+        ndarray
             Padded batch data.
         """
 
