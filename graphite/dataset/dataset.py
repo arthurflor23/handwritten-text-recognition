@@ -70,6 +70,7 @@ class Dataset():
 
         self.size = 0
         self.corpus = ''
+        self.tokens = []
         self.charset = []
 
         self.min_text = ''
@@ -133,6 +134,7 @@ class Dataset():
             Charset Length          {len(self.charset)}
             Charset                 {''.join(self.charset)}
 
+            Tokens Length           {len(self.tokens)}
             Corpus Length           {len(self.corpus)}
 
             Min Text Length         {len(self.min_text)}
@@ -629,6 +631,7 @@ class Dataset():
             'data': [],
             'size': 0,
             'corpus': '',
+            'tokens': [],
             'charset': [],
             'min_text': '',
             'max_text': '',
@@ -646,6 +649,7 @@ class Dataset():
 
         if labels:
             dct['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
+            dct['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
             dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
             dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
             dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
@@ -658,6 +662,7 @@ class Dataset():
 
         if training:
             self.corpus = f"{self.corpus} {dct['corpus']}".strip()
+            self.tokens = sorted(set(self.tokens + dct['tokens']))
             self.charset = sorted(set(self.charset + dct['charset']))
 
         if dct['min_text']:
