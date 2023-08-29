@@ -420,8 +420,6 @@ class Dataset():
             if not data[i]:
                 continue
 
-            np.random.shuffle(data[i])
-
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(self._unpack_data_item, x, training) for x in data[i]]
                 data[i] = [list(x) for x in [future.result() for future in futures] if x]
