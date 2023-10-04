@@ -1,11 +1,6 @@
-autopep8==2.0.4
 editdistance==0.6.2
-flake8==6.1.0
-mlflow==2.7.1
 openai==0.28.1
 opencv-python==4.8.1.78
-python-dotenv==1.0.0
-tensorflow==2.14.0;             platform_system == 'Darwin'
+tensorflow==2.14.0
 tensorflow-metal==1.1.0;        platform_system == 'Darwin'
-tensorflow[and-cuda]==2.14.0;   platform_system != 'Darwin'
 tiktoken==0.5.1
