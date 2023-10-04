@@ -3,6 +3,7 @@ import re
 import cv2
 import html
 import string
+import random
 import zipfile
 import importlib
 import numpy as np
@@ -17,23 +18,26 @@ class Dataset():
     def __init__(self,
                  source=None,
                  level=None,
+                 shape=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
                  binarization=False,
-                 eager_mode=False,
+                 lazy_mode=False,
                  data=None,
                  artifact_path='data',
                  seed=None):
         """
-        Initializes a new instance of the Dataset class.
+        Initializes the Dataset class.
 
         Parameters
         ----------
         source : str, optional
             The data source name. Default is None.
         level : str, optional
-            The recognition level. Default is None.
+            The text structure level. Default is None.
+        shape : list, optional
+            The shape of the images. Default is None.
         training_ratio : float or int, optional
             The training ratio for resample. Default is None.
         validation_ratio : float or int, optional
@@ -41,32 +45,42 @@ class Dataset():
         test_ratio : float or int, optional
             The test ratio for resample. Default is None.
         binarization : bool, optional
-            Binarization method to be applied. Default is False.
-        eager_mode : bool, optional
-            Eager mode flag for load all data into memory. Default is False.
+            Apply binarization method. Default is False.
+        lazy_mode : bool, optional
+            Enable lazy loading mode. Default is False.
         data : list, optional
-            Custom data for inference mode. Default is None.
+            Data for inference mode. Default is None.
         artifact_path : str, optional
             Path name to fetch the data. Default is 'data'.
         seed : int, optional
-            Seed for random shuffles. Default is None.
-
-        Returns
-        -------
-        None
+            Seed for random shuffle. Default is None.
         """
 
+        random.seed(seed)
         np.random.seed(seed)
 
         self.source = source
         self.level = level
+        self.shape = shape
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.binarization = binarization
-        self.eager_mode = eager_mode
+        self.lazy_mode = lazy_mode
         self.artifact_path = artifact_path
         self.seed = seed
+
+        if data is None:
+            self._source = self._import_source(self.source)
+            self._source = self._source(self.artifact_path)
+
+            if hasattr(self._source, 'base_path'):
+                self._extract_data(self._source.base_path)
+
+            data = self._source.fetch_data(self.level)
+            data = self._prepare_source_data(data, training=True)
+        else:
+            data = self._prepare_source_data(data, training=False)
 
         self.size = 0
         self.corpus = ''
@@ -81,17 +95,6 @@ class Dataset():
 
         self.min_cols = np.inf
         self.max_cols = -np.inf
-
-        if data is None:
-            self._source = self._import_source(self.source)
-            self._source = self._source(self.artifact_path)
-
-            self._extract_data(self._source.base_path)
-
-            data = self._source.fetch_data(self.level)
-            data = self._prepare_source_data(data, training=True)
-        else:
-            data = self._prepare_source_data(data, training=False)
 
         self.training = self._create_partition(data[0], training=True)
         self.validation = self._create_partition(data[1], training=True)
@@ -116,12 +119,13 @@ class Dataset():
         info = f"""
             Dataset Configuration\n
             Source                  {self.source or '-'}
-            Recognition Level       {self.level or '-'}
+            Text Level              {self.level or '-'}
+            Image Shape             {self.shape or '-'}
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
             Binarization            {self.binarization}
-            Eager Mode              {self.eager_mode}
+            Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
 
             Dataset Information\n
@@ -154,7 +158,7 @@ class Dataset():
 
         return info
 
-    def to_dict(self):
+    def _to_dict(self):
         """
         Convert the class object attributes to a dictionary.
 
@@ -167,11 +171,12 @@ class Dataset():
         attributes = {
             'source': self.source,
             'level': self.level,
+            'shape': self.shape,
             'training_ratio': self.training_ratio,
             'validation_ratio': self.validation_ratio,
             'test_ratio': self.test_ratio,
             'binarization': self.binarization,
-            'eager_mode': self.eager_mode,
+            'lazy_mode': self.lazy_mode,
             'seed': self.seed,
             'size': self.size,
             'charset': ''.join(self.charset),
@@ -180,91 +185,6 @@ class Dataset():
         }
 
         return attributes
-
-    def get_generator(self,
-                      partition,
-                      batch_size=8,
-                      augmentor=None,
-                      raw_data=False,
-                      shuffle=True):
-        """
-        Generates a batch of data samples for the specified partition.
-
-        Parameters
-        ----------
-        partition : dict
-            The dataset partition which will be create the generator.
-        batch_size : int, optional
-            The number of samples in each batch, default is 8.
-        augmentor : Augmentor, optional
-            The Augmentor class. Default is None.
-        raw_data : bool, optional
-            Specifies whether to generate raw or processed data, default is False.
-        shuffle : bool, optional
-            Specifies whether shuffles per epoch, default is True.
-
-        Returns
-        -------
-        tuple
-            A generator for data batches and steps per epoch.
-        """
-
-        def generator(partition, subset, indices):
-            batch_index = 0
-
-            while True:
-                if batch_index >= partition['size']:
-                    if shuffle:
-                        np.random.shuffle(indices)
-                    batch_index = 0
-
-                batch_indices = indices[batch_index:batch_index + batch_size]
-                batch_index += batch_size
-
-                batch_data = partition[subset][batch_indices]
-
-                x_data = batch_data[:, 0]
-                y_data = batch_data[:, 2]
-
-                if not self.eager_mode or raw_data:
-                    x_data = [self._read_image(data[0], data[1]) for data in batch_data]
-
-                if self.binarization:
-                    x_data = [self._binarization(x) for x in x_data]
-
-                if augmentor:
-                    x_data = [augmentor.augmentation(x, x_data) for x in x_data]
-
-                if not raw_data:
-                    x_data = self._pad_batch_data(x_data, 255, np.uint8)
-                    y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
-
-                yield (x_data, y_data)
-
-        subset = 'raw' if raw_data else 'data'
-        indices = np.arange(partition['size'])
-
-        batch_generator = generator(partition, subset, indices)
-        steps_per_epoch = int(np.ceil(partition['size'] / batch_size))
-
-        return batch_generator, steps_per_epoch
-
-    def _extract_data(self, source):
-        """
-        Extracts a .zip file into a directory if the directory doesn't exist yet.
-
-        Parameters
-        ----------
-        source : str
-            The base name of the .zip file and target directory.
-        """
-
-        if not source.startswith(self.artifact_path):
-            source = os.path.join(self.artifact_path, source)
-
-        if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
-            with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
-                zip_ref.extractall(self.artifact_path)
 
     def _import_source(self, source):
         """
@@ -298,6 +218,23 @@ class Dataset():
         source = getattr(module, class_name)
 
         return source
+
+    def _extract_data(self, source):
+        """
+        Extracts a .zip file into a directory if the directory doesn't exist yet.
+
+        Parameters
+        ----------
+        source : str
+            The base name of the .zip file and target directory.
+        """
+
+        if not source.startswith(self.artifact_path):
+            source = os.path.join(self.artifact_path, source)
+
+        if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
+            with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
+                zip_ref.extractall(self.artifact_path)
 
     def _prepare_source_data(self, data, training=False):
         """
@@ -470,7 +407,7 @@ class Dataset():
             print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
             return None
 
-        if not self.eager_mode:
+        if self.lazy_mode:
             image = image_path
 
         return [image_path, bbox, label], [image, bbox, label]
@@ -690,14 +627,12 @@ class Dataset():
         Parameters
         ----------
         partition : dict
-            A dictionary containing 'data', a list of lists,
-            where the last element of each sublist is a label to be encoded.
+            Object with the data labels to be encoded.
 
         Returns
         -------
         partition : dict
-            The same partition dictionary with 'data' updated to contain encoded labels
-            and converted to a numpy array of dtype object.
+            Object with the encoded labels.
         """
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -709,56 +644,124 @@ class Dataset():
 
         return partition
 
-    def _binarization(self, image):
-        """
-        Apply binarization method to an image.
+#     def get_generator(self,
+#                       partition,
+#                       batch_size=8,
+#                       augmentor=None,
+#                       raw_data=False,
+#                       shuffle=True):
+#         """
+#         Generates a batch of data samples for the specified partition.
 
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be binarized.
+#         Parameters
+#         ----------
+#         partition : dict
+#             The dataset partition which will be create the generator.
+#         batch_size : int, optional
+#             The number of samples in each batch, default is 8.
+#         augmentor : Augmentor, optional
+#             The Augmentor class. Default is None.
+#         raw_data : bool, optional
+#             Specifies whether to generate raw or processed data, default is False.
+#         shuffle : bool, optional
+#             Specifies whether shuffles per epoch, default is True.
 
-        Returns
-        ----------
-        ndarray
-            Binarized image.
-        """
+#         Returns
+#         -------
+#         tuple
+#             A generator for data batches and steps per epoch.
+#         """
 
-        _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#         def generator(partition, subset, indices):
+#             batch_index = 0
 
-        return image
+#             while True:
+#                 if batch_index >= partition['size']:
+#                     if shuffle:
+#                         np.random.shuffle(indices)
+#                     batch_index = 0
 
-    def _pad_batch_data(self, batch_data, pad_value, dtype=None):
-        """
-        Pads each 2D sub-array in the batch data to the maximum height and width.
+#                 batch_indices = indices[batch_index:batch_index + batch_size]
+#                 batch_index += batch_size
 
-        Parameters
-        ----------
-        data : list
-            List of 2D sub-arrays to be padded.
-        pad_value : int, optional
-            Padding value.
-        dtype : data-type, optional
-            Desired data type of output array.
+#                 batch_data = partition[subset][batch_indices]
 
-        Returns
-        -------
-        ndarray
-            Padded batch data.
-        """
+#                 x_data = batch_data[:, 0]
+#                 y_data = batch_data[:, 2]
 
-        max_height = max(len(data) for data in batch_data)
-        max_width = max(len(item) for data in batch_data for item in data)
+#                 if self.lazy_mode or raw_data:
+#                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
 
-        padded = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
+#                 if self.binarization:
+#                     x_data = [self._binarization(x) for x in x_data]
 
-        for i, data in enumerate(batch_data):
-            for j, item in enumerate(data):
-                padded[i, j, :len(item)] = item
+#                 if augmentor:
+#                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
 
-        padded = np.expand_dims(padded, axis=-1)
+#                 if not raw_data:
+#                     x_data = self._pad_batch_data(x_data, 255, np.uint8)
+#                     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
 
-        return padded
+#                 yield (x_data, y_data)
+
+#         subset = 'raw' if raw_data else 'data'
+#         indices = np.arange(partition['size'])
+
+#         batch_generator = generator(partition, subset, indices)
+#         steps_per_epoch = int(np.ceil(partition['size'] / batch_size))
+
+#         return batch_generator, steps_per_epoch
+
+#     def _binarization(self, image):
+#         """
+#         Apply binarization method to an image.
+
+#         Parameters
+#         ----------
+#         image : ndarray
+#             Input image to be binarized.
+
+#         Returns
+#         ----------
+#         ndarray
+#             Binarized image.
+#         """
+
+#         _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+#         return image
+
+#     def _pad_batch_data(self, batch_data, pad_value, dtype=None):
+#         """
+#         Pads each 2D sub-array in the batch data to the maximum height and width.
+
+#         Parameters
+#         ----------
+#         data : list
+#             List of 2D sub-arrays to be padded.
+#         pad_value : int, optional
+#             Padding value.
+#         dtype : data-type, optional
+#             Desired data type of output array.
+
+#         Returns
+#         -------
+#         ndarray
+#             Padded batch data.
+#         """
+
+#         max_height = max(len(data) for data in batch_data)
+#         max_width = max(len(item) for data in batch_data for item in data)
+
+#         padded = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
+
+#         for i, data in enumerate(batch_data):
+#             for j, item in enumerate(data):
+#                 padded[i, j, :len(item)] = item
+
+#         padded = np.expand_dims(padded, axis=-1)
+
+#         return padded
 
 
 class Tokenizer():
