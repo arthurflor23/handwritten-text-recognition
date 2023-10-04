@@ -14,10 +14,6 @@ class Source():
         ----------
         artifact_path : str
             The path to the data.
-
-        Returns
-        -------
-        None
         """
 
         self.artifact_path = artifact_path
@@ -38,7 +34,7 @@ class Source():
         Parameters
         ----------
         level : str
-            The granularity level of the data to be retrieved.
+            The granularity of the data to be retrieved.
 
         Returns
         -------

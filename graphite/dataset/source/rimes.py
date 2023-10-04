@@ -15,10 +15,6 @@ class Source():
         ----------
         artifact_path : str
             The path to the data.
-
-        Returns
-        -------
-        None
         """
 
         self.artifact_path = artifact_path
@@ -37,13 +33,15 @@ class Source():
         Parameters
         ----------
         level : str
-            The granularity level of the data to be retrieved.
+            The granularity of the data to be retrieved.
 
         Returns
         -------
         tuple
             A tuple containing lists of training, validation, and test data.
         """
+
+        training_data, validation_data, test_data = [], [], []
 
         if level == 'line':
             # Load the lines data from the files
@@ -55,7 +53,7 @@ class Source():
             training_data = self._load_paragraphs_data(self.training_file_path, self.training_path)
             test_data = self._load_paragraphs_data(self.test_file_path, self.test_path)
 
-        return training_data, [], test_data
+        return training_data, validation_data, test_data
 
     def _load_lines_data(self, file_path, partition_path):
         """

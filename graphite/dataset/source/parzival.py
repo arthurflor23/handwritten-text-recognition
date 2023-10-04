@@ -14,10 +14,6 @@ class Source():
         ----------
         artifact_path : str
             The path to the data.
-
-        Returns
-        -------
-        None
         """
 
         self.artifact_path = artifact_path
@@ -39,7 +35,7 @@ class Source():
         Parameters
         ----------
         level : str
-            The granularity level of the data to be retrieved.
+            The granularity of the data to be retrieved.
 
         Returns
         -------
@@ -51,6 +47,8 @@ class Source():
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
+
+        training_data, validation_data, test_data = [], [], []
 
         if level == 'word':
             # Load the words data from the file
