@@ -1,12 +1,12 @@
 import os
 import sys
-import tasks
+import pipeline
 import argparse
 
 
 if __name__ == '__main__':
     """
-    It parses the command-line arguments and triggers the appropriate task.
+    It parses the command-line arguments and triggers the appropriate pipeline.
     """
 
     parser = argparse.ArgumentParser()
@@ -18,8 +18,8 @@ if __name__ == '__main__':
 
     # Dataset
     parser.add_argument('--source', default=None, help='Define source data')
-    parser.add_argument('--level', default='line', help='Define text level')
-    parser.add_argument('--shape', default=[128, 1024, 1], nargs='+', type=int, help='Define image shape')
+    parser.add_argument('--text-level', default='line', help='Define text structure level')
+    parser.add_argument('--image-shape', default=[128, 1024, 1], nargs='+', type=int, help='Define image shape')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -86,17 +86,17 @@ if __name__ == '__main__':
         assert args.run_index is not None, '--run-index must be defined'
 
     if args.infer:
-        assert len(args.images) > 0, 'images must be defined'
+        assert len(args.images) > 0, '--images must be defined'
 
-    # Tasks
+    # Pipelines
     if args.check:
-        tasks.check(args)
+        pipeline.check(args)
 
     # elif args.training:
-    #     tasks.train(args)
+    #     pipeline.training(args)
 
     # elif args.test:
-    #     tasks.test(args)
+    #     pipeline.test(args)
 
     # elif args.infer:
-    #     tasks.infer(args)
+    #     pipeline.infer(args)
