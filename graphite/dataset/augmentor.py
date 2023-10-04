@@ -1,4 +1,5 @@
 import cv2
+import random
 import numpy as np
 
 
@@ -55,12 +56,9 @@ class Augmentor():
             Parameters for Gaussian blur transformation, by default None.
         seed : int or None, optional
             Seed for random values from numpy, by default None.
-
-        Returns
-        -------
-        None
         """
 
+        random.seed(seed)
         np.random.seed(seed)
 
         self.erode_params = erode
@@ -116,7 +114,7 @@ class Augmentor():
 
         return info
 
-    def to_dict(self):
+    def _to_dict(self):
         """
         Convert the class object attributes to a dictionary.
 
