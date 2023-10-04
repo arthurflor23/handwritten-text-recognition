@@ -27,7 +27,7 @@ class Source():
         self.transcription_path = os.path.join(self.base_path, 'ground_truth')
         self.lines_file_path = os.path.join(self.transcription_path, 'transcription.txt')
 
-    def fetch_data(self, _):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 
@@ -47,13 +47,16 @@ class Source():
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
 
-        # Load the lines data from the file
-        lines_data = self._load_lines_data(self.lines_file_path)
+        training_data, validation_data, test_data = [], [], []
 
-        # Filter the lines data based on the partition data
-        training_data = self._filter_data(lines_data, training_partition_data)
-        validation_data = self._filter_data(lines_data, validation_partition_data)
-        test_data = self._filter_data(lines_data, test_partition_data)
+        if level == 'line':
+            # Load the lines data from the file
+            lines_data = self._load_lines_data(self.lines_file_path)
+
+            # Filter the lines data based on the partition data
+            training_data = self._filter_data(lines_data, training_partition_data)
+            validation_data = self._filter_data(lines_data, validation_partition_data)
+            test_data = self._filter_data(lines_data, test_partition_data)
 
         return training_data, validation_data, test_data
 

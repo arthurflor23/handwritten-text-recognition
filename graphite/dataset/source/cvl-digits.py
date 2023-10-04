@@ -23,7 +23,7 @@ class Source():
         self.training_path = os.path.join(self.base_path, 'cvl-strings', 'train', '**', '*.png')
         self.test_path = os.path.join(self.base_path, 'cvl-strings-eval', '**', '*.png')
 
-    def fetch_data(self, _):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 
@@ -44,10 +44,13 @@ class Source():
 
             return [file_path, [], label]
 
-        training_files = glob.glob(self.training_path, recursive=True)
-        training_data = [process_file(file_path) for file_path in training_files]
+        training_data, validation_data, test_data = [], [], []
 
-        test_files = glob.glob(self.test_path, recursive=True)
-        test_data = [process_file(file_path) for file_path in test_files]
+        if level == 'word' or level == 'line':
+            training_files = glob.glob(self.training_path, recursive=True)
+            training_data = [process_file(file_path) for file_path in training_files]
 
-        return training_data, [], test_data
+            test_files = glob.glob(self.test_path, recursive=True)
+            test_data = [process_file(file_path) for file_path in test_files]
+
+        return training_data, validation_data, test_data

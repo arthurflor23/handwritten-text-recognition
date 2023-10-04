@@ -25,7 +25,7 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'CAR-B', 'b_train_gt.txt')
         self.test_file_path = os.path.join(self.base_path, 'CAR-B', 'b_test_gt.txt')
 
-    def fetch_data(self, _):
+    def fetch_data(self, level):
         """
         Retrieves the data for training, validation, and testing.
 
@@ -48,10 +48,13 @@ class Source():
 
             return [path, [], label]
 
-        with open(self.training_file_path, 'r') as training_file:
-            training_data = [process_row(row, self.training_path) for row in training_file.readlines()]
+        training_data, validation_data, test_data = [], [], []
 
-        with open(self.test_file_path, 'r') as test_file:
-            test_data = [process_row(row, self.test_path) for row in test_file.readlines()]
+        if level == 'word' or level == 'line':
+            with open(self.training_file_path, 'r') as training_file:
+                training_data = [process_row(row, self.training_path) for row in training_file.readlines()]
 
-        return training_data, [], test_data
+            with open(self.test_file_path, 'r') as test_file:
+                test_data = [process_row(row, self.test_path) for row in test_file.readlines()]
+
+        return training_data, validation_data, test_data
