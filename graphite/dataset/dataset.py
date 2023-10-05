@@ -813,7 +813,7 @@ class Tokenizer():
 
         return info
 
-    def to_dict(self):
+    def _to_dict(self):
         """
         Convert the class object attributes to a dictionary.
 
