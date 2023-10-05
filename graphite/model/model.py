@@ -99,7 +99,7 @@ class Model():
 
         return info
 
-    def to_dict(self):
+    def _to_dict(self):
         """
         Convert the class object attributes to a dictionary.
 
@@ -242,7 +242,7 @@ class Model():
             # Parameters
             def to_dict_item(obj, check_touched=False):
                 if obj is not None and (not check_touched or getattr(obj, 'touched', False)):
-                    return obj.to_dict()
+                    return obj._to_dict()
                 return {}
 
             dict_params = {
@@ -860,7 +860,7 @@ class Logger():
 
         return info
 
-    def to_dict(self):
+    def _to_dict(self):
         """
         Convert the class object attributes to a dictionary.
 
