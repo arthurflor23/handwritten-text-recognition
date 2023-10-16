@@ -26,13 +26,13 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'training_2011.xml')
         self.test_file_path = os.path.join(self.base_path, 'eval_2011_annotated.xml')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -43,12 +43,12 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'line':
+        if text_level == 'line':
             # Load the lines data from the files
             training_data = self._load_lines_data(self.training_file_path, self.training_path)
             test_data = self._load_lines_data(self.test_file_path, self.test_path)
 
-        elif level == 'paragraph':
+        elif text_level == 'paragraph':
             # Load the paragraphs data from the files
             training_data = self._load_paragraphs_data(self.training_file_path, self.training_path)
             test_data = self._load_paragraphs_data(self.test_file_path, self.test_path)
