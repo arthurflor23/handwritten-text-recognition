@@ -20,13 +20,13 @@ class Source():
 
         self.artifact_path = artifact_path
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -51,7 +51,7 @@ class Source():
             module = importlib.import_module(filename.rstrip('.py'))
             source = module.Source(self.artifact_path)
 
-            train, valid, test = source.fetch_data(level)
+            train, valid, test = source.fetch_data(text_level)
 
             training_data.extend(train)
             validation_data.extend(valid)
