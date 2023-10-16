@@ -30,13 +30,13 @@ class Source():
         self.lines_file_path = os.path.join(self.base_path, 'Transcriptions', '**.txt')
         self.paragraphs_file_path = os.path.join(self.base_path, 'PAGE', '**.xml')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -52,7 +52,7 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'line':
+        if text_level == 'line':
             # Load the lines data from the files
             lines_data = self._load_lines_data(self.lines_file_path)
 
@@ -61,7 +61,7 @@ class Source():
             validation_data = self._filter_data(lines_data, validation_partition_data)
             test_data = self._filter_data(lines_data, test_partition_data)
 
-        elif level == 'paragraph':
+        elif text_level == 'paragraph':
             # Load the paragraphs data from the files
             paragraphs_data = self._load_paragraphs_data(self.paragraphs_file_path)
 
