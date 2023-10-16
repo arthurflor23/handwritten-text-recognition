@@ -27,13 +27,13 @@ class Source():
         self.transcription_path = os.path.join(self.base_path, 'ground_truth')
         self.lines_file_path = os.path.join(self.transcription_path, 'transcription.txt')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -49,7 +49,7 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'line':
+        if text_level == 'line':
             # Load the lines data from the file
             lines_data = self._load_lines_data(self.lines_file_path)
 
