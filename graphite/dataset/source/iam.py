@@ -30,13 +30,13 @@ class Source():
         self.words_file_path = os.path.join(self.transcription_path, 'words.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'lines.txt')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -52,7 +52,7 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'word':
+        if text_level == 'word':
             # Load the words data from the file
             words_data = self._load_words_data(self.words_file_path)
 
@@ -61,7 +61,7 @@ class Source():
             validation_data = self._filter_data(words_data, validation_partition_data)
             test_data = self._filter_data(words_data, test_partition_data)
 
-        elif level == 'line':
+        elif text_level == 'line':
             # Load the lines data from the file
             lines_data = self._load_lines_data(self.lines_file_path)
 
@@ -70,7 +70,7 @@ class Source():
             validation_data = self._filter_data(lines_data, validation_partition_data)
             test_data = self._filter_data(lines_data, test_partition_data)
 
-        elif level == 'paragraph':
+        elif text_level == 'paragraph':
             # Load the lines data from the file, including bounding box information
             lines_data = self._load_lines_data(self.lines_file_path, bbox_info=True)
             # Construct paragraphs data from lines data, without bounding box information
