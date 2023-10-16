@@ -25,13 +25,13 @@ class Source():
         self.training_file_path = os.path.join(self.base_path, 'CAR-B', 'b_train_gt.txt')
         self.test_file_path = os.path.join(self.base_path, 'CAR-B', 'b_test_gt.txt')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -50,7 +50,7 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'word' or level == 'line':
+        if text_level == 'word' or text_level == 'line':
             with open(self.training_file_path, 'r') as training_file:
                 training_data = [process_row(row, self.training_path) for row in training_file.readlines()]
 
