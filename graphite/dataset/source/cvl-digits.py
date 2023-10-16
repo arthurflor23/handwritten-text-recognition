@@ -23,13 +23,13 @@ class Source():
         self.training_path = os.path.join(self.base_path, 'cvl-strings', 'train', '**', '*.png')
         self.test_path = os.path.join(self.base_path, 'cvl-strings-eval', '**', '*.png')
 
-    def fetch_data(self, level):
+    def fetch_data(self, text_level):
         """
         Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
-        level : str
+        text_level : str
             The granularity of the data to be retrieved.
 
         Returns
@@ -46,7 +46,7 @@ class Source():
 
         training_data, validation_data, test_data = [], [], []
 
-        if level == 'word' or level == 'line':
+        if text_level == 'word' or text_level == 'line':
             training_files = glob.glob(self.training_path, recursive=True)
             training_data = [process_file(file_path) for file_path in training_files]
 
