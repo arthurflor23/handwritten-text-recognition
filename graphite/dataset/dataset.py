@@ -17,8 +17,8 @@ class Dataset():
 
     def __init__(self,
                  source=None,
-                 level=None,
-                 shape=None,
+                 text_level=None,
+                 image_shape=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -34,10 +34,10 @@ class Dataset():
         ----------
         source : str, optional
             The data source name. Default is None.
-        level : str, optional
+        text_level : str, optional
             The text structure level. Default is None.
-        shape : list, optional
-            The shape of the images. Default is None.
+        image_shape : list, optional
+            The images shape. Default is None.
         training_ratio : float or int, optional
             The training ratio for resample. Default is None.
         validation_ratio : float or int, optional
@@ -60,8 +60,8 @@ class Dataset():
         np.random.seed(seed)
 
         self.source = source
-        self.level = level
-        self.shape = shape
+        self.text_level = text_level
+        self.image_shape = tuple(image_shape)
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -70,25 +70,10 @@ class Dataset():
         self.artifact_path = artifact_path
         self.seed = seed
 
-        if data is None:
-            self._source = self._import_source(self.source)
-            self._source = self._source(self.artifact_path)
-
-            if hasattr(self._source, 'base_path'):
-                self._extract_data(self._source.base_path)
-
-            data = self._source.fetch_data(self.level)
-            data = self._prepare_source_data(data, training=True)
-        else:
-            data = self._prepare_source_data(data, training=False)
-
         self.size = 0
         self.corpus = ''
         self.tokens = []
         self.charset = []
-
-        self.min_text = ''
-        self.max_text = ''
 
         self.min_rows = np.inf
         self.max_rows = -np.inf
@@ -96,15 +81,20 @@ class Dataset():
         self.min_cols = np.inf
         self.max_cols = -np.inf
 
-        self.training = self._create_partition(data[0], training=True)
-        self.validation = self._create_partition(data[1], training=True)
-        self.test = self._create_partition(data[2], training=False)
+        if data is None:
+            self._source = self._import_source(self.source)
+            self._source = self._source(self.artifact_path)
 
-        self.tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
+            if hasattr(self._source, 'base_path'):
+                self._extract_source_zip(self.artifact_path, self._source.base_path)
 
-        self.training = self._encode_partition_labels(self.training)
-        self.validation = self._encode_partition_labels(self.validation)
-        self.test = self._encode_partition_labels(self.test)
+            data = self._source.fetch_data(self.text_level)
+            data = self._prepare_data(data, training=True)
+        else:
+            data = self._prepare_data(data, training=False)
+
+        self.partitions = ['training', 'validation', 'test']
+        self.dt, self.tokenizer = self._build_partitions(data)
 
     def __repr__(self):
         """
@@ -117,74 +107,74 @@ class Dataset():
         """
 
         info = f"""
-            Dataset Configuration\n
+            ============================================
+            Dataset Configuration
+            --------------------------------------------
             Source                  {self.source or '-'}
-            Text Level              {self.level or '-'}
-            Image Shape             {self.shape or '-'}
+            Text Level              {self.text_level or '-'}
+            Image Shape             {self.image_shape or '-'}
             Training Ratio          {self.training_ratio or '-'}
             Validation Ratio        {self.validation_ratio or '-'}
             Test Ratio              {self.test_ratio or '-'}
             Binarization            {self.binarization}
             Lazy Mode               {self.lazy_mode}
             Seed                    {self.seed}
-
-            Dataset Information\n
+            ============================================
+            Dataset Information
+            --------------------------------------------
             Total Size              {self.size}
 
-            Training Size           {self.training['size']}
-            Validation Size         {self.validation['size']}
-            Test Size               {self.test['size']}
+            Training Size           {self.dt['training']['size']}
+            Validation Size         {self.dt['validation']['size']}
+            Test Size               {self.dt['test']['size']}
 
-            Charset Length          {len(self.charset)}
-            Charset                 {''.join(self.charset)}
-
-            Tokens Length           {len(self.tokens)}
             Corpus Length           {len(self.corpus)}
+            Tokens Length           {len(self.tokens)}
+            Charset Length          {len(self.charset)}
 
-            Min Text Length         {len(self.min_text)}
-            Min Text                {self.min_text}
-
-            Max Text Length         {len(self.max_text)}
-            Max Text                {self.max_text}
+            Charset                 {''.join(self.charset)}
 
             Min Rows                {self.min_rows}
             Max Rows                {self.max_rows}
 
             Min Columns             {self.min_cols}
             Max Columns             {self.max_cols}
+            {self.tokenizer}
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
-    def _to_dict(self):
-        """
-        Convert the class object attributes to a dictionary.
+    # def _to_dict(self):
+    #     """
+    #     Convert the class object attributes to a dictionary.
 
-        Returns
-        -------
-        dict
-            A dictionary with the class attributes.
-        """
+    #     Returns
+    #     -------
+    #     dict
+    #         A dictionary with the class attributes.
+    #     """
 
-        attributes = {
-            'source': self.source,
-            'level': self.level,
-            'shape': self.shape,
-            'training_ratio': self.training_ratio,
-            'validation_ratio': self.validation_ratio,
-            'test_ratio': self.test_ratio,
-            'binarization': self.binarization,
-            'lazy_mode': self.lazy_mode,
-            'seed': self.seed,
-            'size': self.size,
-            'charset': ''.join(self.charset),
-            'max_rows': self.max_rows,
-            'max_cols': self.max_cols,
-        }
+    #     attributes = {
+    #         'source': self.source,
+    #         'text_level': self.text_level,
+    #         'image_shape': self.image_shape,
+    #         'training_ratio': self.training_ratio,
+    #         'validation_ratio': self.validation_ratio,
+    #         'test_ratio': self.test_ratio,
+    #         'binarization': self.binarization,
+    #         'lazy_mode': self.lazy_mode,
+    #         'seed': self.seed,
+    #         'size': self.size,
+    #         'corpus': self.corpus,
+    #         'tokens': self.tokens,
+    #         'charset': self.charset,
+    #         'max_rows': self.max_rows,
+    #         'max_cols': self.max_cols,
+    #     }
 
-        return attributes
+    #     return attributes
 
     def _import_source(self, source):
         """
@@ -219,7 +209,7 @@ class Dataset():
 
         return source
 
-    def _extract_data(self, source):
+    def _extract_source_zip(self, artifact_path, source):
         """
         Extracts a .zip file into a directory if the directory doesn't exist yet.
 
@@ -229,14 +219,14 @@ class Dataset():
             The base name of the .zip file and target directory.
         """
 
-        if not source.startswith(self.artifact_path):
-            source = os.path.join(self.artifact_path, source)
+        if not source.startswith(artifact_path):
+            source = os.path.join(artifact_path, source)
 
         if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
-                zip_ref.extractall(self.artifact_path)
+                zip_ref.extractall(artifact_path)
 
-    def _prepare_source_data(self, data, training=False):
+    def _prepare_data(self, data, training=False):
         """
         Prepares the data for partitioning.
 
@@ -358,12 +348,12 @@ class Dataset():
                 continue
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._unpack_data_item, x, training) for x in data[i]]
+                futures = [executor.submit(self._validate_data_item, x, training) for x in data[i]]
                 data[i] = [list(x) for x in [future.result() for future in futures] if x]
 
         return data
 
-    def _unpack_data_item(self, item, training=False):
+    def _validate_data_item(self, item, training=False):
         """
         Load and validate data item.
 
@@ -388,7 +378,7 @@ class Dataset():
 
         if os.path.exists(image_path):
             try:
-                image = self._read_image(image_path, bbox)
+                image = self._read_image(image_path, self.image_shape, bbox)
 
             except Exception:
                 print(f"Image `{os.path.basename(image_path)}` cannot be read.")
@@ -412,7 +402,7 @@ class Dataset():
 
         return [image_path, bbox, label], [image, bbox, label]
 
-    def _read_image(self, image_path, bbox=None):
+    def _read_image(self, image_path, image_shape, bbox=None):
         """
         Read an image from the given file path and perform optional bbox.
 
@@ -420,6 +410,8 @@ class Dataset():
         ----------
         image_path : str
             The path to the image file.
+        image_shape : list
+            Image shape for resizing.
         bbox : tuple, optional
             The bbox coordinates (x, y, width, height). Default is None.
 
@@ -434,44 +426,80 @@ class Dataset():
 
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-        if bbox is None or len(bbox) != 4:
-            return image
+        if bbox is not None and len(bbox) == 4:
+            x, y, width, height = bbox
 
-        x, y, width, height = bbox
+            # String
+            if isinstance(x, str):
+                x = float(x) if '.' in x else int(x)
 
-        # String
-        if isinstance(x, str):
-            x = float(x) if '.' in x else int(x)
+            if isinstance(y, str):
+                y = float(y) if '.' in y else int(y)
 
-        if isinstance(y, str):
-            y = float(y) if '.' in y else int(y)
+            if isinstance(width, str):
+                width = float(width) if '.' in width else int(width)
 
-        if isinstance(width, str):
-            width = float(width) if '.' in width else int(width)
+            if isinstance(height, str):
+                height = float(height) if '.' in height else int(height)
 
-        if isinstance(height, str):
-            height = float(height) if '.' in height else int(height)
+            # Number
+            if isinstance(x, float):
+                x = int(x * image.shape[1])
 
-        # Number
-        if isinstance(x, float):
-            x = int(x * image.shape[1])
+            if isinstance(y, float):
+                y = int(y * image.shape[0])
 
-        if isinstance(y, float):
-            y = int(y * image.shape[0])
+            if isinstance(width, float):
+                width = int(width * image.shape[1])
 
-        if isinstance(width, float):
-            width = int(width * image.shape[1])
+            if isinstance(height, float):
+                height = int(height * image.shape[0])
 
-        if isinstance(height, float):
-            height = int(height * image.shape[0])
+            y = max(0, abs(y - 10))
+            x = max(0, abs(x - 10))
 
-        y = max(0, abs(y - 10))
-        x = max(0, abs(x - 10))
+            height = min(image.shape[0], (height + 10))
+            width = min(image.shape[1], (width + 10))
 
-        height = min(image.shape[0], (height + 10))
-        width = min(image.shape[1], (width + 10))
+            image = image[y:y+height, x:x+width]
 
-        image = image[y:y+height, x:x+width]
+        image = self._resize_image(image, image_shape)
+
+        return image
+
+    def _resize_image(self, image, target_shape):
+        """
+        Resize the image to fit within the target shape, maintaining the aspect ratio.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image.
+        target_shape : list
+            Target shape as [height, width, channels].
+
+        Returns
+        -------
+        ndarray
+            Resized image.
+        """
+
+        h, w = image.shape
+        target_h, target_w = target_shape[:2]
+
+        if h > target_h or w > target_w:
+            aspect_ratio = w / h
+
+            if aspect_ratio >= 1:
+                new_w = min(target_w, int(target_h * aspect_ratio))
+                new_h = int(new_w / aspect_ratio)
+            else:
+                new_h = min(target_h, int(target_w / aspect_ratio))
+                new_w = int(new_h * aspect_ratio)
+
+            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        # image = image.reshape((image.shape[0], image.shape[1], 1))
 
         return image
 
@@ -544,105 +572,82 @@ class Dataset():
 
         return text
 
-    def _create_partition(self, partition_data, training=False):
+    def _build_partitions(self, data):
         """
-        Creates a partition dictionary from the given partition data.
+        Build data partitions and process the data within each partition.
 
         Parameters
         ----------
-        partition_data : tuple
-            The partition data containing labels, images, and bbox information.
-        training : bool, optional
-            If True, the function will handle the partition as training. Default is False.
+        data : list
+            A list containing data to be partitioned and processed.
 
         Returns
         -------
-        dict
-            The partition dict.
+        tuple
+            A tuple containing a dictionary with processed data for each partition, and a tokenizer object.
         """
 
-        dct = {
-            'raw': [],
-            'data': [],
-            'size': 0,
-            'corpus': '',
-            'tokens': [],
-            'charset': [],
-            'min_text': '',
-            'max_text': '',
-            'min_rows': 0,
-            'max_rows': 0,
-            'min_cols': 0,
-            'max_cols': 0,
-        }
+        dt = {}
 
-        dct['raw'] = np.array([x[0] for x in partition_data], dtype=object)
-        dct['data'] = np.array([x[1] for x in partition_data], dtype=object)
-        dct['size'] = dct['data'].shape[0]
+        for i, partition in enumerate(self.partitions):
+            dt[partition] = {
+                'raw_data': [],
+                'data': [],
+                'size': 0,
+                'corpus': '',
+                'tokens': [],
+                'charset': [],
+                'min_rows': 0,
+                'max_rows': 0,
+                'min_cols': 0,
+                'max_cols': 0,
+            }
 
-        labels = [x[2] for x in dct['data'] if x[2]]
+            dt[partition]['raw_data'] = np.array([x[0] for x in data[i]], dtype=object)
+            dt[partition]['data'] = np.array([x[1] for x in data[i]], dtype=object)
+            dt[partition]['size'] = dt[partition]['data'].shape[0]
 
-        if labels:
-            dct['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
-            dct['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
-            dct['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
-            dct['min_text'] = min(['\\n'.join(x) for x in labels], key=len)
-            dct['max_text'] = max(['\\n'.join(x) for x in labels], key=len)
-            dct['min_rows'] = min(len(x) for x in labels)
-            dct['max_rows'] = max(len(x) for x in labels)
-            dct['min_cols'] = min(len(y) for x in labels for y in x)
-            dct['max_cols'] = max(len(y) for x in labels for y in x)
+            labels = [x[2] for x in dt[partition]['data'] if x[2]]
 
-        self.size += dct['size']
+            if labels:
+                dt[partition]['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
+                dt[partition]['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
+                dt[partition]['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
+                dt[partition]['min_rows'] = min(len(x) for x in labels)
+                dt[partition]['max_rows'] = max(len(x) for x in labels)
+                dt[partition]['min_cols'] = min(len(y) for x in labels for y in x)
+                dt[partition]['max_cols'] = max(len(y) for x in labels for y in x)
 
-        if training:
-            self.corpus = f"{self.corpus} {dct['corpus']}".strip()
-            self.tokens = sorted(set(self.tokens + dct['tokens']))
-            self.charset = sorted(set(self.charset + dct['charset']))
+            self.size += dt[partition]['size']
 
-        if dct['min_text']:
-            self.min_text = min(self.min_text or dct['min_text'], dct['min_text'], key=len)
+            if partition != 'test':
+                self.corpus = f"{self.corpus} {dt[partition]['corpus']}".strip()
+                self.tokens = sorted(set(self.tokens + dt[partition]['tokens']))
+                self.charset = sorted(set(self.charset + dt[partition]['charset']))
 
-        if dct['max_text']:
-            self.max_text = max(self.max_text or dct['max_text'], dct['max_text'], key=len)
+            if dt[partition]['min_rows']:
+                self.min_rows = min(self.min_rows, dt[partition]['min_rows'])
 
-        if dct['min_rows']:
-            self.min_rows = min(self.min_rows, dct['min_rows'])
+            if dt[partition]['max_rows']:
+                self.max_rows = max(self.max_rows, dt[partition]['max_rows'])
 
-        if dct['max_rows']:
-            self.max_rows = max(self.max_rows, dct['max_rows'])
+            if dt[partition]['min_cols']:
+                self.min_cols = min(self.min_cols, dt[partition]['min_cols'])
 
-        if dct['min_cols']:
-            self.min_cols = min(self.min_cols, dct['min_cols'])
+            if dt[partition]['max_cols']:
+                self.max_cols = max(self.max_cols, dt[partition]['max_cols'])
 
-        if dct['max_cols']:
-            self.max_cols = max(self.max_cols, dct['max_cols'])
+        tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
 
-        return dct
+        for partition in self.partitions:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(tokenizer.encode, x[-1]) for x in dt[partition]['data']]
+                encoded_labels = [future.result() for future in futures]
 
-    def _encode_partition_labels(self, partition):
-        """
-        Encode labels in the partition data using the tokenizer.
+                for i in range(len(dt[partition]['data'])):
+                    dt[partition]['data'][i][-1] = encoded_labels[i]
 
-        Parameters
-        ----------
-        partition : dict
-            Object with the data labels to be encoded.
-
-        Returns
-        -------
-        partition : dict
-            Object with the encoded labels.
-        """
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.tokenizer.encode, x[-1]) for x in partition['data']]
-            encoded_labels = [future.result() for future in futures]
-
-            for i in range(len(partition['data'])):
-                partition['data'][i][-1] = encoded_labels[i]
-
-        return partition
+        return dt, tokenizer
 
 #     def get_generator(self,
 #                       partition,
@@ -784,12 +789,16 @@ class Tokenizer():
         """
 
         self.pad_tk = '¶'
+        self.sos_tk = '◖'
+        self.eos_tk = '◗'
         self.unk_tk = '◬'
 
-        self.charset = [self.pad_tk, self.unk_tk] + charset
+        self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
         self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
 
         self.pad_tk_index = self.charset.index(self.pad_tk)
+        self.sos_tk_index = self.charset.index(self.sos_tk)
+        self.eos_tk_index = self.charset.index(self.eos_tk)
         self.unk_tk_index = self.charset.index(self.unk_tk)
 
     def __repr__(self):
@@ -803,32 +812,35 @@ class Tokenizer():
         """
 
         info = f"""
-            Tokenizer Configuration\n
-            Charset             {''.join(self.charset)}
-            Charset Length      {len(self.charset)}
-            Shape               {self.shape}
+            ============================================
+            Tokenizer Configuration
+            --------------------------------------------
+            Charset                 {''.join(self.charset)}
+            Charset Length          {len(self.charset)}
+            Shape                   {self.shape}
+            ============================================
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
-    def _to_dict(self):
-        """
-        Convert the class object attributes to a dictionary.
+    # def _to_dict(self):
+    #     """
+    #     Convert the class object attributes to a dictionary.
 
-        Returns
-        -------
-        dict
-            A dictionary with the class attributes.
-        """
+    #     Returns
+    #     -------
+    #     dict
+    #         A dictionary with the class attributes.
+    #     """
 
-        attributes = {
-            'charset': ''.join(self.charset),
-            'shape': str(self.shape),
-        }
+    #     attributes = {
+    #         'charset': self.charset,
+    #         'shape': self.shape,
+    #     }
 
-        return attributes
+    #     return attributes
 
     def encode(self, label):
         """
@@ -845,18 +857,18 @@ class Tokenizer():
             Encoded label with token indices.
         """
 
-        encoded_label = []
+        charset_dict = {char: index for index, char in enumerate(self.charset)}
+        sos_tk_index = self.sos_tk_index
+        eos_tk_index = self.eos_tk_index
+        unk_tk_index = self.unk_tk_index
 
-        for row in label:
-            enconded_row = []
+        def encode_row(row):
+            encoded_row = [sos_tk_index]
+            encoded_row.extend(charset_dict.get(char, unk_tk_index) for char in row)
+            encoded_row.append(eos_tk_index)
+            return encoded_row
 
-            for char in row:
-                index = self.charset.index(char) if char in self.charset else self.unk_tk_index
-                enconded_row.append(index)
-
-            encoded_label.append(enconded_row)
-
-        return encoded_label
+        return [encode_row(row) for row in label]
 
     def decode(self, encoded_label):
         """
@@ -873,20 +885,74 @@ class Tokenizer():
             Decoded label with characters.
         """
 
-        label = []
+        translation_table = str.maketrans('', '', self.pad_tk + self.sos_tk + self.eos_tk + self.unk_tk)
 
-        for enconded_row in encoded_label:
-            row = ''
+        def decode_row(encoded_row):
+            row = ''.join([self.charset[int(encoded_char)] for encoded_char in encoded_row if int(encoded_char) != -1])
+            return row.translate(translation_table)
 
-            for enconded_char in enconded_row:
-                if int(enconded_char) == -1:
-                    continue
+        return [decode_row(encoded_row) for encoded_row in encoded_label]
 
-                row += self.charset[int(enconded_char)]
+    # def encode(self, label):
+    #     """
+    #     Encode a single label by mapping characters to their corresponding token indices.
 
-            row = row.replace(self.pad_tk, '')
-            row = row.replace(self.unk_tk, '')
+    #     Parameters
+    #     ----------
+    #     label : str
+    #         Label to encode.
 
-            label.append(row)
+    #     Returns
+    #     -------
+    #     list
+    #         Encoded label with token indices.
+    #     """
 
-        return label
+    #     encoded_label = []
+
+    #     for row in label:
+    #         enconded_row = [self.sos_tk_index]
+
+    #         for char in row:
+    #             index = self.charset.index(char) if char in self.charset else self.unk_tk_index
+    #             enconded_row.append(index)
+
+    #         enconded_row += [self.eos_tk_index]
+    #         encoded_label.append(enconded_row)
+
+    #     return encoded_label
+
+    # def decode(self, encoded_label):
+    #     """
+    #     Decode a single encoded label by converting token indices back to characters.
+
+    #     Parameters
+    #     ----------
+    #     encoded_label : list
+    #         Encoded label with token indices.
+
+    #     Returns
+    #     -------
+    #     list
+    #         Decoded label with characters.
+    #     """
+
+    #     label = []
+
+    #     for enconded_row in encoded_label:
+    #         row = ''
+
+    #         for enconded_char in enconded_row:
+    #             if int(enconded_char) == -1:
+    #                 continue
+
+    #             row += self.charset[int(enconded_char)]
+
+    #         row = row.replace(self.pad_tk, '')
+    #         row = row.replace(self.sos_tk, '')
+    #         row = row.replace(self.eos_tk, '')
+    #         row = row.replace(self.unk_tk, '')
+
+    #         label.append(row)
+
+    #     return label
