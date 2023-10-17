@@ -17,8 +17,8 @@ def check(args):
     #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
     dataset = Dataset(source=args.source,
-                      level=args.level,
-                      shape=args.shape,
+                      text_level=args.text_level,
+                      image_shape=args.image_shape,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
@@ -27,24 +27,25 @@ def check(args):
                       seed=args.seed)
 
     print(dataset)
+    # print(dataset.tokenizer)
 
     # if args.verbose > 0:
     #     print_section(dataset)
 
-    augmentor = Augmentor(erode=args.erode,
-                          dilate=args.dilate,
-                          elastic=args.elastic,
-                          perspective=args.perspective,
-                          mixup=args.mixup,
-                          shear=args.shear,
-                          scale=args.scale,
-                          rotate=args.rotate,
-                          shift_y=args.shift_y,
-                          shift_x=args.shift_x,
-                          salt_and_pepper=args.salt_and_pepper,
-                          gaussian_noise=args.gaussian_noise,
-                          gaussian_blur=args.gaussian_blur,
-                          seed=args.seed)
+    # augmentor = Augmentor(erode=args.erode,
+    #                       dilate=args.dilate,
+    #                       elastic=args.elastic,
+    #                       perspective=args.perspective,
+    #                       mixup=args.mixup,
+    #                       shear=args.shear,
+    #                       scale=args.scale,
+    #                       rotate=args.rotate,
+    #                       shift_y=args.shift_y,
+    #                       shift_x=args.shift_x,
+    #                       salt_and_pepper=args.salt_and_pepper,
+    #                       gaussian_noise=args.gaussian_noise,
+    #                       gaussian_blur=args.gaussian_blur,
+    #                       seed=args.seed)
 
     # if args.verbose > 1:
     #     print_section(augmentor)
