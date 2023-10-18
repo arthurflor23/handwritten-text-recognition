@@ -26,11 +26,15 @@ def check(args):
                       lazy_mode=args.lazy_mode,
                       seed=args.seed)
 
-    print(dataset)
-    # print(dataset.tokenizer)
+    if args.verbose > 0:
+        # print_section(dataset)
+        print(dataset)
 
-    # if args.verbose > 0:
-    #     print_section(dataset)
+    # print()
+    # print(dataset.dt['training']['data'][1])
+    # print(dataset.dt['training']['data'][1][0].shape)
+    # print()
+    # print(dataset.dt['training']['raw_data'][1])
 
     # augmentor = Augmentor(erode=args.erode,
     #                       dilate=args.dilate,
