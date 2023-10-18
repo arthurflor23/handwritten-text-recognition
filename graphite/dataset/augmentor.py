@@ -87,61 +87,58 @@ class Augmentor():
         """
 
         info = f"""
-            Augmentor Configuration\n
-            Erode                       {self.erode_params}
-            Dilate                      {self.dilate_params}
-
-            Elastic                     {self.elastic_params}
-            Perspective                 {self.perspective_params}
-
-            Mixup                       {self.mixup_params}
-
-            Shear                       {self.shear_params}
-            Scale                       {self.scale_params}
-            Rotate                      {self.rotate_params}
-
-            Shift-y                     {self.shift_y_params}
-            Shift-x                     {self.shift_x_params}
-
-            Salt and Pepper Noise       {self.salt_and_pepper_params}
-            Gaussian Noise              {self.gaussian_noise_params}
-            Gaussian Blur               {self.gaussian_blur_params}
-
-            Seed                        {self.seed}
+            ============================================
+            Augmentor Configuration
+            --------------------------------------------
+            Erode                   {self.erode_params}
+            Dilate                  {self.dilate_params}
+            Elastic                 {self.elastic_params}
+            Perspective             {self.perspective_params}
+            Mixup                   {self.mixup_params}
+            Shear                   {self.shear_params}
+            Scale                   {self.scale_params}
+            Rotate                  {self.rotate_params}
+            Shift-y                 {self.shift_y_params}
+            Shift-x                 {self.shift_x_params}
+            Salt and Pepper Noise   {self.salt_and_pepper_params}
+            Gaussian Noise          {self.gaussian_noise_params}
+            Gaussian Blur           {self.gaussian_blur_params}
+            Seed                    {self.seed}
+            ============================================
         """
 
         info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
 
-    def _to_dict(self):
-        """
-        Convert the class object attributes to a dictionary.
+    # def _to_dict(self):
+    #     """
+    #     Convert the class object attributes to a dictionary.
 
-        Returns
-        -------
-        dict
-            A dictionary with the class attributes.
-        """
+    #     Returns
+    #     -------
+    #     dict
+    #         A dictionary with the class attributes.
+    #     """
 
-        attributes = {
-            'erode': self.erode_params,
-            'dilate': self.dilate_params,
-            'elastic': self.elastic_params,
-            'perspective': self.perspective_params,
-            'mixup': self.mixup_params,
-            'shear': self.shear_params,
-            'scale': self.scale_params,
-            'rotate': self.rotate_params,
-            'shift_y': self.shift_y_params,
-            'shift_x': self.shift_x_params,
-            'salt_and_pepper': self.salt_and_pepper_params,
-            'gaussian_noise': self.gaussian_noise_params,
-            'gaussian_blur': self.gaussian_blur_params,
-            'seed': self.seed,
-        }
+    #     attributes = {
+    #         'erode': self.erode_params,
+    #         'dilate': self.dilate_params,
+    #         'elastic': self.elastic_params,
+    #         'perspective': self.perspective_params,
+    #         'mixup': self.mixup_params,
+    #         'shear': self.shear_params,
+    #         'scale': self.scale_params,
+    #         'rotate': self.rotate_params,
+    #         'shift_y': self.shift_y_params,
+    #         'shift_x': self.shift_x_params,
+    #         'salt_and_pepper': self.salt_and_pepper_params,
+    #         'gaussian_noise': self.gaussian_noise_params,
+    #         'gaussian_blur': self.gaussian_blur_params,
+    #         'seed': self.seed,
+    #     }
 
-        return attributes
+    #     return attributes
 
     def augmentation(self, image, batch_images=None):
         """
