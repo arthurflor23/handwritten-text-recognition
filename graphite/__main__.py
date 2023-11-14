@@ -60,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('--spell-checker', default='openai', help='Spell checker type')
 
     # Inference
-    parser.add_argument('--infer', default=False, action='store_true', help='Perform generative or optical inference')
+    parser.add_argument('--inference', default=False, action='store_true', help='Perform model inference')
     parser.add_argument('--images', default=[], nargs='+', help='List of image paths')
     parser.add_argument('--bbox', default=[], nargs='+', help='Bounding box values for images (x, y, width, height)')
     parser.add_argument('--texts', default=[], nargs='+', help='List of arbitrary text inputs')
@@ -79,13 +79,13 @@ if __name__ == '__main__':
     if args.check or args.training or args.test:
         assert args.source, "--source must be defined"
 
-    if args.training or args.test or args.infer:
+    if args.training or args.test or args.inference:
         assert args.generative or args.optical, "--generative or --optical must be defined"
 
-    if args.test or args.infer:
+    if args.test or args.inference:
         assert args.run_index is not None, "--run-index must be defined"
 
-    if args.infer:
+    if args.inference:
         assert len(args.images) > 0, "--images must be defined"
 
     # Pipelines
@@ -98,5 +98,5 @@ if __name__ == '__main__':
     # elif args.test:
     #     pipeline.test(args)
 
-    # elif args.infer:
-    #     pipeline.infer(args)
+    # elif args.inference:
+    #     pipeline.inference(args)
