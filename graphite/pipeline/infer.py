@@ -6,7 +6,7 @@ from model import Model
 from spelling import Spelling
 
 
-def infer(args):
+def inference(args):
     """
     Performs inference phase.
 
