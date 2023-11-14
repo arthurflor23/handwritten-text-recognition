@@ -72,10 +72,10 @@ This will perform testing on the IAM dataset at the line level using the Flor op
 **Example 3: Perform optical model inference**
 
 ```bash
-python main.py --infer --network flor --images path/to/image1.png path/to/image2.png --beam-width 30 --top-paths 3 --run-index -1
+python main.py --inference --network flor --images path/to/image1.png path/to/image2.png --beam-width 30 --top-paths 3 --run-index -1
 ```
 
-This will perform inferenceon the specified images using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The selected optical model is indicated by the run index, which loads the last trained one.
+This will perform inference on the specified images using the Flor optical network architecture with a beam width of 30 and generating 3 top paths for prediction. The selected optical model is indicated by the run index, which loads the last trained one.
 
 ## Parameters
 
@@ -118,7 +118,7 @@ The project has various command-line parameters that can be used to customize it
 - `--beam-width`: The width of the beam for the CTC decoder.
 - `--top-paths`: Number of top paths for prediction.
 - `--share-top-paths`: Consider previous paths for the metrics.
-- `--infer`: Perform inference process.
+- `--inference`: Perform inference process.
 - `--images`: Set the image path list for handwriting recognition.
 - `--bbox`: Set bounding box values (x, y, width, height).
 - `--check`: Perform data verification.
