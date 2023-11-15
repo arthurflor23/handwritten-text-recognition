@@ -12,8 +12,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Models
-    parser.add_argument('--generative', default=None, help='Define generative model')
-    parser.add_argument('--optical', default=None, help='Define optical model')
+    parser.add_argument('--synthesis', default=None, help='Define synthesis model')
+    parser.add_argument('--recognition', default=None, help='Define recognition model')
     parser.add_argument('--run-index', default=None, type=int, help='Define run index')
 
     # Dataset
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
 
     # Training
-    parser.add_argument('--training', default=False, action='store_true', help='Perform generative or optical training')
+    parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
     parser.add_argument('--epochs', default=1000000, type=int, help='Maximum number of epochs')
     parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
     parser.add_argument('--learning-rate', default=1e-3, type=float, help='Optimizer learning rate')
@@ -53,20 +53,20 @@ if __name__ == '__main__':
     parser.add_argument('--patience', default=30, type=int, help='Epochs without improvement to stop')
 
     # Test
-    parser.add_argument('--test', default=False, action='store_true', help='Perform generative or optical test')
+    parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
     parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
     parser.add_argument('--share-top-paths', default=False, action='store_true', help='Use previous paths in metrics')
     parser.add_argument('--spell-checker', default='openai', help='Spell checker type')
 
     # Inference
-    parser.add_argument('--inference', default=False, action='store_true', help='Perform model inference')
+    parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
     parser.add_argument('--images', default=[], nargs='+', help='List of image paths')
     parser.add_argument('--bbox', default=[], nargs='+', help='Bounding box values for images (x, y, width, height)')
     parser.add_argument('--texts', default=[], nargs='+', help='List of arbitrary text inputs')
 
     # Others
-    parser.add_argument('--check', default=False, action='store_true', help='Verify data')
+    parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--seed', default=None, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         assert args.source, "--source must be defined"
 
     if args.training or args.test or args.inference:
-        assert args.generative or args.optical, "--generative or --optical must be defined"
+        assert args.synthesis or args.recognition, "--synthesis or --recognition must be defined"
 
     if args.test or args.inference:
         assert args.run_index is not None, "--run-index must be defined"
@@ -92,8 +92,8 @@ if __name__ == '__main__':
     if args.check:
         pipeline.check(args)
 
-    # elif args.training:
-    #     pipeline.training(args)
+    elif args.training:
+        pipeline.training(args)
 
     # elif args.test:
     #     pipeline.test(args)
