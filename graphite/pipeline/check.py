@@ -13,22 +13,26 @@ def check(args):
         Command line arguments.
     """
 
-    # def print_section(content):
-    #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
+    print(args)
 
-    dataset = Dataset(source=args.source,
-                      text_level=args.text_level,
-                      image_shape=args.image_shape,
-                      training_ratio=args.training_ratio,
-                      validation_ratio=args.validation_ratio,
-                      test_ratio=args.test_ratio,
-                      binarization=args.binarization,
-                      lazy_mode=args.lazy_mode,
-                      seed=args.seed)
+    ##########################################
+    # # def print_section(content):
+    # #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
-    if args.verbose > 0:
-        # print_section(dataset)
-        print(dataset)
+    # dataset = Dataset(source=args.source,
+    #                   text_level=args.text_level,
+    #                   image_shape=args.image_shape,
+    #                   training_ratio=args.training_ratio,
+    #                   validation_ratio=args.validation_ratio,
+    #                   test_ratio=args.test_ratio,
+    #                   binarization=args.binarization,
+    #                   lazy_mode=args.lazy_mode,
+    #                   seed=args.seed)
+
+    # if args.verbose > 0:
+    #     # print_section(dataset)
+    #     print(dataset)
+    ##########################################
 
     # print()
     # print(dataset.dt['training']['data'][1])

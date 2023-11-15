@@ -1,3 +1,3 @@
-from .model import Model
+from .carbon import Carbon
 
-__all__ = ['Model']
+__all__ = ['Carbon']
