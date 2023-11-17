@@ -2,6 +2,7 @@ from dataset import Augmentor, Dataset
 # from model import Model
 # from spelling import Spelling
 
+import numpy as np
 from model.synthesis.higanplus import SynthesisModel
 
 
@@ -15,9 +16,30 @@ def training(args):
         A namespace object that contains all the arguments required.
     """
 
-    print(args)
+    # print(args)
 
-    higanplus = SynthesisModel()
+    # Instantiate the model
+    model = SynthesisModel(vocab_size=80, embedding_dim=120, style_dim=32)
+    model.compile(learning_rate=0.001)
+
+    # Generate random numpy data as placeholders
+    train_image_data = np.random.normal(size=[100, 512, 64, 1])  # 100 samples, image shape of 512x64x1
+    train_text_data = np.random.randint(0, 80, size=[100, 15])  # 100 samples, sequence length of 15
+    # Fill the last few positions with 0s
+    train_text_data[:, -5:] = 0
+
+    # Fit the model with numpy arrays
+    model.fit([train_image_data, train_text_data], train_text_data, epochs=5, batch_size=32)
+
+    # Predict with random data
+    test_image_data = np.random.normal(size=[1, 512, 64, 1])  # Batch size of 1, image shape of 512x64x1
+    test_text_data = np.random.randint(0, 80, size=[1, 15])  # Batch size of 1, sequence length of 15
+    # Fill the last few positions with 0s
+    test_text_data[:, -5:] = 0
+
+    predicted_image = model.generator(test_image_data, test_text_data)
+
+    print(predicted_image.shape)  # Should match the expected output shape
 
     ##########################################
     # # def print_section(content):
