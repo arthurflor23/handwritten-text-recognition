@@ -25,7 +25,7 @@ class Dataset():
                  binarization=False,
                  lazy_mode=False,
                  data=None,
-                 artifact_path='data',
+                 artifact_path='dataset',
                  seed=None):
         """
         Initializes the Dataset class.
@@ -51,7 +51,7 @@ class Dataset():
         data : list, optional
             Data for inference mode. Default is None.
         artifact_path : str, optional
-            Path name to fetch the data. Default is 'data'.
+            Path name to fetch the data. Default is 'dataset'.
         seed : int, optional
             Seed for random shuffle. Default is None.
         """
