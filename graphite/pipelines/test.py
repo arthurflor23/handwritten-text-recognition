@@ -1,6 +1,6 @@
 import cv2
 
-from datasets import Dataset
+from data import Dataset
 from models import Model
 from spelling import Spelling
 

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from datasets import Dataset
+from data import Dataset
 from models import Model
 from spelling import Spelling
 
