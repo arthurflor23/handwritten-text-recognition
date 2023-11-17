@@ -1,6 +1,6 @@
 # Project artifacts
 artifacts/
-data/
+dataset/
 mlruns/
 output/
 
