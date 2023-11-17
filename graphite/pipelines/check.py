@@ -1,6 +1,6 @@
 import cv2
 
-from dataset import Augmentor, Dataset
+from datasets import Augmentor, Dataset
 
 
 def check(args):

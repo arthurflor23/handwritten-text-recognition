@@ -1,9 +1,9 @@
-from dataset import Augmentor, Dataset
-# from model import Model
+# from datasets import Augmentor, Dataset
+# from models import Model
 # from spelling import Spelling
 
 import numpy as np
-from model.synthesis.higanplus import SynthesisModel
+from models.synthesis.higanplus import SynthesisModel
 
 
 def training(args):

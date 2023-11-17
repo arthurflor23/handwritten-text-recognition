@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 
-from dataset import Dataset
-from model import Model
+from datasets import Dataset
+from models import Model
 from spelling import Spelling
 
 
