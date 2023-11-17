@@ -1,7 +1,7 @@
 import os
 import sys
-import pipeline
 import argparse
+import pipelines
 
 
 if __name__ == '__main__':
@@ -90,13 +90,13 @@ if __name__ == '__main__':
 
     # Pipelines
     if args.check:
-        pipeline.check(args)
+        pipelines.check(args)
 
     elif args.training:
-        pipeline.training(args)
+        pipelines.training(args)
 
     # elif args.test:
-    #     pipeline.test(args)
+    #     pipelines.test(args)
 
     # elif args.inference:
-    #     pipeline.inference(args)
+    #     pipelines.inference(args)
