@@ -1,7 +1,4 @@
-from .check import check
-# from .inference import inference
-# from .test import test
-from .training import training
+from pipelines.check import check
+from pipelines.training import training
 
-# __all__ = ['check', 'inference', 'test', 'training']
 __all__ = ['check', 'training']
