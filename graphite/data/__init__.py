@@ -1,4 +1,4 @@
-from .augmentor import Augmentor
-from .dataset import Dataset
+from data.augmentor import Augmentor
+from data.dataset import Dataset
 
 __all__ = ['Augmentor', 'Dataset']
