@@ -2,49 +2,96 @@ import tensorflow as tf
 
 
 class ConditionalBatchNormalization(tf.keras.layers.Layer):
+    """
+    Conditional Batch Normalization for TensorFlow models.
+    Enhances conditional GANs by using unique parameters for each condition.
 
-    def __init__(self, units, momentum=0.1, epsilon=1e-5, **kwargs):
+    Reference:
+        [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
+    """
+
+    def __init__(self, momentum=0.1, epsilon=1e-5, **kwargs):
+        """
+        Initializes the conditional batch normalization layer.
+
+        Args:
+            momentum: float, optional
+                Momentum for moving average of mean and variance.
+            epsilon: float, optional
+                Small constant to avoid division by zero.
+            **kwargs:
+                Additional layer keyword arguments.
+        """
+
         super().__init__(**kwargs)
 
-        self.units = units
+        self.momentum = momentum
+        self.epsilon = epsilon
 
-        self.gain = tf.keras.layers.SpectralNormalization(tf.keras.layers.Dense(units=units, use_bias=False))
-        self.bias = tf.keras.layers.SpectralNormalization(tf.keras.layers.Dense(units=units, use_bias=False))
-        self.bn = tf.keras.layers.BatchNormalization(momentum=momentum, epsilon=epsilon)
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
 
-    def call(self, inputs, conditional_inputs, training=None):
-        if training is None:
-            training = tf.keras.backend.learning_phase()
+        Args:
+            input_shape: list of TensorShape
+                Input tensor shapes.
+        """
 
-        gain = 1 + self.gain(conditional_inputs)
-        bias = self.bias(conditional_inputs)
+        self.num_channels = input_shape[0][-1]
 
-        gain = tf.reshape(gain, (-1, 1, 1, self.units))
-        bias = tf.reshape(bias, (-1, 1, 1, self.units))
+        self.beta_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
+        self.gamma_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
 
-        out = self.bn(inputs, training=training)
+        self.test_mean = self.add_weight(shape=(self.num_channels,), initializer='zeros', trainable=False)
+        self.test_var = self.add_weight(shape=(self.num_channels,), initializer='ones', trainable=False)
 
-        return gain * out + bias
+    def call(self, inputs, training=None):
+        """
+        Applies conditional batch normalization.
 
-    def compute_output_shape(self, input_shape):
-        return input_shape
+        Args:
+            inputs: tuple (inputs, conditions)
+                Input and conditional data.
+            training: bool, optional
+                Training or inference mode.
+
+        Returns:
+            Normalized output tensor.
+        """
+
+        inputs, conditions = inputs
+
+        beta = self.beta_mapping(conditions)
+        gamma = self.gamma_mapping(conditions)
+
+        beta = tf.reshape(beta, shape=[-1, 1, 1, self.num_channels])
+        gamma = tf.reshape(gamma, shape=[-1, 1, 1, self.num_channels])
+
+        if training:
+            batch_mean, batch_var = tf.nn.moments(x=inputs, axes=[0, 1, 2])
+
+            self.test_mean = self.test_mean * self.momentum + batch_mean * (1 - self.momentum)
+            self.test_var = self.test_var * self.momentum + batch_var * (1 - self.momentum)
+
+            return tf.nn.batch_normalization(x=inputs,
+                                             mean=batch_mean,
+                                             variance=batch_var,
+                                             offset=beta,
+                                             scale=gamma,
+                                             variance_epsilon=self.epsilon)
+
+        return tf.nn.batch_normalization(x=inputs,
+                                         mean=self.test_mean,
+                                         variance=self.test_var,
+                                         offset=beta,
+                                         scale=gamma,
+                                         variance_epsilon=self.epsilon)
 
 
 class SpectralNormalization(tf.keras.layers.Wrapper):
     """
-    Applies spectral normalization to a layer to stabilize GAN training.
-
-    Args:
-        layer: tf.keras.layers.Layer
-            Layer with `kernel` or `embeddings` to normalize.
-        power_iterations: int, optional
-            Iterations for normalization (default: 1).
-        **kwargs
-            Additional keyword arguments for `tf.keras.layers.Wrapper`.
-
-    Raises:
-        ValueError: If `power_iterations` is non-positive or layer is incompatible.
-        AttributeError: If `layer` lacks `kernel` or `embeddings`.
+    Spectral Normalization for TensorFlow models.
+    Optimizes GAN training stability by normalizing layer weights.
 
     Reference:
         [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
@@ -64,11 +111,6 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         """
 
         super().__init__(layer, **kwargs)
-
-        if power_iterations <= 0:
-            raise ValueError(
-                "`power_iterations` should be greater than zero"
-            )
 
         self.power_iterations = power_iterations
 
