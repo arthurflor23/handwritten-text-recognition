@@ -87,6 +87,18 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
                                          scale=gamma,
                                          variance_epsilon=self.epsilon)
 
+    def get_config(self):
+        """
+        Returns the config of the layers.
+
+        Returns:
+            A dictionary containing the configuration of the layers.
+        """
+
+        config = {"momentum": self.momentum, "epsilon": self.epsilon}
+        base_config = super().get_config()
+        return {**base_config, **config}
+
 
 class SpectralNormalization(tf.keras.layers.Wrapper):
     """
