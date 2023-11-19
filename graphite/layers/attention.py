@@ -35,17 +35,10 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         self.num_channels = input_shape[-1]
         self.hw = input_shape[1] * input_shape[2]
 
-        self.conv_f = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1, padding='same', use_bias=False))
-
-        self.conv_g = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1, padding='same', use_bias=False))
-
-        self.conv_h = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.num_channels // 2, kernel_size=1, padding='same', use_bias=False))
-
-        self.conv_o = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.num_channels, kernel_size=1, padding='same', use_bias=False))
+        self.conv_f = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1))
+        self.conv_g = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1))
+        self.conv_h = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 2, kernel_size=1))
+        self.conv_o = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels, kernel_size=1))
 
         self.gamma = self.add_weight(shape=(1,), initializer='zeros', trainable=True)
 
