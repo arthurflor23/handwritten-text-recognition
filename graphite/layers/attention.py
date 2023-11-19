@@ -35,10 +35,10 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         self.num_channels = input_shape[-1]
         self.hw = input_shape[1] * input_shape[2]
 
-        self.conv_f = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1))
-        self.conv_g = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1))
-        self.conv_h = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 2, kernel_size=1))
-        self.conv_o = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels, kernel_size=1))
+        self.conv_f = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, 1))
+        self.conv_g = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, 1))
+        self.conv_h = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 2, 1))
+        self.conv_o = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels, 1))
 
         self.gamma = self.add_weight(shape=(1,), initializer='zeros', trainable=True)
 
@@ -67,7 +67,7 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         beta = tf.nn.softmax(logits=s)
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(tensor=o, shape=[x.shape[1], x.shape[2], self.num_channels//2])
+        o = tf.reshape(tensor=o, shape=[-1, x.shape[1], x.shape[2], self.num_channels//2])
         o = self.conv_o(o)
 
         return self.gamma * o + x
