@@ -1,46 +1,80 @@
 import tensorflow as tf
 
+from layers.normalization import SpectralNormalization
+
 
 class SpectralSelfAttention(tf.keras.layers.Layer):
-    def __init__(self, units):
-        super(SpectralSelfAttention, self).__init__()
-        self.units = units
+    """
+    Spectral Self-Attention layer for TensorFlow models.
+    Uses spectral normalization in self-attention mechanism, suitable for tasks like image generation.
 
-        self.query_conv = tf.keras.Sequential([
-            tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=units // 8, kernel_size=1, padding='same', use_bias=False)),
-            tf.keras.layers.ReLU(),
-        ])
+    Reference:
+        [Attention Is All You Need](https://arxiv.org/abs/1706.03762).
+    """
 
-        self.key_conv = tf.keras.Sequential([
-            tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=units // 8, kernel_size=1, padding='same', use_bias=False)),
-            tf.keras.layers.ReLU(),
-        ])
+    def __init__(self, **kwargs):
+        """
+        Initializes the spectral self attention layer.
 
-        self.value_conv = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Conv2D(filters=units, kernel_size=1, padding='same', use_bias=False))
+        Args:
+            **kwargs:
+                Additional layer keyword arguments.
+        """
 
-        self.gamma = tf.Variable(initial_value=tf.zeros(1), trainable=True)
-        self.softmax = tf.keras.layers.Softmax(axis=-1)
+        super().__init__(**kwargs)
+
+    def build(self, input_shape):
+        """
+        Builds the layer with spectral normalization on convolutional layers.
+
+        Args:
+            input_shape: tuple
+                Shape of the input tensor.
+        """
+
+        self.num_channels = input_shape[-1]
+        self.hw = input_shape[1] * input_shape[2]
+
+        self.conv_f = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1, padding='same', use_bias=False))
+
+        self.conv_g = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.num_channels // 8, kernel_size=1, padding='same', use_bias=False))
+
+        self.conv_h = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.num_channels // 2, kernel_size=1, padding='same', use_bias=False))
+
+        self.conv_o = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.num_channels, kernel_size=1, padding='same', use_bias=False))
+
+        self.gamma = self.add_weight(shape=(1,), initializer='zeros', trainable=True)
 
     def call(self, x):
-        batchsize, height, width, _ = x.shape
+        """
+        Applies self-attention to the input tensor.
 
-        proj_query = self.query_conv(x)
-        proj_query = tf.reshape(proj_query, [batchsize, -1, width * height])
-        proj_query = tf.transpose(proj_query, [0, 2, 1])
+        Args:
+            x: tensor
+                Input tensor.
 
-        proj_key = self.key_conv(x)
-        proj_key = tf.reshape(proj_key, [batchsize, -1, width * height])
+        Returns:
+            tensor
+                Processed tensor with self-attention.
+        """
 
-        energy = tf.matmul(proj_query, proj_key)
-        attention = self.softmax(energy)
+        f = self.conv_f(x)
+        g = self.conv_g(x)
+        h = self.conv_h(x)
 
-        proj_value = self.value_conv(x)
-        proj_value = tf.reshape(proj_value, [batchsize, -1, width * height])
+        f = tf.reshape(tensor=f, shape=[self.hw, f.shape[-1]])
+        g = tf.reshape(tensor=g, shape=[self.hw, g.shape[-1]])
+        h = tf.reshape(tensor=h, shape=[self.hw, h.shape[-1]])
 
-        out = tf.matmul(attention, proj_value)
-        out = tf.reshape(out, [batchsize, height, width, self.units])
+        s = tf.matmul(g, f, transpose_b=True)
+        beta = tf.nn.softmax(logits=s)
 
-        return self.gamma * out + x
+        o = tf.matmul(beta, h)
+        o = tf.reshape(tensor=o, shape=[x.shape[1], x.shape[2], self.num_channels//2])
+        o = self.conv_o(o)
+
+        return self.gamma * o + x
