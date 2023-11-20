@@ -74,8 +74,8 @@ class GeneratorModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
-                 latent_dim,
                  vocab_dim,
+                 latent_dim,
                  embedding_dim,
                  dense_dim,
                  blocks,
@@ -86,10 +86,10 @@ class GeneratorModel(tf.keras.Model):
         Args:
             image_shape: list or tuple
                 Shape of the output image.
-            latent_dim: int
-                Dimension of the latent space.
             vocab_dim: int
                 Size of the vocabulary used in embeddings.
+            latent_dim: int
+                Dimension of the latent space.
             embedding_dim: int
                 Dimension of the embedding space.
             dense_dim: int
@@ -103,8 +103,8 @@ class GeneratorModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.image_shape = image_shape
-        self.latent_dim = latent_dim
         self.vocab_dim = vocab_dim
+        self.latent_dim = latent_dim
         self.embedding_dim = embedding_dim
         self.dense_dim = dense_dim
         self.blocks = blocks
@@ -203,8 +203,8 @@ class GeneratorModel(tf.keras.Model):
 
             return block
 
-        latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
         vocab_inputs = tf.keras.layers.Input(shape=(self.vocab_dim,))
+        latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
 
         vocab_embedding = tf.keras.layers.Embedding(input_dim=self.vocab_dim + 1,
                                                     output_dim=self.embedding_dim,
@@ -230,7 +230,7 @@ class GeneratorModel(tf.keras.Model):
             lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_reshaped)
 
         for i, x in enumerate(self.blocks):
-            if i > 0 and i % 2 == 0:
+            if (i > 0) and (i % 2 == 0):
                 block = SpectralSelfAttention()(block)
 
             block = residual_block_up(dense=block,
@@ -261,8 +261,8 @@ class GeneratorModel(tf.keras.Model):
 
         config = {
             "image_shape": self.image_shape,
-            "latent_dim": self.latent_dim,
             "vocab_dim": self.vocab_dim,
+            "latent_dim": self.latent_dim,
             "embedding_dim": self.embedding_dim,
             "dense_dim": self.dense_dim,
             "blocks": self.blocks,
