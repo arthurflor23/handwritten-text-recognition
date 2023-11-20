@@ -5,12 +5,6 @@ class DynamicReshape(tf.keras.layers.Layer):
     """
     A TensorFlow Keras layer for dynamic input tensor reshaping.
     Reshapes an input tensor to a specified target shape.
-
-    Args:
-        target_shape: list of tuple
-            Target shape for reshaping.
-        **kwargs
-            Additional Keras Layer keyword arguments.
     """
 
     def __init__(self, target_shape, **kwargs):
