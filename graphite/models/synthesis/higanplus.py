@@ -14,7 +14,6 @@ class SynthesisModel(tf.keras.Model):
         self.generator = GeneratorModel(image_shape, latent_dim, vocab_dim, embedding_dim)
         self.generator.summary()
 
-        # self.generator = GeneratorModule(vocab_dim)
         # self.discriminator = None
         # self.patch_discriminator = None
         # self.style_encoder = None
@@ -58,7 +57,14 @@ class GeneratorModel(tf.keras.Model):
     A generator model that combines latent and vocabulary data for generative tasks.
     """
 
-    def __init__(self, image_shape, latent_dim, vocab_dim, embedding_dim, **kwargs):
+    def __init__(self,
+                 image_shape,
+                 latent_dim,
+                 vocab_dim,
+                 embedding_dim,
+                 dense_dim=128,
+                 blocks=[128, 64, 64, 32],
+                 **kwargs):
         """
         Initializes the generator model.
 
@@ -66,11 +72,15 @@ class GeneratorModel(tf.keras.Model):
             image_shape: list or tuple
                 Shape of the output image.
             latent_dim: int
-                Dimensionality of the latent space.
+                Dimension of the latent space.
             vocab_dim: int
                 Size of the vocabulary used in embeddings.
             embedding_dim: int
                 Dimension of the embedding space.
+            dense_dim: int, optional
+                Dimension for the dense space.
+            blocks: list or tuple, optional
+                Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
@@ -81,6 +91,8 @@ class GeneratorModel(tf.keras.Model):
         self.latent_dim = latent_dim
         self.vocab_dim = vocab_dim
         self.embedding_dim = embedding_dim
+        self.dense_dim = dense_dim
+        self.blocks = blocks
 
         self.build_model()
 
@@ -120,7 +132,7 @@ class GeneratorModel(tf.keras.Model):
 
     def build_model(self):
         """
-        Builds the generator model with a series of layers including residual blocks, 
+        Builds the generator model with a series of layers including residual blocks,
         batch normalization, and convolutional layers.
 
         The model processes input data through these layers to generate an output image.
@@ -176,9 +188,6 @@ class GeneratorModel(tf.keras.Model):
 
             return block
 
-        channels = 128
-        blocks = [128, 64, 64, 32]
-
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
         vocab_inputs = tf.keras.layers.Input(shape=(self.vocab_dim,))
 
@@ -194,27 +203,27 @@ class GeneratorModel(tf.keras.Model):
 
         latent_vocab_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, vocab_embedding])
 
-        latent_dense = SpectralNormalization(tf.keras.layers.Dense(units=4*4*channels))(latent_vocab_concat)
+        latent_dense = SpectralNormalization(tf.keras.layers.Dense(units=4*4*self.dense_dim))(latent_vocab_concat)
 
         latent_feature_dense = SpectralNormalization(
-            tf.keras.layers.Dense(units=self.latent_dim*len(blocks)))(latent_dense)
+            tf.keras.layers.Dense(units=self.latent_dim*len(self.blocks)))(latent_dense)
 
         latent_reshaped = tf.keras.layers.Lambda(
-            lambda x: tf.reshape(x, [-1, tf.shape(x)[1]*4, 4, channels]), name='reshape')(latent_dense)
+            lambda x: tf.reshape(x, [-1, tf.shape(x)[1]*4, 4, self.dense_dim]), name='reshape')(latent_dense)
 
         block = tf.keras.layers.Lambda(
             lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_reshaped)
 
-        for i, x in enumerate(blocks):
+        for i, x in enumerate(self.blocks):
             block = residual_block_up(dense=block,
                                       dense_latent=latent_feature_dense,
                                       embedding=vocab_embedding,
                                       index=i,
                                       channels=x,
-                                      blocks=len(blocks),
+                                      blocks=len(self.blocks),
                                       upsampling=(2, 2))
 
-            if i > 0 and blocks[i] == blocks[i-1]:
+            if (i > 0 and self.blocks[i] == self.blocks[i-1]) or (i % 2 == 0):
                 block = SpectralSelfAttention()(block)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
