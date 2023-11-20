@@ -235,3 +235,22 @@ class GeneratorModel(tf.keras.Model):
             tf.keras.layers.Conv2D(1, 3, padding='same', activation='tanh'))(outputs)
 
         self.model = tf.keras.Model(inputs=[latent_inputs, vocab_inputs], outputs=outputs)
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "image_shape": self.image_shape,
+            "latent_dim": self.latent_dim,
+            "vocab_dim": self.vocab_dim,
+            "embedding_dim": self.embedding_dim,
+            "dense_dim": self.dense_dim,
+            "blocks": self.blocks,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
