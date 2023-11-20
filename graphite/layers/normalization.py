@@ -95,7 +95,10 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
             A dictionary containing the configuration of the layers.
         """
 
-        config = {"momentum": self.momentum, "epsilon": self.epsilon}
+        config = {
+            "momentum": self.momentum,
+            "epsilon": self.epsilon,
+        }
         base_config = super().get_config()
         return {**base_config, **config}
 
@@ -223,6 +226,8 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             A dictionary containing the configuration of the wrapper.
         """
 
-        config = {"power_iterations": self.power_iterations}
+        config = {
+            "power_iterations": self.power_iterations,
+        }
         base_config = super().get_config()
         return {**base_config, **config}
