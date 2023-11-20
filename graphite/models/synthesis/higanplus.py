@@ -8,13 +8,28 @@ from layers import DynamicReshape
 
 class SynthesisModel(tf.keras.Model):
 
-    def __init__(self, image_shape, latent_dim, vocab_dim, embedding_dim, **kwargs):
+    def __init__(self,
+                 image_shape,
+                 latent_dim,
+                 vocab_dim,
+                 embedding_dim,
+                 dense_dim,
+                 blocks,
+                 **kwargs):
+
         super().__init__(**kwargs)
 
-        self.generator = GeneratorModel(image_shape, latent_dim, vocab_dim, embedding_dim)
+        self.generator = GeneratorModel(image_shape=image_shape,
+                                        latent_dim=latent_dim,
+                                        vocab_dim=vocab_dim,
+                                        embedding_dim=embedding_dim,
+                                        dense_dim=dense_dim,
+                                        blocks=blocks)
         self.generator.summary()
 
-        # self.discriminator = None
+        self.discriminator = DiscriminatorModel()
+        # self.discriminator.summary()
+
         # self.patch_discriminator = None
         # self.style_encoder = None
         # self.style_backbone = None
@@ -62,8 +77,8 @@ class GeneratorModel(tf.keras.Model):
                  latent_dim,
                  vocab_dim,
                  embedding_dim,
-                 dense_dim=128,
-                 blocks=[128, 64, 64, 32],
+                 dense_dim,
+                 blocks,
                  **kwargs):
         """
         Initializes the generator model.
@@ -77,9 +92,9 @@ class GeneratorModel(tf.keras.Model):
                 Size of the vocabulary used in embeddings.
             embedding_dim: int
                 Dimension of the embedding space.
-            dense_dim: int, optional
+            dense_dim: int
                 Dimension for the dense space.
-            blocks: list or tuple, optional
+            blocks: list or tuple
                 Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -215,6 +230,9 @@ class GeneratorModel(tf.keras.Model):
             lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_reshaped)
 
         for i, x in enumerate(self.blocks):
+            if i > 0 and i % 2 == 0:
+                block = SpectralSelfAttention()(block)
+
             block = residual_block_up(dense=block,
                                       dense_latent=latent_feature_dense,
                                       embedding=vocab_embedding,
@@ -222,9 +240,6 @@ class GeneratorModel(tf.keras.Model):
                                       channels=x,
                                       blocks=len(self.blocks),
                                       upsampling=(2, 2))
-
-            if (i > 0 and self.blocks[i] == self.blocks[i-1]) or (i % 2 == 0):
-                block = SpectralSelfAttention()(block)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.ReLU()(outputs)
@@ -251,6 +266,83 @@ class GeneratorModel(tf.keras.Model):
             "embedding_dim": self.embedding_dim,
             "dense_dim": self.dense_dim,
             "blocks": self.blocks,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
+
+
+class DiscriminatorModel(tf.keras.Model):
+    """
+    A discriminator model that evaluates the authenticity of generated images.
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initializes the discriminator model.
+
+        Args:
+            **kwargs
+                Additional keyword arguments for `tf.keras.Model`.
+        """
+
+        super().__init__(**kwargs)
+
+        self.build_model()
+
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        """
+        Prints a string summary of the network.
+
+        Args:
+            line_length: int, optional
+                Total length of printed lines.
+            positions: list of float, optional
+                Positions of log elements in each line.
+            print_fn: callable, optional
+                Function used for printing the summary.
+        """
+
+        self.model.summary(line_length, positions, print_fn)
+
+    def call(self, inputs, training=None, mask=None):
+        """
+        Executes the model on new inputs.
+
+        Args:
+            inputs: tensor or collection of tensors
+                The input data to the model.
+            training: bool, optional
+                If True, the model is run in training mode.
+            mask: tensor or collection of tensors, optional
+                An optional mask (or masks) to be applied on the inputs.
+
+        Returns:
+            tensor or list of tensors
+                The output from the model after processing the inputs.
+        """
+
+        return self.model(inputs, training, mask)
+
+    def build_model(self):
+        """
+        Builds the generator model with a series of layers including residual blocks,
+        batch normalization, and convolutional layers.
+
+        The model processes input data through these layers to generate an output image.
+        """
+
+        pass
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            # "blocks": self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
