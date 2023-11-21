@@ -27,7 +27,8 @@ class SynthesisModel(tf.keras.Model):
                                         vocab_dim=vocab_dim,
                                         embedding_dim=embedding_dim,
                                         channels=channel_dim,
-                                        blocks=g_blocks)
+                                        blocks=g_blocks,
+                                        name='generator')
         # self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
@@ -35,8 +36,9 @@ class SynthesisModel(tf.keras.Model):
                                                 vocab_dim=vocab_dim,
                                                 embedding_dim=embedding_dim,
                                                 channels=channel_dim,
-                                                blocks=d_blocks)
-        self.discriminator.summary()
+                                                blocks=d_blocks,
+                                                name='discriminator')
+        # self.discriminator.summary()
 
         # self.patch_discriminator = None
         # self.style_encoder = None
@@ -90,7 +92,7 @@ class GeneratorModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initializes the generator model.
+        Initializes the model class.
 
         Args:
             image_shape: list or tuple
@@ -239,7 +241,7 @@ class GeneratorModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs],
                                     outputs=outputs,
-                                    name='generator')
+                                    name=self.name)
 
     def get_config(self):
         """
@@ -276,7 +278,7 @@ class DiscriminatorModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initializes the discriminator model.
+        Initializes the model class.
 
         Args:
             image_shape: list or tuple
@@ -289,6 +291,8 @@ class DiscriminatorModel(tf.keras.Model):
                 Dimension of the embedding space.
             channels: int
                 Base channels.
+            blocks: list or tuple
+                Blocks of channels.
             blocks: list or tuple
                 Blocks of channels.
             **kwargs
@@ -398,7 +402,7 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=[image_inputs, text_inputs],
                                     outputs=outputs,
-                                    name='discriminator')
+                                    name=self.name)
 
     def get_config(self):
         """
