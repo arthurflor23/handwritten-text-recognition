@@ -40,9 +40,18 @@ class SynthesisModel(tf.keras.Model):
                                                 name='discriminator')
         # self.discriminator.summary()
 
-        # self.patch_discriminator = None
+        self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
+                                                      text_shape=text_shape,
+                                                      vocab_dim=vocab_dim,
+                                                      embedding_dim=embedding_dim,
+                                                      channels=channel_dim,
+                                                      blocks=d_blocks,
+                                                      name='patch_discriminator')
+        # self.patch_discriminator.summary()
+
         # self.style_encoder = None
         # self.style_backbone = None
+
         # self.writer_identifier = None
         # self.recognizer = None
 
