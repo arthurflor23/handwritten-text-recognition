@@ -14,7 +14,7 @@ class SynthesisModel(tf.keras.Model):
                  latent_dim,
                  vocab_dim,
                  embedding_dim,
-                 channels,
+                 channel_dim,
                  g_blocks,
                  d_blocks,
                  **kwargs):
@@ -26,7 +26,7 @@ class SynthesisModel(tf.keras.Model):
                                         latent_dim=latent_dim,
                                         vocab_dim=vocab_dim,
                                         embedding_dim=embedding_dim,
-                                        channels=channels,
+                                        channels=channel_dim,
                                         blocks=g_blocks)
         # self.generator.summary()
 
@@ -34,7 +34,7 @@ class SynthesisModel(tf.keras.Model):
                                                 text_shape=text_shape,
                                                 vocab_dim=vocab_dim,
                                                 embedding_dim=embedding_dim,
-                                                channels=channels,
+                                                channels=channel_dim,
                                                 blocks=d_blocks)
         self.discriminator.summary()
 
