@@ -4,12 +4,14 @@ from layers import SpectralSelfAttention
 from layers import ConditionalBatchNormalization
 from layers import SpectralNormalization
 from layers import DynamicReshape
+from layers import ExtractPatches
 
 
 class SynthesisModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
+                 patch_shape,
                  text_shape,
                  latent_dim,
                  vocab_dim,
@@ -32,6 +34,7 @@ class SynthesisModel(tf.keras.Model):
         # self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
+                                                patch_shape=None,
                                                 text_shape=text_shape,
                                                 vocab_dim=vocab_dim,
                                                 embedding_dim=embedding_dim,
@@ -41,13 +44,14 @@ class SynthesisModel(tf.keras.Model):
         # self.discriminator.summary()
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
+                                                      patch_shape=patch_shape,
                                                       text_shape=text_shape,
                                                       vocab_dim=vocab_dim,
                                                       embedding_dim=embedding_dim,
                                                       channels=channel_dim,
                                                       blocks=d_blocks,
                                                       name='patch_discriminator')
-        # self.patch_discriminator.summary()
+        self.patch_discriminator.summary()
 
         # self.style_encoder = None
         # self.style_backbone = None
@@ -280,6 +284,7 @@ class DiscriminatorModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
+                 patch_shape,
                  text_shape,
                  vocab_dim,
                  embedding_dim,
@@ -292,6 +297,8 @@ class DiscriminatorModel(tf.keras.Model):
         Args:
             image_shape: list or tuple
                 Shape of the input image.
+            patch_shape: list, tuple or None
+                Defines whether to apply patches.
             text_shape: list or tuple
                 Shape of the input text.
             vocab_dim: int
@@ -311,6 +318,7 @@ class DiscriminatorModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.image_shape = image_shape
+        self.patch_shape = patch_shape
         self.text_shape = text_shape
         self.vocab_dim = vocab_dim
         self.embedding_dim = embedding_dim
@@ -392,8 +400,14 @@ class DiscriminatorModel(tf.keras.Model):
                                                    mask_zero=True)(text_inputs)
         text_embedding = tf.keras.layers.Flatten()(text_embedding)
 
-        block = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.channels, 3, 1, padding='same'))(image_inputs)
+        if self.patch_shape is None:
+            block = SpectralNormalization(
+                tf.keras.layers.Conv2D(self.channels, 3, 1, padding='same'))(image_inputs)
+        else:
+            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+
+            block = SpectralNormalization(
+                tf.keras.layers.Conv2D(self.channels, 3, 1, padding='same'))(patch_inputs)
 
         for i, x in enumerate(self.blocks):
             if i % 2 == 0:
@@ -423,6 +437,7 @@ class DiscriminatorModel(tf.keras.Model):
 
         config = {
             "image_shape": self.image_shape,
+            "patch_shape": self.patch_shape,
             "text_shape": self.text_shape,
             "vocab_dim": self.vocab_dim,
             "embedding_dim": self.embedding_dim,
