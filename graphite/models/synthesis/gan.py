@@ -178,33 +178,6 @@ class GeneratorModel(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        def residual_block_up(input_image, dense_latent, embedding, index, filters, blocks, upsample):
-
-            chunk = tf.keras.layers.Lambda(
-                lambda x: tf.split(x, num_or_size_splits=dense_latent.shape[-1]//blocks, axis=-1)[index],
-                name=f'split_{index+1}')(dense_latent)
-
-            chunk_concat = tf.keras.layers.Concatenate(axis=-1)([chunk, embedding])
-
-            block_a = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(input_image)
-            block_a = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 1))(block_a)
-
-            block_b = ConditionalBatchNormalization()([input_image, chunk_concat])
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-            block_b = ConditionalBatchNormalization()([block_b, chunk_concat])
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-            block = tf.keras.layers.Add()([block_a, block_b])
-
-            return block
-
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
         latent_inputs = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
@@ -236,13 +209,13 @@ class GeneratorModel(tf.keras.Model):
             if i > 0 and i % 2 == 0:
                 block = SpectralSelfAttention()(block)
 
-            block = residual_block_up(input_image=block,
-                                      dense_latent=latent_feature_dense,
-                                      embedding=text_embedding,
-                                      index=i,
-                                      filters=x,
-                                      blocks=len(self.blocks),
-                                      upsample=(2, 2))
+            block = self._residual_block_up(input_image=block,
+                                            dense_latent=latent_feature_dense,
+                                            embedding=text_embedding,
+                                            index=i,
+                                            filters=x,
+                                            blocks=len(self.blocks),
+                                            upsample=(2, 2))
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.ReLU()(outputs)
@@ -255,6 +228,56 @@ class GeneratorModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs],
                                     outputs=outputs,
                                     name=self.name)
+
+    def _residual_block_up(self, input_image, dense_latent, embedding, index, filters, blocks, upsample):
+        """
+        Builds an upsampled residual block with conditional batch normalization.
+
+        Args:
+            input_image : tensor
+                Input tensor for the residual block.
+            dense_latent : tensor
+                Dense latent tensor for conditional normalization.
+            embedding : tensor
+                Embedding tensor to be combined with latent chunks.
+            index : int
+                Index for splitting the dense latent tensor.
+            filters : int
+                Number of convolutional filters.
+            blocks : int
+                Number of splits in the dense latent tensor.
+            upsample : tuple
+                Upsampling size.
+
+        Returns:
+            tensor:
+                Output tensor of the residual block.
+        """
+
+        chunk = tf.keras.layers.Lambda(
+            lambda x: tf.split(x, num_or_size_splits=dense_latent.shape[-1]//blocks, axis=-1)[index],
+            name=f'split_{index+1}')(dense_latent)
+
+        chunk_concat = tf.keras.layers.Concatenate(axis=-1)([chunk, embedding])
+
+        block_a = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(input_image)
+        block_a = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 1))(block_a)
+
+        block_b = ConditionalBatchNormalization()([input_image, chunk_concat])
+        block_b = tf.keras.layers.ReLU()(block_b)
+        block_b = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(block_b)
+        block_b = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
+
+        block_b = ConditionalBatchNormalization()([block_b, chunk_concat])
+        block_b = tf.keras.layers.ReLU()(block_b)
+        block_b = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
+
+        block = tf.keras.layers.Add()([block_a, block_b])
+
+        return block
 
     def get_config(self):
         """
@@ -367,29 +390,6 @@ class DiscriminatorModel(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        def residual_block_down(input_image, filters, downsample):
-
-            block_a = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 1))(input_image)
-
-            if downsample:
-                block_a = tf.keras.layers.AveragePooling2D()(block_a)
-
-            block_b = tf.keras.layers.ReLU()(input_image)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-            if downsample:
-                block_b = tf.keras.layers.AveragePooling2D()(block_b)
-
-            block = tf.keras.layers.Add()([block_a, block_b])
-
-            return block
-
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
         text_inputs = tf.keras.layers.Input(shape=self.text_shape)
@@ -413,9 +413,9 @@ class DiscriminatorModel(tf.keras.Model):
             if i % 2 == 0:
                 block = SpectralSelfAttention()(block)
 
-            block = residual_block_down(input_image=block,
-                                        filters=x,
-                                        downsample=i < len(self.blocks) - 1)
+            block = self._residual_block_down(input_image=block,
+                                              filters=x,
+                                              downsample=i < len(self.blocks) - 1)
 
         outputs = tf.keras.layers.GlobalAveragePooling2D()(block)
         outputs = tf.keras.layers.Concatenate(axis=-1)([text_embedding, outputs])
@@ -426,6 +426,43 @@ class DiscriminatorModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=[image_inputs, text_inputs],
                                     outputs=outputs,
                                     name=self.name)
+
+    def _residual_block_down(self, input_image, filters, downsample):
+        """
+        Builds a downsampling residual block with spectral normalization.
+
+        Args:
+            input_image : tensor
+                The input tensor for the block.
+            filters : int
+                Number of convolutional filters.
+            downsample : bool
+                Whether to apply downsampling.
+
+        Returns:
+            tensor: The output tensor of the block.
+        """
+
+        block_a = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 1))(input_image)
+
+        if downsample:
+            block_a = tf.keras.layers.AveragePooling2D()(block_a)
+
+        block_b = tf.keras.layers.ReLU()(input_image)
+        block_b = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
+
+        block_b = tf.keras.layers.ReLU()(block_b)
+        block_b = SpectralNormalization(
+            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
+
+        if downsample:
+            block_b = tf.keras.layers.AveragePooling2D()(block_b)
+
+        block = tf.keras.layers.Add()([block_a, block_b])
+
+        return block
 
     def get_config(self):
         """
