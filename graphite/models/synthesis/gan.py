@@ -269,9 +269,7 @@ class GeneratorModel(tf.keras.Model):
         outputs = SpectralNormalization(
             tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
 
-        self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs],
-                                    outputs=outputs,
-                                    name=self.name)
+        self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
 
 
 class DiscriminatorModel(tf.keras.Model):
@@ -435,9 +433,7 @@ class DiscriminatorModel(tf.keras.Model):
         outputs = SpectralNormalization(
             tf.keras.layers.Dense(units=1))(outputs)
 
-        self.model = tf.keras.Model(inputs=[image_inputs, text_inputs],
-                                    outputs=outputs,
-                                    name=self.name)
+        self.model = tf.keras.Model(inputs=[image_inputs, text_inputs], outputs=outputs, name=self.name)
 
 
 class StyleBackbone(tf.keras.Model):
@@ -525,7 +521,9 @@ class StyleBackbone(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
+        feats = []
         filters = self.filters
+
         conv = tf.keras.layers.Conv2D(filters, kernel_size=5, strides=2, padding='same')(image_inputs)
 
         for _ in range(4):
@@ -557,6 +555,7 @@ class StyleBackbone(tf.keras.Model):
             conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
             conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=2)(conv)
 
+            feats.append(conv)
             filters *= 2
 
         conv = tf.keras.layers.ReLU()(conv)
@@ -566,9 +565,7 @@ class StyleBackbone(tf.keras.Model):
 
         outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1]*conv.get_shape()[2], -1))(conv)
 
-        self.model = tf.keras.Model(inputs=image_inputs,
-                                    outputs=outputs,
-                                    name=self.name)
+        self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
 
 class StyleEncoder(tf.keras.Model):
@@ -659,6 +656,4 @@ class StyleEncoder(tf.keras.Model):
         outputs = SpectralNormalization(
             tf.keras.layers.Dense(units=1))(image_inputs)
 
-        self.model = tf.keras.Model(inputs=image_inputs,
-                                    outputs=outputs,
-                                    name=self.name)
+        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
