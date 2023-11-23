@@ -3,7 +3,6 @@ import tensorflow as tf
 from layers import SpectralSelfAttention
 from layers import ConditionalBatchNormalization
 from layers import SpectralNormalization
-from layers import DynamicReshape
 from layers import ExtractPatches
 
 
@@ -16,9 +15,9 @@ class SynthesisModel(tf.keras.Model):
                  latent_dim,
                  vocab_dim,
                  embedding_dim,
-                 channel_dim,
-                 g_blocks,
-                 d_blocks,
+                 encoder_filters,
+                 g_filter_blocks,
+                 d_filter_blocks,
                  **kwargs):
 
         super().__init__(**kwargs)
@@ -28,8 +27,7 @@ class SynthesisModel(tf.keras.Model):
                                         latent_dim=latent_dim,
                                         vocab_dim=vocab_dim,
                                         embedding_dim=embedding_dim,
-                                        channels=channel_dim,
-                                        blocks=g_blocks,
+                                        blocks=g_filter_blocks,
                                         name='generator')
         # self.generator.summary()
 
@@ -38,8 +36,7 @@ class SynthesisModel(tf.keras.Model):
                                                 text_shape=text_shape,
                                                 vocab_dim=vocab_dim,
                                                 embedding_dim=embedding_dim,
-                                                channels=channel_dim,
-                                                blocks=d_blocks,
+                                                blocks=d_filter_blocks,
                                                 name='discriminator')
         # self.discriminator.summary()
 
@@ -48,13 +45,19 @@ class SynthesisModel(tf.keras.Model):
                                                       text_shape=text_shape,
                                                       vocab_dim=vocab_dim,
                                                       embedding_dim=embedding_dim,
-                                                      channels=channel_dim,
-                                                      blocks=d_blocks,
+                                                      blocks=d_filter_blocks,
                                                       name='patch_discriminator')
-        self.patch_discriminator.summary()
+        # self.patch_discriminator.summary()
 
-        # self.style_encoder = None
-        # self.style_backbone = None
+        self.style_backbone = StyleBackbone(image_shape=image_shape,
+                                            filters=encoder_filters,
+                                            name='style_backbone')
+        # self.style_backbone.summary()
+
+        self.style_encoder = StyleEncoder(image_shape=image_shape,
+                                          filters=encoder_filters,
+                                          name='style_encoder')
+        self.style_encoder.summary()
 
         # self.writer_identifier = None
         # self.recognizer = None
@@ -101,7 +104,6 @@ class GeneratorModel(tf.keras.Model):
                  latent_dim,
                  vocab_dim,
                  embedding_dim,
-                 channels,
                  blocks,
                  **kwargs):
         """
@@ -118,8 +120,6 @@ class GeneratorModel(tf.keras.Model):
                 Size of the vocabulary used in embeddings.
             embedding_dim: int
                 Dimension of the embedding space.
-            channels: int
-                Base channels.
             blocks: list or tuple
                 Blocks of channels.
             **kwargs
@@ -133,10 +133,28 @@ class GeneratorModel(tf.keras.Model):
         self.latent_dim = latent_dim
         self.vocab_dim = vocab_dim
         self.embedding_dim = embedding_dim
-        self.channels = channels
         self.blocks = blocks
 
         self.build_model()
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "image_shape": self.image_shape,
+            "text_shape": self.text_shape,
+            "latent_dim": self.latent_dim,
+            "vocab_dim": self.vocab_dim,
+            "embedding_dim": self.embedding_dim,
+            "blocks": self.blocks,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
     def summary(self, line_length=None, positions=None, print_fn=None):
         """
@@ -178,6 +196,33 @@ class GeneratorModel(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
+        def residual_block_up(input_image, dense_latent, embedding, index, filters, blocks, upsample):
+
+            chunk = tf.keras.layers.Lambda(
+                lambda x: tf.split(x, num_or_size_splits=dense_latent.shape[-1]//blocks, axis=-1)[index],
+                name=f'split_{index+1}')(dense_latent)
+
+            chunk_concat = tf.keras.layers.Concatenate(axis=-1)([chunk, embedding])
+
+            block_a = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(input_image)
+            block_a = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=1))(block_a)
+
+            block_b = ConditionalBatchNormalization()([input_image, chunk_concat])
+            block_b = tf.keras.layers.ReLU()(block_b)
+            block_b = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(block_b)
+            block_b = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+
+            block_b = ConditionalBatchNormalization()([block_b, chunk_concat])
+            block_b = tf.keras.layers.ReLU()(block_b)
+            block_b = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+
+            block = tf.keras.layers.Add()([block_a, block_b])
+
+            return block
+
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
         latent_inputs = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
@@ -194,13 +239,12 @@ class GeneratorModel(tf.keras.Model):
 
         latent_text_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
 
-        latent_dense = SpectralNormalization(tf.keras.layers.Dense(units=4*4*self.channels))(latent_text_concat)
+        latent_dense = SpectralNormalization(tf.keras.layers.Dense(units=4*4*self.blocks[0]))(latent_text_concat)
 
         latent_feature_dense = SpectralNormalization(
             tf.keras.layers.Dense(units=self.latent_dim*len(self.blocks)))(latent_dense)
 
-        latent_reshaped = tf.keras.layers.Lambda(
-            lambda x: tf.reshape(x, [-1, tf.shape(x)[1]*4, 4, self.channels]), name='reshape')(latent_dense)
+        latent_reshaped = tf.keras.layers.Reshape(target_shape=(latent_dense.get_shape()[1]*4, 4, -1))(latent_dense)
 
         block = tf.keras.layers.Lambda(
             lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_reshaped)
@@ -209,95 +253,25 @@ class GeneratorModel(tf.keras.Model):
             if i > 0 and i % 2 == 0:
                 block = SpectralSelfAttention()(block)
 
-            block = self._residual_block_up(input_image=block,
-                                            dense_latent=latent_feature_dense,
-                                            embedding=text_embedding,
-                                            index=i,
-                                            filters=x,
-                                            blocks=len(self.blocks),
-                                            upsample=(2, 2))
+            block = residual_block_up(input_image=block,
+                                      dense_latent=latent_feature_dense,
+                                      embedding=text_embedding,
+                                      index=i,
+                                      filters=x,
+                                      blocks=len(self.blocks),
+                                      upsample=(2, 2))
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.ReLU()(outputs)
 
-        outputs = DynamicReshape(target_shape=self.image_shape)(outputs)
+        outputs = tf.keras.layers.Reshape(target_shape=(self.image_shape[0], self.image_shape[1], -1))(outputs)
 
         outputs = SpectralNormalization(
-            tf.keras.layers.Conv2D(1, 3, padding='same', activation='tanh'))(outputs)
+            tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
 
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs],
                                     outputs=outputs,
                                     name=self.name)
-
-    def _residual_block_up(self, input_image, dense_latent, embedding, index, filters, blocks, upsample):
-        """
-        Builds an upsampled residual block with conditional batch normalization.
-
-        Args:
-            input_image : tensor
-                Input tensor for the residual block.
-            dense_latent : tensor
-                Dense latent tensor for conditional normalization.
-            embedding : tensor
-                Embedding tensor to be combined with latent chunks.
-            index : int
-                Index for splitting the dense latent tensor.
-            filters : int
-                Number of convolutional filters.
-            blocks : int
-                Number of splits in the dense latent tensor.
-            upsample : tuple
-                Upsampling size.
-
-        Returns:
-            tensor:
-                Output tensor of the residual block.
-        """
-
-        chunk = tf.keras.layers.Lambda(
-            lambda x: tf.split(x, num_or_size_splits=dense_latent.shape[-1]//blocks, axis=-1)[index],
-            name=f'split_{index+1}')(dense_latent)
-
-        chunk_concat = tf.keras.layers.Concatenate(axis=-1)([chunk, embedding])
-
-        block_a = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(input_image)
-        block_a = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 1))(block_a)
-
-        block_b = ConditionalBatchNormalization()([input_image, chunk_concat])
-        block_b = tf.keras.layers.ReLU()(block_b)
-        block_b = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(block_b)
-        block_b = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-        block_b = ConditionalBatchNormalization()([block_b, chunk_concat])
-        block_b = tf.keras.layers.ReLU()(block_b)
-        block_b = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-        block = tf.keras.layers.Add()([block_a, block_b])
-
-        return block
-
-    def get_config(self):
-        """
-        Returns the config of the model.
-
-        Returns:
-            A dictionary containing the configuration of the model.
-        """
-
-        config = {
-            "image_shape": self.image_shape,
-            "text_shape": self.text_shape,
-            "latent_dim": self.latent_dim,
-            "vocab_dim": self.vocab_dim,
-            "embedding_dim": self.embedding_dim,
-            "channels": self.channels,
-            "blocks": self.blocks,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
 
 
 class DiscriminatorModel(tf.keras.Model):
@@ -311,7 +285,6 @@ class DiscriminatorModel(tf.keras.Model):
                  text_shape,
                  vocab_dim,
                  embedding_dim,
-                 channels,
                  blocks,
                  **kwargs):
         """
@@ -328,8 +301,6 @@ class DiscriminatorModel(tf.keras.Model):
                 Size of the vocabulary used in embeddings.
             embedding_dim: int
                 Dimension of the embedding space.
-            channels: int
-                Base channels.
             blocks: list or tuple
                 Blocks of channels.
             blocks: list or tuple
@@ -345,10 +316,172 @@ class DiscriminatorModel(tf.keras.Model):
         self.text_shape = text_shape
         self.vocab_dim = vocab_dim
         self.embedding_dim = embedding_dim
-        self.channels = channels
         self.blocks = blocks
 
         self.build_model()
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "image_shape": self.image_shape,
+            "patch_shape": self.patch_shape,
+            "text_shape": self.text_shape,
+            "vocab_dim": self.vocab_dim,
+            "embedding_dim": self.embedding_dim,
+            "blocks": self.blocks,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
+
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        """
+        Prints a string summary of the network.
+
+        Args:
+            line_length: int, optional
+                Total length of printed lines.
+            positions: list of float, optional
+                Positions of log elements in each line.
+            print_fn: callable, optional
+                Function used for printing the summary.
+        """
+
+        self.model.summary(line_length, positions, print_fn)
+
+    def call(self, inputs, training=None, mask=None):
+        """
+        Executes the model on new inputs.
+
+        Args:
+            inputs: tensor or collection of tensors
+                The input data to the model.
+            training: bool, optional
+                If True, the model is run in training mode.
+            mask: tensor or collection of tensors, optional
+                An optional mask (or masks) to be applied on the inputs.
+
+        Returns:
+            tensor or list of tensors
+                The output from the model after processing the inputs.
+        """
+
+        return self.model(inputs, training, mask)
+
+    def build_model(self):
+        """
+        Initializes the neural network model by defining its architecture.
+        Sets `self.model` with the specified layers and configurations.
+        """
+
+        def residual_block_down(input_image, filters, downsample):
+
+            block_a = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=1))(input_image)
+
+            if downsample:
+                block_a = tf.keras.layers.AveragePooling2D()(block_a)
+
+            block_b = tf.keras.layers.ReLU()(input_image)
+            block_b = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+
+            block_b = tf.keras.layers.ReLU()(block_b)
+            block_b = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+
+            if downsample:
+                block_b = tf.keras.layers.AveragePooling2D()(block_b)
+
+            block = tf.keras.layers.Add()([block_a, block_b])
+
+            return block
+
+        image_inputs = tf.keras.layers.Input(shape=self.image_shape)
+
+        text_inputs = tf.keras.layers.Input(shape=self.text_shape)
+        text_inputs = tf.keras.layers.Flatten()(text_inputs)
+
+        text_embedding = tf.keras.layers.Embedding(input_dim=self.vocab_dim + 1,
+                                                   output_dim=self.embedding_dim,
+                                                   mask_zero=True)(text_inputs)
+        text_embedding = tf.keras.layers.Flatten()(text_embedding)
+
+        if self.patch_shape is None:
+            block = SpectralNormalization(
+                tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(image_inputs)
+        else:
+            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+
+            block = SpectralNormalization(
+                tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(patch_inputs)
+
+        for i, x in enumerate(self.blocks):
+            if i % 2 == 0:
+                block = SpectralSelfAttention()(block)
+
+            block = residual_block_down(input_image=block,
+                                        filters=x,
+                                        downsample=i < len(self.blocks) - 1)
+
+        outputs = tf.keras.layers.GlobalAveragePooling2D()(block)
+        outputs = tf.keras.layers.Concatenate(axis=-1)([text_embedding, outputs])
+
+        outputs = SpectralNormalization(
+            tf.keras.layers.Dense(units=1))(outputs)
+
+        self.model = tf.keras.Model(inputs=[image_inputs, text_inputs],
+                                    outputs=outputs,
+                                    name=self.name)
+
+
+class StyleBackbone(tf.keras.Model):
+    """
+    A backbone model that extracts style patterns from images.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 filters,
+                 **kwargs):
+        """
+        Initializes the model class.
+
+        Args:
+            image_shape: list or tuple
+                Shape of the output image.
+            filters: int
+                Number of filters to be used in the first convolutional layers.
+            **kwargs
+                Additional keyword arguments for `tf.keras.Model`.
+        """
+
+        super().__init__(**kwargs)
+
+        self.image_shape = image_shape
+        self.filters = filters
+
+        self.build_model()
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "image_shape": self.image_shape,
+            "filters": self.filters,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
     def summary(self, line_length=None, positions=None, print_fn=None):
         """
@@ -392,77 +525,79 @@ class DiscriminatorModel(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        text_inputs = tf.keras.layers.Input(shape=self.text_shape)
-        text_inputs = tf.keras.layers.Flatten()(text_inputs)
+        filters = self.filters
+        conv = tf.keras.layers.Conv2D(filters, kernel_size=5, strides=2, padding='same')(image_inputs)
 
-        text_embedding = tf.keras.layers.Embedding(input_dim=self.vocab_dim + 1,
-                                                   output_dim=self.embedding_dim,
-                                                   mask_zero=True)(text_inputs)
-        text_embedding = tf.keras.layers.Flatten()(text_embedding)
+        for _ in range(4):
+            block1 = tf.keras.layers.ReLU()(conv)
+            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+            block1 = tf.keras.layers.BatchNormalization()(block1)
 
-        if self.patch_shape is None:
-            block = SpectralNormalization(
-                tf.keras.layers.Conv2D(self.channels, 3, 1, padding='same'))(image_inputs)
-        else:
-            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+            block1 = tf.keras.layers.ReLU()(block1)
+            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+            block1 = tf.keras.layers.BatchNormalization()(block1)
 
-            block = SpectralNormalization(
-                tf.keras.layers.Conv2D(self.channels, 3, 1, padding='same'))(patch_inputs)
+            conv = tf.keras.layers.Add()([conv, block1])
 
-        for i, x in enumerate(self.blocks):
-            if i % 2 == 0:
-                block = SpectralSelfAttention()(block)
+            block2 = tf.keras.layers.ReLU()(conv)
+            block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
+            block2 = tf.keras.layers.BatchNormalization()(block2)
 
-            block = self._residual_block_down(input_image=block,
-                                              filters=x,
-                                              downsample=i < len(self.blocks) - 1)
+            block2 = tf.keras.layers.ReLU()(block2)
+            block2 = tf.keras.layers.Conv2D(filters*2, kernel_size=3, strides=1, padding='same')(block2)
+            block2 = tf.keras.layers.BatchNormalization()(block2)
 
-        outputs = tf.keras.layers.GlobalAveragePooling2D()(block)
-        outputs = tf.keras.layers.Concatenate(axis=-1)([text_embedding, outputs])
+            shortcut = tf.keras.layers.Conv2D(filters*2,
+                                              kernel_size=1,
+                                              strides=1,
+                                              padding='valid',
+                                              use_bias=False)(conv)
 
-        outputs = SpectralNormalization(
-            tf.keras.layers.Dense(units=1))(outputs)
+            conv = tf.keras.layers.Add()([shortcut, block2])
+            conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
+            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=2)(conv)
 
-        self.model = tf.keras.Model(inputs=[image_inputs, text_inputs],
+            filters *= 2
+
+        conv = tf.keras.layers.ReLU()(conv)
+        conv = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(conv)
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.ReLU()(conv)
+
+        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1]*conv.get_shape()[2], -1))(conv)
+
+        self.model = tf.keras.Model(inputs=image_inputs,
                                     outputs=outputs,
                                     name=self.name)
 
-    def _residual_block_down(self, input_image, filters, downsample):
+
+class StyleEncoder(tf.keras.Model):
+    """
+    An encoder model that encodes extracted style features from images into a representative style vector.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 filters,
+                 **kwargs):
         """
-        Builds a downsampling residual block with spectral normalization.
+        Initializes the model class.
 
         Args:
-            input_image : tensor
-                The input tensor for the block.
-            filters : int
-                Number of convolutional filters.
-            downsample : bool
-                Whether to apply downsampling.
-
-        Returns:
-            tensor: The output tensor of the block.
+            image_shape: list or tuple
+                Shape of the output image.
+            filters: int
+                Number of filters to be used in the first convolutional layers.
+            **kwargs
+                Additional keyword arguments for `tf.keras.Model`.
         """
 
-        block_a = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 1))(input_image)
+        super().__init__(**kwargs)
 
-        if downsample:
-            block_a = tf.keras.layers.AveragePooling2D()(block_a)
+        self.image_shape = image_shape
+        self.filters = filters
 
-        block_b = tf.keras.layers.ReLU()(input_image)
-        block_b = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-        block_b = tf.keras.layers.ReLU()(block_b)
-        block_b = SpectralNormalization(
-            tf.keras.layers.Conv2D(filters, 3, padding='same'))(block_b)
-
-        if downsample:
-            block_b = tf.keras.layers.AveragePooling2D()(block_b)
-
-        block = tf.keras.layers.Add()([block_a, block_b])
-
-        return block
+        self.build_model()
 
     def get_config(self):
         """
@@ -474,12 +609,56 @@ class DiscriminatorModel(tf.keras.Model):
 
         config = {
             "image_shape": self.image_shape,
-            "patch_shape": self.patch_shape,
-            "text_shape": self.text_shape,
-            "vocab_dim": self.vocab_dim,
-            "embedding_dim": self.embedding_dim,
-            "channels": self.channels,
-            "blocks": self.blocks,
+            "filters": self.filters,
         }
         base_config = super().get_config()
         return {**base_config, **config}
+
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        """
+        Prints a string summary of the network.
+
+        Args:
+            line_length: int, optional
+                Total length of printed lines.
+            positions: list of float, optional
+                Positions of log elements in each line.
+            print_fn: callable, optional
+                Function used for printing the summary.
+        """
+
+        self.model.summary(line_length, positions, print_fn)
+
+    def call(self, inputs, training=None, mask=None):
+        """
+        Executes the model on new inputs.
+
+        Args:
+            inputs: tensor or collection of tensors
+                The input data to the model.
+            training: bool, optional
+                If True, the model is run in training mode.
+            mask: tensor or collection of tensors, optional
+                An optional mask (or masks) to be applied on the inputs.
+
+        Returns:
+            tensor or list of tensors
+                The output from the model after processing the inputs.
+        """
+
+        return self.model(inputs, training, mask)
+
+    def build_model(self):
+        """
+        Initializes the neural network model by defining its architecture.
+        Sets `self.model` with the specified layers and configurations.
+        """
+
+        image_inputs = tf.keras.layers.Input(shape=self.image_shape)
+
+        outputs = SpectralNormalization(
+            tf.keras.layers.Dense(units=1))(image_inputs)
+
+        self.model = tf.keras.Model(inputs=image_inputs,
+                                    outputs=outputs,
+                                    name=self.name)
