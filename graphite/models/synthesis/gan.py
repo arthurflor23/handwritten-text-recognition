@@ -15,9 +15,9 @@ class SynthesisModel(tf.keras.Model):
                  latent_dim,
                  vocab_dim,
                  embedding_dim,
-                 encoder_filters,
-                 g_filter_blocks,
-                 d_filter_blocks,
+                 backbone_filter,
+                 generator_blocks,
+                 discriminator_blocks,
                  **kwargs):
 
         super().__init__(**kwargs)
@@ -27,7 +27,7 @@ class SynthesisModel(tf.keras.Model):
                                         latent_dim=latent_dim,
                                         vocab_dim=vocab_dim,
                                         embedding_dim=embedding_dim,
-                                        blocks=g_filter_blocks,
+                                        blocks=generator_blocks,
                                         name='generator')
         # self.generator.summary()
 
@@ -36,7 +36,7 @@ class SynthesisModel(tf.keras.Model):
                                                 text_shape=text_shape,
                                                 vocab_dim=vocab_dim,
                                                 embedding_dim=embedding_dim,
-                                                blocks=d_filter_blocks,
+                                                blocks=discriminator_blocks,
                                                 name='discriminator')
         # self.discriminator.summary()
 
@@ -45,12 +45,12 @@ class SynthesisModel(tf.keras.Model):
                                                       text_shape=text_shape,
                                                       vocab_dim=vocab_dim,
                                                       embedding_dim=embedding_dim,
-                                                      blocks=d_filter_blocks,
+                                                      blocks=discriminator_blocks,
                                                       name='patch_discriminator')
         # self.patch_discriminator.summary()
 
         self.style_backbone = StyleBackbone(image_shape=image_shape,
-                                            filters=encoder_filters,
+                                            filters=backbone_filter,
                                             name='style_backbone')
         # self.style_backbone.summary()
 
@@ -224,6 +224,7 @@ class GeneratorModel(tf.keras.Model):
             return block
 
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
+
         latent_inputs = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
 
@@ -651,10 +652,11 @@ class StyleEncoder(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        inputs = tf.keras.layers.Input(shape=self.features_shape)
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8, name='reduce')(inputs)
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+            name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
@@ -666,6 +668,7 @@ class StyleEncoder(tf.keras.Model):
         logvar = tf.keras.layers.Dense(self.latent_dim)(style_dense)
 
         outputs = tf.keras.layers.Lambda(
-            lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparameterize')([mu, logvar])
+            lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])),
+            name='reparameterize')([mu, logvar])
 
-        self.model = tf.keras.Model(inputs=inputs, outputs=[outputs, mu, logvar], name=self.name)
+        self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
