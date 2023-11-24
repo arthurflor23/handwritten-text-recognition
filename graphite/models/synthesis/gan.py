@@ -54,8 +54,8 @@ class SynthesisModel(tf.keras.Model):
                                             name='style_backbone')
         # self.style_backbone.summary()
 
-        self.style_encoder = StyleEncoder(image_shape=image_shape,
-                                          filters=encoder_filters,
+        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
+                                          latent_dim=latent_dim,
                                           name='style_encoder')
         self.style_encoder.summary()
 
@@ -450,7 +450,7 @@ class StyleBackbone(tf.keras.Model):
 
         Args:
             image_shape: list or tuple
-                Shape of the output image.
+                Shape of the input image.
             filters: int
                 Number of filters to be used in the first convolutional layers.
             **kwargs
@@ -474,6 +474,7 @@ class StyleBackbone(tf.keras.Model):
 
         config = {
             "image_shape": self.image_shape,
+            "features_shape": self.features_shape,
             "filters": self.filters,
         }
         base_config = super().get_config()
@@ -565,6 +566,7 @@ class StyleBackbone(tf.keras.Model):
 
         outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1]*conv.get_shape()[2], -1))(conv)
 
+        self.features_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
 
@@ -574,25 +576,23 @@ class StyleEncoder(tf.keras.Model):
     """
 
     def __init__(self,
-                 image_shape,
-                 filters,
+                 features_shape,
+                 latent_dim,
                  **kwargs):
         """
         Initializes the model class.
 
         Args:
-            image_shape: list or tuple
-                Shape of the output image.
-            filters: int
-                Number of filters to be used in the first convolutional layers.
+            features_shape: list or tuple
+                Shape of the input features.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
 
         super().__init__(**kwargs)
 
-        self.image_shape = image_shape
-        self.filters = filters
+        self.features_shape = features_shape
+        self.latent_dim = latent_dim
 
         self.build_model()
 
@@ -605,8 +605,8 @@ class StyleEncoder(tf.keras.Model):
         """
 
         config = {
-            "image_shape": self.image_shape,
-            "filters": self.filters,
+            "features_shape": self.features_shape,
+            "latent_dim": self.latent_dim,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -651,9 +651,21 @@ class StyleEncoder(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        image_inputs = tf.keras.layers.Input(shape=self.image_shape)
+        inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        outputs = SpectralNormalization(
-            tf.keras.layers.Dense(units=1))(image_inputs)
+        style = tf.keras.layers.Lambda(
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8, name='reduce')(inputs)
 
-        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+
+        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style_dense)
+        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+
+        mu = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+        logvar = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+
+        outputs = tf.keras.layers.Lambda(
+            lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparameterize')([mu, logvar])
+
+        self.model = tf.keras.Model(inputs=inputs, outputs=[outputs, mu, logvar], name=self.name)
