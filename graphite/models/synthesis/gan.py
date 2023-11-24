@@ -50,23 +50,25 @@ class SynthesisModel(tf.keras.Model):
                                                       name='patch_discriminator')
         # self.patch_discriminator.summary()
 
-        self.style_backbone = StyleBackbone(image_shape=image_shape,
-                                            filters=backbone_filter,
-                                            name='style_backbone')
+        self.style_backbone = StyleBackboneModel(image_shape=image_shape,
+                                                 filters=backbone_filter,
+                                                 name='style_backbone')
         # self.style_backbone.summary()
 
-        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
-                                          latent_dim=latent_dim,
-                                          name='style_encoder')
+        self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_shape,
+                                               latent_dim=latent_dim,
+                                               name='style_encoder')
         # self.style_encoder.summary()
 
-        self.writer_identifier = WriterIdentifier(features_shape=self.style_backbone.features_shape,
-                                                  writer_dim=writer_dim,
-                                                  name='writer_identifier')
-        self.writer_identifier.summary()
+        self.writer_identifier = WriterIdentifierModel(features_shape=self.style_backbone.features_shape,
+                                                       writer_dim=writer_dim,
+                                                       name='writer_identifier')
+        # self.writer_identifier.summary()
 
-        # self.writer_identifier = None
-        # self.recognizer = None
+        self.recognizer = RecognizerModel(features_shape=self.style_backbone.features_shape,
+                                          vocab_dim=vocab_dim,
+                                          name='recognizer')
+        self.recognizer.summary()
 
     def compile(self, learning_rate=None):
         super().compile(run_eagerly=False)
@@ -443,7 +445,7 @@ class DiscriminatorModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=[image_inputs, text_inputs], outputs=outputs, name=self.name)
 
 
-class StyleBackbone(tf.keras.Model):
+class StyleBackboneModel(tf.keras.Model):
     """
     A backbone model that extracts style patterns from images.
     """
@@ -578,7 +580,7 @@ class StyleBackbone(tf.keras.Model):
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
 
-class StyleEncoder(tf.keras.Model):
+class StyleEncoderModel(tf.keras.Model):
     """
     An encoder model that encodes extracted style features from images into a representative style vector.
     """
@@ -683,9 +685,9 @@ class StyleEncoder(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class WriterIdentifier(tf.keras.Model):
+class WriterIdentifierModel(tf.keras.Model):
     """
-    An writer identifier model that classifies the handwriting image based in the extracted style features.
+    A writer identifier model that classifies the handwriting image based in the extracted style features.
     """
 
     def __init__(self,
@@ -768,23 +770,110 @@ class WriterIdentifier(tf.keras.Model):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.Lambda(
-        #     lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
-        #     name='reduce')(feature_inputs)
+        style = tf.keras.layers.Lambda(
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+            name='reduce')(feature_inputs)
 
-        # style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
-        # style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        # style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style_dense)
-        # style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+        outputs = tf.keras.layers.Dense(self.writer_dim)(style_dense)
 
-        # mu = tf.keras.layers.Dense(self.latent_dim)(style_dense)
-        # logvar = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+        self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
-        # outputs = tf.keras.layers.Lambda(
-        #     lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])),
-        #     name='reparameterize')([mu, logvar])
 
-        outputs = tf.keras.layers.Dense(self.writer_dim)(feature_inputs)
+class RecognizerModel(tf.keras.Model):
+    """
+    A RecognizerModel model that transcripts the handwriting text from images.
+    """
+
+    def __init__(self,
+                 features_shape,
+                 vocab_dim,
+                 **kwargs):
+        """
+        Initializes the model class.
+
+        Args:
+            features_shape: list or tuple
+                Shape of the input features.
+            vocab_dim: int
+                Size of the vocabulary.
+            **kwargs
+                Additional keyword arguments for `tf.keras.Model`.
+        """
+
+        super().__init__(**kwargs)
+
+        self.features_shape = features_shape
+        self.vocab_dim = vocab_dim
+
+        self.build_model()
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "features_shape": self.features_shape,
+            "vocab_dim": self.vocab_dim,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
+
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        """
+        Prints a string summary of the network.
+
+        Args:
+            line_length: int, optional
+                Total length of printed lines.
+            positions: list of float, optional
+                Positions of log elements in each line.
+            print_fn: callable, optional
+                Function used for printing the summary.
+        """
+
+        self.model.summary(line_length, positions, print_fn)
+
+    def call(self, inputs, training=None, mask=None):
+        """
+        Executes the model on new inputs.
+
+        Args:
+            inputs: tensor or collection of tensors
+                The input data to the model.
+            training: bool, optional
+                If True, the model is run in training mode.
+            mask: tensor or collection of tensors, optional
+                An optional mask (or masks) to be applied on the inputs.
+
+        Returns:
+            tensor or list of tensors
+                The output from the model after processing the inputs.
+        """
+
+        return self.model(inputs, training, mask)
+
+    def build_model(self):
+        """
+        Initializes the neural network model by defining its architecture.
+        Sets `self.model` with the specified layers and configurations.
+        """
+
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
+
+        style = tf.keras.layers.Lambda(
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+            name='reduce')(feature_inputs)
+
+        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+
+        outputs = tf.keras.layers.Dense(self.vocab_dim)(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
