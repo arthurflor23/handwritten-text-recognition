@@ -14,6 +14,7 @@ class SynthesisModel(tf.keras.Model):
                  text_shape,
                  latent_dim,
                  vocab_dim,
+                 writer_dim,
                  embedding_dim,
                  backbone_filter,
                  generator_blocks,
@@ -57,7 +58,12 @@ class SynthesisModel(tf.keras.Model):
         self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
                                           latent_dim=latent_dim,
                                           name='style_encoder')
-        self.style_encoder.summary()
+        # self.style_encoder.summary()
+
+        self.writer_identifier = WriterIdentifier(features_shape=self.style_backbone.features_shape,
+                                                  writer_dim=writer_dim,
+                                                  name='writer_identifier')
+        self.writer_identifier.summary()
 
         # self.writer_identifier = None
         # self.recognizer = None
@@ -453,7 +459,7 @@ class StyleBackbone(tf.keras.Model):
             image_shape: list or tuple
                 Shape of the input image.
             filters: int
-                Number of filters to be used in the first convolutional layers.
+                Number of filters used in the first convolutional layers.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
@@ -461,6 +467,7 @@ class StyleBackbone(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.image_shape = image_shape
+        self.features_shape = None
         self.filters = filters
 
         self.build_model()
@@ -586,6 +593,8 @@ class StyleEncoder(tf.keras.Model):
         Args:
             features_shape: list or tuple
                 Shape of the input features.
+            latent_dim: int
+                Dimension of the latent space.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
@@ -672,3 +681,110 @@ class StyleEncoder(tf.keras.Model):
             name='reparameterize')([mu, logvar])
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
+
+
+class WriterIdentifier(tf.keras.Model):
+    """
+    An writer identifier model that classifies the handwriting image based in the extracted style features.
+    """
+
+    def __init__(self,
+                 features_shape,
+                 writer_dim,
+                 **kwargs):
+        """
+        Initializes the model class.
+
+        Args:
+            features_shape: list or tuple
+                Shape of the input features.
+            writer_dim: int
+                Number of writers.
+            **kwargs
+                Additional keyword arguments for `tf.keras.Model`.
+        """
+
+        super().__init__(**kwargs)
+
+        self.features_shape = features_shape
+        self.writer_dim = writer_dim
+
+        self.build_model()
+
+    def get_config(self):
+        """
+        Returns the config of the model.
+
+        Returns:
+            A dictionary containing the configuration of the model.
+        """
+
+        config = {
+            "features_shape": self.features_shape,
+            "writer_dim": self.writer_dim,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
+
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        """
+        Prints a string summary of the network.
+
+        Args:
+            line_length: int, optional
+                Total length of printed lines.
+            positions: list of float, optional
+                Positions of log elements in each line.
+            print_fn: callable, optional
+                Function used for printing the summary.
+        """
+
+        self.model.summary(line_length, positions, print_fn)
+
+    def call(self, inputs, training=None, mask=None):
+        """
+        Executes the model on new inputs.
+
+        Args:
+            inputs: tensor or collection of tensors
+                The input data to the model.
+            training: bool, optional
+                If True, the model is run in training mode.
+            mask: tensor or collection of tensors, optional
+                An optional mask (or masks) to be applied on the inputs.
+
+        Returns:
+            tensor or list of tensors
+                The output from the model after processing the inputs.
+        """
+
+        return self.model(inputs, training, mask)
+
+    def build_model(self):
+        """
+        Initializes the neural network model by defining its architecture.
+        Sets `self.model` with the specified layers and configurations.
+        """
+
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
+
+        # style = tf.keras.layers.Lambda(
+        #     lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+        #     name='reduce')(feature_inputs)
+
+        # style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        # style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+
+        # style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style_dense)
+        # style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+
+        # mu = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+        # logvar = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+
+        # outputs = tf.keras.layers.Lambda(
+        #     lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])),
+        #     name='reparameterize')([mu, logvar])
+
+        outputs = tf.keras.layers.Dense(self.writer_dim)(feature_inputs)
+
+        self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
