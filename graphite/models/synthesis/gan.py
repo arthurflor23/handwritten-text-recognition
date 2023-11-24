@@ -64,7 +64,7 @@ class SynthesisModel(tf.keras.Model):
         self.recognizer = RecognizerModel(features_shape=self.style_backbone.features_shape,
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
-        self.recognizer.summary()
+        # self.recognizer.summary()
 
     def compile(self, learning_rate=None):
         super().compile(run_eagerly=False)
@@ -853,13 +853,20 @@ class RecognizerModel(tf.keras.Model):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
-            name='reduce')(feature_inputs)
+        first_units = tf.math.ceil(
+            (self.features_shape[1] * self.lexical_shape[0] * self.lexical_shape[1]) / self.features_shape[0])
 
-        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
-        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+        dense = tf.keras.layers.Dense(units=first_units)(feature_inputs)
+        dense = tf.keras.layers.Reshape(target_shape=(self.lexical_shape[0]*self.lexical_shape[1], -1))(dense)
 
-        outputs = tf.keras.layers.Dense(self.lexical_shape[-1])(style_dense)
+        bgru = tf.keras.layers.Bidirectional(
+            tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(dense)
+        bgru = tf.keras.layers.Dense(units=256)(bgru)
+
+        bgru = tf.keras.layers.Bidirectional(
+            tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
+
+        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(bgru)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
