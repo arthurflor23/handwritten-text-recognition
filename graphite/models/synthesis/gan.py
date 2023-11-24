@@ -11,12 +11,11 @@ class SynthesisModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  patch_shape,
-                 text_shape,
+                 lexical_shape,
                  latent_dim,
-                 vocab_dim,
                  writer_dim,
                  embedding_dim,
-                 backbone_filter,
+                 backbone_dim,
                  generator_blocks,
                  discriminator_blocks,
                  **kwargs):
@@ -24,9 +23,8 @@ class SynthesisModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.generator = GeneratorModel(image_shape=image_shape,
-                                        text_shape=text_shape,
+                                        lexical_shape=lexical_shape,
                                         latent_dim=latent_dim,
-                                        vocab_dim=vocab_dim,
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
@@ -34,8 +32,7 @@ class SynthesisModel(tf.keras.Model):
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
-                                                text_shape=text_shape,
-                                                vocab_dim=vocab_dim,
+                                                lexical_shape=lexical_shape,
                                                 embedding_dim=embedding_dim,
                                                 blocks=discriminator_blocks,
                                                 name='discriminator')
@@ -43,15 +40,14 @@ class SynthesisModel(tf.keras.Model):
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
                                                       patch_shape=patch_shape,
-                                                      text_shape=text_shape,
-                                                      vocab_dim=vocab_dim,
+                                                      lexical_shape=lexical_shape,
                                                       embedding_dim=embedding_dim,
                                                       blocks=discriminator_blocks,
                                                       name='patch_discriminator')
         # self.patch_discriminator.summary()
 
         self.style_backbone = StyleBackboneModel(image_shape=image_shape,
-                                                 filters=backbone_filter,
+                                                 filters=backbone_dim,
                                                  name='style_backbone')
         # self.style_backbone.summary()
 
@@ -66,7 +62,7 @@ class SynthesisModel(tf.keras.Model):
         # self.writer_identifier.summary()
 
         self.recognizer = RecognizerModel(features_shape=self.style_backbone.features_shape,
-                                          vocab_dim=vocab_dim,
+                                          lexical_shape=lexical_shape,
                                           name='recognizer')
         self.recognizer.summary()
 
@@ -108,9 +104,8 @@ class GeneratorModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
-                 text_shape,
+                 lexical_shape,
                  latent_dim,
-                 vocab_dim,
                  embedding_dim,
                  blocks,
                  **kwargs):
@@ -120,12 +115,10 @@ class GeneratorModel(tf.keras.Model):
         Args:
             image_shape: list or tuple
                 Shape of the output image.
-            text_shape: list or tuple
-                Shape of the input text.
+            lexical_shape: list or tuple
+                Shape of the text sequences and vocabulary encoding.
             latent_dim: int
                 Dimension of the latent space.
-            vocab_dim: int
-                Size of the vocabulary used in embeddings.
             embedding_dim: int
                 Dimension of the embedding space.
             blocks: list or tuple
@@ -137,9 +130,8 @@ class GeneratorModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.image_shape = image_shape
-        self.text_shape = text_shape
+        self.lexical_shape = lexical_shape
         self.latent_dim = latent_dim
-        self.vocab_dim = vocab_dim
         self.embedding_dim = embedding_dim
         self.blocks = blocks
 
@@ -155,9 +147,8 @@ class GeneratorModel(tf.keras.Model):
 
         config = {
             "image_shape": self.image_shape,
-            "text_shape": self.text_shape,
+            "lexical_shape": self.lexical_shape,
             "latent_dim": self.latent_dim,
-            "vocab_dim": self.vocab_dim,
             "embedding_dim": self.embedding_dim,
             "blocks": self.blocks,
         }
@@ -236,10 +227,10 @@ class GeneratorModel(tf.keras.Model):
         latent_inputs = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
 
-        text_inputs = tf.keras.layers.Input(shape=self.text_shape)
+        text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
         text_inputs = tf.keras.layers.Flatten()(text_inputs)
 
-        text_embedding = tf.keras.layers.Embedding(input_dim=self.vocab_dim + 1,
+        text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
                                                    mask_zero=True)(text_inputs)
 
@@ -289,8 +280,7 @@ class DiscriminatorModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  patch_shape,
-                 text_shape,
-                 vocab_dim,
+                 lexical_shape,
                  embedding_dim,
                  blocks,
                  **kwargs):
@@ -302,10 +292,8 @@ class DiscriminatorModel(tf.keras.Model):
                 Shape of the input image.
             patch_shape: list, tuple or None
                 Defines whether to apply patches.
-            text_shape: list or tuple
-                Shape of the input text.
-            vocab_dim: int
-                Size of the vocabulary used in embeddings.
+            lexical_shape: list or tuple
+                Shape of the text sequences and vocabulary encoding.
             embedding_dim: int
                 Dimension of the embedding space.
             blocks: list or tuple
@@ -320,8 +308,7 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
-        self.text_shape = text_shape
-        self.vocab_dim = vocab_dim
+        self.lexical_shape = lexical_shape
         self.embedding_dim = embedding_dim
         self.blocks = blocks
 
@@ -338,8 +325,7 @@ class DiscriminatorModel(tf.keras.Model):
         config = {
             "image_shape": self.image_shape,
             "patch_shape": self.patch_shape,
-            "text_shape": self.text_shape,
-            "vocab_dim": self.vocab_dim,
+            "lexical_shape": self.lexical_shape,
             "embedding_dim": self.embedding_dim,
             "blocks": self.blocks,
         }
@@ -411,10 +397,10 @@ class DiscriminatorModel(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        text_inputs = tf.keras.layers.Input(shape=self.text_shape)
+        text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
         text_inputs = tf.keras.layers.Flatten()(text_inputs)
 
-        text_embedding = tf.keras.layers.Embedding(input_dim=self.vocab_dim + 1,
+        text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
                                                    mask_zero=True)(text_inputs)
         text_embedding = tf.keras.layers.Flatten()(text_embedding)
@@ -789,7 +775,7 @@ class RecognizerModel(tf.keras.Model):
 
     def __init__(self,
                  features_shape,
-                 vocab_dim,
+                 lexical_shape,
                  **kwargs):
         """
         Initializes the model class.
@@ -797,8 +783,8 @@ class RecognizerModel(tf.keras.Model):
         Args:
             features_shape: list or tuple
                 Shape of the input features.
-            vocab_dim: int
-                Size of the vocabulary.
+            lexical_shape: list or tuple
+                Shape of the text sequences and vocabulary encoding.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
@@ -806,7 +792,7 @@ class RecognizerModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.features_shape = features_shape
-        self.vocab_dim = vocab_dim
+        self.lexical_shape = lexical_shape
 
         self.build_model()
 
@@ -820,7 +806,7 @@ class RecognizerModel(tf.keras.Model):
 
         config = {
             "features_shape": self.features_shape,
-            "vocab_dim": self.vocab_dim,
+            "lexical_shape": self.lexical_shape,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -874,6 +860,6 @@ class RecognizerModel(tf.keras.Model):
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        outputs = tf.keras.layers.Dense(self.vocab_dim)(style_dense)
+        outputs = tf.keras.layers.Dense(self.lexical_shape[-1])(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
