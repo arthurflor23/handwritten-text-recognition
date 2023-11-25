@@ -64,7 +64,7 @@ class SynthesisModel(tf.keras.Model):
         self.recognizer = RecognizerModel(features_shape=self.style_backbone.features_shape,
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
-        # self.recognizer.summary()
+        self.recognizer.summary()
 
         # CTCLoss
         # CrossEntropyLoss
@@ -159,7 +159,13 @@ class GeneratorModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -170,9 +176,20 @@ class GeneratorModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -336,7 +353,13 @@ class DiscriminatorModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -347,9 +370,20 @@ class DiscriminatorModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -480,7 +514,13 @@ class StyleBackboneModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -491,9 +531,20 @@ class StyleBackboneModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -613,7 +664,13 @@ class StyleEncoderModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -624,9 +681,20 @@ class StyleEncoderModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -718,7 +786,13 @@ class WriterIdentifierModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -729,9 +803,20 @@ class WriterIdentifierModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -815,7 +900,13 @@ class RecognizerModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self, line_length=None, positions=None, print_fn=None):
+    def summary(self,
+                line_length=None,
+                positions=None,
+                print_fn=None,
+                expand_nested=False,
+                show_trainable=False,
+                layer_range=None):
         """
         Prints a string summary of the network.
 
@@ -826,9 +917,20 @@ class RecognizerModel(tf.keras.Model):
                 Positions of log elements in each line.
             print_fn: callable, optional
                 Function used for printing the summary.
+            expand_nested: bool, optional
+                Whether to expand the nested models.
+            show_trainable: bool, optional
+                Whether to show if a layer is trainable.
+            layer_range: list or tuple, optional
+                Range of layers to include in the model summary.
         """
 
-        self.model.summary(line_length, positions, print_fn)
+        self.model.summary(line_length,
+                           positions,
+                           print_fn,
+                           expand_nested,
+                           show_trainable,
+                           layer_range)
 
     def call(self, inputs, training=None, mask=None):
         """
