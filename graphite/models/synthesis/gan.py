@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-from layers import SpectralSelfAttention
-from layers import ConditionalBatchNormalization
-from layers import SpectralNormalization
-from layers import ExtractPatches
+from models.components import SpectralSelfAttention
+from models.components import ConditionalBatchNormalization
+from models.components import SpectralNormalization
+from models.components import ExtractPatches
 
 
 class SynthesisModel(tf.keras.Model):
@@ -65,6 +65,10 @@ class SynthesisModel(tf.keras.Model):
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
         # self.recognizer.summary()
+
+        # CTCLoss
+        # CrossEntropyLoss
+        # CXLoss
 
     def compile(self, learning_rate=None):
         super().compile(run_eagerly=False)
@@ -770,7 +774,7 @@ class WriterIdentifierModel(tf.keras.Model):
 
 class RecognizerModel(tf.keras.Model):
     """
-    A RecognizerModel model that transcripts the handwriting text from images.
+    A recognizer model that transcripts the handwriting text from images.
     """
 
     def __init__(self,
