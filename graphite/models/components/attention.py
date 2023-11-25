@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from layers.normalization import SpectralNormalization
+from models.components.normalization import SpectralNormalization
 
 
 class SpectralSelfAttention(tf.keras.layers.Layer):
