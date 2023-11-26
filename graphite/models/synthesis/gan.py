@@ -4,6 +4,8 @@ from models.components import SpectralSelfAttention
 from models.components import ConditionalBatchNormalization
 from models.components import SpectralNormalization
 from models.components import ExtractPatches
+from models.components import CTCLoss
+from models.components import CXLoss
 
 
 class SynthesisModel(tf.keras.Model):
@@ -56,31 +58,35 @@ class SynthesisModel(tf.keras.Model):
                                                name='style_encoder')
         # self.style_encoder.summary()
 
-        self.writer_identifier = WriterIdentifierModel(features_shape=self.style_backbone.features_shape,
-                                                       writer_dim=writer_dim,
-                                                       name='writer_identifier')
-        # self.writer_identifier.summary()
+        self.identifier = IdentifierModel(features_shape=self.style_backbone.features_shape,
+                                          writer_dim=writer_dim,
+                                          name='identifier')
+        # self.identifier.summary()
 
         self.recognizer = RecognizerModel(features_shape=self.style_backbone.features_shape,
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
-        self.recognizer.summary()
+        # self.recognizer.summary()
 
-        # CTCLoss
-        # CrossEntropyLoss
-        # CXLoss
+    def compile(self, learning_rate=0.001):
 
-    def compile(self, learning_rate=None):
         super().compile(run_eagerly=False)
 
-        self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=learning_rate)
+        self.generator_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.discriminator_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
 
-        # self.generator.compile(loss='mse', optimizer=self.optimizer)
+        self.cx_loss = CXLoss()
+        self.ctc_loss = CTCLoss()
+        self.kld_loss = tf.keras.losses.KLDivergence()
+        self.classify_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def train_step(self, data):
-        (image_inputs, texv_inputs), _ = data
+        (image_inputs, text_inputs, writer_inputs), _ = data
 
-    #     with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True) as tape:
+            # Forward pass through the generator to create fake images
+            fake_images = self.generator([image_inputs, text_inputs], training=True)
+
     #         # Generate images
     #         generated_images = self.generator(image_inputs, texv_inputs)
 
@@ -743,7 +749,7 @@ class StyleEncoderModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class WriterIdentifierModel(tf.keras.Model):
+class IdentifierModel(tf.keras.Model):
     """
     A writer identifier model that classifies the handwriting image based in the extracted style features.
     """
@@ -852,7 +858,7 @@ class WriterIdentifierModel(tf.keras.Model):
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        outputs = tf.keras.layers.Dense(self.writer_dim)(style_dense)
+        outputs = tf.keras.layers.Dense(self.writer_dim, activation='relu')(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
