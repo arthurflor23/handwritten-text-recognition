@@ -14,10 +14,10 @@ class SynthesisModel(tf.keras.Model):
                  image_shape,
                  patch_shape,
                  lexical_shape,
-                 latent_dim,
-                 writer_dim,
-                 embedding_dim,
+                 writer_shape,
                  backbone_dim,
+                 latent_dim,
+                 embedding_dim,
                  generator_blocks,
                  discriminator_blocks,
                  **kwargs):
@@ -59,7 +59,7 @@ class SynthesisModel(tf.keras.Model):
         # self.style_encoder.summary()
 
         self.identifier = IdentifierModel(features_shape=self.style_backbone.features_shape,
-                                          writer_dim=writer_dim,
+                                          writer_shape=writer_shape,
                                           name='identifier')
         # self.identifier.summary()
 
@@ -81,11 +81,18 @@ class SynthesisModel(tf.keras.Model):
         self.classify_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def train_step(self, data):
-        (image_inputs, text_inputs, writer_inputs), _ = data
+
+        image_inputs, lexical_inputs, writer_inputs = data
 
         with tf.GradientTape(persistent=True) as tape:
+
+            sample = tf.random.normal((tf.shape(image_inputs)[0], self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
+            print('sample', sample)
+
+            exit()
+
             # Forward pass through the generator to create fake images
-            fake_images = self.generator([image_inputs, text_inputs], training=True)
+            fake_images = self.generator([sample, text_inputs], training=True)
 
     #         # Generate images
     #         generated_images = self.generator(image_inputs, texv_inputs)
@@ -323,8 +330,6 @@ class DiscriminatorModel(tf.keras.Model):
                 Shape of the text sequences and vocabulary encoding.
             embedding_dim: int
                 Dimension of the embedding space.
-            blocks: list or tuple
-                Blocks of channels.
             blocks: list or tuple
                 Blocks of channels.
             **kwargs
@@ -756,7 +761,7 @@ class IdentifierModel(tf.keras.Model):
 
     def __init__(self,
                  features_shape,
-                 writer_dim,
+                 writer_shape,
                  **kwargs):
         """
         Initializes the model class.
@@ -764,7 +769,7 @@ class IdentifierModel(tf.keras.Model):
         Args:
             features_shape: list or tuple
                 Shape of the input features.
-            writer_dim: int
+            writer_shape: list or tuple
                 Number of writers.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -773,7 +778,7 @@ class IdentifierModel(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.features_shape = features_shape
-        self.writer_dim = writer_dim
+        self.writer_shape = writer_shape
 
         self.build_model()
 
@@ -787,7 +792,7 @@ class IdentifierModel(tf.keras.Model):
 
         config = {
             "features_shape": self.features_shape,
-            "writer_dim": self.writer_dim,
+            "writer_shape": self.writer_shape,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -858,7 +863,7 @@ class IdentifierModel(tf.keras.Model):
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        outputs = tf.keras.layers.Dense(self.writer_dim, activation='relu')(style_dense)
+        outputs = tf.keras.layers.Dense(self.writer_shape[0], activation='relu')(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
