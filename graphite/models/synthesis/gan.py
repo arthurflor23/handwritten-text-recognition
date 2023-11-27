@@ -30,7 +30,7 @@ class SynthesisModel(tf.keras.Model):
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
-        self.generator.summary()
+        # self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
@@ -81,7 +81,6 @@ class SynthesisModel(tf.keras.Model):
         self.classify_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def train_step(self, data):
-
         (aug_image_inputs, aug_text_inputs), (image_inputs, text_inputs, writer_inputs) = data
 
         # aug_image_inputs.set_shape([None] + self.generator.image_shape)
@@ -152,25 +151,7 @@ class SynthesisModel(tf.keras.Model):
             # print('#####################')
             # exit()
 
-        #     # Forward pass through the generator to create fake images
-        #     fake_images = self.generator([sample, text_inputs], training=True)
-
-    #         # Generate images
-    #         generated_images = self.generator(image_inputs, texv_inputs)
-
-    #         # Get the dynamic shape of the generated images
-    #         dynamic_shape = tf.shape(generated_images)
-
-    #         # Create dummy target data for loss calculation with the dynamic shape
-    #         target = tf.random.normal(dynamic_shape, dtype=generated_images.dtype)
-
-    #         # Simple loss function (mean squared error)
-    #         loss = tf.reduce_mean(tf.square(generated_images - target))
-
-    #     # Calculate gradients and update model weights
-    #     gradients = tape.gradient(loss, self.generator.trainable_variables)
-    #     self.optimizer.apply_gradients(zip(gradients, self.generator.trainable_variables))
-
+        # calculate discriminator gradients and update model weights
         disc_gradients = tape.gradient(disc_loss, self.discriminator.trainable_variables)
         self.discriminator_optimizer.apply_gradients(zip(disc_gradients, self.discriminator.trainable_variables))
 
@@ -521,7 +502,7 @@ class DiscriminatorModel(tf.keras.Model):
             block = SpectralNormalization(
                 tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(image_inputs)
         else:
-            patch_inputs = ExtractPatches(shape=self.image_shape, patch_shape=self.patch_shape)(image_inputs)
+            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
             block = SpectralNormalization(
                 tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(patch_inputs)
