@@ -82,23 +82,75 @@ class SynthesisModel(tf.keras.Model):
 
     def train_step(self, data):
 
-        # (image_inputs, image_aug_inputs, lexical_inputs, lexical_aug_inputs, writer_inputs), _ = data
-        (image_aug_inputs, lexical_aug_inputs), (image_inputs, lexical_inputs, writer_inputs) = data
+        (aug_image_inputs, aug_text_inputs), (image_inputs, text_inputs, writer_inputs) = data
+
+        # aug_image_inputs.set_shape([None] + self.generator.image_shape)
+        # aug_text_inputs.set_shape([None] + self.generator.lexical_shape[:-1])
+
+        # image_inputs.set_shape([None] + self.generator.image_shape)
+        # text_inputs.set_shape([None] + self.generator.lexical_shape[:-1])
+        # writer_inputs.set_shape([None])
 
         with tf.GradientTape(persistent=True) as tape:
-            image_fake_inputs = tf.random.normal(
-                (tf.shape(lexical_aug_inputs)[0], self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
+            # fake_latent + aug_text = fake_full_images
+            batch_size = tf.shape(image_inputs)[0]
+            latent_dim = self.style_encoder.latent_dim
 
-            print('########################')
-            print(image_fake_inputs)
-            print(image_fake_inputs.shape)
-            print(lexical_aug_inputs.shape)
-            print('########################')
+            fake_latent_inputs = tf.random.normal((batch_size, latent_dim), mean=0.0, stddev=1.0)
+            fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs])
 
-            self.generator([image_fake_inputs, lexical_aug_inputs])
+            # real_latent + aug_text = fake_partial_images
+            real_features_inputs, _ = self.style_backbone(image_inputs)
+            real_latent_inputs, _, _ = self.style_encoder(real_features_inputs)
+            fake_partial_images = self.generator([real_latent_inputs, aug_text_inputs])
 
-            # print('sample', sample)
-            exit()
+            # real_latent + real_text = fake_real_images
+            fake_real_images = self.generator([real_latent_inputs, text_inputs])
+
+            # concat and shuffle fake inputs
+            fake_image_inputs = tf.concat([fake_full_images, fake_partial_images, fake_real_images], axis=0)
+            fake_text_inputs = tf.concat([aug_text_inputs, aug_text_inputs, text_inputs], axis=0)
+
+            indices = tf.range(start=0, limit=tf.shape(fake_image_inputs)[0], dtype=tf.int32)
+            shuffled_indices = tf.random.shuffle(indices)
+
+            fake_image_inputs = tf.gather(fake_image_inputs, shuffled_indices)
+            fake_text_inputs = tf.gather(fake_text_inputs, shuffled_indices)
+
+            # discriminator with fake inputs
+            fake_disc = self.discriminator([fake_image_inputs, fake_text_inputs])
+            fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
+
+            # patch discrimiantor with fake inputs
+            fake_patch_disc = self.patch_discriminator([fake_image_inputs, fake_text_inputs])
+            fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
+
+            # concat and shuffle real inputs
+            real_image_inputs = tf.concat([image_inputs, aug_image_inputs], axis=0)
+            real_text_inputs = tf.concat([text_inputs, aug_text_inputs], axis=0)
+
+            indices = tf.range(start=0, limit=tf.shape(real_image_inputs)[0], dtype=tf.int32)
+            shuffled_indices = tf.random.shuffle(indices)
+
+            real_image_inputs = tf.gather(real_image_inputs, shuffled_indices)
+            real_text_inputs = tf.gather(real_text_inputs, shuffled_indices)
+
+            # discriminator with real inputs
+            real_disc = self.discriminator([real_image_inputs, real_text_inputs])
+            real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
+
+            # patch discrimiantor with fake inputs
+            real_patch_disc = self.patch_discriminator([real_image_inputs, real_text_inputs])
+            real_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_disc))
+
+            # discriminator loss
+            disc_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
+
+            # print('#####################')
+            # print(fake_disc_loss, fake_patch_disc_loss)
+            # print(real_disc_loss, real_patch_disc_loss)
+            # print('#####################')
+            # exit()
 
         #     # Forward pass through the generator to create fake images
         #     fake_images = self.generator([sample, text_inputs], training=True)
@@ -119,8 +171,10 @@ class SynthesisModel(tf.keras.Model):
     #     gradients = tape.gradient(loss, self.generator.trainable_variables)
     #     self.optimizer.apply_gradients(zip(gradients, self.generator.trainable_variables))
 
-    #     return {"loss": loss}
-        return {"loss": 0.0}
+        disc_gradients = tape.gradient(disc_loss, self.discriminator.trainable_variables)
+        self.discriminator_optimizer.apply_gradients(zip(disc_gradients, self.discriminator.trainable_variables))
+
+        return {"disc_loss": disc_loss}
 
 
 class GeneratorModel(tf.keras.Model):
@@ -467,7 +521,7 @@ class DiscriminatorModel(tf.keras.Model):
             block = SpectralNormalization(
                 tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(image_inputs)
         else:
-            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+            patch_inputs = ExtractPatches(shape=self.image_shape, patch_shape=self.patch_shape)(image_inputs)
 
             block = SpectralNormalization(
                 tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(patch_inputs)
