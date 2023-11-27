@@ -30,7 +30,7 @@ class SynthesisModel(tf.keras.Model):
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
-        # self.generator.summary()
+        self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
@@ -82,17 +82,26 @@ class SynthesisModel(tf.keras.Model):
 
     def train_step(self, data):
 
-        image_inputs, lexical_inputs, writer_inputs = data
+        # (image_inputs, image_aug_inputs, lexical_inputs, lexical_aug_inputs, writer_inputs), _ = data
+        (image_aug_inputs, lexical_aug_inputs), (image_inputs, lexical_inputs, writer_inputs) = data
 
         with tf.GradientTape(persistent=True) as tape:
+            image_fake_inputs = tf.random.normal(
+                (tf.shape(lexical_aug_inputs)[0], self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
 
-            sample = tf.random.normal((tf.shape(image_inputs)[0], self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
-            print('sample', sample)
+            print('########################')
+            print(image_fake_inputs)
+            print(image_fake_inputs.shape)
+            print(lexical_aug_inputs.shape)
+            print('########################')
 
+            self.generator([image_fake_inputs, lexical_aug_inputs])
+
+            # print('sample', sample)
             exit()
 
-            # Forward pass through the generator to create fake images
-            fake_images = self.generator([sample, text_inputs], training=True)
+        #     # Forward pass through the generator to create fake images
+        #     fake_images = self.generator([sample, text_inputs], training=True)
 
     #         # Generate images
     #         generated_images = self.generator(image_inputs, texv_inputs)
@@ -258,18 +267,18 @@ class GeneratorModel(tf.keras.Model):
 
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
 
-        latent_inputs = tf.keras.layers.Lambda(
+        latent_expanded = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
 
         text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-        text_inputs = tf.keras.layers.Flatten()(text_inputs)
+        text_flattened = tf.keras.layers.Flatten()(text_inputs)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
-                                                   mask_zero=True)(text_inputs)
+                                                   mask_zero=True)(text_flattened)
 
         latent_tiled = tf.keras.layers.Lambda(
-            lambda x: tf.tile(x[0], [1, tf.shape(x[1])[1], 1]), name='tile')([latent_inputs, text_embedding])
+            lambda x: tf.tile(x[0], [1, tf.shape(x[1])[1], 1]), name='tile')([latent_expanded, text_embedding])
 
         latent_text_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
 
@@ -447,11 +456,11 @@ class DiscriminatorModel(tf.keras.Model):
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
         text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-        text_inputs = tf.keras.layers.Flatten()(text_inputs)
+        text_flattened = tf.keras.layers.Flatten()(text_inputs)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
-                                                   mask_zero=True)(text_inputs)
+                                                   mask_zero=True)(text_flattened)
         text_embedding = tf.keras.layers.Flatten()(text_embedding)
 
         if self.patch_shape is None:
@@ -863,7 +872,7 @@ class IdentifierModel(tf.keras.Model):
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        outputs = tf.keras.layers.Dense(self.writer_shape[0], activation='relu')(style_dense)
+        outputs = tf.keras.layers.Dense(self.writer_shape[0])(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
