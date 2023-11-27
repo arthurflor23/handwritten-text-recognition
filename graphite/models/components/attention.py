@@ -32,6 +32,7 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
                 Shape of the input tensor.
         """
 
+        self.shape = input_shape
         self.num_channels = input_shape[-1]
         self.hw = input_shape[1] * input_shape[2]
 
@@ -59,15 +60,15 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         g = self.conv_g(x)
         h = self.conv_h(x)
 
-        f = tf.reshape(tensor=f, shape=[self.hw, f.shape[-1]])
-        g = tf.reshape(tensor=g, shape=[self.hw, g.shape[-1]])
-        h = tf.reshape(tensor=h, shape=[self.hw, h.shape[-1]])
+        f = tf.reshape(tensor=f, shape=[-1, self.hw, f.shape[-1]])
+        g = tf.reshape(tensor=g, shape=[-1, self.hw, g.shape[-1]])
+        h = tf.reshape(tensor=h, shape=[-1, self.hw, h.shape[-1]])
 
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(logits=s)
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(tensor=o, shape=[-1, tf.shape(x)[1], tf.shape(x)[2], self.num_channels//2])
+        o = tf.reshape(tensor=o, shape=[-1, self.shape[1], self.shape[2], self.num_channels // 2])
         o = self.conv_o(o)
 
         return self.gamma * o + x
