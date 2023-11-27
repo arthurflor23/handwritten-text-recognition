@@ -67,7 +67,7 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         beta = tf.nn.softmax(logits=s)
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(tensor=o, shape=[-1, x.shape[1], x.shape[2], self.num_channels//2])
+        o = tf.reshape(tensor=o, shape=[-1, tf.shape(x)[1], tf.shape(x)[2], self.num_channels//2])
         o = self.conv_o(o)
 
         return self.gamma * o + x
