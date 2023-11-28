@@ -42,8 +42,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.beta_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
         self.gamma_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
 
-        self.test_mean = self.add_weight(shape=(self.num_channels,), initializer='zeros', trainable=False)
-        self.test_var = self.add_weight(shape=(self.num_channels,), initializer='ones', trainable=False)
+        self.mean = self.add_weight(shape=(self.num_channels,), initializer='zeros', trainable=False)
+        self.variance = self.add_weight(shape=(self.num_channels,), initializer='ones', trainable=False)
 
     def call(self, inputs, training=None):
         """
@@ -68,24 +68,18 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         gamma = tf.reshape(gamma, shape=[-1, 1, 1, self.num_channels])
 
         if training:
-            batch_mean, batch_var = tf.nn.moments(x=inputs, axes=[0, 1, 2])
+            mean, variance = tf.nn.moments(x=inputs, axes=[0, 1, 2])
 
-            self.test_mean = self.test_mean * self.momentum + batch_mean * (1 - self.momentum)
-            self.test_var = self.test_var * self.momentum + batch_var * (1 - self.momentum)
+            self.mean.assign(self.mean * self.momentum + mean * (1 - self.momentum))
+            self.variance.assign(self.variance * self.momentum + variance * (1 - self.momentum))
 
-            return tf.nn.batch_normalization(x=inputs,
-                                             mean=batch_mean,
-                                             variance=batch_var,
-                                             offset=beta,
-                                             scale=gamma,
-                                             variance_epsilon=self.epsilon)
+        else:
+            mean = self.mean
+            variance = self.variance
 
-        return tf.nn.batch_normalization(x=inputs,
-                                         mean=self.test_mean,
-                                         variance=self.test_var,
-                                         offset=beta,
-                                         scale=gamma,
-                                         variance_epsilon=self.epsilon)
+        normalized = tf.nn.batch_normalization(inputs, mean, variance, beta, gamma, self.epsilon)
+
+        return normalized
 
     def get_config(self):
         """
@@ -98,6 +92,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         config = {
             "momentum": self.momentum,
             "epsilon": self.epsilon,
+            "mean": self.mean,
+            "variance": self.variance,
         }
         base_config = super().get_config()
         return {**base_config, **config}
