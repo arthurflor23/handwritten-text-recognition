@@ -30,8 +30,7 @@ class SynthesisModel(tf.keras.Model):
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
-        # self.generator.summary()
-        # exit()
+        self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
@@ -39,7 +38,7 @@ class SynthesisModel(tf.keras.Model):
                                                 embedding_dim=embedding_dim,
                                                 blocks=discriminator_blocks,
                                                 name='discriminator')
-        self.discriminator.summary()
+        # self.discriminator.summary()
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
                                                       patch_shape=patch_shape,
@@ -68,6 +67,7 @@ class SynthesisModel(tf.keras.Model):
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
         # self.recognizer.summary()
+        exit()
 
     def compile(self, learning_rate=0.001):
 
@@ -89,20 +89,20 @@ class SynthesisModel(tf.keras.Model):
         fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
 
         with tf.GradientTape() as d_tape, tf.GradientTape() as g_tape:
-            # fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
-            # g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
+            fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
+            g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
 
-            fake_disc = self.discriminator([aug_image_inputs, aug_text_inputs], training=True)
+            fake_disc = self.discriminator(aug_image_inputs, training=True)
             d_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
-        # g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
-        # self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
+        g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
+        self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
 
         d_grads = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
         self.d_optimizer.apply_gradients(zip(d_grads, self.discriminator.trainable_weights))
 
         return {
-            # "g_loss": g_loss,
+            "g_loss": g_loss,
             "d_loss": d_loss,
         }
 
@@ -291,17 +291,13 @@ class GeneratorModel(tf.keras.Model):
                 h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
                 x = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(x)
 
-            h = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
+            h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
             h = ConditionalBatchNormalization()([h, y])
             h = tf.keras.layers.ReLU()(h)
 
-            h = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
-
-            x = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
+            h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
+            x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -475,63 +471,44 @@ class DiscriminatorModel(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        def residual_block_down(input_image, filters, downsample):
+        def residual_block_down(x, filters, ops_early=True, downsample=False):
+            h = x
 
-            block_a = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=1))(input_image)
+            if ops_early:
+                h = tf.keras.layers.ReLU()(x)
 
-            if downsample:
-                block_a = tf.keras.layers.AveragePooling2D()(block_a)
+            h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
+            h = tf.keras.layers.ReLU()(h)
+            h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
-            block_b = tf.keras.layers.ReLU()(input_image)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
-
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+            if ops_early:
+                x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             if downsample:
-                block_b = tf.keras.layers.AveragePooling2D()(block_b)
+                h = tf.keras.layers.AveragePooling2D()(h)
+                x = tf.keras.layers.AveragePooling2D()(x)
 
-            block = tf.keras.layers.Add()([block_a, block_b])
+            if not ops_early:
+                x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
-            return block
+            return tf.keras.layers.Add()([h, x])
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-        text_flattened = tf.keras.layers.Flatten()(text_inputs)
+        block = image_inputs if self.patch_shape is None \
+            else ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
-        text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
-                                                   output_dim=self.embedding_dim,
-                                                   mask_zero=True)(text_flattened)
-        text_embedding = tf.keras.layers.Flatten()(text_embedding)
-
-        if self.patch_shape is None:
-            block = SpectralNormalization(
-                tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(image_inputs)
-        else:
-            patch_inputs = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
-
-            block = SpectralNormalization(
-                tf.keras.layers.Conv2D(self.blocks[-1], kernel_size=3, strides=1, padding='same'))(patch_inputs)
-
-        for i, x in enumerate(self.blocks):
-            if i % 2 == 0:
+        for i, filters in enumerate(self.blocks):
+            if i > 0 and (i == len(self.blocks) - 1 or i % 2 == 0):
                 block = SpectralSelfAttention()(block)
 
-            block = residual_block_down(input_image=block,
-                                        filters=x,
-                                        downsample=i < len(self.blocks) - 1)
+            block = residual_block_down(block, filters, ops_early=(i > 0), downsample=(i < len(self.blocks) - 1))
 
-        outputs = tf.keras.layers.GlobalAveragePooling2D()(block)
-        outputs = tf.keras.layers.Concatenate(axis=-1)([text_embedding, outputs])
+        outputs = tf.keras.layers.ReLU()(block)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]))(outputs)
+        outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
-        outputs = SpectralNormalization(
-            tf.keras.layers.Dense(units=1))(outputs)
-
-        self.model = tf.keras.Model(inputs=[image_inputs, text_inputs], outputs=outputs, name=self.name)
+        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
 
 
 class StyleBackboneModel(tf.keras.Model):
