@@ -30,7 +30,8 @@ class SynthesisModel(tf.keras.Model):
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
-        self.generator.summary()
+        # self.generator.summary()
+        # exit()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
@@ -38,7 +39,7 @@ class SynthesisModel(tf.keras.Model):
                                                 embedding_dim=embedding_dim,
                                                 blocks=discriminator_blocks,
                                                 name='discriminator')
-        # self.discriminator.summary()
+        self.discriminator.summary()
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
                                                       patch_shape=patch_shape,
@@ -88,21 +89,21 @@ class SynthesisModel(tf.keras.Model):
         fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
 
         with tf.GradientTape() as d_tape, tf.GradientTape() as g_tape:
-            fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
-            fake_disc = self.discriminator([fake_full_images, aug_text_inputs], training=True)
+            # fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
+            # g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
 
+            fake_disc = self.discriminator([aug_image_inputs, aug_text_inputs], training=True)
             d_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
-            g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
-        g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
-        self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
+        # g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
+        # self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
 
         d_grads = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
         self.d_optimizer.apply_gradients(zip(d_grads, self.discriminator.trainable_weights))
 
         return {
+            # "g_loss": g_loss,
             "d_loss": d_loss,
-            "g_loss": g_loss,
         }
 
         # # fake_latent + aug_text = fake_full_images
@@ -282,35 +283,35 @@ class GeneratorModel(tf.keras.Model):
         Sets `self.model` with the specified layers and configurations.
         """
 
-        def residual_block_up(input_image, dense_latent, embedding, index, filters, blocks, upsample):
+        def residual_block_up(x, y, filters, upsample=None):
+            h = ConditionalBatchNormalization()([x, y])
+            h = tf.keras.layers.ReLU()(h)
 
-            chunk = tf.keras.layers.Lambda(
-                lambda x: tf.split(x, num_or_size_splits=dense_latent.shape[-1]//blocks, axis=-1)[index],
-                name=f'split_{index+1}')(dense_latent)
+            if upsample is not None:
+                h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
+                x = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(x)
 
-            chunk_concat = tf.keras.layers.Concatenate(axis=-1)([chunk, embedding])
-            chunk_concat = tf.keras.layers.Flatten()(chunk_concat)
+            h = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
-            block_a = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(input_image)
-            block_a = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=1))(block_a)
+            h = ConditionalBatchNormalization()([h, y])
+            h = tf.keras.layers.ReLU()(h)
 
-            block_b = ConditionalBatchNormalization()([input_image, chunk_concat])
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+            h = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
-            block_b = ConditionalBatchNormalization()([block_b, chunk_concat])
-            block_b = tf.keras.layers.ReLU()(block_b)
-            block_b = SpectralNormalization(
-                tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(block_b)
+            x = SpectralNormalization(
+                tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
-            block = tf.keras.layers.Add()([block_a, block_b])
-
-            return block
+            return tf.keras.layers.Add()([h, x])
 
         latent_inputs = tf.keras.layers.Input(shape=(self.latent_dim,))
+
+        latent_dense = SpectralNormalization(
+            tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks)))(latent_inputs)
+
+        chunks = tf.keras.layers.Lambda(
+            lambda x: tf.convert_to_tensor(tf.split(x, len(self.blocks), axis=-1)), name='split')(latent_dense)
 
         latent_expanded = tf.keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
@@ -325,29 +326,28 @@ class GeneratorModel(tf.keras.Model):
         latent_tiled = tf.keras.layers.Lambda(
             lambda x: tf.tile(x[0], [1, tf.shape(x[1])[1], 1]), name='tile')([latent_expanded, text_embedding])
 
-        latent_text_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
-
-        latent_dense = SpectralNormalization(tf.keras.layers.Dense(units=4*4*self.blocks[0]))(latent_text_concat)
-
-        latent_feature_dense = SpectralNormalization(
-            tf.keras.layers.Dense(units=self.latent_dim*len(self.blocks)))(latent_dense)
-
-        latent_reshaped = tf.keras.layers.Reshape(target_shape=(latent_dense.get_shape()[1]*4, 4, -1))(latent_dense)
+        latent_text = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
+        latent_text = SpectralNormalization(tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0]))(latent_text)
+        latent_text = tf.keras.layers.Reshape(target_shape=(latent_text.get_shape()[1] * 4, 4, -1))(latent_text)
 
         block = tf.keras.layers.Lambda(
-            lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_reshaped)
+            lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_text)
 
-        for i, x in enumerate(self.blocks):
-            if i > 0 and i % 2 == 0:
+        for i, filters in enumerate(self.blocks):
+            upsample = None
+
+            if i > 0 and (i == len(self.blocks) - 1 or i % 2 == 0):
                 block = SpectralSelfAttention()(block)
 
-            block = residual_block_up(input_image=block,
-                                      dense_latent=latent_feature_dense,
-                                      embedding=text_embedding,
-                                      index=i,
-                                      filters=x,
-                                      blocks=len(self.blocks),
-                                      upsample=(2, 2))
+                height_upsample_required = block.shape[1] < self.image_shape[0]
+                width_upsample_required = block.shape[2] < self.image_shape[1]
+
+                if height_upsample_required or width_upsample_required:
+                    upsample_height = 2 if height_upsample_required else 1
+                    upsample_width = 2 if width_upsample_required else 1
+                    upsample = (upsample_height, upsample_width)
+
+            block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.ReLU()(outputs)
