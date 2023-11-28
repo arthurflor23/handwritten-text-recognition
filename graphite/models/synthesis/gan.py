@@ -15,9 +15,9 @@ class SynthesisModel(tf.keras.Model):
                  patch_shape,
                  lexical_shape,
                  writer_shape,
-                 backbone_dim,
                  latent_dim,
                  embedding_dim,
+                 backbone_blocks,
                  generator_blocks,
                  discriminator_blocks,
                  **kwargs):
@@ -30,7 +30,7 @@ class SynthesisModel(tf.keras.Model):
                                         embedding_dim=embedding_dim,
                                         blocks=generator_blocks,
                                         name='generator')
-        self.generator.summary()
+        # self.generator.summary()
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
@@ -49,14 +49,14 @@ class SynthesisModel(tf.keras.Model):
         # self.patch_discriminator.summary()
 
         self.style_backbone = StyleBackboneModel(image_shape=image_shape,
-                                                 filters=backbone_dim,
+                                                 blocks=backbone_blocks,
                                                  name='style_backbone')
-        # self.style_backbone.summary()
+        self.style_backbone.summary()
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_shape,
                                                latent_dim=latent_dim,
                                                name='style_encoder')
-        # self.style_encoder.summary()
+        self.style_encoder.summary()
 
         self.identifier = IdentifierModel(features_shape=self.style_backbone.features_shape,
                                           writer_shape=writer_shape,
@@ -67,7 +67,7 @@ class SynthesisModel(tf.keras.Model):
                                           lexical_shape=lexical_shape,
                                           name='recognizer')
         # self.recognizer.summary()
-        exit()
+        # exit()
 
     def compile(self, learning_rate=0.001):
 
@@ -88,22 +88,48 @@ class SynthesisModel(tf.keras.Model):
         latent_shape = (tf.shape(image_inputs)[0], self.style_encoder.latent_dim)
         fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
 
-        with tf.GradientTape() as d_tape, tf.GradientTape() as g_tape:
-            fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
-            g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
+        with tf.GradientTape() as d_tape, \
+                tf.GradientTape() as g_tape, \
+                tf.GradientTape() as p_tape, \
+                tf.GradientTape() as b_tape, \
+                tf.GradientTape() as e_tape:
 
-            fake_disc = self.discriminator(aug_image_inputs, training=True)
-            d_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
+            # fake_full_images = self.generator([fake_latent_inputs, aug_text_inputs], training=True)
+            # g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
 
-        g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
-        self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
+            # fake_disc = self.discriminator(aug_image_inputs, training=True)
+            # d_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
-        d_grads = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
-        self.d_optimizer.apply_gradients(zip(d_grads, self.discriminator.trainable_weights))
+            # fake_disc = self.patch_discriminator(aug_image_inputs, training=True)
+            # p_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
+
+            fake_disc, _ = self.style_backbone(aug_image_inputs, training=True)
+            # b_loss = tf.reduce_mean(fake_disc)
+
+            fake_disc, _, _ = self.style_encoder(fake_disc, training=True)
+            e_loss = tf.reduce_mean(fake_disc)
+
+        # g_grads = g_tape.gradient(g_loss, self.generator.trainable_weights)
+        # self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_weights))
+
+        # d_grads = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
+        # self.d_optimizer.apply_gradients(zip(d_grads, self.discriminator.trainable_weights))
+
+        # p_grads = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
+        # self.d_optimizer.apply_gradients(zip(p_grads, self.patch_discriminator.trainable_weights))
+
+        # b_grads = b_tape.gradient(b_loss, self.style_backbone.trainable_weights)
+        # self.d_optimizer.apply_gradients(zip(b_grads, self.style_backbone.trainable_weights))
+
+        e_grads = e_tape.gradient(e_loss, self.style_backbone.trainable_weights)
+        self.d_optimizer.apply_gradients(zip(e_grads, self.style_backbone.trainable_weights))
 
         return {
-            "g_loss": g_loss,
-            "d_loss": d_loss,
+            # "g_loss": g_loss,
+            # "d_loss": d_loss,
+            # "p_loss": p_loss,
+            # "b_loss": b_loss,
+            "e_loss": e_loss,
         }
 
         # # fake_latent + aug_text = fake_full_images
@@ -518,7 +544,7 @@ class StyleBackboneModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
-                 filters,
+                 blocks,
                  **kwargs):
         """
         Initializes the model class.
@@ -526,8 +552,8 @@ class StyleBackboneModel(tf.keras.Model):
         Args:
             image_shape: list or tuple
                 Shape of the input image.
-            filters: int
-                Number of filters used in the first convolutional layers.
+            blocks: list or tuple
+                Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
         """
@@ -536,7 +562,7 @@ class StyleBackboneModel(tf.keras.Model):
 
         self.image_shape = image_shape
         self.features_shape = None
-        self.filters = filters
+        self.blocks = blocks
 
         self.build_model()
 
@@ -551,7 +577,7 @@ class StyleBackboneModel(tf.keras.Model):
         config = {
             "image_shape": self.image_shape,
             "features_shape": self.features_shape,
-            "filters": self.filters,
+            "blocks": self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -615,12 +641,12 @@ class StyleBackboneModel(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
+        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
+
+        blocks = list(self.blocks) + [self.blocks[-1] * 2]
         feats = []
-        filters = self.filters
 
-        conv = tf.keras.layers.Conv2D(filters, kernel_size=5, strides=2, padding='same')(image_inputs)
-
-        for _ in range(4):
+        for i, filters in enumerate(blocks[:-1]):
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization()(block1)
@@ -636,10 +662,10 @@ class StyleBackboneModel(tf.keras.Model):
             block2 = tf.keras.layers.BatchNormalization()(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
-            block2 = tf.keras.layers.Conv2D(filters*2, kernel_size=3, strides=1, padding='same')(block2)
+            block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization()(block2)
 
-            shortcut = tf.keras.layers.Conv2D(filters*2,
+            shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
                                               kernel_size=1,
                                               strides=1,
                                               padding='valid',
@@ -650,14 +676,13 @@ class StyleBackboneModel(tf.keras.Model):
             conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=2)(conv)
 
             feats.append(conv)
-            filters *= 2
 
         conv = tf.keras.layers.ReLU()(conv)
-        conv = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(conv)
+        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1]*conv.get_shape()[2], -1))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1] * conv.get_shape()[2], -1))(conv)
 
         self.features_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
