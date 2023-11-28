@@ -47,7 +47,7 @@ class CTCLoss(tf.keras.losses.Loss):
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
+        logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + self.epsilon)
 
         label_length = tf.math.count_nonzero(y_true, axis=-1)
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
@@ -64,7 +64,7 @@ class CTCLoss(tf.keras.losses.Loss):
         return ctc_loss
 
 
-class CXLoss(tf.keras.losses.Loss):
+class CTXLoss(tf.keras.losses.Loss):
     """
     Contextual loss for comparing high-level features between two tensors.
     Useful in tasks like style transfer and feature alignment.
@@ -72,7 +72,7 @@ class CXLoss(tf.keras.losses.Loss):
 
     def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, **kwargs):
         """
-        Initializes the CXLoss instance.
+        Initializes the CTXLoss instance.
 
         Args:
             sigma: float, optional
