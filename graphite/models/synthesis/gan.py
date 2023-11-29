@@ -73,12 +73,13 @@ class SynthesisModel(tf.keras.Model):
 
         super().compile(run_eagerly=False)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        self.b_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        self.e_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        self.i_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        self.g_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.d_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.p_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.b_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.e_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.i_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.r_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
 
         self.ctx_loss = CTXLoss()
         self.ctc_loss = CTCLoss()
@@ -88,164 +89,88 @@ class SynthesisModel(tf.keras.Model):
     def train_step(self, data):
         (aug_image_inputs, aug_text_inputs), (image_inputs, text_inputs, writer_inputs) = data
 
-        # # fake_latent + aug_text = fake_full_images
-        # latent_shape = (tf.shape(image_inputs)[0], self.e_model.latent_dim)
-        # fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
-
         with tf.GradientTape(persistent=True) as tape:
-            # recognizer loss
-            ctc_logits = self.r_model(aug_image_inputs, training=True)
-            ctc_loss = self.ctc_loss(text_inputs, ctc_logits)
+            # fake_latent + aug_text = fake_full_images
+            latent_shape = (tf.shape(image_inputs)[0], self.e_model.latent_dim)
+            fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
+            fake_full_images = self.g_model([fake_latent_inputs, aug_text_inputs], training=True)
+
+            # real_latent + aug_text = fake_partial_images
+            real_features_inputs, _ = self.b_model(image_inputs, training=True)
+            real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=True)
+            fake_partial_images = self.g_model([real_latent_inputs, aug_text_inputs], training=True)
+
+            # real_latent + real_text = fake_real_images
+            fake_real_images = self.g_model([real_latent_inputs, text_inputs], training=True)
+
+            # concat and shuffle fake inputs
+            fake_image_inputs = tf.concat([fake_full_images, fake_partial_images, fake_real_images], axis=0)
+            fake_image_inputs = tf.random.shuffle(fake_image_inputs)
+
+            # discriminator with fake inputs
+            fake_disc = self.d_model(fake_image_inputs, training=True)
+            fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
+
+            # patch discrimiantor with fake inputs
+            fake_patch_disc = self.p_model(fake_image_inputs, training=True)
+            fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
+
+            # concat and shuffle real inputs
+            real_image_inputs = tf.concat([image_inputs, aug_image_inputs], axis=0)
+            real_image_inputs = tf.random.shuffle(real_image_inputs)
+
+            # discriminator with real inputs
+            real_disc = self.d_model(real_image_inputs, training=True)
+            real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
+
+            # patch discrimiantor with fake inputs
+            real_patch_disc = self.p_model(real_image_inputs, training=True)
+            real_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_disc))
+
+            # loss values
+            d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
 
             # extract filters from backbone
-            style_filters, _ = self.b_model(aug_image_inputs, training=True)
+            aug_features_inputs, _ = self.b_model(aug_image_inputs, training=True)
 
             # writer identifier loss
-            wid_logits = self.i_model(style_filters, training=True)
-            wid_loss = self.cls_loss(writer_inputs, wid_logits)
+            wid_logits = self.i_model(aug_features_inputs, training=True)
+            i_loss = self.cls_loss(writer_inputs, wid_logits)
 
-            # backbone loss
-            backbone_loss = wid_loss
+            # recognizer loss
+            aug_ctc_logits = self.r_model(aug_image_inputs, training=True)
+            r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
-            # style encoder
-            # style_encoded, _, _ = self.e_model(style_filters, training=True)
+        self.g_model.trainable = False
+        self.d_model.trainable = True
+        self.p_model.trainable = True
+        self.b_model.trainable = True
+        self.e_model.trainable = False
+        self.i_model.trainable = True
+        self.r_model.trainable = True
 
-        r_gradients = tape.gradient(ctc_loss, self.r_model.trainable_weights)
-        self.r_optimizer.apply_gradients(zip(r_gradients, self.r_model.trainable_weights))
+        d_gradients = tape.gradient(d_loss, self.d_model.trainable_weights)
+        self.d_optimizer.apply_gradients(zip(d_gradients, self.d_model.trainable_weights))
 
-        b_gradients = tape.gradient(backbone_loss, self.b_model.trainable_weights)
+        p_gradients = tape.gradient(d_loss, self.p_model.trainable_weights)
+        self.p_optimizer.apply_gradients(zip(p_gradients, self.p_model.trainable_weights))
+
+        b_gradients = tape.gradient(i_loss, self.b_model.trainable_weights)
         self.b_optimizer.apply_gradients(zip(b_gradients, self.b_model.trainable_weights))
 
-        i_gradients = tape.gradient(wid_loss, self.i_model.trainable_weights)
+        i_gradients = tape.gradient(i_loss, self.i_model.trainable_weights)
         self.i_optimizer.apply_gradients(zip(i_gradients, self.i_model.trainable_weights))
 
+        r_gradients = tape.gradient(r_loss, self.r_model.trainable_weights)
+        self.r_optimizer.apply_gradients(zip(r_gradients, self.r_model.trainable_weights))
+
         return {
-            "r_loss": ctc_loss,
-            "b_loss": backbone_loss,
-            "i_loss": wid_loss,
+            "d_loss": d_loss,
+            # "p_loss": p_loss,
+            # "b_loss": b_loss,
+            "i_loss": i_loss,
+            "r_loss": r_loss,
         }
-
-        # with tf.GradientTape() as d_tape, \
-        #         tf.GradientTape() as g_tape, \
-        #         tf.GradientTape() as p_tape, \
-        #         tf.GradientTape() as b_tape, \
-        #         tf.GradientTape() as e_tape, \
-        #         tf.GradientTape() as w_tape, \
-        #         tf.GradientTape() as r_tape:
-
-        #     # fake_full_images = self.g_model([fake_latent_inputs, aug_text_inputs], training=True)
-        #     # g_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_full_images))
-
-        #     # fake_disc = self.d_model(aug_image_inputs, training=True)
-        #     # d_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
-
-        #     # fake_disc = self.p_model(aug_image_inputs, training=True)
-        #     # p_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
-
-        #     fake_disc, _ = self.b_model(aug_image_inputs, training=True)
-        #     # b_loss = tf.reduce_mean(fake_disc)
-
-        #     # fake_disc, _, _ = self.e_model(fake_disc, training=True)
-        #     # e_loss = tf.reduce_mean(fake_disc)
-
-        #     # fake_disc = self.i_model(fake_disc, training=True)
-        #     # w_loss = tf.reduce_mean(fake_disc)
-
-        #     fake_disc = self.r_model(fake_disc, training=True)
-        #     r_loss = tf.reduce_mean(fake_disc)
-
-        # # g_grads = g_tape.gradient(g_loss, self.g_model.trainable_weights)
-        # # self.g_optimizer.apply_gradients(zip(g_grads, self.g_model.trainable_weights))
-
-        # # d_grads = d_tape.gradient(d_loss, self.d_model.trainable_weights)
-        # # self.d_optimizer.apply_gradients(zip(d_grads, self.d_model.trainable_weights))
-
-        # # p_grads = p_tape.gradient(p_loss, self.p_model.trainable_weights)
-        # # self.d_optimizer.apply_gradients(zip(p_grads, self.p_model.trainable_weights))
-
-        # # b_grads = b_tape.gradient(b_loss, self.b_model.trainable_weights)
-        # # self.d_optimizer.apply_gradients(zip(b_grads, self.b_model.trainable_weights))
-
-        # # e_grads = e_tape.gradient(e_loss, self.b_model.trainable_weights)
-        # # self.d_optimizer.apply_gradients(zip(e_grads, self.b_model.trainable_weights))
-
-        # # w_grads = w_tape.gradient(w_loss, self.i_model.trainable_weights)
-        # # self.d_optimizer.apply_gradients(zip(w_grads, self.i_model.trainable_weights))
-
-        # r_grads = r_tape.gradient(r_loss, self.r_model.trainable_weights)
-        # self.d_optimizer.apply_gradients(zip(r_grads, self.r_model.trainable_weights))
-
-        # return {
-        #     # "g_loss": g_loss,
-        #     # "d_loss": d_loss,
-        #     # "p_loss": p_loss,
-        #     # "b_loss": b_loss,
-        #     # "e_loss": e_loss,
-        #     # "w_loss": w_loss,
-        #     "r_loss": r_loss,
-        # }
-        ####################################
-
-        # # fake_latent + aug_text = fake_full_images
-        # latent_shape = (tf.shape(image_inputs)[0], self.e_model.latent_dim)
-        # fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
-        # fake_full_images = self.g_model([fake_latent_inputs, aug_text_inputs], training=True)
-
-        # # real_latent + aug_text = fake_partial_images
-        # real_features_inputs, _ = self.b_model(image_inputs, training=True)
-        # real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=True)
-        # fake_partial_images = self.g_model([real_latent_inputs, aug_text_inputs], training=True)
-
-        # # real_latent + real_text = fake_real_images
-        # fake_real_images = self.g_model([real_latent_inputs, text_inputs], training=True)
-
-        # # concat and shuffle fake inputs
-        # fake_image_inputs = tf.concat([fake_full_images, fake_partial_images, fake_real_images], axis=0)
-        # fake_text_inputs = tf.concat([aug_text_inputs, aug_text_inputs, text_inputs], axis=0)
-
-        # indices = tf.range(start=0, limit=tf.shape(fake_image_inputs)[0], dtype=tf.int32)
-        # shuffled_indices = tf.random.shuffle(indices)
-
-        # fake_image_inputs = tf.gather(fake_image_inputs, shuffled_indices)
-        # fake_text_inputs = tf.gather(fake_text_inputs, shuffled_indices)
-
-        # with tf.GradientTape() as tape:
-        #     # discriminator with fake inputs
-        #     fake_disc = self.d_model([fake_image_inputs, fake_text_inputs], training=True)
-        #     fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
-
-        #     # patch discrimiantor with fake inputs
-        #     fake_patch_disc = self.p_model([fake_image_inputs, fake_text_inputs], training=True)
-        #     fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
-
-        #     # concat and shuffle real inputs
-        #     real_image_inputs = tf.concat([image_inputs, aug_image_inputs], axis=0)
-        #     real_text_inputs = tf.concat([text_inputs, aug_text_inputs], axis=0)
-
-        #     indices = tf.range(start=0, limit=tf.shape(real_image_inputs)[0], dtype=tf.int32)
-        #     shuffled_indices = tf.random.shuffle(indices)
-
-        #     real_image_inputs = tf.gather(real_image_inputs, shuffled_indices)
-        #     real_text_inputs = tf.gather(real_text_inputs, shuffled_indices)
-
-        #     # discriminator with real inputs
-        #     real_disc = self.d_model([real_image_inputs, real_text_inputs], training=True)
-        #     real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
-
-        #     # patch discrimiantor with fake inputs
-        #     real_patch_disc = self.p_model([real_image_inputs, real_text_inputs], training=True)
-        #     real_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_disc))
-
-        #     # discriminator loss
-        #     disc_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
-
-        #     # generator...
-
-        # # calculate discriminator gradients and update model weights
-        # disc_gradients = tape.gradient(fake_disc_loss, self.d_model.trainable_variables)
-        # self.d_model_optimizer.apply_gradients(zip(disc_gradients, self.d_model.trainable_variables))
-
-        # return {"loss": fake_disc_loss}
 
 
 class GeneratorModel(tf.keras.Model):
