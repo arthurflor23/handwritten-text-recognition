@@ -89,22 +89,37 @@ class SynthesisModel(tf.keras.Model):
     def train_step(self, data):
         (aug_image_inputs, aug_text_inputs), (image_inputs, text_inputs, writer_inputs) = data
 
+        batch_size = tf.math.maximum(1, tf.shape(image_inputs)[0] // 4)
+        indices = tf.range(tf.shape(image_inputs)[0])
+
         with tf.GradientTape(persistent=True) as tape:
             # fake_latent + aug_text = fake_full_images
-            latent_shape = (tf.shape(image_inputs)[0], self.e_model.latent_dim)
-            fake_latent_inputs = tf.random.normal(latent_shape, mean=0.0, stddev=1.0)
-            fake_full_images = self.g_model([fake_latent_inputs, aug_text_inputs], training=True)
+            fake_latent_inputs = tf.random.normal((batch_size, self.e_model.latent_dim), mean=0.0, stddev=1.0)
+            rd_aug_text_inputs = tf.gather(aug_text_inputs, tf.random.shuffle(indices)[:batch_size])
+
+            fake_full_images = self.g_model([fake_latent_inputs, rd_aug_text_inputs], training=False)
 
             # real_latent + aug_text = fake_partial_images
-            real_features_inputs, _ = self.b_model(image_inputs, training=True)
-            real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=True)
-            fake_partial_images = self.g_model([real_latent_inputs, aug_text_inputs], training=True)
+            rd_images_inputs = tf.gather(image_inputs, tf.random.shuffle(indices)[:batch_size])
+
+            real_features_inputs, _ = self.b_model(rd_images_inputs, training=False)
+            real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=False)
+
+            fake_partial_images = self.g_model([real_latent_inputs, rd_aug_text_inputs], training=False)
 
             # real_latent + real_text = fake_real_images
-            fake_real_images = self.g_model([real_latent_inputs, text_inputs], training=True)
+            rd_text_inputs = tf.gather(text_inputs, tf.random.shuffle(indices)[:batch_size])
+            fake_real_images = self.g_model([real_latent_inputs, rd_text_inputs], training=False)
+
+            # fake_latent + real_text = real_partial_images
+            rd_text_inputs = tf.gather(text_inputs, tf.random.shuffle(indices)[:batch_size])
+            real_partial_images = self.g_model([fake_latent_inputs, rd_text_inputs], training=False)
 
             # concat and shuffle fake inputs
-            fake_image_inputs = tf.concat([fake_full_images, fake_partial_images, fake_real_images], axis=0)
+            fake_image_inputs = tf.concat([fake_full_images,
+                                           fake_partial_images,
+                                           fake_real_images,
+                                           real_partial_images], axis=0)
             fake_image_inputs = tf.random.shuffle(fake_image_inputs)
 
             # discriminator with fake inputs
@@ -116,7 +131,10 @@ class SynthesisModel(tf.keras.Model):
             fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
 
             # concat and shuffle real inputs
-            real_image_inputs = tf.concat([image_inputs, aug_image_inputs], axis=0)
+            rd_images_inputs = tf.gather(image_inputs, tf.random.shuffle(indices)[:batch_size])
+            rd_aug_image_inputs = tf.gather(aug_image_inputs, tf.random.shuffle(indices)[:batch_size])
+
+            real_image_inputs = tf.concat([rd_images_inputs, rd_aug_image_inputs], axis=0)
             real_image_inputs = tf.random.shuffle(real_image_inputs)
 
             # discriminator with real inputs
@@ -129,9 +147,10 @@ class SynthesisModel(tf.keras.Model):
 
             # loss values
             d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
+            p_loss = fake_patch_disc_loss + real_patch_disc_loss
 
             # extract filters from backbone
-            aug_features_inputs, _ = self.b_model(aug_image_inputs, training=True)
+            aug_features_inputs, _ = self.b_model(aug_image_inputs, training=False)
 
             # writer identifier loss
             wid_logits = self.i_model(aug_features_inputs, training=True)
@@ -141,22 +160,11 @@ class SynthesisModel(tf.keras.Model):
             aug_ctc_logits = self.r_model(aug_image_inputs, training=True)
             r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
-        self.g_model.trainable = False
-        self.d_model.trainable = True
-        self.p_model.trainable = True
-        self.b_model.trainable = True
-        self.e_model.trainable = False
-        self.i_model.trainable = True
-        self.r_model.trainable = True
-
         d_gradients = tape.gradient(d_loss, self.d_model.trainable_weights)
         self.d_optimizer.apply_gradients(zip(d_gradients, self.d_model.trainable_weights))
 
-        p_gradients = tape.gradient(d_loss, self.p_model.trainable_weights)
+        p_gradients = tape.gradient(p_loss, self.p_model.trainable_weights)
         self.p_optimizer.apply_gradients(zip(p_gradients, self.p_model.trainable_weights))
-
-        b_gradients = tape.gradient(i_loss, self.b_model.trainable_weights)
-        self.b_optimizer.apply_gradients(zip(b_gradients, self.b_model.trainable_weights))
 
         i_gradients = tape.gradient(i_loss, self.i_model.trainable_weights)
         self.i_optimizer.apply_gradients(zip(i_gradients, self.i_model.trainable_weights))
@@ -164,13 +172,30 @@ class SynthesisModel(tf.keras.Model):
         r_gradients = tape.gradient(r_loss, self.r_model.trainable_weights)
         self.r_optimizer.apply_gradients(zip(r_gradients, self.r_model.trainable_weights))
 
-        return {
-            "d_loss": d_loss,
-            # "p_loss": p_loss,
-            # "b_loss": b_loss,
-            "i_loss": i_loss,
-            "r_loss": r_loss,
-        }
+        if not hasattr(self, 'step_counter'):
+            self.step_counter = -1
+
+        self.step_counter += 1
+
+        # if self.step_counter % 2 == 0:
+        #     # calculate g_loss function
+
+        if self.step_counter % 2 == 0:
+            return {
+                "g_loss": r_loss,
+                # "g_loss": g_loss,
+                "d_loss": d_loss,
+                "i_loss": i_loss,
+                "r_loss": r_loss,
+            }
+        else:
+            return {
+                "g_loss": 0.0,
+                # "g_loss": g_loss,
+                "d_loss": d_loss,
+                "i_loss": i_loss,
+                "r_loss": r_loss,
+            }
 
 
 class GeneratorModel(tf.keras.Model):
