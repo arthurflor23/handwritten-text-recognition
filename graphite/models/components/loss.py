@@ -3,7 +3,7 @@ import tensorflow as tf
 
 class CTCLoss(tf.keras.losses.Loss):
     """
-    Connectionist Temporal Classification (CTC) loss for sequence recognition tasks.
+    Connectionist Temporal Classification (CTC) loss for sequence recognition task.
     """
 
     def __init__(self, epsilon=1e-7, **kwargs):
@@ -133,3 +133,43 @@ class CTXLoss(tf.keras.losses.Loss):
         cx_loss = tf.reduce_mean(-tf.math.log(cx_mean + self.epsilon))
 
         return cx_loss
+
+
+class L1Loss(tf.keras.losses.Loss):
+    """
+    L1 loss for image reconstruction task.
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initializes the L1Loss instance.
+
+        Args:
+            **kwargs:
+                Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+    def call(self, y_true, y_pred):
+        """
+        Computes the L1 loss between y_true and y_pred.
+
+        Args:
+            y_true: tensor,
+                The target tensor.
+            y_pred: tensor,
+                The prediction tensor.
+
+        Returns:
+            A scalar tensor representing the L1 loss.
+        """
+
+        y_diff = tf.math.abs(y_pred - y_true)
+
+        sum_diff = tf.cast(tf.reduce_sum(y_diff), tf.float32)
+        num_elements = tf.cast(tf.reduce_prod(tf.shape(y_diff)[1:]), tf.float32)
+
+        l1_loss = sum_diff / num_elements
+
+        return l1_loss
