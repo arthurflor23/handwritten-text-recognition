@@ -1,12 +1,13 @@
 import tensorflow as tf
 
-from models.components import SpectralSelfAttention
 from models.components import ConditionalBatchNormalization
-from models.components import SpectralNormalization
-from models.components import ExtractPatches
 from models.components import CTCLoss
 from models.components import CTXLoss
+from models.components import ExtractPatches
 from models.components import L1Loss
+from models.components import SpectralNormalization
+from models.components import SpectralSelfAttention
+from models.components.optimizer import NormalizedOptimizer
 
 
 class SynthesisModel(tf.keras.Model):
@@ -74,13 +75,13 @@ class SynthesisModel(tf.keras.Model):
 
         super().compile(run_eagerly=False)
 
-        self.g_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.d_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.p_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.b_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.e_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.i_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-        self.r_optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
+        self.g_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.d_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.p_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.b_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.e_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.i_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.r_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
@@ -107,7 +108,11 @@ class SynthesisModel(tf.keras.Model):
 
             fake_latent_inputs = tf.random.normal((batch_quarter, self.e_model.latent_dim), mean=0.0, stddev=1.0)
 
-            with tf.GradientTape(persistent=True) as tape:
+            with tf.GradientTape() as d_tape, \
+                    tf.GradientTape() as p_tape, \
+                    tf.GradientTape() as i_tape, \
+                    tf.GradientTape() as r_tape:
+
                 real_features_inputs, _ = self.b_model(q_image_inputs, training=True)
                 real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=True)
 
@@ -124,7 +129,7 @@ class SynthesisModel(tf.keras.Model):
                 real_image_inputs = tf.random.shuffle(tf.concat([m_image_inputs,
                                                                  m_aug_image_inputs], axis=0))
 
-                # patch discriminator and loss value
+                # patch discriminator loss
                 fake_patch_disc = self.p_model(fake_image_inputs, training=True)
                 fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
 
@@ -133,7 +138,7 @@ class SynthesisModel(tf.keras.Model):
 
                 p_loss = fake_patch_disc_loss + real_patch_disc_loss
 
-                # discriminator and loss value
+                # discriminator loss
                 fake_disc = self.d_model(fake_image_inputs, training=True)
                 fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
@@ -142,25 +147,25 @@ class SynthesisModel(tf.keras.Model):
 
                 d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
 
-                # writer identifier and loss value
+                # writer identifier loss
                 aug_features_inputs, _ = self.b_model(aug_image_inputs, training=True)
                 wid_logits = self.i_model(aug_features_inputs, training=True)
                 i_loss = self.cls_loss(writer_inputs, wid_logits)
 
-                # recognizer and loss value
+                # recognizer loss
                 aug_ctc_logits = self.r_model(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
-            d_gradients = tape.gradient(d_loss, self.d_model.trainable_weights)
+            d_gradients = d_tape.gradient(d_loss, self.d_model.trainable_weights)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.d_model.trainable_weights))
 
-            p_gradients = tape.gradient(p_loss, self.p_model.trainable_weights)
+            p_gradients = p_tape.gradient(p_loss, self.p_model.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.p_model.trainable_weights))
 
-            i_gradients = tape.gradient(i_loss, self.i_model.trainable_weights)
+            i_gradients = i_tape.gradient(i_loss, self.i_model.trainable_weights)
             self.i_optimizer.apply_gradients(zip(i_gradients, self.i_model.trainable_weights))
 
-            r_gradients = tape.gradient(r_loss, self.r_model.trainable_weights)
+            r_gradients = r_tape.gradient(r_loss, self.r_model.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.r_model.trainable_weights))
 
         # generator phase
@@ -173,7 +178,10 @@ class SynthesisModel(tf.keras.Model):
 
         fake_latent_inputs = tf.random.normal((batch_quarter, self.e_model.latent_dim), mean=0.0, stddev=1.0)
 
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as g_tape, \
+                tf.GradientTape() as b_tape, \
+                tf.GradientTape() as e_tape:
+
             real_features_inputs, real_image_feats = self.b_model(m_image_inputs, training=True)
             real_latent_inputs, mu, logvar = self.e_model(real_features_inputs, training=True)
 
@@ -187,7 +195,7 @@ class SynthesisModel(tf.keras.Model):
                                                              real_real_images,
                                                              fake_real_images], axis=0))
 
-            # compute discriminator loss
+            # discriminator loss
             fake_disc = self.d_model(fake_image_inputs, training=True)
             fake_disc_loss = -tf.reduce_mean(fake_disc)
 
@@ -196,7 +204,7 @@ class SynthesisModel(tf.keras.Model):
 
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
-            # ctc auxiliary loss
+            # ctc loss
             fake_fake_ctc_logits = self.r_model(fake_fake_images, training=True)
             fake_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, fake_fake_ctc_logits)
 
@@ -211,7 +219,7 @@ class SynthesisModel(tf.keras.Model):
 
             ctc_loss = fake_fake_ctc_loss + real_fake_ctc_loss + real_real_ctc_loss + fake_real_ctc_loss
 
-            # style reconstruction
+            # style reconstruction loss
             fake_fake_features_inputs, _ = self.b_model(fake_fake_images, training=True)
             fake_fake_latent_inputs, _, _ = self.e_model(fake_fake_features_inputs, training=True)
             fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_inputs - fake_latent_inputs))
@@ -222,11 +230,10 @@ class SynthesisModel(tf.keras.Model):
 
             info_loss = tf.reduce_mean([fake_fake_info_loss, fake_real_info_loss])
 
-            # content restruction
-            real_fake_l1_loss = self.l1_loss(m_image_inputs, real_fake_images)
+            # content restruction loss
             real_real_l1_loss = self.l1_loss(m_image_inputs, real_real_images)
 
-            l1_loss = tf.reduce_mean([real_fake_l1_loss, real_real_l1_loss])
+            l1_loss = tf.reduce_mean(real_real_l1_loss)
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.b_model(real_fake_images, training=True)
@@ -253,42 +260,18 @@ class SynthesisModel(tf.keras.Model):
             # generator loss
             g_loss = (disc_loss + ctc_loss + info_loss + l1_loss + wid_loss + (ctx_loss * 5.0) + (kl_loss * 1e-4))
 
-        # # gradient balancing
-        # grad_fake_disc = tape.gradient(fake_disc_loss, fake_image_inputs)
-        # grad_fake_ctc = tape.gradient(fake_fake_ctc_loss, fake_fake_ctc_logits)
-        # grad_fake_info = tape.gradient(fake_fake_info_loss, fake_fake_images)
-        # grad_fake_l1 = tape.gradient(real_fake_l1_loss, real_fake_images)
-        # grad_fake_wid = tape.gradient(real_fake_wid_loss, real_fake_wid_logits)
-
-        # std_grad_disc = tf.math.reduce_std(grad_fake_disc)
-
-        # weight_ctc = tf.math.divide(std_grad_disc, tf.math.reduce_std(grad_fake_ctc) + 1e-7) + 1
-        # weight_info = tf.math.divide(std_grad_disc, tf.math.reduce_std(grad_fake_info) + 1e-7) + 1
-        # weight_l1 = tf.math.divide(std_grad_disc, tf.math.reduce_std(grad_fake_l1) + 1e-7) + 1
-        # weight_wid = tf.math.divide(std_grad_disc, tf.math.reduce_std(grad_fake_wid) + 1e-7) + 1
-
-        # # generator loss
-        # g_loss = ((disc_loss) +
-        #           (ctc_loss * weight_ctc) +
-        #           (info_loss * weight_info) +
-        #           (l1_loss * weight_l1) +
-        #           (wid_loss * weight_wid) +
-        #           (ctx_loss * 5.0) +
-        #           (kl_loss * 0.0001))
-
-        g_gradients = tape.gradient(g_loss, self.g_model.trainable_weights)
+        g_gradients = g_tape.gradient(g_loss, self.g_model.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.g_model.trainable_weights))
 
-        b_gradients = tape.gradient(g_loss, self.b_model.trainable_weights)
+        b_gradients = b_tape.gradient(g_loss, self.b_model.trainable_weights)
         self.b_optimizer.apply_gradients(zip(b_gradients, self.b_model.trainable_weights))
 
-        e_gradients = tape.gradient(g_loss, self.e_model.trainable_weights)
+        e_gradients = e_tape.gradient(g_loss, self.e_model.trainable_weights)
         self.e_optimizer.apply_gradients(zip(e_gradients, self.e_model.trainable_weights))
 
         return {
             "g_loss": g_loss,
             "d_loss": d_loss,
-            "p_loss": p_loss,
             "i_loss": i_loss,
             "r_loss": r_loss,
         }
