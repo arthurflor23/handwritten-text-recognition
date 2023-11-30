@@ -93,35 +93,36 @@ class SynthesisModel(tf.keras.Model):
 
         batch_size = tf.shape(image_inputs)[0]
         batch_quarter = tf.math.maximum(1, batch_size // 4)
-        # indices = tf.range(batch_size)
 
         # # discriminator phase
         # for i in range(4):
-        #     start_idx = i * batch_quarter
+        #     q_start_index = i * batch_quarter
+        #     q_aug_text_inputs = aug_text_inputs[q_start_index:q_start_index + batch_quarter]
+        #     q_image_inputs = image_inputs[q_start_index:q_start_index + batch_quarter]
+        #     q_text_inputs = text_inputs[q_start_index:q_start_index + batch_quarter]
 
-        #     w_aug_image_inputs = aug_image_inputs[start_idx:start_idx + batch_quarter]
-        #     w_aug_text_inputs = aug_text_inputs[start_idx:start_idx + batch_quarter]
-        #     w_image_inputs = image_inputs[start_idx:start_idx + batch_quarter]
-        #     w_text_inputs = text_inputs[start_idx:start_idx + batch_quarter]
+        #     m_start_index = (i // 2) * batch_quarter
+        #     m_image_inputs = image_inputs[m_start_index:m_start_index + (batch_quarter * 2)]
+        #     m_aug_image_inputs = aug_image_inputs[m_start_index:m_start_index + (batch_quarter * 2)]
 
         #     fake_latent_inputs = tf.random.normal((batch_quarter, self.e_model.latent_dim), mean=0.0, stddev=1.0)
 
         #     with tf.GradientTape(persistent=True) as tape:
-        #         real_features_inputs, _ = self.b_model(w_image_inputs, training=True)
+        #         real_features_inputs, _ = self.b_model(q_image_inputs, training=True)
         #         real_latent_inputs, _, _ = self.e_model(real_features_inputs, training=True)
 
-        #         fake_fake_images = self.g_model([fake_latent_inputs, w_aug_text_inputs], training=True)
-        #         real_fake_images = self.g_model([real_latent_inputs, w_aug_text_inputs], training=True)
-        #         real_real_images = self.g_model([real_latent_inputs, w_text_inputs], training=True)
-        #         fake_real_images = self.g_model([fake_latent_inputs, w_text_inputs], training=True)
+        #         fake_fake_images = self.g_model([fake_latent_inputs, q_aug_text_inputs], training=True)
+        #         real_fake_images = self.g_model([real_latent_inputs, q_aug_text_inputs], training=True)
+        #         real_real_images = self.g_model([real_latent_inputs, q_text_inputs], training=True)
+        #         fake_real_images = self.g_model([fake_latent_inputs, q_text_inputs], training=True)
 
         #         fake_image_inputs = tf.random.shuffle(tf.concat([fake_fake_images,
         #                                                          real_fake_images,
         #                                                          real_real_images,
         #                                                          fake_real_images], axis=0))
 
-        #         real_image_inputs = tf.random.shuffle(tf.concat([w_image_inputs,
-        #                                                          w_aug_image_inputs], axis=0))
+        #         real_image_inputs = tf.random.shuffle(tf.concat([m_image_inputs,
+        #                                                          m_aug_image_inputs], axis=0))
 
         #         # patch discriminator and loss value
         #         fake_patch_disc = self.p_model(fake_image_inputs, training=True)
@@ -163,46 +164,52 @@ class SynthesisModel(tf.keras.Model):
         #     self.r_optimizer.apply_gradients(zip(r_gradients, self.r_model.trainable_weights))
 
         # generator phase
-        fake_latent_inputs = tf.random.normal((batch_size, self.e_model.latent_dim), mean=0.0, stddev=1.0)
+        indices = tf.random.shuffle(tf.range(batch_size))
+
+        m_image_inputs = tf.gather(image_inputs, indices[:batch_quarter])
+        m_text_inputs = tf.gather(text_inputs, indices[:batch_quarter])
+        m_aug_text_inputs = tf.gather(aug_text_inputs, indices[:batch_quarter])
+        m_writer_inputs = tf.gather(writer_inputs, indices[:batch_quarter])
+
+        fake_latent_inputs = tf.random.normal((batch_quarter, self.e_model.latent_dim), mean=0.0, stddev=1.0)
 
         with tf.GradientTape(persistent=True) as tape:
-            real_features_inputs, real_image_feats = self.b_model(image_inputs, training=True)
+            real_features_inputs, real_image_feats = self.b_model(m_image_inputs, training=True)
             real_latent_inputs, mu, logvar = self.e_model(real_features_inputs, training=True)
 
-            fake_fake_images = self.g_model([fake_latent_inputs, aug_text_inputs], training=True)
-            real_fake_images = self.g_model([real_latent_inputs, aug_text_inputs], training=True)
-            real_real_images = self.g_model([real_latent_inputs, text_inputs], training=True)
-            fake_real_images = self.g_model([fake_latent_inputs, text_inputs], training=True)
+            fake_fake_images = self.g_model([fake_latent_inputs, m_aug_text_inputs], training=True)
+            real_fake_images = self.g_model([real_latent_inputs, m_aug_text_inputs], training=True)
+            real_real_images = self.g_model([real_latent_inputs, m_text_inputs], training=True)
+            fake_real_images = self.g_model([fake_latent_inputs, m_text_inputs], training=True)
 
             fake_image_inputs = tf.random.shuffle(tf.concat([fake_fake_images,
                                                              real_fake_images,
                                                              real_real_images,
                                                              fake_real_images], axis=0))
 
-            # Compute Adversarial loss #
+            # compute adversarial loss
             fake_disc = self.d_model(fake_image_inputs, training=True)
             adv_disc_loss = -tf.reduce_mean(fake_disc)
 
-            # patch discriminator and loss value
             fake_patch_disc = self.p_model(fake_image_inputs, training=True)
             adv_patch_disc_loss = -tf.reduce_mean(fake_patch_disc)
 
-            # CTC Auxiliary loss #
+            # ctc auxiliary loss
             fake_fake_ctc_logits = self.r_model(fake_fake_images, training=True)
-            fake_fake_ctc_loss = self.ctc_loss(aug_text_inputs, fake_fake_ctc_logits)
+            fake_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, fake_fake_ctc_logits)
 
             real_fake_ctc_logits = self.r_model(real_fake_images, training=True)
-            real_fake_ctc_loss = self.ctc_loss(aug_text_inputs, real_fake_ctc_logits)
+            real_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, real_fake_ctc_logits)
 
             real_real_ctc_logits = self.r_model(real_real_images, training=True)
-            real_real_ctc_loss = self.ctc_loss(text_inputs, real_real_ctc_logits)
+            real_real_ctc_loss = self.ctc_loss(m_text_inputs, real_real_ctc_logits)
 
             fake_real_ctc_logits = self.r_model(fake_real_images, training=True)
-            fake_real_ctc_loss = self.ctc_loss(text_inputs, fake_real_ctc_logits)
+            fake_real_ctc_loss = self.ctc_loss(m_text_inputs, fake_real_ctc_logits)
 
             ctc_loss = fake_fake_ctc_loss + real_fake_ctc_loss + real_real_ctc_loss + fake_real_ctc_loss
 
-            # Style Reconstruction #
+            # style reconstruction
             fake_fake_features_inputs, _ = self.b_model(fake_fake_images, training=True)
             fake_fake_latent_inputs, _, _ = self.e_model(fake_fake_features_inputs, training=True)
             fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_inputs - fake_latent_inputs))
@@ -213,24 +220,24 @@ class SynthesisModel(tf.keras.Model):
 
             info_loss = tf.reduce_mean([fake_fake_info_loss, fake_real_info_loss])
 
-            # Content Restruction #
-            real_fake_l1_loss = self.l1_loss(real_fake_images, image_inputs)
-            real_real_l1_loss = self.l1_loss(real_real_images, image_inputs)
+            # content restruction
+            real_fake_l1_loss = self.l1_loss(real_fake_images, m_image_inputs)
+            real_real_l1_loss = self.l1_loss(real_real_images, m_image_inputs)
 
             l1_loss = tf.reduce_mean([real_fake_l1_loss, real_real_l1_loss])
 
-            # Writer Identify Loss #
+            # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.b_model(real_fake_images, training=True)
             real_fake_wid_logits = self.i_model(real_fake_features_inputs, training=True)
-            real_fake_wid_loss = self.cls_loss(writer_inputs, real_fake_wid_logits)
+            real_fake_wid_loss = self.cls_loss(m_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.b_model(real_real_images, training=True)
             real_real_wid_logits = self.i_model(real_real_features_inputs, training=True)
-            real_real_wid_loss = self.cls_loss(writer_inputs, real_real_wid_logits)
+            real_real_wid_loss = self.cls_loss(m_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
 
-            # Contextual Loss #
+            # contextual loss
             ctx_loss = tf.constant(0.0)
 
             for real_image_feat, real_fake_image_feat, real_real_image_feat \
@@ -238,12 +245,15 @@ class SynthesisModel(tf.keras.Model):
                 ctx_loss += self.ctx_loss(real_image_feat, real_fake_image_feat)
                 ctx_loss += self.ctx_loss(real_image_feat, real_real_image_feat)
 
-            # KL-Divergency loss #
+            # kl-divergency loss
             kl_loss = self.kld_loss(mu, logvar)
 
-            # Generator loss #
+            # gradient balancing
+            
+
+            # generator loss
             g_loss = (adv_disc_loss + adv_patch_disc_loss + ctc_loss +
-                      info_loss + l1_loss + wid_loss + (ctx_loss * 2) + (kl_loss * 0.0001))
+                      info_loss + l1_loss + wid_loss + (ctx_loss * 5.0) + (kl_loss * 0.0001))
 
         g_gradients = tape.gradient(g_loss, self.g_model.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.g_model.trainable_weights))
