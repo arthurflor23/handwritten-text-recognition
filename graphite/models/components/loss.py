@@ -70,7 +70,7 @@ class CTXLoss(tf.keras.losses.Loss):
     Useful in tasks like style transfer and feature alignment.
     """
 
-    def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, **kwargs):
+    def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, loss_type='l2', **kwargs):
         """
         Initializes the CTXLoss instance.
 
@@ -81,6 +81,8 @@ class CTXLoss(tf.keras.losses.Loss):
                 Scaling factor for weighting the distances.
             epsilon: float, optional
                 Small constant to avoid division by zero.
+            loss_type: str, optional
+                Type of loss to be used. Can be 'cosine', 'l1', or 'l2'.
             **kwargs:
                 Additional keyword arguments.
         """
@@ -90,6 +92,7 @@ class CTXLoss(tf.keras.losses.Loss):
         self.sigma = sigma
         self.alpha = alpha
         self.epsilon = epsilon
+        self.loss_type = loss_type
 
     def call(self, y_true, y_pred):
         """
@@ -105,34 +108,120 @@ class CTXLoss(tf.keras.losses.Loss):
             A scalar tensor representing the contextual loss.
         """
 
-        y_mean_true = tf.reduce_mean(y_true, axis=[0, 1, 2], keepdims=True)
-        y_pred_centered = y_pred - y_mean_true
-        y_true_centered = y_true - y_mean_true
+        y_true = tf.transpose(y_true, perm=[0, 3, 1, 2])
+        y_pred = tf.transpose(y_pred, perm=[0, 3, 1, 2])
 
-        y_pred_norm = tf.nn.l2_normalize(y_pred_centered, axis=-1)
-        y_true_norm = tf.nn.l2_normalize(y_true_centered, axis=-1)
+        if self.loss_type == 'cosine':
+            dist = self.compute_cosine_distance(y_true, y_pred)
+        elif self.loss_type == 'l1':
+            dist = self.compute_l1_distance(y_true, y_pred)
+        elif self.loss_type == 'l2':
+            dist = self.compute_l2_distance(y_true, y_pred)
 
-        B, H, W, C = y_true_norm.shape
-        P = H * W
-        y_true_patches = tf.reshape(y_true_norm, (B, P, C))
-        y_true_patches = tf.transpose(y_true_patches, perm=[0, 2, 1])
+        d_min = tf.math.reduce_min(dist, axis=2, keepdims=True)
+        d_tilde = dist / (d_min + self.epsilon)
 
-        y_pred_norm = tf.transpose(y_pred_norm, perm=[0, 3, 1, 2])
-        dist = tf.nn.conv2d(y_pred_norm, y_true_patches, strides=[1, 1, 1, 1], padding='VALID')
+        w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
-        raw_dist = (1. - dist) / 2.
-        div = tf.reduce_min(raw_dist, axis=1, keepdims=True)
-        relative_dist = raw_dist / (div + self.epsilon)
+        cx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
+        cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
 
-        cx_weights = tf.exp((self.alpha - relative_dist) / self.sigma)
-        cx_weights_sum = tf.reduce_sum(cx_weights, axis=1, keepdims=True)
-        cx = cx_weights / cx_weights_sum
-
-        cx_max = tf.reduce_max(cx, axis=[2, 3])
-        cx_mean = tf.reduce_mean(cx_max, axis=1)
-        cx_loss = tf.reduce_mean(-tf.math.log(cx_mean + self.epsilon))
+        cx_loss = tf.math.reduce_mean(-tf.math.log(cx))
 
         return cx_loss
+
+    def compute_cosine_distance(self, y, x):
+        """
+        Computes the cosine distance between two tensors.
+
+        Args:
+            y: tensor,
+                The target tensor.
+            x: tensor,
+                The prediction tensor.
+
+        Returns:
+            Tensor representing the cosine distance between y and x.
+        """
+
+        N, C, H, W = tf.unstack(tf.shape(x))
+
+        y_mu = tf.reduce_mean(y, axis=[0, 2, 3], keepdims=True)
+
+        x_centered = x - y_mu
+        y_centered = y - y_mu
+
+        x_normalized = x_centered / tf.norm(x_centered, ord=2, axis=1, keepdims=True)
+        y_normalized = y_centered / tf.norm(y_centered, ord=2, axis=1, keepdims=True)
+
+        x_normalized = tf.reshape(x_normalized, [N, C, -1])
+        y_normalized = tf.reshape(y_normalized, [N, C, -1])
+
+        x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
+
+        cosine_sim = tf.matmul(x_normalized, y_normalized)
+        dist = 1 - cosine_sim
+
+        return dist
+
+    def compute_l1_distance(self, y, x):
+        """
+        Computes the L1 (Manhattan) distance between two tensors.
+
+        Args:
+            y: tensor,
+                The target tensor.
+            x: tensor,
+                The prediction tensor.
+
+        Returns:
+            Tensor representing the L1 distance between y and x.
+        """
+
+        N, C, H, W = tf.unstack(tf.shape(x))
+
+        x_vec = tf.reshape(x, [N, C, -1])
+        y_vec = tf.reshape(y, [N, C, -1])
+
+        dist = tf.expand_dims(x_vec, axis=2) - tf.expand_dims(y_vec, axis=3)
+        dist = tf.math.reduce_sum(tf.math.abs(dist), axis=1)
+        dist = tf.transpose(dist, perm=[0, 2, 1])
+
+        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
+
+        return dist
+
+    def compute_l2_distance(self, y, x):
+        """
+        Computes the L2 (Euclidean) distance between two tensors.
+
+        Args:
+            y: tensor,
+                The target tensor.
+            x: tensor,
+                The prediction tensor.
+
+        Returns:
+            Tensor representing the L2 distance between y and x.
+        """
+
+        N, C, H, W = tf.unstack(tf.shape(x))
+
+        x_vec = tf.reshape(x, [N, C, -1])
+        y_vec = tf.reshape(y, [N, C, -1])
+
+        x_s = tf.math.reduce_sum(x_vec ** 2, axis=1, keepdims=True)
+        y_s = tf.math.reduce_sum(y_vec ** 2, axis=1, keepdims=True)
+
+        A = tf.transpose(y_vec, perm=[0, 2, 1]) @ x_vec
+        B = tf.transpose(x_s, perm=[0, 2, 1])
+
+        dist = y_s - 2 * A + B
+        dist = tf.transpose(dist, perm=[0, 2, 1])
+
+        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
+
+        return dist
 
 
 class L1Loss(tf.keras.losses.Loss):
