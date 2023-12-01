@@ -41,7 +41,10 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         self.conv_h = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 2, 1))
         self.conv_o = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels, 1))
 
-        self.gamma = self.add_weight(shape=(1,), initializer='zeros', trainable=True)
+        self.gamma = self.add_weight(shape=(1,),
+                                     initializer='zeros',
+                                     trainable=True,
+                                     name=f"{self.name}_gamma")
 
     def call(self, x):
         """

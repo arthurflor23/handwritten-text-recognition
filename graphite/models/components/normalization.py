@@ -42,8 +42,15 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.beta_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
         self.gamma_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
 
-        self.mean = self.add_weight(shape=(self.num_channels,), initializer='zeros', trainable=False)
-        self.variance = self.add_weight(shape=(self.num_channels,), initializer='ones', trainable=False)
+        self.mean = self.add_weight(shape=(self.num_channels,),
+                                    initializer='zeros',
+                                    trainable=False,
+                                    name=f"{self.name}_mean")
+
+        self.variance = self.add_weight(shape=(self.num_channels,),
+                                        initializer='ones',
+                                        trainable=False,
+                                        name=f"{self.name}_variance")
 
     def call(self, inputs, training=None):
         """
@@ -154,8 +161,8 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             shape=(1, self.kernel_shape[-1]),
             initializer=tf.initializers.TruncatedNormal(stddev=0.02),
             trainable=False,
-            name='vector_u',
             dtype=self.kernel.dtype,
+            name=f"{self.name}_vector_u",
         )
 
     def call(self, inputs, training=None):
