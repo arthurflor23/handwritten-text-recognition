@@ -75,26 +75,26 @@ class SynthesisModel(tf.keras.Model):
 
         super().compile(run_eagerly=False)
 
-        self.g_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.g_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.d_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.d_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.p_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.p_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.b_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.b_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.e_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.e_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.i_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.i_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.r_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.r_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
