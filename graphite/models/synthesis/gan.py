@@ -75,13 +75,26 @@ class SynthesisModel(tf.keras.Model):
 
         super().compile(run_eagerly=False)
 
-        self.g_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.d_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.p_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.b_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.e_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.i_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
-        self.r_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(learning_rate=learning_rate))
+        self.g_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.d_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.p_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.b_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.e_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.i_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.r_optimizer = NormalizedOptimizer(tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
@@ -270,6 +283,7 @@ class SynthesisModel(tf.keras.Model):
         self.e_optimizer.apply_gradients(zip(e_gradients, self.e_model.trainable_weights))
 
         return {
+            "loss": g_loss + d_loss,
             "g_loss": g_loss,
             "d_loss": d_loss,
             "i_loss": i_loss,
