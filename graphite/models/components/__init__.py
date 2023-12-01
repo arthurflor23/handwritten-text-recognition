@@ -1,4 +1,5 @@
 from models.components.attention import SpectralSelfAttention
+from models.components.callback import GANMonitor
 from models.components.loss import CTCLoss
 from models.components.loss import CTXLoss
 from models.components.loss import L1Loss
