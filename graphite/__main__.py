@@ -12,8 +12,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Models
+    parser.add_argument('--mode', default='recognition', help='Define application mode')
     parser.add_argument('--synthesis', default=None, help='Define synthesis model')
     parser.add_argument('--recognition', default=None, help='Define recognition model')
+    parser.add_argument('--spelling', default=None, help='Define spelling model')
     parser.add_argument('--run-index', default=None, type=int, help='Define run index')
 
     # Dataset
@@ -57,7 +59,6 @@ if __name__ == '__main__':
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
     parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
     parser.add_argument('--share-top-paths', default=False, action='store_true', help='Use previous paths in metrics')
-    parser.add_argument('--spell-checker', default='openai', help='Spell checker type')
 
     # Inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
@@ -85,7 +86,10 @@ if __name__ == '__main__':
     if args.test or args.inference:
         assert args.run_index is not None, "--run-index must be defined"
 
-    if args.inference:
+    if args.inference and args.mode == 'synthesis':
+        assert len(args.texts) > 0, "--texts must be defined"
+
+    if args.inference and args.mode == 'recognition':
         assert len(args.images) > 0, "--images must be defined"
 
     # Pipelines
@@ -95,8 +99,8 @@ if __name__ == '__main__':
     elif args.training:
         pipelines.training(args)
 
-    # elif args.test:
-    #     pipelines.test(args)
+    elif args.test:
+        pipelines.test(args)
 
-    # elif args.inference:
-    #     pipelines.inference(args)
+    elif args.inference:
+        pipelines.inference(args)
