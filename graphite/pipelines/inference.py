@@ -1,9 +1,9 @@
-import cv2
-import numpy as np
+# import cv2
+# import numpy as np
 
-from data import Dataset
-from models import Model
-from spelling import Spelling
+# from data import Dataset
+# from models import Model
+# from spelling import Spelling
 
 
 def inference(args):
