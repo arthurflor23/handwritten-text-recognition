@@ -21,12 +21,12 @@ class SynthesisModel(tf.keras.Model):
         and they work together to enable complex synthesis and recognition tasks.
 
     Reference:
+        [GANs Trained by a Two Time-Scale Update Rule Converge to a Local Equilibrium](https://arxiv.org/abs/1706.08500)
         [HiGAN+: Handwriting Imitation GAN with Disentangled Representations](https://dl.acm.org/doi/10.1145/3550070)
-        [ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation](https://arxiv.org/abs/2003.10557)
         [Large Scale GAN Training for High Fidelity Natural Image Synthesis](https://arxiv.org/abs/1809.11096v2)
         [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3)
+        [ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation](https://arxiv.org/abs/2003.10557)
         [Wasserstein GAN](https://arxiv.org/abs/1701.07875)
-        [GANs Trained by a Two Time-Scale Update Rule Converge to a Local Equilibrium](https://arxiv.org/abs/1706.08500)
     """
 
     def __init__(self,
