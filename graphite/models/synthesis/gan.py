@@ -78,7 +78,7 @@ class SynthesisModel(tf.keras.Model):
     def summary(self):
         """
         Prints a summary of each model, including total, trainable,
-        and non-trainable parameters, and the model size in MB.
+            and non-trainable parameters, and the model size in MB.
         """
 
         for name in self.names:
@@ -104,8 +104,7 @@ class SynthesisModel(tf.keras.Model):
         Retrieves the weights of the models.
 
         Returns:
-            dict:
-                A dictionary with models names as keys and weights as values.
+            A dictionary with models names as keys and weights as values.
         """
 
         with self.distribute_strategy.scope():
@@ -124,7 +123,7 @@ class SynthesisModel(tf.keras.Model):
         Sets the weights for the models.
 
         Args:
-            weights: dict
+            weights (dict):
                 A dictionary with models names as keys and weights as values.
         """
 
@@ -163,6 +162,17 @@ class SynthesisModel(tf.keras.Model):
                                              options=options)
 
     def compile(self, learning_rate=0.001):
+        """
+        Configures the model for training.
+
+        Sets up the optimizers for the models using the AdamW optimizer
+            with specified learning rate and beta parameters.
+        Also initializes the loss functions and the metrics for model evaluation.
+
+        Args:
+            learning_rate (float, optional):
+                The learning rate for the optimizer.
+        """
 
         super().compile(run_eagerly=False)
 
@@ -196,6 +206,24 @@ class SynthesisModel(tf.keras.Model):
         self.kid_metric = KID()
 
     def train_step(self, data):
+        """
+        Performs the training step on the provided batch of data.
+
+        This method conducts both the discriminator and generator phases of training.
+        In the discriminator phase, it computes the loss for discriminator and patch discriminator,
+            writer identifier, and recognizer using input combinations.
+        In the generator phase, it computes losses for the discriminator, CTC, style reconstruction,
+            content reconstruction, writer identify, contextual loss, and KL-divergency.
+        Finally, it applies gradients to optimize the model and updates the metric.
+
+        Args:
+            data (list or tuple):
+                A batch of data ([images, texts, writers, augmented images, augmented texts], []).
+
+        Returns:
+            A dictionary containing metrics ans losses.
+        """
+
         (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = data
 
         batch_size = tf.shape(image_inputs)[0]
@@ -407,15 +435,15 @@ class GeneratorModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            image_shape: list or tuple
+            image_shape (list or tuple):
                 Shape of the output image.
-            lexical_shape: list or tuple
+            lexical_shape (list or tuple):
                 Shape of the text sequences and vocabulary encoding.
-            latent_dim: int
+            latent_dim (int):
                 Dimension of the latent space.
-            embedding_dim: int
+            embedding_dim (int):
                 Dimension of the embedding space.
-            blocks: list or tuple
+            blocks (list or tuple):
                 Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -460,17 +488,17 @@ class GeneratorModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -486,16 +514,15 @@ class GeneratorModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
@@ -595,15 +622,15 @@ class DiscriminatorModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            image_shape: list or tuple
+            image_shape (list or tuple):
                 Shape of the input image.
-            patch_shape: list, tuple or None
+            patch_shape (list, tuple or None):
                 Defines whether to apply patches.
-            lexical_shape: list or tuple
+            lexical_shape (list or tuple):
                 Shape of the text sequences and vocabulary encoding.
-            embedding_dim: int
+            embedding_dim (int):
                 Dimension of the embedding space.
-            blocks: list or tuple
+            blocks (list or tuple):
                 Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -648,17 +675,17 @@ class DiscriminatorModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -674,16 +701,15 @@ class DiscriminatorModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
@@ -747,9 +773,9 @@ class StyleBackboneModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            image_shape: list or tuple
+            image_shape (list or tuple):
                 Shape of the input image.
-            blocks: list or tuple
+            blocks (list or tuple):
                 Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -790,17 +816,17 @@ class StyleBackboneModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -816,16 +842,15 @@ class StyleBackboneModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
@@ -897,9 +922,9 @@ class StyleEncoderModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            features_shape: list or tuple
+            features_shape (list or tuple):
                 Shape of the input features.
-            latent_dim: int
+            latent_dim (int):
                 Dimension of the latent space.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -938,17 +963,17 @@ class StyleEncoderModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -964,16 +989,15 @@ class StyleEncoderModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
@@ -1019,9 +1043,9 @@ class IdentifierModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            features_shape: list or tuple
+            features_shape: (ist or tuple):
                 Shape of the input features.
-            writer_dim: int
+            writer_dim (int):
                 Number of writers.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -1060,17 +1084,17 @@ class IdentifierModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -1086,16 +1110,15 @@ class IdentifierModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
@@ -1134,11 +1157,11 @@ class RecognizerModel(tf.keras.Model):
         Initializes the model class.
 
         Args:
-            image_shape: list or tuple
+            image_shape (list or tuple):
                 Shape of the input image.
-            lexical_shape: list or tuple
+            lexical_shape (list or tuple):
                 Shape of the text sequences and vocabulary encoding.
-            blocks: list or tuple
+            blocks (list or tuple):
                 Blocks of channels.
             **kwargs
                 Additional keyword arguments for `tf.keras.Model`.
@@ -1179,17 +1202,17 @@ class RecognizerModel(tf.keras.Model):
         Prints a string summary of the network.
 
         Args:
-            line_length: int, optional
+            line_length (int, optional):
                 Total length of printed lines.
-            positions: list of float, optional
+            positions (list of float, optional):
                 Positions of log elements in each line.
-            print_fn: callable, optional
+            print_fn (callable, optional):
                 Function used for printing the summary.
-            expand_nested: bool, optional
+            expand_nested (bool, optional):
                 Whether to expand the nested models.
-            show_trainable: bool, optional
+            show_trainable (bool, optional):
                 Whether to show if a layer is trainable.
-            layer_range: list or tuple, optional
+            layer_range (list or tuple, optional):
                 Range of layers to include in the model summary.
         """
 
@@ -1205,16 +1228,15 @@ class RecognizerModel(tf.keras.Model):
         Executes the model on new inputs.
 
         Args:
-            inputs: tensor or collection of tensors
+            inputs (tensor or collection of tensors):
                 The input data to the model.
-            training: bool, optional
+            training (bool, optional):
                 If True, the model is run in training mode.
-            mask: tensor or collection of tensors, optional
+            mask (tensor or collection of tensors, optional):
                 An optional mask (or masks) to be applied on the inputs.
 
         Returns:
-            tensor or list of tensors
-                The output from the model after processing the inputs.
+            The output from the model after processing the inputs.
         """
 
         return self.model(inputs, training, mask)
