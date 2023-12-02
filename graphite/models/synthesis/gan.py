@@ -429,7 +429,7 @@ class GeneratorModel(tf.keras.Model):
         self.embedding_dim = embedding_dim
         self.blocks = blocks
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -500,7 +500,7 @@ class GeneratorModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
@@ -617,7 +617,7 @@ class DiscriminatorModel(tf.keras.Model):
         self.embedding_dim = embedding_dim
         self.blocks = blocks
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -688,7 +688,7 @@ class DiscriminatorModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
@@ -761,7 +761,7 @@ class StyleBackboneModel(tf.keras.Model):
         self.features_shape = None
         self.blocks = blocks
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -830,7 +830,7 @@ class StyleBackboneModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
@@ -910,7 +910,7 @@ class StyleEncoderModel(tf.keras.Model):
         self.features_shape = features_shape
         self.latent_dim = latent_dim
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -978,7 +978,7 @@ class StyleEncoderModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
@@ -1032,7 +1032,7 @@ class IdentifierModel(tf.keras.Model):
         self.features_shape = features_shape
         self.writer_dim = writer_dim
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -1100,7 +1100,7 @@ class IdentifierModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
@@ -1150,7 +1150,7 @@ class RecognizerModel(tf.keras.Model):
         self.lexical_shape = lexical_shape
         self.blocks = blocks
 
-        self.buildiscriminator()
+        self.build_model()
 
     def get_config(self):
         """
@@ -1219,7 +1219,7 @@ class RecognizerModel(tf.keras.Model):
 
         return self.model(inputs, training, mask)
 
-    def buildiscriminator(self):
+    def build_model(self):
         """
         Initializes the neural network model by defining its architecture.
         Sets `self.model` with the specified layers and configurations.
