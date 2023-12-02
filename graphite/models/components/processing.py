@@ -11,7 +11,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         Initializes Patches layer.
 
         Args:
-            patch_shape: list or tuple
+            patch_shape (list or tuple):
                 The target patch size to create.
             **kwargs
                 Additional keyword arguments for the Layer.
@@ -26,7 +26,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         Builds the layer with patches ratio values.
 
         Args:
-            input_shape: tuple
+            input_shape (tuple):
                 Shape of the input tensor.
         """
 
@@ -38,12 +38,11 @@ class ExtractPatches(tf.keras.layers.Layer):
         Splits the input image into patches.
 
         Args:
-            inputs: tensor
+            inputs (tensor):
                 The input tensor representing images.
 
         Returns:
-            tensor
-                A tensor containing the extracted patches.
+            A tensor containing the extracted patches.
         """
 
         patches = tf.image.extract_patches(

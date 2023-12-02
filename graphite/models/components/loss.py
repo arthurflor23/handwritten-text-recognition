@@ -11,7 +11,7 @@ class CTCLoss(tf.keras.losses.Loss):
         Initializes the CTCLoss instance.
 
         Args:
-            epsilon: float optional
+            epsilon (float optional):
                 Small constant to avoid log of zero.
             **kwargs:
                 Additional keyword arguments.
@@ -26,9 +26,9 @@ class CTCLoss(tf.keras.losses.Loss):
         Computes the CTC loss between y_true and y_pred.
 
         Args:
-            y_true: tensor,
+            y_true (tensor):
                 The target tensor.
-            y_pred: tensor,
+            y_pred (tensor):
                 The prediction tensor.
 
         Returns:
@@ -75,13 +75,13 @@ class CTXLoss(tf.keras.losses.Loss):
         Initializes the CTXLoss instance.
 
         Args:
-            sigma: float, optional
+            sigma (float, optional):
                 Sharpness parameter of the similarity function.
-            alpha: float, optional
+            alpha (float, optional):
                 Scaling factor for weighting the distances.
-            epsilon: float, optional
+            epsilon (float, optional):
                 Small constant to avoid division by zero.
-            loss_type: str, optional
+            loss_type (str, optional):
                 Type of loss to be used. Can be 'cosine', 'l1', or 'l2'.
             **kwargs:
                 Additional keyword arguments.
@@ -99,9 +99,9 @@ class CTXLoss(tf.keras.losses.Loss):
         Computes the contextual loss between y_true and y_pred.
 
         Args:
-            y_true: tensor,
+            y_true (tensor):
                 The target tensor.
-            y_pred: tensor,
+            y_pred (tensor):
                 The prediction tensor.
 
         Returns:
@@ -135,9 +135,9 @@ class CTXLoss(tf.keras.losses.Loss):
         Computes the cosine distance between two tensors.
 
         Args:
-            y: tensor,
+            y (tensor):
                 The target tensor.
-            x: tensor,
+            x (tensor):
                 The prediction tensor.
 
         Returns:
@@ -169,9 +169,9 @@ class CTXLoss(tf.keras.losses.Loss):
         Computes the L1 (Manhattan) distance between two tensors.
 
         Args:
-            y: tensor,
+            y (tensor):
                 The target tensor.
-            x: tensor,
+            x (tensor):
                 The prediction tensor.
 
         Returns:
@@ -196,9 +196,9 @@ class CTXLoss(tf.keras.losses.Loss):
         Computes the L2 (Euclidean) distance between two tensors.
 
         Args:
-            y: tensor,
+            y (tensor):
                 The target tensor.
-            x: tensor,
+            x (tensor):
                 The prediction tensor.
 
         Returns:
@@ -245,9 +245,9 @@ class L1Loss(tf.keras.losses.Loss):
         Computes the L1 loss between y_true and y_pred.
 
         Args:
-            y_true: tensor,
+            y (tensor):
                 The target tensor.
-            y_pred: tensor,
+            x (tensor):
                 The prediction tensor.
 
         Returns:

@@ -15,9 +15,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Initializes the conditional batch normalization layer.
 
         Args:
-            momentum: float, optional
+            momentum (float, optional):
                 Momentum for moving average of mean and variance.
-            epsilon: float, optional
+            epsilon (float, optional):
                 Small constant to avoid division by zero.
             **kwargs:
                 Additional layer keyword arguments.
@@ -33,7 +33,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Initializes layer weights.
 
         Args:
-            input_shape: list of TensorShape
+            input_shape (list of TensorShape):
                 Input tensor shapes.
         """
 
@@ -57,9 +57,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Applies conditional batch normalization.
 
         Args:
-            inputs: tuple (inputs, conditions)
+            inputs (list or tuple):
                 Input and conditional data.
-            training: bool, optional
+            training (bool, optional):
                 Training or inference mode.
 
         Returns:
@@ -120,9 +120,9 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         Initializes the spectral normalization wrapper.
 
         Args:
-            layer: tf.keras.layers.Layer
+            layer (tf.keras.layers.Layer):
                 The layer to apply spectral normalization to.
-            power_iterations: int, optional
+            power_iterations (int, optional):
                 Number of power iterations for normalization.
             **kwargs
                 Additional keyword arguments for the wrapper.
@@ -137,7 +137,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         Builds the layer by setting up the weights.
 
         Args:
-            input_shape: TensorShape or tuple/list
+            input_shape (tuple or list):
                 Shape of the input to the layer.
         """
 
@@ -170,9 +170,9 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         Calls the wrapped layer with spectral normalization.
 
         Args:
-            inputs: tensor or array-like
+            inputs (tensor or array-like):
                 Inputs to the layer.
-            training: bool, optional
+            training (bool, optional):
                 If True, applies spectral normalization during training.
 
         Returns:
@@ -211,12 +211,11 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         Computes the output shape of the wrapped layer.
 
         Args:
-            input_shape: TensorShape or tuple/list
+            input_shape (tuple or list):
                 Shape of the input to the layer.
 
         Returns:
-            TensorShape
-                Computed shape of the output from the wrapped layer.
+            Computed shape of the output from the wrapped layer.
         """
 
         return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())

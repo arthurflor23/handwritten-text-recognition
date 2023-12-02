@@ -6,15 +6,15 @@ class KID(tf.keras.metrics.Metric):
     Kernel Inception Distance (KID) metric class.
 
     Kernel Inception Distance (KID) was proposed as a replacement for the popular
-    Frechet Inception Distance (FID) metric for measuring image generation quality.
+        Frechet Inception Distance (FID) metric for measuring image generation quality.
     Both metrics measure the difference in the generated and training distributions
-    in the representation space of an InceptionV3 network pretrained on ImageNet.
+        in the representation space of an InceptionV3 network pretrained on ImageNet.
 
     According to the paper, KID was proposed because FID has no unbiased estimator, its
-    expected value is higher when it is measured on fewer images. KID is more suitable for
-    small datasets because its expected value does not depend on the number of samples it is
-    measured on. It is also computationally lighter, numerically more stable, and simpler to
-    implement because it can be estimated in a per-batch manner.
+        expected value is higher when it is measured on fewer images. KID is more suitable for
+        small datasets because its expected value does not depend on the number of samples it is
+        measured on. It is also computationally lighter, numerically more stable, and simpler to
+        implement because it can be estimated in a per-batch manner.
 
     Reference:
         [Demystifying MMD GANs - Kernel Inception Distance (KID)](https://arxiv.org/abs/1801.01401).
@@ -28,7 +28,7 @@ class KID(tf.keras.metrics.Metric):
         Initialize the KID metric.
 
         Args:
-            name: str, optional
+            name (str, optional):
                 Name of the metric.
             **kwargs:
                 Additional keyword arguments.
@@ -54,9 +54,9 @@ class KID(tf.keras.metrics.Metric):
         Compute the polynomial kernel between two sets of features.
 
         Args:
-            features_1: tensor
+            features_1 (tensor):
                 First set of features.
-            features_2: tensor
+            features_2 (tensor):
                 Second set of features.
 
         Returns:
@@ -71,11 +71,11 @@ class KID(tf.keras.metrics.Metric):
         Update the state of the metric with new data.
 
         Args:
-            real_images: tensor
+            real_images (tensor):
                 Batch of real images.
-            generated_images: tensor
+            generated_images (tensor):
                 Batch of generated images.
-            sample_weight: tensor, optional
+            sample_weight (tensor, optional):
                 Sample weights.
         """
 

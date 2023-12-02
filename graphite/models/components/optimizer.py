@@ -6,7 +6,7 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
     Custom optimizer wrapper for applying gradient normalization.
 
     This optimizer wraps around another tf.keras optimizer and normalizes
-    the gradients according to a specified norm.
+        the gradients according to a specified norm.
     """
 
     def __init__(self, optimizer, normalization='l2', epsilon=1e-7, name='normalized_optimizer', **kwargs):
@@ -14,13 +14,13 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Initializes the NormalizedOptimizer.
 
         Args:
-            optimizer: tf.keras.optimizers.Optimizer
+            optimizer (tf.keras.optimizers.Optimizer):
                 The optimizer to wrap.
-            normalization: str, optional
+            normalization (str, optional):
                 The type of normalization.
-            epsilon: float, optional
+            epsilon (float, optional):
                 Small float for numerical stability.
-            name: str, optional
+            name (str, optional):
                 Optional name for the operations created.
             **kwargs:
                 Additional keyword arguments.
@@ -51,11 +51,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Apply gradients to variables.
 
         Args:
-            grads_and_vars:
+            grads_and_vars (list):
                 List of (gradient, variable) pairs.
-            name: str, optional
+            name (str, optional):
                 Optional name for the operations created.
-            skip_gradients_aggregation: bool, optional
+            skip_gradients_aggregation (bool, optional):
                 If True, skip the gradient normalization.
 
         Returns:
@@ -69,13 +69,14 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
     def _average_l1_l2_norm(self, grad):
         """
-        Computes the average of the L-1 and L-2 norms of the gradient.
+        Computes the average of the L1 and L2 norms of the gradient.
 
-        # Arguments:
-            grad: gradient for a variable
+        Args:
+            grad (tensor):
+                A tensor representing a gradient.
 
-        # Returns:
-            The norm of the gradient
+        Returns:
+            The norm of the gradient.
         """
 
         return (self._average_l1_norm(grad) + self._average_l2_norm(grad)) / 2.
@@ -85,10 +86,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the L2 norm of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.reduce_mean(tf.abs(grad))
@@ -98,10 +100,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the average of the L2 norm of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.sqrt(tf.reduce_mean(tf.square(grad)))
@@ -111,10 +114,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the average of the L1 and L2 norms of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return (self._l1_norm(grad) + self._l2_norm(grad)) / 2.
@@ -124,10 +128,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the L1 norm of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.reduce_sum(tf.abs(grad))
@@ -137,10 +142,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the L2 norm of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.sqrt(tf.reduce_sum(tf.square(grad)))
@@ -150,10 +156,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the L-infinity norm of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.math.maximum(tf.math.abs(grad))
@@ -163,10 +170,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the average of the Max and Min of the absolute values of the gradients.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return (tf.math.maximum(tf.math.abs(grad)) + tf.math.minimum(tf.math.abs(grad))) / 2.
@@ -176,10 +184,11 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Computes the standard deviation of the gradient.
 
         Args:
-            grad: A tensor representing a gradient.
+            grad (tensor):
+                A tensor representing a gradient.
 
         Returns:
-            The norm of the gradient
+            The norm of the gradient.
         """
 
         return tf.math.reduce_std(grad)
@@ -206,7 +215,8 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         Creates an optimizer from its configuration.
 
         Args:
-            config: A Python dictionary containing the optimizer configuration.
+            config (dict):
+                Dictionary containing the optimizer configuration.
 
         Returns:
             A `NormalizedOptimizer` instance.

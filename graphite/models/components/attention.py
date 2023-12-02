@@ -28,7 +28,7 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         Builds the layer with spectral normalization on convolutional layers.
 
         Args:
-            input_shape: tuple
+            input_shape (tuple):
                 Shape of the input tensor.
         """
 
@@ -51,12 +51,11 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         Applies self-attention to the input tensor.
 
         Args:
-            x: tensor
+            x (tensor):
                 Input tensor.
 
         Returns:
-            tensor
-                Processed tensor with self-attention.
+            Processed tensor with self-attention.
         """
 
         f = self.conv_f(x)
