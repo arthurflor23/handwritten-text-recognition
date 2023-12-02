@@ -244,9 +244,9 @@ class SynthesisModel(tf.keras.Model):
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-        self.kid_metric = KID()
+        self.kid = KID()
 
-    def train_step(self, data):
+    def train_step(self, input_data):
         """
         Performs the training step on the provided batch of data.
 
@@ -258,14 +258,14 @@ class SynthesisModel(tf.keras.Model):
         Finally, it applies gradients to optimize the model and updates the metric.
 
         Args:
-            data (list or tuple):
+            input_data (list or tuple):
                 A batch of data ([images, texts, writers, augmented images, augmented texts], []).
 
         Returns:
             A dictionary containing metrics ans losses.
         """
 
-        (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = data
+        (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
 
         batch_size = tf.shape(image_inputs)[0]
         batch_quarter = tf.math.maximum(1, batch_size // 4)
@@ -449,10 +449,10 @@ class SynthesisModel(tf.keras.Model):
         real_latent_inputs, _, _ = self.style_encoder(real_features_inputs, training=False)
         real_real_images = self.generator([real_latent_inputs, text_inputs], training=False)
 
-        self.kid_metric.update_state(image_inputs, real_real_images)
+        self.kid.update_state(image_inputs, real_real_images)
 
         return {
-            "kid": self.kid_metric.result(),
+            "kid": self.kid.result(),
             "g_loss": g_loss,
             "d_loss": d_loss,
             "w_loss": w_loss,
