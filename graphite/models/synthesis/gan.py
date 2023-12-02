@@ -132,13 +132,13 @@ class SynthesisModel(tf.keras.Model):
             non_trainable_count = sum([tf.size(x).numpy() for x in model.non_trainable_variables])
             total_count = trainable_count + non_trainable_count
 
-            print('----------------------------------')
-            print(f'Model: {model.name:>27}')
-            print('----------------------------------')
-            print(f'Total params: {total_count:20,}')
-            print(f'Trainable params: {trainable_count:16,}')
-            print(f'Non-trainable params: {non_trainable_count:12,}')
-            print(f'Size (MB): {(total_count*4) / (1024**2):23,.2f}')
+            print('-------------------------------------')
+            print(f'Model: {model.name:>30}')
+            print('-------------------------------------')
+            print(f'Total params: {total_count:23,}')
+            print(f'Trainable params: {trainable_count:19,}')
+            print(f'Non-trainable params: {non_trainable_count:15,}')
+            print(f'Size (MB): {(total_count*4) / (1024**2):26,.2f}')
 
     def get_weights(self):
         """
