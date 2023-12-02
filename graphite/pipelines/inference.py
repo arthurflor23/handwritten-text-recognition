@@ -8,74 +8,75 @@ from spelling import Spelling
 
 def inference(args):
     """
-    Performs inference phase.
+    Performs the inference phase.
 
-    Parameters
-    ----------
-    args : argparse.Namespace
-        A namespace object that contains all the arguments required.
+    Args:
+        args (argparse.Namespace):
+            A namespace object containing all the arguments required.
     """
 
-    def print_section(content):
-        print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
+    print(args)
 
-    data = [[image, args.bbox, ['']] for image in args.images]
+    # def print_section(content):
+    #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
-    dataset = Dataset(data=data,
-                      level=args.level,
-                      binarization=args.binarization,
-                      eager_mode=args.eager_mode,
-                      seed=args.seed)
+    # data = [[image, args.bbox, ['']] for image in args.images]
 
-    if args.verbose > 0:
-        print_section(dataset)
+    # dataset = Dataset(data=data,
+    #                   level=args.level,
+    #                   binarization=args.binarization,
+    #                   eager_mode=args.eager_mode,
+    #                   seed=args.seed)
 
-    model = Model(network=args.network, experiment_name=args.experiment_name)
-    model.compile(run_index=args.run_index)
+    # if args.verbose > 0:
+    #     print_section(dataset)
 
-    if args.verbose > 1:
-        print_section(model)
+    # model = Model(network=args.network, experiment_name=args.experiment_name)
+    # model.compile(run_index=args.run_index)
 
-    infer_data, infer_steps = dataset.get_generator(partition=dataset.test,
-                                                    batch_size=args.batch_size,
-                                                    shuffle=False)
+    # if args.verbose > 1:
+    #     print_section(model)
 
-    predictions, probabilities = model.predict(test_data=infer_data,
-                                               test_steps=infer_steps,
-                                               top_paths=args.top_paths,
-                                               beam_width=args.beam_width,
-                                               ctc_decode=True,
-                                               token_decode=True,
-                                               verbose=args.verbose)
+    # infer_data, infer_steps = dataset.get_generator(partition=dataset.test,
+    #                                                 batch_size=args.batch_size,
+    #                                                 shuffle=False)
 
-    if args.verbose > 0:
-        print_section(model.test_logger)
+    # predictions, probabilities = model.predict(test_data=infer_data,
+    #                                            test_steps=infer_steps,
+    #                                            top_paths=args.top_paths,
+    #                                            beam_width=args.beam_width,
+    #                                            ctc_decode=True,
+    #                                            token_decode=True,
+    #                                            verbose=args.verbose)
 
-    if args.spell_checker:
-        spelling = Spelling(spell_checker=args.spell_checker,
-                            api_key=args.api_key,
-                            env_key=args.env_key)
+    # if args.verbose > 0:
+    #     print_section(model.test_logger)
 
-        if args.verbose > 1:
-            print_section(spelling)
+    # if args.spell_checker:
+    #     spelling = Spelling(spell_checker=args.spell_checker,
+    #                         api_key=args.api_key,
+    #                         env_key=args.env_key)
 
-        predictions = spelling.enhance(predictions, verbose=args.verbose)
+    #     if args.verbose > 1:
+    #         print_section(spelling)
 
-    for i in range(dataset.test['size']):
-        print("Path   Probability   Predict")
+    #     predictions = spelling.enhance(predictions, verbose=args.verbose)
 
-        for j in range(args.top_paths):
-            probability = np.mean(probabilities[j][i])
-            predict = '\n'.join(predictions[j][i])
+    # for i in range(dataset.test['size']):
+    #     print("Path   Probability   Predict")
 
-            print(f"{j+1:>4}   {probability:>11.2%}   {predict}")
+    #     for j in range(args.top_paths):
+    #         probability = np.mean(probabilities[j][i])
+    #         predict = '\n'.join(predictions[j][i])
 
-        if args.check:
-            print("\nPress Enter to continue or Esc to stop...\n")
+    #         print(f"{j+1:>4}   {probability:>11.2%}   {predict}")
 
-            cv2.imshow("Image", dataset.test['data'][i][0])
-            key = cv2.waitKey(0)
+    #     if args.check:
+    #         print("\nPress Enter to continue or Esc to stop...\n")
 
-            if key == 27:
-                cv2.destroyAllWindows()
-                return
+    #         cv2.imshow("Image", dataset.test['data'][i][0])
+    #         key = cv2.waitKey(0)
+
+    #         if key == 27:
+    #             cv2.destroyAllWindows()
+    #             return

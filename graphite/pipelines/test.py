@@ -7,107 +7,108 @@ from spelling import Spelling
 
 def test(args):
     """
-    Performs testing phase.
+    Performs the test phase.
 
-    Parameters
-    ----------
-    args : argparse.Namespace
-        A namespace object that contains all the arguments required.
+    Args:
+        args (argparse.Namespace):
+            A namespace object containing all the arguments required.
     """
 
-    def print_section(content):
-        print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
+    print(args)
 
-    dataset = Dataset(source=args.source,
-                      level=args.level,
-                      training_ratio=args.training_ratio,
-                      validation_ratio=args.validation_ratio,
-                      test_ratio=args.test_ratio,
-                      binarization=args.binarization,
-                      eager_mode=args.eager_mode,
-                      seed=args.seed)
+    # def print_section(content):
+    #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
 
-    if args.verbose > 0:
-        print_section(dataset)
+    # dataset = Dataset(source=args.source,
+    #                   level=args.level,
+    #                   training_ratio=args.training_ratio,
+    #                   validation_ratio=args.validation_ratio,
+    #                   test_ratio=args.test_ratio,
+    #                   binarization=args.binarization,
+    #                   eager_mode=args.eager_mode,
+    #                   seed=args.seed)
 
-    model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
-    model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
+    # if args.verbose > 0:
+    #     print_section(dataset)
 
-    if args.verbose > 1:
-        print_section(model)
+    # model = Model(network=args.network, experiment_name=args.experiment_name, seed=args.seed)
+    # model.compile(tokenizer=dataset.tokenizer, learning_rate=args.learning_rate, run_index=args.run_index)
 
-    test_data, test_steps = dataset.get_generator(partition=dataset.test,
-                                                  batch_size=args.batch_size,
-                                                  shuffle=False)
+    # if args.verbose > 1:
+    #     print_section(model)
 
-    predictions, _ = model.predict(test_data=test_data,
-                                   test_steps=test_steps,
-                                   top_paths=args.top_paths,
-                                   beam_width=args.beam_width,
-                                   ctc_decode=True,
-                                   token_decode=True,
-                                   verbose=args.verbose)
+    # test_data, test_steps = dataset.get_generator(partition=dataset.test,
+    #                                               batch_size=args.batch_size,
+    #                                               shuffle=False)
 
-    if args.verbose > 0:
-        print_section(model.test_logger)
+    # predictions, _ = model.predict(test_data=test_data,
+    #                                test_steps=test_steps,
+    #                                top_paths=args.top_paths,
+    #                                beam_width=args.beam_width,
+    #                                ctc_decode=True,
+    #                                token_decode=True,
+    #                                verbose=args.verbose)
 
-    baseline_metrics = model.evaluate(partition=dataset.test,
-                                      baseline_predictions=predictions,
-                                      share_top_paths=args.share_top_paths)
+    # if args.verbose > 0:
+    #     print_section(model.test_logger)
 
-    if not args.check:
-        model.save_context(dataset=dataset, baseline_metrics=baseline_metrics)
+    # baseline_metrics = model.evaluate(partition=dataset.test,
+    #                                   baseline_predictions=predictions,
+    #                                   share_top_paths=args.share_top_paths)
 
-    if args.spell_checker:
-        spelling = Spelling(spell_checker=args.spell_checker,
-                            api_key=args.api_key,
-                            env_key=args.env_key)
+    # if not args.check:
+    #     model.save_context(dataset=dataset, baseline_metrics=baseline_metrics)
 
-        if args.verbose > 1:
-            print_section(spelling)
+    # if args.spell_checker:
+    #     spelling = Spelling(spell_checker=args.spell_checker,
+    #                         api_key=args.api_key,
+    #                         env_key=args.env_key)
 
-        spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
+    #     if args.verbose > 1:
+    #         print_section(spelling)
 
-        spelling_metrics = model.evaluate(partition=dataset.test,
-                                          spelling_predictions=spelling_predictions,
-                                          share_top_paths=args.share_top_paths)
+    #     spelling_predictions = spelling.enhance(predictions, verbose=args.verbose)
 
-        if not args.check:
-            model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
+    #     spelling_metrics = model.evaluate(partition=dataset.test,
+    #                                       spelling_predictions=spelling_predictions,
+    #                                       share_top_paths=args.share_top_paths)
 
-    if args.verbose > 0:
-        print_section(model.evaluation_logger)
+    #     if not args.check:
+    #         model.save_context(spelling=spelling, spelling_metrics=spelling_metrics)
 
-    if args.check:
-        print("\nChecking samples...\n")
+    # if args.verbose > 0:
+    #     print_section(model.evaluation_logger)
 
-        test_data, test_steps = dataset.get_generator(dataset.test)
-        pred_index = 0
+    # if args.check:
+    #     print("\nChecking samples...\n")
 
-        for _ in range(test_steps):
-            batch_data, batch_labels = next(test_data)
+    #     test_data, test_steps = dataset.get_generator(dataset.test)
+    #     pred_index = 0
 
-            for i in range(len(batch_data)):
-                image = batch_data[i]
-                label = dataset.tokenizer.decode(batch_labels[i])
+    #     for _ in range(test_steps):
+    #         batch_data, batch_labels = next(test_data)
 
-                print("\nTest Label")
-                print('\n'.join(label))
+    #         for i in range(len(batch_data)):
+    #             image = batch_data[i]
+    #             label = dataset.tokenizer.decode(batch_labels[i])
 
-                print("\nPrediction")
-                print('\n'.join(predictions[0, pred_index, :]))
+    #             print("\nTest Label")
+    #             print('\n'.join(label))
 
-                if args.spell_checker:
-                    print("\nSpelling Prediction")
-                    print('\n'.join(spelling_predictions[0, pred_index, :]))
+    #             print("\nPrediction")
+    #             print('\n'.join(predictions[0, pred_index, :]))
 
-                pred_index += 1
+    #             if args.spell_checker:
+    #                 print("\nSpelling Prediction")
+    #                 print('\n'.join(spelling_predictions[0, pred_index, :]))
 
-                print("\n\nPress Enter to continue or Esc to stop...\n")
+    #             pred_index += 1
 
-                cv2.imshow("Image", image)
-                key = cv2.waitKey(0)
+    #             print("\n\nPress Enter to continue or Esc to stop...\n")
 
-                if key == 27:
-                    cv2.destroyAllWindows()
-                    return
+    #             cv2.imshow("Image", image)
+    #             key = cv2.waitKey(0)
+
+    #             if key == 27:
+    #                 cv2.destroyAllWindows()
+    #                 return

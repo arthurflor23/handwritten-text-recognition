@@ -5,12 +5,11 @@ from data import Augmentor, Dataset
 
 def check(args):
     """
-    Check and display data samples from a dataset.
+    Checks and displays data samples from a dataset.
 
-    Parameters
-    ----------
-    args : object
-        Command line arguments.
+    Args:
+        args (argparse.Namespace):
+            A namespace object containing all the arguments required.
     """
 
     print(args)
