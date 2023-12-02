@@ -12,6 +12,22 @@ from models.components.optimizer import NormalizedOptimizer
 
 
 class SynthesisModel(tf.keras.Model):
+    """
+    A comprehensive synthesis model built on the TensorFlow Keras framework.
+
+    This model integrates several sub-models including a generator, discriminator,
+        patch discriminator, style backbone, style encoder, writer identifier, and text recognizer.
+    Each of these components is specialized for different aspects of image and text processing,
+        and they work together to enable complex synthesis and recognition tasks.
+
+    Reference:
+        [HiGAN+: Handwriting Imitation GAN with Disentangled Representations](https://dl.acm.org/doi/10.1145/3550070)
+        [ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation](https://arxiv.org/abs/2003.10557)
+        [Large Scale GAN Training for High Fidelity Natural Image Synthesis](https://arxiv.org/abs/1809.11096v2)
+        [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3)
+        [Wasserstein GAN](https://arxiv.org/abs/1701.07875)
+        [GANs Trained by a Two Time-Scale Update Rule Converge to a Local Equilibrium](https://arxiv.org/abs/1706.08500)
+    """
 
     def __init__(self,
                  image_shape,
@@ -24,6 +40,31 @@ class SynthesisModel(tf.keras.Model):
                  generator_blocks,
                  discriminator_blocks,
                  **kwargs):
+        """
+        Initializes the SynthesisModel with specified parameters for each sub-model.
+
+        Args:
+            image_shape (tuple or list):
+                The shape of the input images.
+            patch_shape (tuple or list):
+                The shape of patches for the patch discriminator.
+            lexical_shape (tuple or list):
+                The shape of the lexical input.
+            writer_dim (int):
+                The dimension for the writer identifier.
+            latent_dim (int):
+                The latent dimension size for the style encoder.
+            embedding_dim (int):
+                The embedding dimension size.
+            backbone_blocks (tuple or list):
+                The blocks of filters for the style backbone model.
+            generator_blocks (tuple or list):
+                The blocks of filters for the generator model.
+            discriminator_blocks (tuple or list):
+                The blocks of filters for the discriminator models.
+            **kwargs:
+                Additional keyword arguments for the TensorFlow Keras Model.
+        """
 
         super().__init__(**kwargs)
 
@@ -77,8 +118,8 @@ class SynthesisModel(tf.keras.Model):
 
     def summary(self):
         """
-        Prints a summary of each model, including total, trainable,
-            and non-trainable parameters, and the model size in MB.
+        Prints a summary of each sub-models, including total, trainable,
+            and non-trainable parameters, and the sub-models size in MB.
         """
 
         for name in self.names:
@@ -101,10 +142,10 @@ class SynthesisModel(tf.keras.Model):
 
     def get_weights(self):
         """
-        Retrieves the weights of the models.
+        Retrieves the weights of the sub-models.
 
         Returns:
-            A dictionary with models names as keys and weights as values.
+            A dictionary with sub-models names as keys and weights as values.
         """
 
         with self.distribute_strategy.scope():
@@ -120,11 +161,11 @@ class SynthesisModel(tf.keras.Model):
 
     def set_weights(self, weights):
         """
-        Sets the weights for the models.
+        Sets the weights for the sub-models.
 
         Args:
             weights (dict):
-                A dictionary with models names as keys and weights as values.
+                A dictionary with sub-models names as keys and weights as values.
         """
 
         for name in self.names:
@@ -135,7 +176,7 @@ class SynthesisModel(tf.keras.Model):
 
     def save_weights(self, filepath, overwrite=True, save_format=None, options=None):
         """
-        Saves the weights of the models.
+        Saves the weights of the sub-models.
         """
 
         for name in self.names:
@@ -149,7 +190,7 @@ class SynthesisModel(tf.keras.Model):
 
     def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
         """
-        Loads the weights for the models.
+        Loads the weights for the sub-models.
         """
 
         for name in self.names:
@@ -163,9 +204,9 @@ class SynthesisModel(tf.keras.Model):
 
     def compile(self, learning_rate=0.001):
         """
-        Configures the model for training.
+        Configures the sub-models for training.
 
-        Sets up the optimizers for the models using the AdamW optimizer
+        Sets up the optimizers for the sub-models using the AdamW optimizer
             with specified learning rate and beta parameters.
         Also initializes the loss functions and the metrics for model evaluation.
 
