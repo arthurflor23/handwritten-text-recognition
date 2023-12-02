@@ -5,30 +5,89 @@ import tensorflow as tf
 
 
 class GANMonitor(tf.keras.callbacks.Callback):
+    """
+    A callback to monitor and save images during GAN training.
 
-    def __init__(self, filepath, text_inputs, latent_dim, num_img=3):
+    This callback saves generated images at the end of each epoch
+        where an improvement in the specified metric is observed.
+    """
+
+    def __init__(self, filepath, latent_dim, input_data, batch_size=4, metric='kid'):
+        """
+        Initializes the GANMonitor callback with specified parameters.
+
+        Args:
+            filepath (str):
+                Path where images will be saved.
+            latent_dim (int):
+                Dimensionality of the latent space.
+            input_data (list):
+                Dataset used for generating images.
+            batch_size (int, optional):
+                Number of samples per batch of input data.
+            metric (str, optional):
+                Name of the metric to monitor for improvement.
+        """
 
         self.filepath = filepath
-        self.text_inputs = text_inputs[:num_img]
         self.latent_dim = latent_dim
-        self.num_img = num_img
+        self.input_data = input_data
+        self.batch_size = batch_size
+        self.metric = metric
+        self.best_metric = np.inf
+
+    def _save_images(self, epoch, images, name):
+        """
+        Saves a batch of images to the specified filepath.
+
+        Args:
+            epoch (int):
+                The current epoch number.
+            images (ndarray):
+                Array of images to be saved.
+            name (str):
+                Base name for saved image files.
+        """
+
+        filepath = os.path.join(self.filepath, str(epoch + 1))
+        os.makedirs(filepath, exist_ok=True)
+
+        images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
+
+        for j, image in enumerate(images):
+            filename = os.path.join(filepath, f"{j + 1}_{name}.png")
+            cv2.imwrite(filename, image)
 
     def on_epoch_end(self, epoch, logs=None):
+        """
+        Callback function for end of an epoch.
 
-        random_latent_vectors = tf.random.normal(shape=(self.num_img, self.latent_dim))
+        If an improvement in the specified metric is observed,
+            generates and saves random latent, guided latent, and original images.
 
-        # features_inputs, _ = self.model.b_model.predict(random_latent_vectors)
-        # latent_inputs, _, _ = self.model.e_model.predict(features_inputs)
+        Args:
+            epoch (int):
+                The current epoch number.
+            logs (dict, optional):
+                Currently available log data.
+        """
 
-        generated_images = self.model.g_model([random_latent_vectors, self.text_inputs], training=False)
-        # generated_images = self.model.g_model.predict([latent_inputs, self.text_inputs])
-        generated_images = (generated_images + 1.0) * 127.5
-        generated_images = np.transpose(generated_images, (0, 2, 1, 3))
+        if logs.get(self.metric, np.inf) <= self.best_metric:
+            self.best_metric = logs[self.metric]
 
-        os.makedirs(self.filepath, exist_ok=True)
+            for i in range(0, len(self.input_data), self.batch_size):
+                images, texts = self.input_data[i:i + self.batch_size]
 
-        for i in range(self.num_img):
-            filepath = os.path.join(self.filepath, f"img_{i}_{epoch}.png")
-            image = generated_images[i].squeeze().astype('uint8')
+                # random latent images
+                random_latent_inputs = tf.random.normal(shape=(len(images), self.latent_dim))
+                random_latent_images = self.model.generator([random_latent_inputs, texts], training=False)
+                self._save_images(epoch, random_latent_images, name='random_style')
 
-            cv2.imwrite(filepath, image)
+                # guided latent images
+                guided_features_inputs, _ = self.model.style_backbone(images, training=False)
+                guided_latent_inputs, _, _ = self.model.style_encoder(guided_features_inputs, training=False)
+                guided_latent_images = self.model.generator([guided_latent_inputs, texts], training=False)
+                self._save_images(epoch, guided_latent_images, name='guided_style')
+
+                # original images
+                self._save_images(epoch, images, name='authentic')
