@@ -3,6 +3,7 @@ from models.components.callback import GANMonitor
 from models.components.loss import CTCLoss
 from models.components.loss import CTXLoss
 from models.components.loss import L1Loss
+from models.components.metric import KID
 from models.components.normalization import ConditionalBatchNormalization
 from models.components.normalization import SpectralNormalization
 from models.components.optimizer import NormalizedOptimizer
