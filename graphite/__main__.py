@@ -11,14 +11,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    # Models
+    # models
     parser.add_argument('--mode', default='recognition', help='Define application mode')
     parser.add_argument('--synthesis', default=None, help='Define synthesis model')
     parser.add_argument('--recognition', default=None, help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
     parser.add_argument('--run-index', default=None, type=int, help='Define run index')
 
-    # Dataset
+    # dataset
     parser.add_argument('--source', default=None, help='Define source data')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
     parser.add_argument('--image-shape', default=[128, 1024, 1], nargs=3, type=int, help='Define image shape (HxWxC)')
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--binarization', default=False, action='store_true', help='Enable binarization')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
 
-    # Augmentor
+    # augmentor
     parser.add_argument('--erode', default=[0.66, 3, 1], nargs=3, type=float, help='Erosion parameters')
     parser.add_argument('--dilate', default=[0.33, 2, 1], nargs=3, type=float, help='Dilation parameters')
     parser.add_argument('--elastic', default=[0.66, 29, 1.0], nargs=3, type=float, help='Elastic parameters')
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian-blur', default=None, nargs=3, type=float, help='Gaussian blur parameters')
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
 
-    # Training
+    # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
     parser.add_argument('--epochs', default=1000000, type=int, help='Maximum number of epochs')
     parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
@@ -54,29 +54,29 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-patience', default=20, type=int, help='Epochs before recognizing a plateau')
     parser.add_argument('--patience', default=30, type=int, help='Epochs without improvement to stop')
 
-    # Test
+    # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
     parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
     parser.add_argument('--share-top-paths', default=False, action='store_true', help='Use previous paths in metrics')
 
-    # Inference
+    # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
     parser.add_argument('--images', default=[], nargs='+', help='List of image paths')
     parser.add_argument('--bbox', default=[], nargs='+', help='Bounding box values for images (x, y, width, height)')
     parser.add_argument('--texts', default=[], nargs='+', help='List of arbitrary text inputs')
 
-    # Others
+    # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--seed', default=None, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
 
-    # Jupyter notebook compatibility
+    # jupyter notebook compatibility
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-    # Required parameters
+    # required parameters
     if args.check or args.training or args.test:
         assert args.source, "--source must be defined"
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     if args.inference and args.mode == 'recognition':
         assert len(args.images) > 0, "--images must be defined"
 
-    # Pipelines
+    # pipelines
     if args.check:
         pipelines.check(args)
 
