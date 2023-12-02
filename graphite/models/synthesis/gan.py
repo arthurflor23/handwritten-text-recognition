@@ -97,14 +97,14 @@ class SynthesisModel(tf.keras.Model):
                                                latent_dim=latent_dim,
                                                name='style_encoder')
 
-        self.writer_identifier = IdentifierModel(features_shape=self.style_backbone.features_shape,
-                                                 writer_dim=writer_dim,
-                                                 name='writer_identifier')
+        self.writer_identifier = WriterIdentifierModel(features_shape=self.style_backbone.features_shape,
+                                                       writer_dim=writer_dim,
+                                                       name='writer_identifier')
 
-        self.text_recognizer = RecognizerModel(image_shape=image_shape,
-                                               lexical_shape=lexical_shape,
-                                               blocks=backbone_blocks,
-                                               name='text_recognizer')
+        self.text_recognizer = TextRecognizerModel(image_shape=image_shape,
+                                                   lexical_shape=lexical_shape,
+                                                   blocks=backbone_blocks,
+                                                   name='text_recognizer')
 
         self.names = [
             self.generator.name,
@@ -128,17 +128,17 @@ class SynthesisModel(tf.keras.Model):
 
             model = getattr(self, name)
 
-            trainable_count = sum([tf.size(v).numpy() for v in model.trainable_variables])
-            non_trainable_count = sum([tf.size(v).numpy() for v in model.non_trainable_variables])
+            trainable_count = sum([tf.size(x).numpy() for x in model.trainable_variables])
+            non_trainable_count = sum([tf.size(x).numpy() for x in model.non_trainable_variables])
             total_count = trainable_count + non_trainable_count
 
-            print('---------------------------------------')
-            print('Model: "{}"'.format(model.name))
-            print('---------------------------------------')
-            print('Total params: {:,}'.format(total_count))
-            print('Trainable params: {:,}'.format(trainable_count))
-            print('Non-trainable params: {:,}'.format(non_trainable_count))
-            print('Size: {:.2f} MB'.format((total_count*4) / (1024**2)))
+            print('----------------------------------')
+            print(f'Model: {model.name:>27}')
+            print('----------------------------------')
+            print(f'Total params: {total_count:20,}')
+            print(f'Trainable params: {trainable_count:16,}')
+            print(f'Non-trainable params: {non_trainable_count:12,}')
+            print(f'Size (MB): {(total_count*4) / (1024**2):23,.2f}')
 
     def get_weights(self):
         """
@@ -1071,7 +1071,7 @@ class StyleEncoderModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class IdentifierModel(tf.keras.Model):
+class WriterIdentifierModel(tf.keras.Model):
     """
     A writer identifier model that classifies the handwriting image based in the extracted style features.
     """
@@ -1184,7 +1184,7 @@ class IdentifierModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class RecognizerModel(tf.keras.Model):
+class TextRecognizerModel(tf.keras.Model):
     """
     A recognizer model that transcripts the handwriting text from images.
     """
