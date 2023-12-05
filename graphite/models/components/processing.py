@@ -6,18 +6,19 @@ class ExtractPatches(tf.keras.layers.Layer):
     A Tensorflow Keras layer to extract patches from input images.
     """
 
-    def __init__(self, patch_shape):
+    def __init__(self, patch_shape, **kwargs):
         """
         Initializes Patches layer.
 
-        Args:
-            patch_shape (list or tuple):
-                The target patch size to create.
-            **kwargs
-                Additional keyword arguments for the Layer.
+        Parameters
+        ----------
+        patch_shape : list or tuple
+            The target patch size to create.
+        **kwargs
+            Additional keyword arguments for the Layer.
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.patch_shape = list(patch_shape)
 
@@ -25,9 +26,10 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
         Builds the layer with patches ratio values.
 
-        Args:
-            input_shape (tuple):
-                Shape of the input tensor.
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
         """
 
         self.patch_height_ratio = input_shape[1] // self.patch_shape[0]
@@ -37,11 +39,14 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
         Splits the input image into patches.
 
-        Args:
-            inputs (tensor):
-                The input tensor representing images.
+        Parameters
+        ----------
+        inputs : tensor
+            The input tensor representing images.
 
-        Returns:
+        Returns
+        -------
+        tensor
             A tensor containing the extracted patches.
         """
 
@@ -59,7 +64,9 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
         Returns the config of the layer.
 
-        Returns:
+        Returns
+        -------
+        dict
             A dictionary containing the configuration of the layer.
         """
 
