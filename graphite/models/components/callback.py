@@ -14,19 +14,20 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
     def __init__(self, filepath, latent_dim, input_data, batch_size=4, metric='kid'):
         """
-        Initializes the GANMonitor callback with specified parameters.
+        Initialize the GANMonitor callback with specified parameters.
 
-        Args:
-            filepath (str):
-                Path where images will be saved.
-            latent_dim (int):
-                Dimensionality of the latent space.
-            input_data (list):
-                Dataset used for generating images.
-            batch_size (int, optional):
-                Number of samples per batch of input data.
-            metric (str, optional):
-                Name of the metric to monitor for improvement.
+        Parameters
+        ----------
+        filepath : str
+            Path where images will be saved.
+        latent_dim : int
+            Dimensionality of the latent space.
+        input_data : list
+            Dataset used for generating images.
+        batch_size : int, optional
+            Number of samples per batch of input data.
+        metric : str, optional
+            Name of the metric to monitor for improvement.
         """
 
         self.filepath = filepath
@@ -38,15 +39,16 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
     def _save_images(self, epoch, images, name):
         """
-        Saves a batch of images to the specified filepath.
+        Save a batch of images to the specified filepath.
 
-        Args:
-            epoch (int):
-                The current epoch number.
-            images (ndarray):
-                Array of images to be saved.
-            name (str):
-                Base name for saved image files.
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
+        images : np.ndarray
+            Array of images to be saved.
+        name : str
+            Base name for saved image files.
         """
 
         filepath = os.path.join(self.filepath, str(epoch + 1))
@@ -60,16 +62,17 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         """
-        Callback function for end of an epoch.
+        Callback function for the end of an epoch.
 
-        If an improvement in the specified metric is observed,
-            generates and saves random latent, guided latent, and original images.
+        If an improvement in the specified metric is observed, generates and saves
+            random latent, guided latent, and original images.
 
-        Args:
-            epoch (int):
-                The current epoch number.
-            logs (dict, optional):
-                Currently available log data.
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
+        logs : dict, optional
+            Currently available log data.
         """
 
         if logs.get(self.metric, np.inf) <= self.best_metric:
