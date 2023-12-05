@@ -6,9 +6,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
     Conditional Batch Normalization for TensorFlow models.
     Enhances conditional GANs by using unique parameters for each condition.
 
-    Reference
-    ---------
-    [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
+    References
+    ----------
+    - [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
     """
 
     def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
@@ -119,9 +119,9 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     Spectral Normalization for TensorFlow models.
     Optimizes GAN training stability by normalizing layer weights.
 
-    Reference
-    ---------
-    [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
+    References
+    ----------
+    - [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
     """
 
     def __init__(self, layer, power_iterations=1, **kwargs):
