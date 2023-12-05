@@ -8,13 +8,14 @@ class CTCLoss(tf.keras.losses.Loss):
 
     def __init__(self, epsilon=1e-7, **kwargs):
         """
-        Initializes the CTCLoss instance.
+        Initialize the CTCLoss instance.
 
-        Args:
-            epsilon (float optional):
-                Small constant to avoid log of zero.
-            **kwargs:
-                Additional keyword arguments.
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small constant to avoid log of zero.
+        **kwargs : dict
+            Additional keyword arguments for the loss function.
         """
 
         super().__init__(**kwargs)
@@ -23,16 +24,19 @@ class CTCLoss(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         """
-        Computes the CTC loss between y_true and y_pred.
+        Compute the CTC loss between the true labels and predicted labels.
 
-        Args:
-            y_true (tensor):
-                The target tensor.
-            y_pred (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Tensor of true labels.
+        y_pred : tf.Tensor
+            Tensor of predicted labels.
 
-        Returns:
-            A scalar tensor representing the CTC loss.
+        Returns
+        -------
+        tf.Tensor
+            The computed CTC loss.
         """
 
         # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
@@ -67,24 +71,27 @@ class CTCLoss(tf.keras.losses.Loss):
 class CTXLoss(tf.keras.losses.Loss):
     """
     Contextual loss for comparing high-level features between two tensors.
-    Useful in tasks like style transfer and feature alignment.
+
+    Useful in tasks like style transfer and feature alignment. This loss 
+        function measures the feature similarities between two tensors.
     """
 
     def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, loss_type='l2', **kwargs):
         """
-        Initializes the CTXLoss instance.
+        Initialize the CTXLoss instance.
 
-        Args:
-            sigma (float, optional):
-                Sharpness parameter of the similarity function.
-            alpha (float, optional):
-                Scaling factor for weighting the distances.
-            epsilon (float, optional):
-                Small constant to avoid division by zero.
-            loss_type (str, optional):
-                Type of loss to be used. Can be 'cosine', 'l1', or 'l2'.
-            **kwargs:
-                Additional keyword arguments.
+        Parameters
+        ----------
+        sigma : float, optional
+            Sharpness parameter of the similarity function.
+        alpha : float, optional
+            Scaling factor for weighting the distances.
+        epsilon : float, optional
+            Small constant to avoid division by zero.
+        loss_type : str, optional
+            Type of loss to be used, can be 'cosine', 'l1', or 'l2'.
+        **kwargs : dict
+            Additional keyword arguments for the loss function.
         """
 
         super().__init__(**kwargs)
@@ -96,16 +103,19 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         """
-        Computes the contextual loss between y_true and y_pred.
+        Compute the contextual loss between the true and predicted tensors.
 
-        Args:
-            y_true (tensor):
-                The target tensor.
-            y_pred (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            The tensor of true values.
+        y_pred : tf.Tensor
+            The tensor of predicted values.
 
-        Returns:
-            A scalar tensor representing the contextual loss.
+        Returns
+        -------
+        tf.Tensor
+            The computed contextual loss.
         """
 
         y_true = tf.transpose(y_true, perm=[0, 3, 1, 2])
@@ -132,15 +142,18 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def compute_cosine_distance(self, y, x):
         """
-        Computes the cosine distance between two tensors.
+        Compute the cosine distance between two tensors.
 
-        Args:
-            y (tensor):
-                The target tensor.
-            x (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y : tf.Tensor
+            The target tensor.
+        x : tf.Tensor
+            The prediction tensor.
 
-        Returns:
+        Returns
+        -------
+        tf.Tensor
             Tensor representing the cosine distance between y and x.
         """
 
@@ -166,15 +179,18 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def compute_l1_distance(self, y, x):
         """
-        Computes the L1 (Manhattan) distance between two tensors.
+        Compute the L1 (Manhattan) distance between two tensors.
 
-        Args:
-            y (tensor):
-                The target tensor.
-            x (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y : tf.Tensor
+            The target tensor.
+        x : tf.Tensor
+            The prediction tensor.
 
-        Returns:
+        Returns
+        -------
+        tf.Tensor
             Tensor representing the L1 distance between y and x.
         """
 
@@ -193,15 +209,18 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def compute_l2_distance(self, y, x):
         """
-        Computes the L2 (Euclidean) distance between two tensors.
+        Compute the L2 (Euclidean) distance between two tensors.
 
-        Args:
-            y (tensor):
-                The target tensor.
-            x (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y : tf.Tensor
+            The target tensor.
+        x : tf.Tensor
+            The prediction tensor.
 
-        Returns:
+        Returns
+        -------
+        tf.Tensor
             Tensor representing the L2 distance between y and x.
         """
 
@@ -226,32 +245,39 @@ class CTXLoss(tf.keras.losses.Loss):
 
 class L1Loss(tf.keras.losses.Loss):
     """
-    L1 loss for image reconstruction task.
+    L1 loss for image reconstruction tasks.
+
+    The L1 loss, also known as mean absolute error (MAE), measures the
+        average magnitude of differences between predictions and actual observations.
     """
 
     def __init__(self, **kwargs):
         """
-        Initializes the L1Loss instance.
+        Initialize the L1Loss instance.
 
-        Args:
-            **kwargs:
-                Additional keyword arguments.
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments for the loss function.
         """
 
         super().__init__(**kwargs)
 
     def call(self, y_true, y_pred):
         """
-        Computes the L1 loss between y_true and y_pred.
+        Compute the L1 loss between the true and predicted values.
 
-        Args:
-            y (tensor):
-                The target tensor.
-            x (tensor):
-                The prediction tensor.
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Tensor of true values.
+        y_pred : tf.Tensor
+            Tensor of predicted values.
 
-        Returns:
-            A scalar tensor representing the L1 loss.
+        Returns
+        -------
+        tf.Tensor
+            The computed L1 loss.
         """
 
         y_diff = tf.math.abs(y_pred - y_true)
