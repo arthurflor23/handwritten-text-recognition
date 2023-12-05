@@ -32,11 +32,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Initializes layer weights.
+        Create the layer's weights.
 
-        Args:
-            input_shape (list of TensorShape):
-                Input tensor shapes.
+        Parameters
+        ----------
+        input_shape : list of TensorShape
+            Shape of the input tensor.
         """
 
         self.num_channels = input_shape[0][-1]
@@ -56,16 +57,19 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None):
         """
-        Applies conditional batch normalization.
+        Call the layer with the specified inputs.
 
-        Args:
-            inputs (list or tuple):
-                Input and conditional data.
-            training (bool, optional):
-                Training or inference mode.
+        Parameters
+        ----------
+        inputs : list or tuple
+            The inputs tensor and the conditional data tensor.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
 
-        Returns:
-            Normalized output tensor.
+        Returns
+        -------
+        tf.Tensor
+            The normalized output tensor.
         """
 
         inputs, conditions = inputs
@@ -92,10 +96,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def get_config(self):
         """
-        Returns the config of the layers.
+        Return the config of the layer.
 
-        Returns:
-            A dictionary containing the configuration of the layers.
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
         """
 
         config = {
@@ -138,11 +144,12 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     def build(self, input_shape):
         """
-        Builds the layer by setting up the weights.
+        Build the wrapper for the specified input shape.
 
-        Args:
-            input_shape (tuple or list):
-                Shape of the input to the layer.
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
         """
 
         super().build(input_shape)
@@ -171,15 +178,18 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     def call(self, inputs, training=None):
         """
-        Calls the wrapped layer with spectral normalization.
+        Call the wrapped layer with spectral normalization.
 
-        Args:
-            inputs (tensor or array-like):
-                Inputs to the layer.
-            training (bool, optional):
-                If True, applies spectral normalization during training.
+        Parameters
+        ----------
+        inputs : tf.Tensor or array-like
+            The inputs to the layer.
+        training : bool, optional
+            If True, apply spectral normalization during training.
 
-        Returns:
+        Returns
+        -------
+        tf.Tensor
             The output tensor from the wrapped layer.
         """
 
@@ -212,23 +222,28 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     def compute_output_shape(self, input_shape):
         """
-        Computes the output shape of the wrapped layer.
+        Compute the output shape of the wrapped layer.
 
-        Args:
-            input_shape (tuple or list):
-                Shape of the input to the layer.
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
 
-        Returns:
-            Computed shape of the output from the wrapped layer.
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the wrapped layer.
         """
 
         return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
 
     def get_config(self):
         """
-        Returns the config of the wrapper.
+        Return the config of the wrapper.
 
-        Returns:
+        Returns
+        -------
+        dict
             A dictionary containing the configuration of the wrapper.
         """
 

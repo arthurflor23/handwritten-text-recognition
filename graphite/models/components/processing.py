@@ -46,7 +46,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         Returns
         -------
-        tensor
+        tf.Tensor
             A tensor containing the extracted patches.
         """
 
