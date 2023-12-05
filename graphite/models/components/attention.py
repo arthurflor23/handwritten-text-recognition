@@ -6,30 +6,37 @@ from models.components.normalization import SpectralNormalization
 class SpectralSelfAttention(tf.keras.layers.Layer):
     """
     Spectral Self-Attention layer for TensorFlow models.
-    Uses spectral normalization in self-attention mechanism, suitable for tasks like image generation.
 
-    Reference:
-        [Attention Is All You Need](https://arxiv.org/abs/1706.03762).
+    Implements a self-attention mechanism with spectral normalization, suitable for tasks like
+        image generation. The layer applies self-attention to the input tensor, enhancing feature
+        representations for better model performance.
+
+    References
+    ----------
+    - [Attention Is All You Need](https://arxiv.org/abs/1706.03762).
+    - [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
     """
 
     def __init__(self, **kwargs):
         """
-        Initializes the spectral self attention layer.
+        Initialize the SpectralSelfAttention layer.
 
-        Args:
-            **kwargs:
-                Additional layer keyword arguments.
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
 
     def build(self, input_shape):
         """
-        Builds the layer with spectral normalization on convolutional layers.
+        Build the layer with spectral normalization on convolutional layers.
 
-        Args:
-            input_shape (tuple):
-                Shape of the input tensor.
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
         """
 
         self.shape = input_shape
@@ -48,14 +55,17 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
 
     def call(self, x):
         """
-        Applies self-attention to the input tensor.
+        Apply self-attention to the input tensor.
 
-        Args:
-            x (tensor):
-                Input tensor.
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input tensor to the layer.
 
-        Returns:
-            Processed tensor with self-attention.
+        Returns
+        -------
+        tf.Tensor
+            Processed tensor with self-attention applied.
         """
 
         f = self.conv_f(x)
