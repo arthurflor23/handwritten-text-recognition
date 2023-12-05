@@ -18,9 +18,9 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         optimizer : tf.keras.optimizers.Optimizer
             The optimizer to wrap.
         normalization : str, optional
-            The type of normalization (default is 'l2').
+            The type of normalization.
         epsilon : float, optional
-            Small float for numerical stability (default is 1e-7).
+            Small float for numerical stability.
         name : str, optional
             Optional name for the operations created.
         **kwargs

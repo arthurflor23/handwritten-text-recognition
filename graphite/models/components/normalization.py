@@ -6,21 +6,23 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
     Conditional Batch Normalization for TensorFlow models.
     Enhances conditional GANs by using unique parameters for each condition.
 
-    Reference:
-        [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
+    Reference
+    ---------
+    [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
     """
 
     def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
-        Args:
-            momentum (float, optional):
-                Momentum for moving average of mean and variance.
-            epsilon (float, optional):
-                Small constant to avoid division by zero.
-            **kwargs:
-                Additional layer keyword arguments.
+        Parameters
+        ----------
+        momentum : float, optional
+            Momentum for the moving average of mean and variance.
+        epsilon : float, optional
+            Small constant to avoid division by zero.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
@@ -111,21 +113,23 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     Spectral Normalization for TensorFlow models.
     Optimizes GAN training stability by normalizing layer weights.
 
-    Reference:
-        [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
+    Reference
+    ---------
+    [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
     """
 
     def __init__(self, layer, power_iterations=1, **kwargs):
         """
         Initializes the spectral normalization wrapper.
 
-        Args:
-            layer (tf.keras.layers.Layer):
-                The layer to apply spectral normalization to.
-            power_iterations (int, optional):
-                Number of power iterations for normalization.
-            **kwargs
-                Additional keyword arguments for the wrapper.
+        Parameters
+        ----------
+        layer : tf.keras.layers.Layer
+            The layer to which spectral normalization will be applied.
+        power_iterations : int, optional
+            Number of power iterations to perform for normalization.
+        **kwargs : dict
+            Additional keyword arguments for the wrapper.
         """
 
         super().__init__(layer, **kwargs)
