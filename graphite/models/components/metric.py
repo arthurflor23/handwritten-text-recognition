@@ -16,22 +16,24 @@ class KID(tf.keras.metrics.Metric):
         measured on. It is also computationally lighter, numerically more stable, and simpler to
         implement because it can be estimated in a per-batch manner.
 
-    Reference:
-        [Demystifying MMD GANs - Kernel Inception Distance (KID)](https://arxiv.org/abs/1801.01401).
-        [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/abs/1512.00567).
-        [InceptionV3](https://keras.io/api/applications/inceptionv3/).
-        [ImageNet](https://www.tensorflow.org/datasets/catalog/imagenet2012).
+    References
+    ----------
+    - [Demystifying MMD GANs](https://arxiv.org/abs/1801.01401).
+    - [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/abs/1512.00567).
+    - [InceptionV3](https://keras.io/api/applications/inceptionv3/).
+    - [ImageNet](https://www.tensorflow.org/datasets/catalog/imagenet2012).
     """
 
     def __init__(self, name='kid', **kwargs):
         """
-        Initialize the KID metric.
+        Initialize the KID metric instance.
 
-        Args:
-            name (str, optional):
-                Name of the metric.
-            **kwargs:
-                Additional keyword arguments.
+        Parameters
+        ----------
+        name : str, optional
+            Name of the metric instance.
+        **kwargs : dict
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -53,13 +55,16 @@ class KID(tf.keras.metrics.Metric):
         """
         Compute the polynomial kernel between two sets of features.
 
-        Args:
-            features_1 (tensor):
-                First set of features.
-            features_2 (tensor):
-                Second set of features.
+        Parameters
+        ----------
+        features_1 : tf.Tensor
+            First set of features.
+        features_2 : tf.Tensor
+            Second set of features.
 
-        Returns:
+        Returns
+        -------
+        tf.Tensor
             Polynomial kernel between the two feature sets.
         """
 
@@ -68,15 +73,16 @@ class KID(tf.keras.metrics.Metric):
 
     def update_state(self, real_images, generated_images, sample_weight=None):
         """
-        Update the state of the metric with new data.
+        Update the metric state with new data.
 
-        Args:
-            real_images (tensor):
-                Batch of real images.
-            generated_images (tensor):
-                Batch of generated images.
-            sample_weight (tensor, optional):
-                Sample weights.
+        Parameters
+        ----------
+        real_images : tf.Tensor
+            Batch of real images.
+        generated_images : tf.Tensor
+            Batch of generated images.
+        sample_weight : tf.Tensor, optional
+            Sample weights.
         """
 
         real_features = self.encoder(real_images, training=False)
@@ -104,7 +110,9 @@ class KID(tf.keras.metrics.Metric):
         """
         Return the current result of the metric.
 
-        Returns:
+        Returns
+        -------
+        float
             The current KID value.
         """
 
