@@ -9,9 +9,10 @@ def test(args):
     """
     Performs the test phase.
 
-    Args:
-        args (argparse.Namespace):
-            A namespace object containing all the arguments required.
+    Parameters
+    ----------
+    args : argparse.Namespace
+        A namespace object containing all the arguments required.
     """
 
     print(args)

@@ -7,9 +7,10 @@ def check(args):
     """
     Checks and displays data samples from a dataset.
 
-    Args:
-        args (argparse.Namespace):
-            A namespace object containing all the arguments required.
+    Parameters
+    ----------
+    args : argparse.Namespace
+        A namespace object containing all the arguments required.
     """
 
     print(args)
