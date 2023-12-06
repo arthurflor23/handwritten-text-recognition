@@ -7,6 +7,19 @@ import xml.etree.ElementTree as ET
 class Source():
     """
     Represents the Bentham database source.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('0' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -32,7 +45,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
@@ -41,36 +54,31 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            Data organized into 'training', 'validation', and 'test' lists.
         """
 
-        # Load the partition data for training, validation, and testing
+        data = {}
+
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
 
-        training_data, validation_data, test_data = [], [], []
-
         if text_level == 'line':
-            # Load the lines data from the files
             lines_data = self._load_lines_data(self.lines_file_path)
 
-            # Filter the lines data based on the partition data
-            training_data = self._filter_data(lines_data, training_partition_data)
-            validation_data = self._filter_data(lines_data, validation_partition_data)
-            test_data = self._filter_data(lines_data, test_partition_data)
+            data['training'] = self._filter_data(lines_data, training_partition_data)
+            data['validation'] = self._filter_data(lines_data, validation_partition_data)
+            data['test'] = self._filter_data(lines_data, test_partition_data)
 
         elif text_level == 'paragraph':
-            # Load the paragraphs data from the files
             paragraphs_data = self._load_paragraphs_data(self.paragraphs_file_path)
 
-            # Filter the paragraphs data based on the partition data
-            training_data = self._filter_data(paragraphs_data, training_partition_data)
-            validation_data = self._filter_data(paragraphs_data, validation_partition_data)
-            test_data = self._filter_data(paragraphs_data, test_partition_data)
+            data['training'] = self._filter_data(paragraphs_data, training_partition_data)
+            data['validation'] = self._filter_data(paragraphs_data, validation_partition_data)
+            data['test'] = self._filter_data(paragraphs_data, test_partition_data)
 
-        return training_data, validation_data, test_data
+        return data
 
     def _load_partition_data(self, file_path):
         """
@@ -135,7 +143,7 @@ class Source():
         filtered_data = None
 
         for image_id in partition_data:
-            if image_id in item[0]:
+            if image_id in item['image']:
                 filtered_data = item
 
         return filtered_data
@@ -155,19 +163,24 @@ class Source():
             A list of lines data.
         """
 
+        lines_data = []
         txt_files = glob.glob(file_path, recursive=True)
-        line_data = []
 
         for txt_path in txt_files:
             image_path = os.path.basename(txt_path).replace('.txt', '')
             image_path = os.path.join(self.base_path, 'Images', 'Lines', f"{image_path}.png")
 
             with open(txt_path, 'r') as file:
-                label = file.readline().replace('\n', '').strip()
+                text = file.readline().replace('\n', '').strip()
 
-            line_data.append([image_path, [], label])
+            lines_data.append({
+                'image': image_path,
+                'bbox': [],
+                'text': text,
+                'writer': '0',
+            })
 
-        return line_data
+        return lines_data
 
     def _load_paragraphs_data(self, file_path):
         """
@@ -185,7 +198,7 @@ class Source():
         """
 
         xml_files = glob.glob(file_path, recursive=True)
-        paragraph_data = []
+        paragraphs_data = []
 
         for xml_path in xml_files:
             image_path = os.path.basename(xml_path).replace('.xml', '')
@@ -194,18 +207,18 @@ class Source():
             root = ET.parse(xml_path).getroot()
             namespace = {'ns': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2010-03-19'}
 
-            label = []
+            text = []
             min_x, max_x = float('inf'), float('-inf')
             min_y, max_y = float('inf'), float('-inf')
 
-            for text_line in root.findall('.//ns:TextLine', namespace):
-                text_equiv = text_line.find('ns:TextEquiv', namespace)
-                line_label = text_equiv.find('ns:Unicode', namespace).text.strip()
+            for content in root.findall('.//ns:TextLine', namespace):
+                text_equiv = content.find('ns:TextEquiv', namespace)
+                text_line = text_equiv.find('ns:Unicode', namespace).text.strip()
 
-                if not line_label:
+                if not text_line:
                     continue
 
-                coords = text_line.find('ns:Coords', namespace)
+                coords = content.find('ns:Coords', namespace)
                 points = coords.get('points')
                 x_values, y_values = [], []
 
@@ -224,9 +237,13 @@ class Source():
                 min_y = min(min_y, min(y_values))
                 max_y = max(max_y, max(y_values))
 
-                label.append(line_label)
+                text.append(text_line)
 
-            bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
-            paragraph_data.append([image_path, bbox, label])
+            paragraphs_data.append({
+                'image': image_path,
+                'bbox': [min_x, min_y, max_x - min_x, max_y - min_y],
+                'text': '\n'.join(text),
+                'writer': '0',
+            })
 
-        return paragraph_data
+        return paragraphs_data
