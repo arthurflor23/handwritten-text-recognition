@@ -4,6 +4,19 @@ import os
 class Source():
     """
     Represents the Parzival database source.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('0' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -30,7 +43,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
@@ -39,36 +52,31 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            Data organized into 'training', 'validation', and 'test' lists.
         """
 
-        # Load the partition data for training, validation, and testing
+        data = {'training': [], 'validation': [], 'test': []}
+
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
 
-        training_data, validation_data, test_data = [], [], []
-
         if text_level == 'word':
-            # Load the words data from the file
             words_data = self._load_words_data(self.words_file_path)
 
-            # Filter the words data based on the partition data
-            training_data = self._filter_data(words_data, training_partition_data)
-            validation_data = self._filter_data(words_data, validation_partition_data)
-            test_data = self._filter_data(words_data, test_partition_data)
+            data['training'] = self._filter_data(words_data, training_partition_data)
+            data['validation'] = self._filter_data(words_data, validation_partition_data)
+            data['test'] = self._filter_data(words_data, test_partition_data)
 
         elif text_level == 'line':
-            # Load the lines data from the file
             lines_data = self._load_lines_data(self.lines_file_path)
 
-            # Filter the lines data based on the partition data
-            training_data = self._filter_data(lines_data, training_partition_data)
-            validation_data = self._filter_data(lines_data, validation_partition_data)
-            test_data = self._filter_data(lines_data, test_partition_data)
+            data['training'] = self._filter_data(lines_data, training_partition_data)
+            data['validation'] = self._filter_data(lines_data, validation_partition_data)
+            data['test'] = self._filter_data(lines_data, test_partition_data)
 
-        return training_data, validation_data, test_data
+        return data
 
     def _load_partition_data(self, file_path):
         """
@@ -111,7 +119,7 @@ class Source():
 
         for image_id in partition_data:
             for item in data:
-                if image_id in item[0]:
+                if image_id in item['image']:
                     filtered_data.append(item)
 
         return filtered_data
@@ -131,10 +139,10 @@ class Source():
             A list of words data.
         """
 
+        words_data = []
+
         with open(file_path, 'r') as file:
             rows = file.readlines()
-
-        words_data = []
 
         for row in rows:
             if row.startswith('#'):
@@ -145,10 +153,14 @@ class Source():
             word_file_name = f"{parts[0]}.png"
 
             image_path = os.path.join(word_path, word_file_name)
-            bbox = []
-            label = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
+            text = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
 
-            words_data.append([image_path, bbox, label])
+            words_data.append({
+                'image': image_path,
+                'bbox': [],
+                'text': text,
+                'writer': '0',
+            })
 
         return words_data
 
@@ -167,10 +179,10 @@ class Source():
             A list of lines data.
         """
 
+        lines_data = []
+
         with open(file_path, 'r') as file:
             rows = file.readlines()
-
-        lines_data = []
 
         for row in rows:
             if row.startswith('#'):
@@ -181,10 +193,14 @@ class Source():
             line_file_name = f"{parts[0]}.png"
 
             image_path = os.path.join(line_path, line_file_name)
-            bbox = []
-            label = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
+            text = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
 
-            lines_data.append([image_path, bbox, label])
+            lines_data.append({
+                'image': image_path,
+                'bbox': [],
+                'text': text,
+                'writer': '0',
+            })
 
         return lines_data
 
