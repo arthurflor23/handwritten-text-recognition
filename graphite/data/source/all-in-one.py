@@ -53,12 +53,14 @@ class Source():
 
         sys.path.append(curr_dir)
 
-        filenames = [
-            filename for filename in os.listdir(curr_dir)
-            if filename.endswith('.py') and filename not in {curr_file_name, '__init__.py'}
-        ]
+        filenames = [x for x in os.listdir(curr_dir) if x.endswith('.py')]
+        filenames = [x for x in filenames if x not in {curr_file_name, '__init__.py'}]
+        filenames.sort()
 
         data = {'training': [], 'validation': [], 'test': []}
+
+        global_writer_mapping = {}
+        global_writer_id = 1
 
         for filename in filenames:
             module = importlib.import_module(filename.rstrip('.py'))
@@ -66,8 +68,22 @@ class Source():
 
             source_data = source.fetch_data(text_level)
 
-            data['training'].extend(source_data['training'])
-            data['validation'].extend(source_data['validation'])
-            data['test'].extend(source_data['test'])
+            local_writer_mapping = {}
+            local_writer_id = 1
+
+            for dataset_type in ['training', 'validation', 'test']:
+                for item in source_data[dataset_type]:
+                    original_writer = item['writer']
+
+                    if original_writer not in local_writer_mapping:
+                        local_writer_mapping[original_writer] = local_writer_id
+                        global_writer_mapping[local_writer_id] = global_writer_id
+
+                        local_writer_id += 1
+                        global_writer_id += 1
+
+                    item['writer'] = str(global_writer_mapping[local_writer_mapping[original_writer]])
+
+                data[dataset_type].extend(source_data[dataset_type])
 
         return data
