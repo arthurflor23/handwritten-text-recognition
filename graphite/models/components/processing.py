@@ -71,7 +71,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
 
         config = {
-            "patch_shape": self.patch_shape,
+            'patch_shape': self.patch_shape,
         }
         base_config = super().get_config()
         return {**base_config, **config}

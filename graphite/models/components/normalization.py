@@ -105,10 +105,10 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         """
 
         config = {
-            "momentum": self.momentum,
-            "epsilon": self.epsilon,
-            "mean": self.mean,
-            "variance": self.variance,
+            'momentum': self.momentum,
+            'epsilon': self.epsilon,
+            'mean': self.mean,
+            'variance': self.variance,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -248,7 +248,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         """
 
         config = {
-            "power_iterations": self.power_iterations,
+            'power_iterations': self.power_iterations,
         }
         base_config = super().get_config()
         return {**base_config, **config}

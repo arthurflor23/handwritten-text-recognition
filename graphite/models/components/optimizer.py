@@ -234,9 +234,9 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         """
 
         config = {
-            "optimizer": tf.keras.optimizers.serialize(self.optimizer),
-            "normalization": self.normalization,
-            "epsilon": self.epsilon,
+            'optimizer': tf.keras.optimizers.serialize(self.optimizer),
+            'normalization': self.normalization,
+            'epsilon': self.epsilon,
         }
         base_config = super().get_config()
         return {**base_config, **config}
