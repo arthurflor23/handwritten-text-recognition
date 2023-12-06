@@ -6,6 +6,19 @@ import multiprocessing
 class Source():
     """
     Represents the IAM database source.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('0' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -33,7 +46,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and test.
+        Retrieves the data for training, validation, and testing.
 
         Parameters
         ----------
@@ -43,12 +56,7 @@ class Source():
         Returns
         -------
         dict
-            A dictionary containing keys 'training', 'validation', and 'test', each mapping to a list of data entries.
-            Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
-                'image' is a string indicating the image path,
-                'bbox' is a list of four integers [x, y, h, w] specifying the bounding box (`[]` as no bbox),
-                'text' is a string containing the text (`\n` as line break character),
-                'writer' is a string representing the writer's unique ID (`0` as unique writer).
+            Data organized into 'training', 'validation', and 'test' lists.
         """
 
         data = {}
