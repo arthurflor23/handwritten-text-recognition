@@ -29,10 +29,11 @@ class Source():
         self.transcription_path = os.path.join(self.base_path, 'ascii')
         self.words_file_path = os.path.join(self.transcription_path, 'words.txt')
         self.lines_file_path = os.path.join(self.transcription_path, 'lines.txt')
+        self.forms_file_path = os.path.join(self.transcription_path, 'forms.txt')
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test.
 
         Parameters
         ----------
@@ -41,47 +42,44 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            A dictionary containing keys 'training', 'validation', and 'test', each mapping to a list of data entries.
+            Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+                'image' is a string indicating the image path,
+                'bbox' is a list of four integers [x, y, h, w] specifying the bounding box (`[]` as no bbox),
+                'text' is a string containing the text (`\n` as line break character),
+                'writer' is a string representing the writer's unique ID (`0` as unique writer).
         """
 
-        # Load the partition data for training, validation, and testing
+        data = {}
+
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)
 
-        training_data, validation_data, test_data = [], [], []
-
         if text_level == 'word':
-            # Load the words data from the file
             words_data = self._load_words_data(self.words_file_path)
 
-            # Filter the words data based on the partition data
-            training_data = self._filter_data(words_data, training_partition_data)
-            validation_data = self._filter_data(words_data, validation_partition_data)
-            test_data = self._filter_data(words_data, test_partition_data)
+            data['training'] = self._filter_data(words_data, training_partition_data)
+            data['validation'] = self._filter_data(words_data, validation_partition_data)
+            data['test'] = self._filter_data(words_data, test_partition_data)
 
         elif text_level == 'line':
-            # Load the lines data from the file
             lines_data = self._load_lines_data(self.lines_file_path)
 
-            # Filter the lines data based on the partition data
-            training_data = self._filter_data(lines_data, training_partition_data)
-            validation_data = self._filter_data(lines_data, validation_partition_data)
-            test_data = self._filter_data(lines_data, test_partition_data)
+            data['training'] = self._filter_data(lines_data, training_partition_data)
+            data['validation'] = self._filter_data(lines_data, validation_partition_data)
+            data['test'] = self._filter_data(lines_data, test_partition_data)
 
         elif text_level == 'paragraph':
-            # Load the lines data from the file, including bounding box information
             lines_data = self._load_lines_data(self.lines_file_path, bbox_info=True)
-            # Construct paragraphs data from lines data, without bounding box information
             paragraphs_data = self._load_paragraphs_data(lines_data, bbox_info=True)
 
-            # Filter the paragraphs data based on the partition data
-            training_data = self._filter_data(paragraphs_data, training_partition_data, form_group=True)
-            validation_data = self._filter_data(paragraphs_data, validation_partition_data, form_group=True)
-            test_data = self._filter_data(paragraphs_data, test_partition_data, form_group=True)
+            data['training'] = self._filter_data(paragraphs_data, training_partition_data, form_group=True)
+            data['validation'] = self._filter_data(paragraphs_data, validation_partition_data, form_group=True)
+            data['test'] = self._filter_data(paragraphs_data, test_partition_data, form_group=True)
 
-        return training_data, validation_data, test_data
+        return data
 
     def _load_partition_data(self, file_path):
         """
@@ -114,7 +112,7 @@ class Source():
         partition_data : list
             The partition data to match against.
         form_group : bool, optional
-            Indicates whether to group the image ID, by default False.
+            Indicates whether to group the image ID.
 
         Returns
         -------
@@ -139,11 +137,11 @@ class Source():
         partition_data : list
             The partition data to match against.
         form_group : bool, optional
-            Indicates whether to group the image ID, by default False.
+            Indicates whether to group the image ID.
 
         Returns
         -------
-        any or None
+        item or None
             The item if it matches any partition data, or None if there is no match.
         """
 
@@ -153,10 +151,34 @@ class Source():
             if form_group:
                 image_id = '-'.join(image_id.split('-')[:2])
 
-            if image_id in item[0]:
+            if image_id in item['image']:
                 filtered_data = item
 
         return filtered_data
+
+    def _get_writers(self):
+        """
+        Parses a file to assign unique IDs to each writer.
+
+        Returns
+        -------
+        dict
+            Maps form IDs to unique writer IDs.
+        """
+
+        writers = {}
+
+        with open(self.forms_file_path, 'r') as forms_file:
+            for line in forms_file:
+                if line.startswith('#'):
+                    continue
+
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    form_id, writer_id = parts[0], parts[1]
+                    writers[form_id] = writer_id
+
+        return writers
 
     def _load_words_data(self, file_path, bbox_info=False):
         """
@@ -175,10 +197,11 @@ class Source():
             A list of words data.
         """
 
+        words_data = []
+        writers = self._get_writers()
+
         with open(file_path, 'r') as file:
             rows = file.readlines()
-
-        words_data = []
 
         for row in rows:
             if row.startswith('#'):
@@ -191,9 +214,17 @@ class Source():
 
             image_path = os.path.join(self.base_path, word_path, word_file_name)
             bbox = [int(x) for x in parts[4:8]] if bbox_info else []
-            label = ' '.join(parts[8:]).replace('|', ' ')
+            text = ' '.join(parts[8:]).replace('|', ' ')
 
-            words_data.append([image_path, bbox, label])
+            form_id = '-'.join(word_ids[:2])
+            writer_id = writers.get(form_id, 0)
+
+            words_data.append({
+                'image': image_path,
+                'bbox': bbox,
+                'text': text,
+                'writer': writer_id,
+            })
 
         return words_data
 
@@ -214,10 +245,11 @@ class Source():
             A list of lines data.
         """
 
+        lines_data = []
+        writers = self._get_writers()
+
         with open(file_path, 'r') as file:
             rows = file.readlines()
-
-        lines_data = []
 
         for row in rows:
             if row.startswith('#'):
@@ -230,9 +262,17 @@ class Source():
 
             image_path = os.path.join(self.base_path, line_path, line_file_name)
             bbox = [int(x) for x in parts[4:8]] if bbox_info else []
-            label = ' '.join(parts[8:]).replace('|', ' ')
+            text = ' '.join(parts[8:]).replace('|', ' ')
 
-            lines_data.append([image_path, bbox, label])
+            form_id = '-'.join(line_ids[:2])
+            writer_id = writers.get(form_id, 0)
+
+            lines_data.append({
+                'image': image_path,
+                'bbox': bbox,
+                'text': text,
+                'writer': writer_id,
+            })
 
         return lines_data
 
@@ -256,42 +296,47 @@ class Source():
         paragraphs_data = {}
 
         for line in lines_data:
-            parts = os.path.basename(line[0]).split('-')
+            parts = os.path.basename(line['image']).split('-')
             pattern = os.path.join(self.base_path, "forms**", f"{'-'.join(parts[:2])}.png")
-            file_paths = glob.glob(pattern, recursive=True)
+            file_path = next(iter(glob.glob(pattern, recursive=True)), None)
 
-            if not file_paths:
+            if not file_path:
                 continue
 
-            file_path = file_paths[0]
+            bbox = line['bbox']
+            new_bbox = [
+                bbox[0], bbox[1], bbox[2] + bbox[0], bbox[3] + bbox[1]
+            ]
 
-            if file_path in paragraphs_data:
-                images_path, bbox, label = paragraphs_data[file_path]
+            paragraph = paragraphs_data.setdefault(file_path, {
+                "image": file_path,
+                "bbox": new_bbox,
+                "text": "",
+                "writer": line['writer'],
+            })
 
-                bbox[0] = min(bbox[0], line[1][0])
-                bbox[1] = min(bbox[1], line[1][1])
-                bbox[2] = max(bbox[2], line[1][2] + line[1][0])
-                bbox[3] = max(bbox[3], line[1][3] + line[1][1])
+            paragraph['bbox'] = [
+                min(paragraph['bbox'][0], new_bbox[0]),
+                min(paragraph['bbox'][1], new_bbox[1]),
+                max(paragraph['bbox'][2], new_bbox[2]),
+                max(paragraph['bbox'][3], new_bbox[3])
+            ]
 
-                label += f"\n{line[2]}"
-                paragraphs_data[file_path] = [images_path, bbox, label]
-
-            else:
-                bbox = [line[1][0], line[1][1], line[1][2] + line[1][0], line[1][3] + line[1][1]]
-                paragraphs_data[file_path] = [file_path, bbox, line[2]]
+            paragraph['text'] += (f"\n{line['text']}" if paragraph['text'] else line['text'])
 
         paragraphs_data = list(paragraphs_data.values())
 
-        for i, paragraph in enumerate(paragraphs_data):
-            if bbox_info:
-                bbox = paragraph[1]
-                bbox[0] = paragraph[1][0]
-                bbox[1] = paragraph[1][1]
-                bbox[2] = abs(paragraph[1][2] - bbox[0])
-                bbox[3] = abs(paragraph[1][3] - bbox[1])
-
-                paragraphs_data[i][1] = bbox
-            else:
-                paragraphs_data[i][1] = []
+        if bbox_info:
+            for paragraph in paragraphs_data:
+                bbox = paragraph['bbox']
+                paragraph['bbox'] = [
+                    bbox[0],
+                    bbox[1],
+                    abs(bbox[2] - bbox[0]),
+                    abs(bbox[3] - bbox[1])
+                ]
+        else:
+            for paragraph in paragraphs_data:
+                paragraph['bbox'] = []
 
         return paragraphs_data
