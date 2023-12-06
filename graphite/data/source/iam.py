@@ -46,7 +46,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
