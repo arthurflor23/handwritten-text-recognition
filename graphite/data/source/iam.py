@@ -59,7 +59,7 @@ class Source():
             Data organized into 'training', 'validation', and 'test' lists.
         """
 
-        data = {}
+        data = {'training': [], 'validation': [], 'test': []}
 
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
