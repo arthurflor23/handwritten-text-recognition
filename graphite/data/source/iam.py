@@ -18,7 +18,7 @@ class Source():
         'text' : str
             text content, with '\n' as line break.
         'writer' : str
-            writer's unique ID ('0' for unique writer).
+            writer's unique ID ('1' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -56,7 +56,7 @@ class Source():
         Returns
         -------
         dict
-            Data organized into 'training', 'validation', and 'test' lists.
+            Partition dictionary with list of items.
         """
 
         data = {'training': [], 'validation': [], 'test': []}
@@ -225,7 +225,7 @@ class Source():
             text = ' '.join(parts[8:]).replace('|', ' ')
 
             form_id = '-'.join(word_ids[:2])
-            writer_id = writers.get(form_id, 0)
+            writer_id = writers.get(form_id, '1')
 
             words_data.append({
                 'image': image_path,
@@ -273,7 +273,7 @@ class Source():
             text = ' '.join(parts[8:]).replace('|', ' ')
 
             form_id = '-'.join(line_ids[:2])
-            writer_id = writers.get(form_id, 0)
+            writer_id = writers.get(form_id, '1')
 
             lines_data.append({
                 'image': image_path,

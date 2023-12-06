@@ -16,7 +16,7 @@ class Source():
         'text' : str
             text content, with '\n' as line break.
         'writer' : str
-            writer's unique ID ('0' for unique writer).
+            writer's unique ID ('1' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -53,7 +53,7 @@ class Source():
         Returns
         -------
         dict
-            Data organized into 'training', 'validation', and 'test' lists.
+            Partition dictionary with list of items.
         """
 
         data = {'training': [], 'validation': [], 'test': []}
@@ -159,7 +159,7 @@ class Source():
                 'image': image_path,
                 'bbox': [],
                 'text': text,
-                'writer': '0',
+                'writer': '1',
             })
 
         return words_data
@@ -199,7 +199,7 @@ class Source():
                 'image': image_path,
                 'bbox': [],
                 'text': text,
-                'writer': '0',
+                'writer': '1',
             })
 
         return lines_data
