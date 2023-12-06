@@ -5,6 +5,19 @@ import glob
 class Source():
     """
     Represents the CVL Digits database source.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('0' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -25,7 +38,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
@@ -34,23 +47,28 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            Data organized into 'training', 'validation', and 'test' lists.
         """
+
+        data = {'training': [], 'validation': [], 'test': []}
 
         def process_file(file_path):
             base_name = os.path.basename(file_path)
-            label = ' '.join(list(base_name.split('-')[0]))
+            name_part = base_name.split('-')
 
-            return [file_path, [], label]
-
-        training_data, validation_data, test_data = [], [], []
+            return {
+                'image': file_path,
+                'bbox': [],
+                'text': ' '.join(list(name_part[0])),
+                'writer': name_part[1]
+            }
 
         if text_level == 'word' or text_level == 'line':
             training_files = glob.glob(self.training_path, recursive=True)
-            training_data = [process_file(file_path) for file_path in training_files]
+            data['training'] = [process_file(file_path) for file_path in training_files]
 
             test_files = glob.glob(self.test_path, recursive=True)
-            test_data = [process_file(file_path) for file_path in test_files]
+            data['test'] = [process_file(file_path) for file_path in test_files]
 
-        return training_data, validation_data, test_data
+        return data
