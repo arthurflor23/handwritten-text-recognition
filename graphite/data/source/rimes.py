@@ -5,6 +5,19 @@ import xml.etree.ElementTree as ET
 class Source():
     """
     Represents the Rimes database source.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('0' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -28,7 +41,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
@@ -37,23 +50,21 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            Data organized into 'training', 'validation', and 'test' lists.
         """
 
-        training_data, validation_data, test_data = [], [], []
+        data = {'training': [], 'validation': [], 'test': []}
 
         if text_level == 'line':
-            # Load the lines data from the files
-            training_data = self._load_lines_data(self.training_file_path, self.training_path)
-            test_data = self._load_lines_data(self.test_file_path, self.test_path)
+            data['training'] = self._load_lines_data(self.training_file_path, self.training_path)
+            data['test'] = self._load_lines_data(self.test_file_path, self.test_path)
 
         elif text_level == 'paragraph':
-            # Load the paragraphs data from the files
-            training_data = self._load_paragraphs_data(self.training_file_path, self.training_path)
-            test_data = self._load_paragraphs_data(self.test_file_path, self.test_path)
+            data['training'] = self._load_paragraphs_data(self.training_file_path, self.training_path)
+            data['test'] = self._load_paragraphs_data(self.test_file_path, self.test_path)
 
-        return training_data, validation_data, test_data
+        return data
 
     def _load_lines_data(self, file_path, partition_path):
         """
@@ -70,20 +81,19 @@ class Source():
             A list of lines data.
         """
 
-        line_data = []
-
+        lines_data = []
         root = ET.parse(file_path).getroot()
 
-        for single_page in root.findall('SinglePage'):
+        for i, single_page in enumerate(root.findall('SinglePage')):
             file_name = os.path.join(partition_path, single_page.get('FileName'))
 
             paragraph = single_page.find('Paragraph')
             lines = paragraph.findall('Line')
 
             for line in lines:
-                label = line.get('Value').strip()
+                text = line.get('Value').strip()
 
-                if not label:
+                if not text:
                     continue
 
                 x = int(line.get('Left'))
@@ -91,9 +101,14 @@ class Source():
                 width = int(line.get('Right')) - x
                 height = int(line.get('Bottom')) - y
 
-                line_data.append([file_name, [x, y, width, height], label])
+                lines_data.append({
+                    'image': file_name,
+                    'bbox': [x, y, width, height],
+                    'text': text,
+                    'writer': str(i + 1),
+                })
 
-        return line_data
+        return lines_data
 
     def _load_paragraphs_data(self, file_path, partition_path):
         """
@@ -110,24 +125,23 @@ class Source():
             A list of paragraphs data.
         """
 
-        paragraph_data = []
-
+        paragraphs_data = []
         root = ET.parse(file_path).getroot()
 
-        for single_page in root.findall('SinglePage'):
+        for i, single_page in enumerate(root.findall('SinglePage')):
             file_name = os.path.join(partition_path, single_page.get('FileName'))
 
             paragraph = single_page.find('Paragraph')
             lines = paragraph.findall('Line')
 
-            label = []
+            text = []
             min_x, max_x = float('inf'), float('-inf')
             min_y, max_y = float('inf'), float('-inf')
 
             for line in lines:
-                line_label = line.get('Value').strip()
+                text_line = line.get('Value').strip()
 
-                if not line_label:
+                if not text_line:
                     continue
 
                 min_x = min(min_x, int(line.get('Left')))
@@ -135,9 +149,13 @@ class Source():
                 min_y = min(min_y, int(line.get('Top')))
                 max_y = max(max_y, int(line.get('Bottom')))
 
-                label.append(line_label)
+                text.append(text_line)
 
-            bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
-            paragraph_data.append([file_name, bbox, label])
+            paragraphs_data.append({
+                'image': file_name,
+                'bbox': [min_x, min_y, max_x - min_x, max_y - min_y],
+                'text': '\n'.join(text),
+                'writer': str(i + 1),
+            })
 
-        return paragraph_data
+        return paragraphs_data
