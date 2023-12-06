@@ -61,7 +61,7 @@ class Source():
                 'image': file_path,
                 'bbox': [],
                 'text': ' '.join(list(name_part[0])),
-                'writer': name_part[1]
+                'writer': name_part[1],
             }
 
         if text_level == 'word' or text_level == 'line':
