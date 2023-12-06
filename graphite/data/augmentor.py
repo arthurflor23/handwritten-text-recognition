@@ -29,33 +29,33 @@ class Augmentor():
         Parameters
         ----------
         erode : dict or None, optional
-            Parameters for erode transformation, by default None.
+            Parameters for erode transformation.
         dilate : dict or None, optional
-            Parameters for dilate transformation, by default None.
+            Parameters for dilate transformation.
         elastic : dict or None, optional
-            Parameters for elastic transformation, by default None.
+            Parameters for elastic transformation.
         perspective : dict or None, optional
-            Parameters for perspective transform transformation, by default None.
+            Parameters for perspective transform transformation.
         mixup : dict or None, optional
-            Parameters for mixup transformation, by default None.
+            Parameters for mixup transformation.
         shear : dict or None, optional
-            Parameters for shear transformation, by default None.
+            Parameters for shear transformation.
         scale : dict or None, optional
-            Parameters for scale transformation, by default None.
+            Parameters for scale transformation.
         rotate : dict or None, optional
-            Parameters for rotate transformation, by default None.
+            Parameters for rotate transformation.
         shift_y : dict or None, optional
-            Parameters for vertical translation transformation, by default None.
+            Parameters for vertical translation transformation.
         shift_x : dict or None, optional
-            Parameters for horizontal translation transformation, by default None.
+            Parameters for horizontal translation transformation.
         salt_and_pepper : dict or None, optional
-            Parameters for salt and pepper noise, by default None.
+            Parameters for salt and pepper noise.
         gaussian_noise : dict or None, optional
-            Parameters for gaussian noise, by default None.
+            Parameters for gaussian noise.
         gaussian_blur : dict or None, optional
-            Parameters for Gaussian blur transformation, by default None.
+            Parameters for Gaussian blur transformation.
         seed : int or None, optional
-            Seed for random values from numpy, by default None.
+            Seed for random values from numpy.
         """
 
         random.seed(seed)
@@ -149,7 +149,7 @@ class Augmentor():
         image : ndarray
             Input image to be transformed.
         batch_images : list
-            List of images used for mixup transformation, default is None.
+            List of images used for mixup transformation.
 
         Returns
         -------
@@ -193,9 +193,9 @@ class Augmentor():
         kernel_size : int
             Kernel size for erosion.
         iterations : int
-            Number of iterations for erosion, by default 1.
+            Number of iterations for erosion.
         radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
+            Whether to use range radius for kernel size and iterations.
 
         Returns
         -------
@@ -223,9 +223,9 @@ class Augmentor():
         kernel_size : int
             Kernel size for dilation.
         iterations : int
-            Number of iterations for dilation, by default 1.
+            Number of iterations for dilation.
         radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
+            Whether to use range radius for kernel size and iterations.
 
         Returns
         -------
@@ -255,7 +255,7 @@ class Augmentor():
         alpha : float
             Factor of elastic transform.
         radius : bool, optional
-            Whether to use range radius for kernel size and alpha, by default True.
+            Whether to use range radius for kernel size and alpha.
 
         Returns
         -------
@@ -296,7 +296,7 @@ class Augmentor():
         alpha : float
             Factor of perspective transformation.
         radius : bool, optional
-            Whether to use range radius for type and alpha, by default True.
+            Whether to use range radius for type and alpha.
 
         Returns
         -------
@@ -348,9 +348,9 @@ class Augmentor():
         opacity : float
             Opacity of the mixup effect.
         iterations : int
-            Number of images for the mixup operation, by default 1.
+            Number of images for the mixup operation.
         radius : bool, optional
-            Whether to use range radius for opacity and iterations, by default True.
+            Whether to use range radius for opacity and iterations.
 
         Returns
         -------
@@ -406,7 +406,7 @@ class Augmentor():
         angle : float
             shear angle in degrees.
         radius : bool, optional
-            Whether to use range radius for angle, by default True.
+            Whether to use range radius for angle.
 
         Returns
         -------
@@ -447,7 +447,7 @@ class Augmentor():
         alpha : float
             scale alpha.
         radius : bool, optional
-            Whether to use range radius for alpha, by default True.
+            Whether to use range radius for alpha.
 
         Returns
         -------
@@ -481,7 +481,7 @@ class Augmentor():
         angle : float
             rotate angle in degrees.
         radius : bool, optional
-            Whether to use range radius for angle, by default True.
+            Whether to use range radius for angle.
 
         Returns
         -------
@@ -525,7 +525,7 @@ class Augmentor():
         alpha : float
             Y-axis translation factor.
         radius : bool, optional
-            Whether to use range radius for alphas, by default True.
+            Whether to use range radius for alphas.
 
         Returns
         -------
@@ -566,7 +566,7 @@ class Augmentor():
         alpha : float
             X-axis translation factor.
         radius : bool, optional
-            Whether to use range radius for alphas, by default True.
+            Whether to use range radius for alphas.
 
         Returns
         -------
@@ -607,7 +607,7 @@ class Augmentor():
         alpha : float
             Percentage of pixels to add noise to.
         radius : bool, optional
-            Whether to use range radius for alpha, by default True.
+            Whether to use range radius for alpha.
 
         Returns
         -------
@@ -637,7 +637,7 @@ class Augmentor():
         alpha : float
             Noise level factor, where larger alpha adds more noise.
         radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
+            Whether to use range radius for kernel size and iterations.
 
         Returns
         -------
@@ -672,9 +672,9 @@ class Augmentor():
         kernel_size : int
             Kernel size for Gaussian blur.
         iterations : int
-            Number of iterations for Gaussian blur, by default 1.
+            Number of iterations for Gaussian blur.
         radius : bool, optional
-            Whether to use range radius for kernel size and iterations, by default True.
+            Whether to use range radius for kernel size and iterations.
 
         Returns
         -------
