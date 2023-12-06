@@ -6,6 +6,19 @@ import importlib
 class Source():
     """
     Represents all data sources.
+
+    Requires implementation of `fetch_data`, returning a dictionary with
+        'training', 'validation', and 'test' keys, each mapping to a list of data entries.
+
+    Each data entry is a dictionary with keys 'image', 'bbox', 'text', and 'writer':
+        'image' : str
+            path to the image.
+        'bbox' : list
+            bounding box coordinates [x, y, h, w] (empty if no bbox).
+        'text' : str
+            text content, with '\n' as line break.
+        'writer' : str
+            writer's unique ID ('1' for unique writer).
     """
 
     def __init__(self, artifact_path):
@@ -22,7 +35,7 @@ class Source():
 
     def fetch_data(self, text_level):
         """
-        Retrieves the data for training, validation, and testing.
+        Retrieves the data for training, validation, and test partitions.
 
         Parameters
         ----------
@@ -31,8 +44,8 @@ class Source():
 
         Returns
         -------
-        tuple
-            A tuple containing lists of training, validation, and test data.
+        dict
+            Partition dictionary with list of items.
         """
 
         curr_file_name = os.path.basename(__file__)
@@ -45,16 +58,16 @@ class Source():
             if filename.endswith('.py') and filename not in {curr_file_name, '__init__.py'}
         ]
 
-        training_data, validation_data, test_data = [], [], []
+        data = {'training': [], 'validation': [], 'test': []}
 
         for filename in filenames:
             module = importlib.import_module(filename.rstrip('.py'))
             source = module.Source(self.artifact_path)
 
-            train, valid, test = source.fetch_data(text_level)
+            source_data = source.fetch_data(text_level)
 
-            training_data.extend(train)
-            validation_data.extend(valid)
-            test_data.extend(test)
+            data['training'].extend(source_data['training'])
+            data['validation'].extend(source_data['validation'])
+            data['test'].extend(source_data['test'])
 
-        return training_data, validation_data, test_data
+        return data
