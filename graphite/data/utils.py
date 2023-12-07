@@ -100,8 +100,6 @@ def resize_image(image, target_shape):
 
         image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    # image = image.reshape((image.shape[0], image.shape[1], 1))
-
     return image
 
 
@@ -121,9 +119,6 @@ def format_text(text, multiline=False):
     str or list
         The formatted text.
     """
-
-    if isinstance(text, str):
-        text = text.split('\n') if multiline else [text]
 
     substitutions = {
         r'[ ]': ' ',
@@ -163,15 +158,14 @@ def format_text(text, multiline=False):
 
     regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
 
-    for i, line in enumerate(text):
-        line = html.unescape(line)
+    for pattern, replacement in regexes.items():
+        text = pattern.sub(replacement, text)
 
-        for pattern, replacement in regexes.items():
-            line = pattern.sub(replacement, line)
+    text = html.unescape(text)
+    text = re.sub(r'[ \t]+', ' ', text).strip()
+    text = re.sub(r'\n\s+|\s+\n', '\n', text).strip()
 
-        text[i] = re.sub(r'\s+', ' ', line).strip()
-
-    if not multiline:
-        text = text[0]
+    if multiline:
+        text = [x.split('\n') for x in text.split('\n\n')]
 
     return text
