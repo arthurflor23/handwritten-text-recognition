@@ -1,13 +1,11 @@
 import os
-import re
-import cv2
-import html
-import string
 import random
 import zipfile
 import importlib
 import numpy as np
 import concurrent.futures
+
+from data import utils
 
 
 class Dataset():
@@ -28,32 +26,32 @@ class Dataset():
                  artifact_path='dataset',
                  seed=None):
         """
-        Initializes the Dataset class.
+        Initialize the Dataset instance.
 
         Parameters
         ----------
         source : str, optional
-            The data source name. Default is None.
+            The data source name.
         text_level : str, optional
-            The text structure level. Default is None.
+            The text structure level.
         image_shape : list, optional
-            The images shape. Default is None.
+            The images shape.
         training_ratio : float or int, optional
-            The training ratio for resample. Default is None.
+            The training ratio for resample.
         validation_ratio : float or int, optional
-            The validation ratio for resample. Default is None.
+            The validation ratio for resample.
         test_ratio : float or int, optional
-            The test ratio for resample. Default is None.
+            The test ratio for resample.
         binarization : bool, optional
-            Apply binarization method. Default is False.
+            Apply binarization method.
         lazy_mode : bool, optional
-            Enable lazy loading mode. Default is False.
+            Enable lazy loading mode.
         data : list, optional
-            Data for inference mode. Default is None.
+            Data for inference mode.
         artifact_path : str, optional
-            Path name to fetch the data. Default is 'dataset'.
+            Path name to fetch the data.
         seed : int, optional
-            Seed for random shuffle. Default is None.
+            Seed for random shuffle.
         """
 
         random.seed(seed)
@@ -61,7 +59,7 @@ class Dataset():
 
         self.source = source
         self.text_level = text_level
-        self.image_shape = tuple(image_shape)
+        self.image_shape = image_shape
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -69,17 +67,6 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.artifact_path = artifact_path
         self.seed = seed
-
-        self.size = 0
-        self.corpus = ''
-        self.tokens = []
-        self.charset = []
-
-        self.min_rows = np.inf
-        self.max_rows = -np.inf
-
-        self.min_cols = np.inf
-        self.max_cols = -np.inf
 
         if data is None:
             self._source = self._import_source(self.source)
@@ -89,62 +76,86 @@ class Dataset():
                 self._extract_source_zip(self.artifact_path, self._source.base_path)
 
             data = self._source.fetch_data(self.text_level)
-            data = self._prepare_data(data, training=True)
-        else:
-            data = self._prepare_data(data, training=False)
 
-        self.partitions = ['training', 'validation', 'test']
-        self.dt, self.tokenizer = self._build_partitions(data)
+        data = self._validation(data)
+        data = self._partitioning(data)
 
-    def __repr__(self):
-        """
-        Returns a string representation of the object with useful information.
+        print(data)
 
-        Returns
-        -------
-        str
-            The string representation of the object.
-        """
+        # tokenizer (init and load) ??
+        # 2. enconding (multiple variables + multigrams..)
+        #       image read
+        #       text encoded (multiline)
+        #       writer encoded
+        # 1. multigrams (training condition only)
+        #       multigrams encoded
 
-        info = f"""
-            ============================================
-            Dataset Configuration
-            --------------------------------------------
-            Source                  {self.source or '-'}
-            Text Level              {self.text_level or '-'}
-            Image Shape             {self.image_shape or '-'}
-            Training Ratio          {self.training_ratio or '-'}
-            Validation Ratio        {self.validation_ratio or '-'}
-            Test Ratio              {self.test_ratio or '-'}
-            Binarization            {self.binarization}
-            Lazy Mode               {self.lazy_mode}
-            Seed                    {self.seed}
-            ============================================
-            Dataset Information
-            --------------------------------------------
-            Total Size              {self.size}
+        # get/calculate metadata
 
-            Training Size           {self.dt['training']['size']}
-            Validation Size         {self.dt['validation']['size']}
-            Test Size               {self.dt['test']['size']}
+        # self.size = 0
+        # self.corpus = ''
+        # self.tokens = []
+        # self.charset = []
+        # self.multigrams = []
 
-            Corpus Length           {len(self.corpus)}
-            Tokens Length           {len(self.tokens)}
-            Charset Length          {len(self.charset)}
+        # self.min_rows = np.inf
+        # self.max_rows = -np.inf
 
-            Charset                 {''.join(self.charset)}
+        # self.min_cols = np.inf
+        # self.max_cols = -np.inf
 
-            Min Rows                {self.min_rows}
-            Max Rows                {self.max_rows}
+        # self.partitions = ['training', 'validation', 'test']
+        # self.dt, self.tokenizer = self._build_partitions(data)
 
-            Min Columns             {self.min_cols}
-            Max Columns             {self.max_cols}
-            {self.tokenizer}
-        """
+    # def __repr__(self):
+    #     """
+    #     Returns a string representation of the object with useful information.
 
-        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
+    #     Returns
+    #     -------
+    #     str
+    #         The string representation of the object.
+    #     """
 
-        return info
+    #     info = f"""
+    #         ============================================
+    #         Dataset Configuration
+    #         --------------------------------------------
+    #         Source                  {self.source or '-'}
+    #         Text Level              {self.text_level or '-'}
+    #         Image Shape             {self.image_shape or '-'}
+    #         Training Ratio          {self.training_ratio or '-'}
+    #         Validation Ratio        {self.validation_ratio or '-'}
+    #         Test Ratio              {self.test_ratio or '-'}
+    #         Binarization            {self.binarization}
+    #         Lazy Mode               {self.lazy_mode}
+    #         Seed                    {self.seed}
+    #         ============================================
+    #         Dataset Information
+    #         --------------------------------------------
+    #         Total Size              {self.size}
+
+    #         Training Size           {self.dt['training']['size']}
+    #         Validation Size         {self.dt['validation']['size']}
+    #         Test Size               {self.dt['test']['size']}
+
+    #         Corpus Length           {len(self.corpus)}
+    #         Tokens Length           {len(self.tokens)}
+    #         Charset Length          {len(self.charset)}
+
+    #         Charset                 {''.join(self.charset)}
+
+    #         Min Rows                {self.min_rows}
+    #         Max Rows                {self.max_rows}
+
+    #         Min Columns             {self.min_cols}
+    #         Max Columns             {self.max_cols}
+    #         {self.tokenizer}
+    #     """
+
+    #     info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
+
+    #     return info
 
     # def _to_dict(self):
     #     """
@@ -189,11 +200,6 @@ class Dataset():
         -------
         source : instance of Source class
             An instance of the Source class from the imported module.
-
-        Raises
-        ------
-        AssertionError
-            If the specified source file or Source class don't exist.
         """
 
         module_name = importlib.util.resolve_name(f".source.{source}", __package__)
@@ -226,95 +232,104 @@ class Dataset():
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
                 zip_ref.extractall(artifact_path)
 
-    def _prepare_data(self, data, training=False):
+    def _validation(self, data):
         """
-        Prepares the data for partitioning.
+        Validates and cleans the data by removing invalid entries.
 
         Parameters
         ----------
-        data : tuple
-            The input data (training, validation, test).
-        training : bool, optional
-            If True, the function will handle the partition as training. Default is False.
+        data : dict
+            The input data to be validated, organized in partitions.
 
         Returns
         -------
-        list
-            The prepared data.
+        dict
+            The cleaned data with invalid entries removed.
         """
 
-        data = list(data)
+        def validate(index, item):
+            if not os.path.exists(item['image']):
+                print(f"Image `{os.path.basename(item['image'])}` does not exist.")
+                return index
 
-        if not 1 <= len(data) <= 3:
-            raise ValueError("input data must have 1 to 3 partition lists")
+            try:
+                image = utils.read_image(item['image'], item['bbox'], self.image_shape)
 
-        if not training:
-            data = [[], [], data]
+                if image is None or image.size == 0:
+                    print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
+                    return index
 
-        for i in range(len(data)):
-            if not data[i]:
-                continue
+            except Exception:
+                print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
+                return index
 
-            data[i] = list(data[i]) or []
-            data[i] = list(map(list, data[i]))
+            text = utils.format_text(item['text'], multiline=False)
 
-            for j in range(len(data[i])):
-                data[i][j] = list(data[i][j]) or []
+            if not text and getattr(self, '_source') is not None:
+                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
+                return index
 
-                if not data[i][j]:
-                    continue
+            return None
 
-                if not 1 <= len(data[i][j]) <= 3:
-                    raise ValueError("partition item must have 1 to 3 dims [images, bbox (opt), labels (opt)]")
+        for partition in data:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(validate, i, x) for i, x in enumerate(data[partition])]
+                indices = [x for x in [future.result() for future in futures] if x is not None]
 
-                if len(data[i][j]) == 1:
-                    data[i][j] = [data[i][j][0] or '', [], ['']]
+            for index in indices:
+                del data[partition][index]
 
-                elif len(data[i][j]) == 2:
-                    if isinstance(data[i][1], str):
-                        data[i][j] = [data[i][j][0] or '', [], data[i][j][1] or '']
-                    else:
-                        data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], ['']]
+        return data
 
-                elif len(data[i][j]) == 3:
-                    data[i][j] = [data[i][j][0] or '', data[i][j][1] or [], data[i][j][2] or '']
+    def _partitioning(self, data):
+        """
+        Prepares the data in partitioning.
 
-                if len(data[i][j][1]) != 0 and len(data[i][j][1]) != 4:
-                    raise ValueError("bbox value must have 0 or 4 dims [x, y, width, height]")
+        Parameters
+        ----------
+        data : dict
+            The input data with the partitions as keys.
 
-                data[i][j].extend([[]] * (3 - len(data[i][j])))
+        Returns
+        -------
+        dict
+            The partitioned data.
+        """
 
-            data[i].extend([[]] * (3 - len(data[i])))
+        def parse_ratio(ratio):
+            if ratio is None:
+                return None
+            if isinstance(ratio, str):
+                return float(ratio) if '.' in ratio else int(ratio)
+            return ratio
 
-        data.extend([[]] * (3 - len(data)))
+        if getattr(self, '_source') is None:
+            return data
 
-        if training and len(data[1]) == 0:
-            np.random.shuffle(data[0])
-            index = round((self.validation_ratio or 0.1) * len(data[0]))
+        data.setdefault('training', [])
+        data.setdefault('validation', [])
 
-            data[1] = data[0][:index]
-            data[0] = data[0][index:]
+        if len(data['training']) > 0 and len(data['validation']) == 0:
+            np.random.shuffle(data['training'])
+            index = max(round(0.1 * len(data['training'])), 1)
 
-            self.validation_ratio = None
+            data['validation'] = data['training'][:index]
+            data['training'] = data['training'][index:]
 
-        ratios = [self.training_ratio, self.validation_ratio, self.test_ratio]
-        ratio_is_not_none = [ratio for ratio in ratios if ratio is not None]
+        ratios = {
+            'training': parse_ratio(self.training_ratio),
+            'validation': parse_ratio(self.validation_ratio),
+            'test': parse_ratio(self.test_ratio),
+        }
 
-        if ratio_is_not_none:
-            for i in range(len(ratios)):
-                if not ratios[i]:
-                    continue
+        ratio = sum([ratios[i] for i in ratios if ratios[i] is not None])
 
-                if isinstance(ratios[i], str):
-                    ratios[i] = float(ratios[i]) if '.' in ratios[i] else int(ratios[i])
-
-            ratio = sum(x for x in ratios if x is not None)
-
+        if ratio > 0:
             if isinstance(ratio, float) and ratio == 1.0:
                 merged = []
 
-                for i, ratio in enumerate(ratios):
-                    if ratio is None:
+                for i in ratios:
+                    if ratios[i] is None:
                         continue
 
                     np.random.shuffle(data[i])
@@ -323,331 +338,105 @@ class Dataset():
                 total_merged = len(merged)
 
                 if total_merged > 0:
-                    for i, ratio in enumerate(ratios):
-                        if ratio is None:
+                    for i in ratios:
+                        if ratios[i] is None:
                             continue
 
                         np.random.shuffle(merged)
-                        index = round((ratio + 1e-8) * total_merged)
+                        index = round((ratios[i] + 1e-7) * total_merged)
 
                         data[i] = merged[:index]
                         merged = merged[index:]
 
             else:
-                for i, ratio in enumerate(ratios):
-                    if ratio is None:
+                for i in ratios:
+                    if ratios[i] is None:
                         continue
 
                     np.random.shuffle(data[i])
-                    index = round((ratio + 1e-8) * len(data[i])) if isinstance(ratio, float) else ratio
+                    index = round((ratios[i] + 1e-7) * len(data[i])) \
+                        if isinstance(ratios[i], float) else ratios[i]
 
                     data[i] = data[i][:index]
 
-        for i in range(len(data)):
-            if not data[i]:
-                continue
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._validate_data_item, x, training) for x in data[i]]
-                data[i] = [list(x) for x in [future.result() for future in futures] if x]
-
         return data
 
-    def _validate_data_item(self, item, training=False):
-        """
-        Load and validate data item.
-
-        Parameters
-        ----------
-        item : tuple
-            The data item to validate.
-        training : bool, optional
-            If True, the function will handle the partition as training. Default is False.
-
-        Returns
-        -------
-        tuple
-            The loaded and validated data item.
-        """
-
-        if len(item) == 0:
-            return None
-
-        image_path, bbox, label = item
-        image = None
-
-        if os.path.exists(image_path):
-            try:
-                image = self._read_image(image_path, self.image_shape, bbox)
-
-            except Exception:
-                print(f"Image `{os.path.basename(image_path)}` cannot be read.")
-                return None
-        else:
-            print(f"Image `{os.path.basename(image_path)}` does not exist.")
-            return None
-
-        if image is None or image.size == 0:
-            print(f"Image `{os.path.basename(image_path)}` has an invalid size.")
-            return None
-
-        label = self._format_text(label)
-
-        if training and not label:
-            print(f"Image `{os.path.basename(image_path)}` has an invalid label.")
-            return None
-
-        if self.lazy_mode:
-            image = image_path
-
-        return [image_path, bbox, label], [image, bbox, label]
-
-    def _read_image(self, image_path, image_shape, bbox=None):
-        """
-        Read an image from the given file path and perform optional bbox.
-
-        Parameters
-        ----------
-        image_path : str
-            The path to the image file.
-        image_shape : list
-            Image shape for resizing.
-        bbox : tuple, optional
-            The bbox coordinates (x, y, width, height). Default is None.
-
-        Returns
-        -------
-        ndarray
-            The loaded image as a NumPy array.
-        """
-
-        if not isinstance(image_path, str):
-            return image_path
-
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-        if bbox is not None and len(bbox) == 4:
-            x, y, width, height = bbox
-
-            # String
-            if isinstance(x, str):
-                x = float(x) if '.' in x else int(x)
-
-            if isinstance(y, str):
-                y = float(y) if '.' in y else int(y)
-
-            if isinstance(width, str):
-                width = float(width) if '.' in width else int(width)
-
-            if isinstance(height, str):
-                height = float(height) if '.' in height else int(height)
-
-            # Number
-            if isinstance(x, float):
-                x = int(x * image.shape[1])
-
-            if isinstance(y, float):
-                y = int(y * image.shape[0])
-
-            if isinstance(width, float):
-                width = int(width * image.shape[1])
-
-            if isinstance(height, float):
-                height = int(height * image.shape[0])
-
-            y = max(0, abs(y - 10))
-            x = max(0, abs(x - 10))
-
-            height = min(image.shape[0], (height + 10))
-            width = min(image.shape[1], (width + 10))
-
-            image = image[y:y+height, x:x+width]
-
-        image = self._resize_image(image, image_shape)
-
-        return image
-
-    def _resize_image(self, image, target_shape):
-        """
-        Resize the image to fit within the target shape, maintaining the aspect ratio.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image.
-        target_shape : list
-            Target shape as [height, width, channels].
-
-        Returns
-        -------
-        ndarray
-            Resized image.
-        """
-
-        h, w = image.shape
-        target_h, target_w = target_shape[:2]
-
-        if h > target_h or w > target_w:
-            aspect_ratio = w / h
-
-            if aspect_ratio >= 1:
-                new_w = min(target_w, int(target_h * aspect_ratio))
-                new_h = int(new_w / aspect_ratio)
-            else:
-                new_h = min(target_h, int(target_w / aspect_ratio))
-                new_w = int(new_h * aspect_ratio)
-
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-        # image = image.reshape((image.shape[0], image.shape[1], 1))
-
-        return image
-
-    def _format_text(self, text):
-        """
-        Clean and format the input text.
-
-        Parameters
-        ----------
-        text : str
-            The input text to be cleaned.
-
-        Returns
-        -------
-        str
-            The formatted text.
-        """
-
-        if isinstance(text, str):
-            text = text.split('\n')
-
-        substitutions = {
-            r'[ ]': ' ',
-            r'[＿]': '_',
-            r'[，]': ',',
-            r'[；]': ';',
-            r'[：]': ':',
-            r'[！﹗]': '!',
-            r'[？﹖]': '?',
-            r'[．。]': '.',
-            r'[＂“”″‶]': '"',
-            r'[（]': '(',
-            r'[）]': ')',
-            r'[［]': '[',
-            r'[］]': ']',
-            r'[｛]': '}',
-            r'[｝]': '{',
-            r'[＠]': '@',
-            r'[＊]': '*',
-            r'[／]': '/',
-            r'[＼]': '\\\\',
-            r'[＆]': '&',
-            r'[＃]': '#',
-            r'[％]': '%',
-            r'[＾]': '^',
-            r'[˗֊‐‑‒–—－−﹣]': '-',
-            r'[＋]': '+',
-            r'[＜]': '<',
-            r'[＝]': '=',
-            r'[＞]': '>',
-            r'[｜]': '|',
-            r'[～]': '~',
-            r'[⋯]': '...',
-            r'[＄]': '$',
-            r"[＇ʼ´‘’‛′‵`᾽᾿՚׳❛❜｀`]": '\'',
-        }
-
-        regexes = {re.compile(pattern): replacement for pattern, replacement in substitutions.items()}
-
-        for i, line in enumerate(text):
-            line = html.unescape(line)
-
-            for pattern, replacement in regexes.items():
-                line = pattern.sub(replacement, line)
-
-            line = re.sub(f'([{re.escape(string.punctuation)}])', r' \1 ', line)
-            line = re.sub(r'\s+', ' ', line).strip()
-
-            text[i] = line
-
-        return text
-
-    def _build_partitions(self, data):
-        """
-        Build data partitions and process the data within each partition.
-
-        Parameters
-        ----------
-        data : list
-            A list containing data to be partitioned and processed.
-
-        Returns
-        -------
-        tuple
-            A tuple containing a dictionary with processed data for each partition, and a tokenizer object.
-        """
-
-        dt = {}
-
-        for i, partition in enumerate(self.partitions):
-            dt[partition] = {
-                'raw_data': [],
-                'data': [],
-                'size': 0,
-                'corpus': '',
-                'tokens': [],
-                'charset': [],
-                'min_rows': 0,
-                'max_rows': 0,
-                'min_cols': 0,
-                'max_cols': 0,
-            }
-
-            dt[partition]['raw_data'] = np.array([x[0] for x in data[i]], dtype=object)
-            dt[partition]['data'] = np.array([x[1] for x in data[i]], dtype=object)
-            dt[partition]['size'] = dt[partition]['data'].shape[0]
-
-            labels = [x[2] for x in dt[partition]['data'] if x[2]]
-
-            if labels:
-                dt[partition]['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
-                dt[partition]['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
-                dt[partition]['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
-                dt[partition]['min_rows'] = min(len(x) for x in labels)
-                dt[partition]['max_rows'] = max(len(x) for x in labels)
-                dt[partition]['min_cols'] = min(len(y) for x in labels for y in x)
-                dt[partition]['max_cols'] = max(len(y) for x in labels for y in x)
-
-            self.size += dt[partition]['size']
-
-            if partition != 'test':
-                self.corpus = f"{self.corpus} {dt[partition]['corpus']}".strip()
-                self.tokens = sorted(set(self.tokens + dt[partition]['tokens']))
-                self.charset = sorted(set(self.charset + dt[partition]['charset']))
-
-            if dt[partition]['min_rows']:
-                self.min_rows = min(self.min_rows, dt[partition]['min_rows'])
-
-            if dt[partition]['max_rows']:
-                self.max_rows = max(self.max_rows, dt[partition]['max_rows'])
-
-            if dt[partition]['min_cols']:
-                self.min_cols = min(self.min_cols, dt[partition]['min_cols'])
-
-            if dt[partition]['max_cols']:
-                self.max_cols = max(self.max_cols, dt[partition]['max_cols'])
-
-        tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
-
-        for partition in self.partitions:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(tokenizer.encode, x[-1]) for x in dt[partition]['data']]
-                encoded_labels = [future.result() for future in futures]
-
-                for i in range(len(dt[partition]['data'])):
-                    dt[partition]['data'][i][-1] = encoded_labels[i]
-
-        return dt, tokenizer
+    # def _build_partitions(self, data):
+    #     """
+    #     Build data partitions and process the data within each partition.
+
+    #     Parameters
+    #     ----------
+    #     data : list
+    #         A list containing data to be partitioned and processed.
+
+    #     Returns
+    #     -------
+    #     tuple
+    #         A tuple containing a dictionary with processed data for each partition, and a tokenizer object.
+    #     """
+
+    #     dt = {}
+
+    #     for i, partition in enumerate(self.partitions):
+    #         dt[partition] = {
+    #             'raw_data': [],
+    #             'data': [],
+    #             'size': 0,
+    #             'corpus': '',
+    #             'tokens': [],
+    #             'charset': [],
+    #             'min_rows': 0,
+    #             'max_rows': 0,
+    #             'min_cols': 0,
+    #             'max_cols': 0,
+    #         }
+
+    #         dt[partition]['raw_data'] = np.array([x[0] for x in data[i]], dtype=object)
+    #         dt[partition]['data'] = np.array([x[1] for x in data[i]], dtype=object)
+    #         dt[partition]['size'] = dt[partition]['data'].shape[0]
+
+    #         labels = [x[2] for x in dt[partition]['data'] if x[2]]
+
+    #         if labels:
+    #             dt[partition]['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
+    #             dt[partition]['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
+    #             dt[partition]['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
+    #             dt[partition]['min_rows'] = min(len(x) for x in labels)
+    #             dt[partition]['max_rows'] = max(len(x) for x in labels)
+    #             dt[partition]['min_cols'] = min(len(y) for x in labels for y in x)
+    #             dt[partition]['max_cols'] = max(len(y) for x in labels for y in x)
+
+    #         self.size += dt[partition]['size']
+
+    #         if partition != 'test':
+    #             self.corpus = f"{self.corpus} {dt[partition]['corpus']}".strip()
+    #             self.tokens = sorted(set(self.tokens + dt[partition]['tokens']))
+    #             self.charset = sorted(set(self.charset + dt[partition]['charset']))
+
+    #         if dt[partition]['min_rows']:
+    #             self.min_rows = min(self.min_rows, dt[partition]['min_rows'])
+
+    #         if dt[partition]['max_rows']:
+    #             self.max_rows = max(self.max_rows, dt[partition]['max_rows'])
+
+    #         if dt[partition]['min_cols']:
+    #             self.min_cols = min(self.min_cols, dt[partition]['min_cols'])
+
+    #         if dt[partition]['max_cols']:
+    #             self.max_cols = max(self.max_cols, dt[partition]['max_cols'])
+
+    #     tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
+
+    #     for partition in self.partitions:
+    #         with concurrent.futures.ThreadPoolExecutor() as executor:
+    #             futures = [executor.submit(tokenizer.encode, x[-1]) for x in dt[partition]['data']]
+    #             encoded_labels = [future.result() for future in futures]
+
+    #             for i in range(len(dt[partition]['data'])):
+    #                 dt[partition]['data'][i][-1] = encoded_labels[i]
+
+    #     return dt, tokenizer
 
 #     def get_generator(self,
 #                       partition,
@@ -663,13 +452,13 @@ class Dataset():
 #         partition : dict
 #             The dataset partition which will be create the generator.
 #         batch_size : int, optional
-#             The number of samples in each batch, default is 8.
+#             The number of samples in each batch.
 #         augmentor : Augmentor, optional
-#             The Augmentor class. Default is None.
+#             The Augmentor class.
 #         raw_data : bool, optional
-#             Specifies whether to generate raw or processed data, default is False.
+#             Specifies whether to generate raw or processed data.
 #         shuffle : bool, optional
-#             Specifies whether shuffles per epoch, default is True.
+#             Specifies whether shuffles per epoch.
 
 #         Returns
 #         -------
