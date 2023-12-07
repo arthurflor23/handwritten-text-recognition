@@ -118,7 +118,7 @@ def format_text(text, multiline=False):
 
     Returns
     -------
-    str
+    str or list
         The formatted text.
     """
 
