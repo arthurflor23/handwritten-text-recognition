@@ -105,7 +105,7 @@ def resize_image(image, target_shape):
     return image
 
 
-def format_text(text, breakline=False):
+def format_text(text, multiline=False):
     """
     Clean and format the input text.
 
@@ -113,7 +113,7 @@ def format_text(text, breakline=False):
     ----------
     text : str
         The input text to be cleaned.
-    breakline : bool, optional
+    multiline : bool, optional
         Break lines of the input data.
 
     Returns
@@ -123,7 +123,7 @@ def format_text(text, breakline=False):
     """
 
     if isinstance(text, str):
-        text = text.split('\n') if breakline else [text]
+        text = text.split('\n') if multiline else [text]
 
     substitutions = {
         r'[ ]': ' ',
@@ -171,7 +171,7 @@ def format_text(text, breakline=False):
 
         text[i] = re.sub(r'\s+', ' ', line).strip()
 
-    if not breakline:
+    if not multiline:
         text = text[0]
 
     return text
