@@ -370,6 +370,8 @@ class Dataset():
                 futures = [executor.submit(build, x) for x in data[partition]]
                 source = [multigram for future in futures for multigram in future.result()]
 
+            np.random.shuffle(source)
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(self.tokenizer.encode_text, x, False) for x in source]
                 encode = [future.result() for future in futures]
