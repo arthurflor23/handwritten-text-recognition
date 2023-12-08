@@ -27,6 +27,9 @@ def read_image(image_path, bbox=None, image_shape=None):
 
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
+    if image is None:
+        return image
+
     if bbox is not None and len(bbox) == 4:
         x, y, width, height = bbox
 
@@ -62,7 +65,7 @@ def read_image(image_path, bbox=None, image_shape=None):
 
         image = image[y:y+height, x:x+width]
 
-    if image_shape is not None:
+    if image.size > 0 and image_shape is not None:
         image = resize_image(image, target_shape=image_shape)
 
     return image
