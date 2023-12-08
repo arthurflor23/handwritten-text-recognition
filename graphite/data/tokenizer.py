@@ -153,7 +153,7 @@ class Tokenizer():
             len(self.chars) + 1,
         )
 
-    def encode_text(self, text, keepdims=False):
+    def encode_text(self, text, keepstats=False):
         """
         Encode text into a nested list of character indices.
 
@@ -161,7 +161,7 @@ class Tokenizer():
         ----------
         text : str
             The text to be encoded.
-        keepdims : bool, optional
+        keepstats : bool, optional
             If True, updates the character set.
 
         Returns
@@ -170,7 +170,7 @@ class Tokenizer():
             The encoded representation of the text.
         """
 
-        if keepdims:
+        if keepstats:
             for word in set(text.replace('\n', ' ').split()):
                 if word not in self.words:
                     self.words.append(word)
@@ -241,7 +241,7 @@ class Tokenizer():
 
         return decoded_text
 
-    def encode_writer(self, writer, keepdims=False):
+    def encode_writer(self, writer, keepstats=False):
         """
         Encode a writer's ID into an integer index.
 
@@ -249,7 +249,7 @@ class Tokenizer():
         ----------
         writer : str
             The writer's ID to encode.
-        keepdims : bool, optional
+        keepstats : bool, optional
             If True, updates the writer set.
 
         Returns
@@ -258,7 +258,7 @@ class Tokenizer():
             The encoded index of the writer.
         """
 
-        if keepdims and writer not in self.writers:
+        if keepstats and writer not in self.writers:
             self.writers.append(writer)
 
         writer_to_index = {writer: idx for idx, writer in enumerate(self.writers)}
