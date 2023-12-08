@@ -82,15 +82,11 @@ class Dataset():
 
             data = self._source.fetch_data(self.text_level)
 
-        data = self._validation(data)
         data = self._partitioning(data)
+        data = self._validation(data)
 
         self.samples = self._build_samples(data)
-        # self.multigrams = self._build_multigrams(data)
-
-        # process
-        # self.samples = self._build_samples(data) -> read image + tokenizer to encode (loading info on train/valid)
-        # self.multigrams = self._build_multigrams(data) -> read image + tokenizer to encode (loading info on train/valid)
+        self.multigrams = self._build_multigrams(data)
 
         # dataset metadata
         #  'train/valid/test/total'
@@ -98,50 +94,6 @@ class Dataset():
         # len(self.samples['src']['training'])
         # len(self.samples['src']['validation'])
         # len(self.samples['src']['test'])
-
-    def _build_samples(self, data):
-
-        samples = {'src': {}, 'prc': {}}
-        keepdims = hasattr(self, '_source')
-
-        for i in data:
-            samples['src'][i] = []
-            samples['prc'][i] = []
-
-            for item in data[i]:
-                samples['src'][i].append(item.copy())
-
-                if not self.lazy_mode:
-                    item['image'] = utils.read_image(item['image'], item['bbox'], self.image_shape)
-
-                item['text'] = self.tokenizer.encode_text(item['text'], keepdims=keepdims)
-                item['writer'] = self.tokenizer.encode_writer(item['writer'], keepdims=keepdims)
-
-                samples['prc'][i].append(item)
-
-        print(self.tokenizer)
-        exit()
-
-        return samples
-
-        # tokenizer (init and load) ??
-        # 2. enconding (multiple variables + multigrams..)
-        #       image read
-        #       text encoded (multiline)
-        #       writer encoded
-        # 1. multigrams (training + validation condition only)
-        #       multigrams encoded
-
-        # tokenizer
-        # self.tokens = []
-        # self.charset = []
-        # self.min_rows = np.inf
-        # self.max_rows = -np.inf
-        # self.min_cols = np.inf
-        # self.max_cols = -np.inf
-
-        # self.partitions = ['training', 'validation', 'test']
-        # self.dt, self.tokenizer = self._build_partitions(data)
 
     # def __repr__(self):
     #     """
@@ -268,56 +220,6 @@ class Dataset():
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
                 zip_ref.extractall(artifact_path)
 
-    def _validation(self, data):
-        """
-        Validates and cleans the data by removing invalid entries.
-
-        Parameters
-        ----------
-        data : dict
-            The input data to be validated, organized in partitions.
-
-        Returns
-        -------
-        dict
-            The cleaned data with invalid entries removed.
-        """
-
-        def validate(index, item):
-            item['text'] = utils.format_text(item['text'])
-
-            if not item['text'] and hasattr(self, '_source') is not None:
-                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
-                return index
-
-            if item.get('image'):
-                if not os.path.exists(item['image']):
-                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
-                    return index
-
-                try:
-                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
-
-                    if image is None or image.size == 0:
-                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
-                        return index
-
-                except Exception:
-                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
-                    return index
-
-            return None
-
-        for partition in data:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(validate, i, x) for i, x in enumerate(data[partition])]
-                indices = [x for x in [future.result() for future in futures] if x is not None]
-
-            for index in indices:
-                del data[partition][index]
-
-        return data
-
     def _partitioning(self, data):
         """
         Prepares the data in partitioning.
@@ -398,82 +300,141 @@ class Dataset():
 
         return data
 
-    # def _build_partitions(self, data):
-    #     """
-    #     Build data partitions and process the data within each partition.
+    def _validation(self, data):
+        """
+        Validates and cleans the data by removing invalid entries.
 
-    #     Parameters
-    #     ----------
-    #     data : list
-    #         A list containing data to be partitioned and processed.
+        Parameters
+        ----------
+        data : dict
+            The input data to be validated, organized in partitions.
 
-    #     Returns
-    #     -------
-    #     tuple
-    #         A tuple containing a dictionary with processed data for each partition, and a tokenizer object.
-    #     """
+        Returns
+        -------
+        dict
+            The cleaned data with invalid entries removed.
+        """
 
-    #     dt = {}
+        def validate(index, item):
+            item['text'] = utils.format_text(item['text'])
 
-    #     for i, partition in enumerate(self.partitions):
-    #         dt[partition] = {
-    #             'raw_data': [],
-    #             'data': [],
-    #             'size': 0,
-    #             'corpus': '',
-    #             'tokens': [],
-    #             'charset': [],
-    #             'min_rows': 0,
-    #             'max_rows': 0,
-    #             'min_cols': 0,
-    #             'max_cols': 0,
-    #         }
+            if not item['text'] and hasattr(self, '_source') is not None:
+                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
+                return index
 
-    #         dt[partition]['raw_data'] = np.array([x[0] for x in data[i]], dtype=object)
-    #         dt[partition]['data'] = np.array([x[1] for x in data[i]], dtype=object)
-    #         dt[partition]['size'] = dt[partition]['data'].shape[0]
+            if item.get('image'):
+                if not os.path.exists(item['image']):
+                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
+                    return index
 
-    #         labels = [x[2] for x in dt[partition]['data'] if x[2]]
+                try:
+                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
 
-    #         if labels:
-    #             dt[partition]['corpus'] = ' '.join(' '.join(x) for x in labels).strip()
-    #             dt[partition]['tokens'] = sorted(set(' '.join(' '.join(x) for x in labels).split()))
-    #             dt[partition]['charset'] = sorted(set(''.join(''.join(x) for x in labels)))
-    #             dt[partition]['min_rows'] = min(len(x) for x in labels)
-    #             dt[partition]['max_rows'] = max(len(x) for x in labels)
-    #             dt[partition]['min_cols'] = min(len(y) for x in labels for y in x)
-    #             dt[partition]['max_cols'] = max(len(y) for x in labels for y in x)
+                    if image is None or image.size == 0:
+                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
+                        return index
 
-    #         self.size += dt[partition]['size']
+                except Exception:
+                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
+                    return index
 
-    #         if partition != 'test':
-    #             self.corpus = f"{self.corpus} {dt[partition]['corpus']}".strip()
-    #             self.tokens = sorted(set(self.tokens + dt[partition]['tokens']))
-    #             self.charset = sorted(set(self.charset + dt[partition]['charset']))
+            return None
 
-    #         if dt[partition]['min_rows']:
-    #             self.min_rows = min(self.min_rows, dt[partition]['min_rows'])
+        for partition in data:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(validate, i, x) for i, x in enumerate(data[partition])]
+                indices = [x for x in [future.result() for future in futures] if x is not None]
 
-    #         if dt[partition]['max_rows']:
-    #             self.max_rows = max(self.max_rows, dt[partition]['max_rows'])
+            for index in indices:
+                del data[partition][index]
 
-    #         if dt[partition]['min_cols']:
-    #             self.min_cols = min(self.min_cols, dt[partition]['min_cols'])
+        return data
 
-    #         if dt[partition]['max_cols']:
-    #             self.max_cols = max(self.max_cols, dt[partition]['max_cols'])
+    def _build_samples(self, data):
+        """
+        Builds the samples from data partitions.
 
-    #     tokenizer = Tokenizer(self.charset, self.max_rows, self.max_cols)
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing data partitions.
 
-    #     for partition in self.partitions:
-    #         with concurrent.futures.ThreadPoolExecutor() as executor:
-    #             futures = [executor.submit(tokenizer.encode, x[-1]) for x in dt[partition]['data']]
-    #             encoded_labels = [future.result() for future in futures]
+        Returns
+        -------
+        dict
+            A dictionary with raw and processed data.
+        """
 
-    #             for i in range(len(dt[partition]['data'])):
-    #                 dt[partition]['data'][i][-1] = encoded_labels[i]
+        samples = {'source': {}, 'encode': {}}
+        keepstats = hasattr(self, '_source')
 
-    #     return dt, tokenizer
+        def build(x):
+            source = x.copy()
+            encode = x.copy()
+
+            if not self.lazy_mode:
+                encode['image'] = utils.read_image(x['image'], x['bbox'], self.image_shape)
+
+            encode['text'] = self.tokenizer.encode_text(x['text'], keepstats=keepstats)
+            encode['writer'] = self.tokenizer.encode_writer(x['writer'], keepstats=keepstats)
+
+            return source, encode
+
+        for partition in data:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(build, x) for x in data[partition]]
+                results = [future.result() for future in futures]
+
+            sources, encode = zip(*results)
+            samples['source'][partition] = list(sources)
+            samples['encode'][partition] = list(encode)
+
+        return samples
+
+    def _build_multigrams(self, data):
+        """
+        Builds multigrams from the data partitions.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing data partitions.
+
+        Returns
+        -------
+        dict
+            A dictionary with raw and processed multigrams.
+        """
+
+        multigrams = {'source': [], 'encode': []}
+
+        def build(x):
+            words = x['text'].replace('\n\n', ' ').replace('\n', ' ').split()
+            multigrams = []
+
+            for i in range(len(words)):
+                for j in range(i + 1, len(words) + 1):
+                    multigram = ' '.join(words[i:j])
+                    multigrams.append(multigram)
+
+            return multigrams
+
+        for partition in data:
+            if 'test' in partition:
+                continue
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(build, x) for x in data[partition]]
+                source = [multigram for future in futures for multigram in future.result()]
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self.tokenizer.encode_text, x, False) for x in source]
+                encode = [future.result() for future in futures]
+
+            multigrams['source'].extend(source)
+            multigrams['encode'].extend(encode)
+
+        return multigrams
 
 #     def get_generator(self,
 #                       partition,
