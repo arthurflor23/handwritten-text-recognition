@@ -37,7 +37,7 @@ class Tokenizer():
         """
 
         repr_str = '-------------------------------------------------'
-        repr_str += '\nTokenizer Stats'
+        repr_str += '\nTokenizer'
         repr_str += '\n-------------------------------------------------'
         repr_str += f"\n{'writers':<{26}}: {len(self.writers) - 1:,}"
         repr_str += f"\n{'words':<{26}}: {len(self.words):,}"
