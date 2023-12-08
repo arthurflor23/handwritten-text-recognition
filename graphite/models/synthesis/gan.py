@@ -79,14 +79,12 @@ class SynthesisModel(tf.keras.Model):
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
-                                                lexical_shape=lexical_shape,
                                                 embedding_dim=embedding_dim,
                                                 blocks=discriminator_blocks,
                                                 name='discriminator')
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
                                                       patch_shape=patch_shape,
-                                                      lexical_shape=lexical_shape,
                                                       embedding_dim=embedding_dim,
                                                       blocks=discriminator_blocks,
                                                       name='patch_discriminator')
@@ -542,11 +540,11 @@ class GeneratorModel(tf.keras.Model):
         """
 
         config = {
-            "image_shape": self.image_shape,
-            "lexical_shape": self.lexical_shape,
-            "latent_dim": self.latent_dim,
-            "embedding_dim": self.embedding_dim,
-            "blocks": self.blocks,
+            'image_shape': self.image_shape,
+            'lexical_shape': self.lexical_shape,
+            'latent_dim': self.latent_dim,
+            'embedding_dim': self.embedding_dim,
+            'blocks': self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -697,7 +695,6 @@ class DiscriminatorModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  patch_shape,
-                 lexical_shape,
                  embedding_dim,
                  blocks,
                  **kwargs):
@@ -710,8 +707,6 @@ class DiscriminatorModel(tf.keras.Model):
             Shape of the input image.
         patch_shape : list, tuple or None
             Defines whether to apply patches for processing.
-        lexical_shape : list or tuple
-            Shape of the text sequences and vocabulary encoding.
         embedding_dim : int
             Dimension of the embedding space.
         blocks : list or tuple
@@ -724,7 +719,6 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
-        self.lexical_shape = lexical_shape
         self.embedding_dim = embedding_dim
         self.blocks = blocks
 
@@ -741,11 +735,10 @@ class DiscriminatorModel(tf.keras.Model):
         """
 
         config = {
-            "image_shape": self.image_shape,
-            "patch_shape": self.patch_shape,
-            "lexical_shape": self.lexical_shape,
-            "embedding_dim": self.embedding_dim,
-            "blocks": self.blocks,
+            'image_shape': self.image_shape,
+            'patch_shape': self.patch_shape,
+            'embedding_dim': self.embedding_dim,
+            'blocks': self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -896,9 +889,9 @@ class StyleBackboneModel(tf.keras.Model):
         """
 
         config = {
-            "image_shape": self.image_shape,
-            "features_shape": self.features_shape,
-            "blocks": self.blocks,
+            'image_shape': self.image_shape,
+            'features_shape': self.features_shape,
+            'blocks': self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -1056,8 +1049,8 @@ class StyleEncoderModel(tf.keras.Model):
         """
 
         config = {
-            "features_shape": self.features_shape,
-            "latent_dim": self.latent_dim,
+            'features_shape': self.features_shape,
+            'latent_dim': self.latent_dim,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -1189,8 +1182,8 @@ class WriterIdentifierModel(tf.keras.Model):
         """
 
         config = {
-            "features_shape": self.features_shape,
-            "writer_dim": self.writer_dim,
+            'features_shape': self.features_shape,
+            'writer_dim': self.writer_dim,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -1318,9 +1311,9 @@ class TextRecognizerModel(tf.keras.Model):
         """
 
         config = {
-            "image_shape": self.image_shape,
-            "lexical_shape": self.lexical_shape,
-            "blocks": self.blocks,
+            'image_shape': self.image_shape,
+            'lexical_shape': self.lexical_shape,
+            'blocks': self.blocks,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -1426,11 +1419,11 @@ class TextRecognizerModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        units = conv.get_shape()[3] * self.lexical_shape[0] * self.lexical_shape[1]
-        units = tf.math.ceil(units / (conv.get_shape()[1] * conv.get_shape()[2]))
+        lexical_prod = tf.math.reduce_prod(self.lexical_shape[:-1]).numpy()
+        units = tf.math.ceil((conv.get_shape()[3] * lexical_prod) / (conv.get_shape()[1] * conv.get_shape()[2]))
 
         dense = tf.keras.layers.Dense(units=units)(conv)
-        dense = tf.keras.layers.Reshape(target_shape=(self.lexical_shape[0]*self.lexical_shape[1], -1))(dense)
+        dense = tf.keras.layers.Reshape(target_shape=(lexical_prod, -1))(dense)
 
         bgru = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(dense)
