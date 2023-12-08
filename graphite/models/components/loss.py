@@ -39,14 +39,6 @@ class CTCLoss(tf.keras.losses.Loss):
             The computed CTC loss.
         """
 
-        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
-        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
-
-        # label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
-        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
-
-        # ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
-
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
