@@ -63,7 +63,7 @@ class Dataset():
 
         self.source = source
         self.text_level = text_level
-        self.image_shape = image_shape
+        self.image_shape = tuple(image_shape)
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -88,92 +88,38 @@ class Dataset():
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
 
-        # dataset metadata
-        #  'train/valid/test/total'
-        # def size(partition=None):
-        # len(self.samples['src']['training'])
-        # len(self.samples['src']['validation'])
-        # len(self.samples['src']['test'])
+        print(self.samples['source']['training'][0]['text'])
+        print(self.samples['source']['training'][10]['text'])
 
-    # def __repr__(self):
-    #     """
-    #     Returns a string representation of the object with useful information.
+    def __repr__(self):
+        """
+        Provides a formatted string with useful information.
 
-    #     Returns
-    #     -------
-    #     str
-    #         The string representation of the object.
-    #     """
+        Returns
+        -------
+        str
+            Formatted string with useful information.
+        """
 
-    #     info = f"""
-    #         ============================================
-    #         Dataset Configuration
-    #         --------------------------------------------
-    #         Source                  {self.source or '-'}
-    #         Text Level              {self.text_level or '-'}
-    #         Image Shape             {self.image_shape or '-'}
-    #         Training Ratio          {self.training_ratio or '-'}
-    #         Validation Ratio        {self.validation_ratio or '-'}
-    #         Test Ratio              {self.test_ratio or '-'}
-    #         Binarization            {self.binarization}
-    #         Lazy Mode               {self.lazy_mode}
-    #         Seed                    {self.seed}
-    #         ============================================
-    #         Dataset Information
-    #         --------------------------------------------
-    #         Total Size              {self.size}
+        info = '-------------------------------------------------'
+        info += f'\n{self.__class__.__name__}'
+        info += '\n-------------------------------------------------'
+        info += f"\n{'Source':<{26}}: {self.source or '-'}"
+        info += f"\n{'Text Level':<{26}}: {self.text_level or '-'}"
+        info += f"\n{'Image Shape':<{26}}: {self.image_shape or '-'}"
+        info += f"\n{'Training Ratio':<{26}}: {self.training_ratio or '-'}"
+        info += f"\n{'Validation Ratio':<{26}}: {self.validation_ratio or '-'}"
+        info += f"\n{'Test Ratio':<{26}}: {self.test_ratio or '-'}"
+        info += f"\n{'Binarization':<{26}}: {self.binarization}"
+        info += f"\n{'Lazy Mode':<{26}}: {self.lazy_mode}"
+        info += f"\n{'Seed':<{26}}: {self.seed}"
+        info += '\n-------------------------------------------------'
+        info += f"\n{'Training Size':<{26}}: {len(self.samples['source']['training']):,}"
+        info += f"\n{'Validaiton Size':<{26}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'Test Size':<{26}}: {len(self.samples['source']['test']):,}"
+        info += f"\n{'Total Size':<{26}}: {sum(len(x) for x in self.samples['source'].values()):,}"
 
-    #         Training Size           {self.dt['training']['size']}
-    #         Validation Size         {self.dt['validation']['size']}
-    #         Test Size               {self.dt['test']['size']}
-
-    #         Corpus Length           {len(self.corpus)}
-    #         Tokens Length           {len(self.tokens)}
-    #         Charset Length          {len(self.charset)}
-
-    #         Charset                 {''.join(self.charset)}
-
-    #         Min Rows                {self.min_rows}
-    #         Max Rows                {self.max_rows}
-
-    #         Min Columns             {self.min_cols}
-    #         Max Columns             {self.max_cols}
-    #         {self.tokenizer}
-    #     """
-
-    #     info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
-
-    #     return info
-
-    # def _to_dict(self):
-    #     """
-    #     Convert the class object attributes to a dictionary.
-
-    #     Returns
-    #     -------
-    #     dict
-    #         A dictionary with the class attributes.
-    #     """
-
-    #     attributes = {
-    #         'source': self.source,
-    #         'text_level': self.text_level,
-    #         'image_shape': self.image_shape,
-    #         'training_ratio': self.training_ratio,
-    #         'validation_ratio': self.validation_ratio,
-    #         'test_ratio': self.test_ratio,
-    #         'binarization': self.binarization,
-    #         'lazy_mode': self.lazy_mode,
-    #         'seed': self.seed,
-    #         'size': self.size,
-    #         'corpus': self.corpus,
-    #         'tokens': self.tokens,
-    #         'charset': self.charset,
-    #         'max_rows': self.max_rows,
-    #         'max_cols': self.max_cols,
-    #     }
-
-    #     return attributes
+        return info
 
     def _import_source(self, source):
         """
