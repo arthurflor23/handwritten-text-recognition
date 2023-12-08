@@ -88,9 +88,6 @@ class Dataset():
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
 
-        print(self.samples['source']['training'][0]['text'])
-        print(self.samples['source']['training'][10]['text'])
-
     def __repr__(self):
         """
         Provides a formatted string with useful information.
