@@ -222,7 +222,7 @@ class Source():
 
             image_path = os.path.join(self.base_path, word_path, word_file_name)
             bbox = [int(x) for x in parts[4:8]] if bbox_info else []
-            text = ' '.join(parts[8:]).replace('|', ' ')
+            text = parts[-1]
 
             form_id = '-'.join(word_ids[:2])
             writer_id = writers.get(form_id, '1')
