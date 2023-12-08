@@ -103,7 +103,7 @@ def resize_image(image, target_shape):
     return image
 
 
-def format_text(text, multiline=False):
+def format_text(text):
     """
     Clean and format the input text.
 
@@ -111,8 +111,6 @@ def format_text(text, multiline=False):
     ----------
     text : str
         The input text to be cleaned.
-    multiline : bool, optional
-        Break lines of the input data.
 
     Returns
     -------
@@ -164,8 +162,5 @@ def format_text(text, multiline=False):
     text = html.unescape(text)
     text = re.sub(r'[ \t]+', ' ', text).strip()
     text = re.sub(r'\n\s+|\s+\n', '\n', text).strip()
-
-    if multiline:
-        text = [x.split('\n') for x in text.split('\n\n')]
 
     return text
