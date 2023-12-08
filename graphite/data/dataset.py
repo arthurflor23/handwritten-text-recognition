@@ -6,6 +6,7 @@ import numpy as np
 import concurrent.futures
 
 from data import utils
+from data.tokenizer import Tokenizer
 
 
 class Dataset():
@@ -23,6 +24,7 @@ class Dataset():
                  binarization=False,
                  lazy_mode=False,
                  data=None,
+                 tokenizer=Tokenizer(),
                  artifact_path='dataset',
                  seed=None):
         """
@@ -48,6 +50,8 @@ class Dataset():
             Enable lazy loading mode.
         data : list, optional
             Data for inference mode.
+        tokenizer : object, optional
+            Tokenizer used in input data.
         artifact_path : str, optional
             Path name to fetch the data.
         seed : int, optional
@@ -65,6 +69,7 @@ class Dataset():
         self.test_ratio = test_ratio
         self.binarization = binarization
         self.lazy_mode = lazy_mode
+        self.tokenizer = tokenizer
         self.artifact_path = artifact_path
         self.seed = seed
 
@@ -80,27 +85,58 @@ class Dataset():
         data = self._validation(data)
         data = self._partitioning(data)
 
-        print(data)
+        self.samples = self._build_samples(data)
+        # self.multigrams = self._build_multigrams(data)
+
+        # process
+        # self.samples = self._build_samples(data) -> read image + tokenizer to encode (loading info on train/valid)
+        # self.multigrams = self._build_multigrams(data) -> read image + tokenizer to encode (loading info on train/valid)
+
+        # dataset metadata
+        #  'train/valid/test/total'
+        # def size(partition=None):
+        # len(self.samples['src']['training'])
+        # len(self.samples['src']['validation'])
+        # len(self.samples['src']['test'])
+
+    def _build_samples(self, data):
+
+        samples = {'src': {}, 'prc': {}}
+        keepdims = hasattr(self, '_source')
+
+        for i in data:
+            samples['src'][i] = []
+            samples['prc'][i] = []
+
+            for item in data[i]:
+                samples['src'][i].append(item.copy())
+
+                if not self.lazy_mode:
+                    item['image'] = utils.read_image(item['image'], item['bbox'], self.image_shape)
+
+                item['text'] = self.tokenizer.encode_text(item['text'], keepdims=keepdims)
+                item['writer'] = self.tokenizer.encode_writer(item['writer'], keepdims=keepdims)
+
+                samples['prc'][i].append(item)
+
+        print(self.tokenizer)
+        exit()
+
+        return samples
 
         # tokenizer (init and load) ??
         # 2. enconding (multiple variables + multigrams..)
         #       image read
         #       text encoded (multiline)
         #       writer encoded
-        # 1. multigrams (training condition only)
+        # 1. multigrams (training + validation condition only)
         #       multigrams encoded
 
-        # get/calculate metadata
-
-        # self.size = 0
-        # self.corpus = ''
+        # tokenizer
         # self.tokens = []
         # self.charset = []
-        # self.multigrams = []
-
         # self.min_rows = np.inf
         # self.max_rows = -np.inf
-
         # self.min_cols = np.inf
         # self.max_cols = -np.inf
 
@@ -248,26 +284,27 @@ class Dataset():
         """
 
         def validate(index, item):
-            if not os.path.exists(item['image']):
-                print(f"Image `{os.path.basename(item['image'])}` does not exist.")
-                return index
+            item['text'] = utils.format_text(item['text'])
 
-            try:
-                image = utils.read_image(item['image'], item['bbox'], self.image_shape)
-
-                if image is None or image.size == 0:
-                    print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
-                    return index
-
-            except Exception:
-                print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
-                return index
-
-            text = utils.format_text(item['text'], multiline=False)
-
-            if not text and getattr(self, '_source') is not None:
+            if not item['text'] and hasattr(self, '_source') is not None:
                 print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
                 return index
+
+            if item.get('image'):
+                if not os.path.exists(item['image']):
+                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
+                    return index
+
+                try:
+                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
+
+                    if image is None or image.size == 0:
+                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
+                        return index
+
+                except Exception:
+                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
+                    return index
 
             return None
 
@@ -296,15 +333,15 @@ class Dataset():
             The partitioned data.
         """
 
+        if not hasattr(self, '_source'):
+            return data
+
         def parse_ratio(ratio):
             if ratio is None:
                 return None
             if isinstance(ratio, str):
                 return float(ratio) if '.' in ratio else int(ratio)
             return ratio
-
-        if getattr(self, '_source') is None:
-            return data
 
         data.setdefault('training', [])
         data.setdefault('validation', [])
@@ -556,192 +593,3 @@ class Dataset():
 #         padded = np.expand_dims(padded, axis=-1)
 
 #         return padded
-
-
-class Tokenizer():
-    """
-    Class for tokenizing data using a character set.
-    """
-
-    def __init__(self, charset, max_rows, max_cols):
-        """
-        Initialize the Tokenizer.
-
-        Parameters
-        ----------
-        charset : list
-            List of characters in the character set.
-        max_rows : int, optional
-            Maximum number of rows for each label.
-        max_cols : int, optional
-            Maximum number of columns for each label.
-        """
-
-        self.pad_tk = '¶'
-        self.sos_tk = '◖'
-        self.eos_tk = '◗'
-        self.unk_tk = '◬'
-
-        self.charset = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk] + charset
-        self.shape = (max_rows, max_cols + (len(self.charset) - len(charset)), len(self.charset) + 1)
-
-        self.pad_tk_index = self.charset.index(self.pad_tk)
-        self.sos_tk_index = self.charset.index(self.sos_tk)
-        self.eos_tk_index = self.charset.index(self.eos_tk)
-        self.unk_tk_index = self.charset.index(self.unk_tk)
-
-    def __repr__(self):
-        """
-        Returns a string representation of the object with useful information.
-
-        Returns
-        -------
-        str
-            The string representation of the object.
-        """
-
-        info = f"""
-            ============================================
-            Tokenizer Configuration
-            --------------------------------------------
-            Charset                 {''.join(self.charset)}
-            Charset Length          {len(self.charset)}
-            Shape                   {self.shape}
-            ============================================
-        """
-
-        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
-
-        return info
-
-    # def _to_dict(self):
-    #     """
-    #     Convert the class object attributes to a dictionary.
-
-    #     Returns
-    #     -------
-    #     dict
-    #         A dictionary with the class attributes.
-    #     """
-
-    #     attributes = {
-    #         'charset': self.charset,
-    #         'shape': self.shape,
-    #     }
-
-    #     return attributes
-
-    def encode(self, label):
-        """
-        Encode a single label by mapping characters to their corresponding token indices.
-
-        Parameters
-        ----------
-        label : str
-            Label to encode.
-
-        Returns
-        -------
-        list
-            Encoded label with token indices.
-        """
-
-        charset_dict = {char: index for index, char in enumerate(self.charset)}
-        sos_tk_index = self.sos_tk_index
-        eos_tk_index = self.eos_tk_index
-        unk_tk_index = self.unk_tk_index
-
-        def encode_row(row):
-            encoded_row = [sos_tk_index]
-            encoded_row.extend(charset_dict.get(char, unk_tk_index) for char in row)
-            encoded_row.append(eos_tk_index)
-            return encoded_row
-
-        return [encode_row(row) for row in label]
-
-    def decode(self, encoded_label):
-        """
-        Decode a single encoded label by converting token indices back to characters.
-
-        Parameters
-        ----------
-        encoded_label : list
-            Encoded label with token indices.
-
-        Returns
-        -------
-        list
-            Decoded label with characters.
-        """
-
-        translation_table = str.maketrans('', '', self.pad_tk + self.sos_tk + self.eos_tk + self.unk_tk)
-
-        def decode_row(encoded_row):
-            row = ''.join([self.charset[int(encoded_char)] for encoded_char in encoded_row if int(encoded_char) != -1])
-            return row.translate(translation_table)
-
-        return [decode_row(encoded_row) for encoded_row in encoded_label]
-
-    # def encode(self, label):
-    #     """
-    #     Encode a single label by mapping characters to their corresponding token indices.
-
-    #     Parameters
-    #     ----------
-    #     label : str
-    #         Label to encode.
-
-    #     Returns
-    #     -------
-    #     list
-    #         Encoded label with token indices.
-    #     """
-
-    #     encoded_label = []
-
-    #     for row in label:
-    #         enconded_row = [self.sos_tk_index]
-
-    #         for char in row:
-    #             index = self.charset.index(char) if char in self.charset else self.unk_tk_index
-    #             enconded_row.append(index)
-
-    #         enconded_row += [self.eos_tk_index]
-    #         encoded_label.append(enconded_row)
-
-    #     return encoded_label
-
-    # def decode(self, encoded_label):
-    #     """
-    #     Decode a single encoded label by converting token indices back to characters.
-
-    #     Parameters
-    #     ----------
-    #     encoded_label : list
-    #         Encoded label with token indices.
-
-    #     Returns
-    #     -------
-    #     list
-    #         Decoded label with characters.
-    #     """
-
-    #     label = []
-
-    #     for enconded_row in encoded_label:
-    #         row = ''
-
-    #         for enconded_char in enconded_row:
-    #             if int(enconded_char) == -1:
-    #                 continue
-
-    #             row += self.charset[int(enconded_char)]
-
-    #         row = row.replace(self.pad_tk, '')
-    #         row = row.replace(self.sos_tk, '')
-    #         row = row.replace(self.eos_tk, '')
-    #         row = row.replace(self.unk_tk, '')
-
-    #         label.append(row)
-
-    #     return label
