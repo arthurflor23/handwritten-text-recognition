@@ -18,10 +18,11 @@ class Tokenizer():
         self.eos_tk = '◗'
         self.unk_tk = '◬'
 
-        self.text_shape = []
+        self.lexical_shape = []
+        self.writers = [self.unk_tk]
+
         self.words = []
         self.chars = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk]
-        self.writers = [self.unk_tk]
 
         self._initialize_metadata()
 
@@ -35,19 +36,26 @@ class Tokenizer():
             Formatted string with the statistics.
         """
 
-        repr_str = '------------------------------------------------\n'
-        repr_str += 'Tokenizer Stats\n'
-        repr_str += '------------------------------------------------\n'
-        repr_str += f"{'words':<{26}}: {len(self.words)}\n"
-        repr_str += f"{'chars':<{26}}: {len(self.chars) - 4}\n"
-        repr_str += f"{'writers':<{26}}: {len(self.writers) - 1}\n"
-        repr_str += '------------------------------------------------\n'
-        repr_str += f"{'charset':<{26}}: {''.join(self.chars)}\n"
-        repr_str += f"{'text_shape':<{26}}: {self.text_shape}\n"
-        repr_str += '------------------------------------------------'
+        repr_str = '-------------------------------------------------'
+        repr_str += '\nTokenizer Stats'
+        repr_str += '\n-------------------------------------------------'
+        repr_str += f"\n{'writers':<{26}}: {len(self.writers) - 1:,}"
+        repr_str += f"\n{'words':<{26}}: {len(self.words):,}"
+        repr_str += f"\n{'chars':<{26}}: {len(self.chars) - 4:,}"
+        repr_str += f"\n{'lexical_shape':<{26}}: {self.lexical_shape}"
+        repr_str += '\n-------------------------------------------------'
+
+        chars = ''.join(self.chars)
+        chunks = [chars[i:i+20] for i in range(0, len(chars), 20)]
+
+        repr_str += f"\n{'charset':<{26}}: {chunks[0]}"
+        for chunk in chunks[1:]:
+            repr_str += f"\n{'':<26}  {chunk}"
+
+        repr_str += '\n-------------------------------------------------'
 
         for key, value in self.metadata.items():
-            repr_str += f"\n{key:26}: {value}"
+            repr_str += f"\n{key:26}: {value:,}"
 
         return repr_str
 
@@ -138,10 +146,9 @@ class Tokenizer():
                 self.metadata[f'avg_{key}'] = round(
                     self._metadata[f'total_{key}'] / self._metadata[count_key])
 
-        self.text_shape = (
+        self.lexical_shape = (
             self.metadata['max_paragraphs_per_page'],
             self.metadata['max_lines_per_paragraph'],
-            self.metadata['max_words_per_line'],
             self.metadata['max_chars_per_line'],
             len(self.chars) + 1,
         )
