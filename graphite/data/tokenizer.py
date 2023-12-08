@@ -28,12 +28,12 @@ class Tokenizer():
 
     def __repr__(self):
         """
-        Provides a formatted string of the statistics.
+        Provides a formatted string with useful information.
 
         Returns
         -------
         str
-            Formatted string with the statistics.
+            Formatted string with useful information.
         """
 
         repr_str = '-------------------------------------------------'
