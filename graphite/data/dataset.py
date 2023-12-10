@@ -105,6 +105,7 @@ class Dataset():
         info = '-------------------------------------------------'
         info += f'\n{self.__class__.__name__}'
         info += '\n-------------------------------------------------'
+        info += f"\n{'Mode':<{26}}: {self.mode or '-'}"
         info += f"\n{'Source':<{26}}: {self.source or '-'}"
         info += f"\n{'Text Level':<{26}}: {self.text_level or '-'}"
         info += f"\n{'Image Shape':<{26}}: {self.image_shape or '-'}"
