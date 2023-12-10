@@ -15,6 +15,7 @@ class Dataset():
     """
 
     def __init__(self,
+                 mode='recognition',
                  source=None,
                  text_level=None,
                  image_shape=None,
@@ -32,6 +33,8 @@ class Dataset():
 
         Parameters
         ----------
+        mode : str, optional
+            Dataset application mode.
         source : str, optional
             The data source name.
         text_level : str, optional
@@ -61,6 +64,7 @@ class Dataset():
         random.seed(seed)
         np.random.seed(seed)
 
+        self.mode = mode
         self.source = source
         self.text_level = text_level
         self.image_shape = tuple(image_shape)
@@ -111,10 +115,12 @@ class Dataset():
         info += f"\n{'Lazy Mode':<{26}}: {self.lazy_mode}"
         info += f"\n{'Seed':<{26}}: {self.seed}"
         info += '\n-------------------------------------------------'
-        info += f"\n{'Training Size':<{26}}: {len(self.samples['source']['training']):,}"
-        info += f"\n{'Validaiton Size':<{26}}: {len(self.samples['source']['validation']):,}"
-        info += f"\n{'Test Size':<{26}}: {len(self.samples['source']['test']):,}"
-        info += f"\n{'Total Size':<{26}}: {sum(len(x) for x in self.samples['source'].values()):,}"
+        info += f"\n{'Training Data':<{26}}: {len(self.samples['source']['training']):,}"
+        info += f"\n{'Validaiton Data':<{26}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'Test Data':<{26}}: {len(self.samples['source']['test']):,}"
+        info += f"\n{'Total Data':<{26}}: {sum(len(x) for x in self.samples['source'].values()):,}"
+        info += '\n-------------------------------------------------'
+        info += f"\n{'Multigrams':<{26}}: {len(self.multigrams['source']):,}"
 
         return info
 
@@ -350,6 +356,9 @@ class Dataset():
         """
 
         multigrams = {'source': [], 'encode': []}
+
+        if 'synthesis' not in self.mode:
+            return multigrams
 
         def build(x):
             words = x['text'].replace('\n\n', ' ').replace('\n', ' ').split()
