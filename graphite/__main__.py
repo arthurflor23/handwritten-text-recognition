@@ -25,10 +25,10 @@ if __name__ == '__main__':
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
-    parser.add_argument('--binarization', default=False, action='store_true', help='Enable binarization')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
 
     # augmentor
+    parser.add_argument('--binarize', default=None, nargs=2, type=float, help='Binarization parameters')
     parser.add_argument('--erode', default=[0.66, 3, 1], nargs=3, type=float, help='Erosion parameters')
     parser.add_argument('--dilate', default=[0.33, 2, 1], nargs=3, type=float, help='Dilation parameters')
     parser.add_argument('--elastic', default=[0.66, 29, 1.0], nargs=3, type=float, help='Elastic parameters')
