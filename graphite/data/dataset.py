@@ -22,7 +22,6 @@ class Dataset():
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
-                 binarization=False,
                  lazy_mode=False,
                  data=None,
                  tokenizer=Tokenizer(),
@@ -47,8 +46,6 @@ class Dataset():
             The validation ratio for resample.
         test_ratio : float or int, optional
             The test ratio for resample.
-        binarization : bool, optional
-            Apply binarization method.
         lazy_mode : bool, optional
             Enable lazy loading mode.
         data : list, optional
@@ -71,7 +68,6 @@ class Dataset():
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
-        self.binarization = binarization
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer
         self.artifact_path = artifact_path
@@ -112,7 +108,6 @@ class Dataset():
         info += f"\n{'Training Ratio':<{26}}: {self.training_ratio or '-'}"
         info += f"\n{'Validation Ratio':<{26}}: {self.validation_ratio or '-'}"
         info += f"\n{'Test Ratio':<{26}}: {self.test_ratio or '-'}"
-        info += f"\n{'Binarization':<{26}}: {self.binarization}"
         info += f"\n{'Lazy Mode':<{26}}: {self.lazy_mode}"
         info += f"\n{'Seed':<{26}}: {self.seed}"
         info += '\n-------------------------------------------------'
@@ -439,9 +434,6 @@ class Dataset():
 #                 if self.lazy_mode or raw_data:
 #                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
 
-#                 if self.binarization:
-#                     x_data = [self._binarization(x) for x in x_data]
-
 #                 if augmentor:
 #                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
 
@@ -458,25 +450,6 @@ class Dataset():
 #         steps_per_epoch = int(np.ceil(partition['size'] / batch_size))
 
 #         return batch_generator, steps_per_epoch
-
-#     def _binarization(self, image):
-#         """
-#         Apply binarization method to an image.
-
-#         Parameters
-#         ----------
-#         image : ndarray
-#             Input image to be binarized.
-
-#         Returns
-#         ----------
-#         ndarray
-#             Binarized image.
-#         """
-
-#         _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-#         return image
 
 #     def _pad_batch_data(self, batch_data, pad_value, dtype=None):
 #         """
