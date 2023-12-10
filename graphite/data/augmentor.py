@@ -9,6 +9,7 @@ class Augmentor():
     """
 
     def __init__(self,
+                 binarize=None,
                  erode=None,
                  dilate=None,
                  elastic=None,
@@ -28,31 +29,33 @@ class Augmentor():
 
         Parameters
         ----------
-        erode : dict or None, optional
+        binarize : list or None, optional
+            Parameters for binarization.
+        erode : list or None, optional
             Parameters for erode transformation.
-        dilate : dict or None, optional
+        dilate : list or None, optional
             Parameters for dilate transformation.
-        elastic : dict or None, optional
+        elastic : list or None, optional
             Parameters for elastic transformation.
-        perspective : dict or None, optional
+        perspective : list or None, optional
             Parameters for perspective transform transformation.
-        mixup : dict or None, optional
+        mixup : list or None, optional
             Parameters for mixup transformation.
-        shear : dict or None, optional
+        shear : list or None, optional
             Parameters for shear transformation.
-        scale : dict or None, optional
+        scale : list or None, optional
             Parameters for scale transformation.
-        rotate : dict or None, optional
+        rotate : list or None, optional
             Parameters for rotate transformation.
-        shift_y : dict or None, optional
+        shift_y : list or None, optional
             Parameters for vertical translation transformation.
-        shift_x : dict or None, optional
+        shift_x : list or None, optional
             Parameters for horizontal translation transformation.
-        salt_and_pepper : dict or None, optional
+        salt_and_pepper : list or None, optional
             Parameters for salt and pepper noise.
-        gaussian_noise : dict or None, optional
+        gaussian_noise : list or None, optional
             Parameters for gaussian noise.
-        gaussian_blur : dict or None, optional
+        gaussian_blur : list or None, optional
             Parameters for Gaussian blur transformation.
         seed : int or None, optional
             Seed for random values from numpy.
@@ -61,6 +64,7 @@ class Augmentor():
         random.seed(seed)
         np.random.seed(seed)
 
+        self.binarize_params = binarize
         self.erode_params = erode
         self.dilate_params = dilate
         self.elastic_params = elastic
@@ -90,6 +94,7 @@ class Augmentor():
             ============================================
             Augmentor Configuration
             --------------------------------------------
+            Binarize                {self.binarize_params}
             Erode                   {self.erode_params}
             Dilate                  {self.dilate_params}
             Elastic                 {self.elastic_params}
@@ -110,35 +115,6 @@ class Augmentor():
         info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
 
         return info
-
-    # def _to_dict(self):
-    #     """
-    #     Convert the class object attributes to a dictionary.
-
-    #     Returns
-    #     -------
-    #     dict
-    #         A dictionary with the class attributes.
-    #     """
-
-    #     attributes = {
-    #         'erode': self.erode_params,
-    #         'dilate': self.dilate_params,
-    #         'elastic': self.elastic_params,
-    #         'perspective': self.perspective_params,
-    #         'mixup': self.mixup_params,
-    #         'shear': self.shear_params,
-    #         'scale': self.scale_params,
-    #         'rotate': self.rotate_params,
-    #         'shift_y': self.shift_y_params,
-    #         'shift_x': self.shift_x_params,
-    #         'salt_and_pepper': self.salt_and_pepper_params,
-    #         'gaussian_noise': self.gaussian_noise_params,
-    #         'gaussian_blur': self.gaussian_blur_params,
-    #         'seed': self.seed,
-    #     }
-
-    #     return attributes
 
     def augmentation(self, image, batch_images=None):
         """
@@ -161,6 +137,7 @@ class Augmentor():
             self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
 
         transformations = [
+            (self.binarize, self.binarize_params),
             (self.erode, self.erode_params),
             (self.dilate, self.dilate_params),
             (self.elastic, self.elastic_params),
@@ -179,6 +156,50 @@ class Augmentor():
         for transform_func, params in transformations:
             if params is not None and len(params) > 0 and np.random.random() < params[0]:
                 image = transform_func(image, *params[1:])
+
+        return image
+
+    def binarize(self, image, method='otsu'):
+        """
+        Apply binarization method to an image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be binarized.
+        method : str, optional
+            Binarization method to apply.
+
+        Returns
+        ----------
+        ndarray
+            Binarized image.
+        """
+
+        if method == 'global':
+            _, image = cv2.threshold(src=image,
+                                     thresh=127,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY)
+        elif method == 'otsu':
+            _, image = cv2.threshold(src=image,
+                                     thresh=0,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        elif method == 'adaptive_mean':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
+        elif method == 'adaptive_gaussian':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
 
         return image
 
@@ -374,6 +395,9 @@ class Augmentor():
 
             for i, opc in zip(indices, opacities):
                 img = size_images[i]
+
+                if self.binarize_params is not None:
+                    img = self.binarize(img, *self.binarize_params[1:])
 
                 ratio_width = width / float(img.shape[1])
                 ratio_height = height / float(img.shape[0])
