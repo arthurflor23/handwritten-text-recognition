@@ -98,25 +98,25 @@ class Dataset():
             Formatted string with useful information.
         """
 
-        info = '-------------------------------------------------'
-        info += f'\n{self.__class__.__name__}'
-        info += '\n-------------------------------------------------'
-        info += f"\n{'Mode':<{26}}: {self.mode or '-'}"
-        info += f"\n{'Source':<{26}}: {self.source or '-'}"
-        info += f"\n{'Text Level':<{26}}: {self.text_level or '-'}"
-        info += f"\n{'Image Shape':<{26}}: {self.image_shape or '-'}"
-        info += f"\n{'Training Ratio':<{26}}: {self.training_ratio or '-'}"
-        info += f"\n{'Validation Ratio':<{26}}: {self.validation_ratio or '-'}"
-        info += f"\n{'Test Ratio':<{26}}: {self.test_ratio or '-'}"
-        info += f"\n{'Lazy Mode':<{26}}: {self.lazy_mode}"
-        info += f"\n{'Seed':<{26}}: {self.seed}"
-        info += '\n-------------------------------------------------'
-        info += f"\n{'Training Data':<{26}}: {len(self.samples['source']['training']):,}"
-        info += f"\n{'Validaiton Data':<{26}}: {len(self.samples['source']['validation']):,}"
-        info += f"\n{'Test Data':<{26}}: {len(self.samples['source']['test']):,}"
-        info += f"\n{'Total Data':<{26}}: {sum(len(x) for x in self.samples['source'].values()):,}"
-        info += '\n-------------------------------------------------'
-        info += f"\n{'Multigrams':<{26}}: {len(self.multigrams['source']):,}"
+        info = '=================================================='
+        info += f"\n{self.__class__.__name__.center(50)}"
+        info += '\n=================================================='
+        info += f"\n{'Mode':<{25}}: {self.mode or '-'}"
+        info += f"\n{'Source':<{25}}: {self.source or '-'}"
+        info += f"\n{'Text Level':<{25}}: {self.text_level or '-'}"
+        info += f"\n{'Image Shape':<{25}}: {self.image_shape or '-'}"
+        info += f"\n{'Training Ratio':<{25}}: {self.training_ratio or '-'}"
+        info += f"\n{'Validation Ratio':<{25}}: {self.validation_ratio or '-'}"
+        info += f"\n{'Test Ratio':<{25}}: {self.test_ratio or '-'}"
+        info += f"\n{'Lazy Mode':<{25}}: {self.lazy_mode}"
+        info += f"\n{'Seed':<{25}}: {self.seed}"
+        info += "\n--------------------------------------------------"
+        info += f"\n{'Training Data':<{25}}: {len(self.samples['source']['training']):,}"
+        info += f"\n{'Validaiton Data':<{25}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'Test Data':<{25}}: {len(self.samples['source']['test']):,}"
+        info += f"\n{'Total Data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
+        info += "\n--------------------------------------------------"
+        info += f"\n{'Multigrams':<{25}}: {len(self.multigrams['source']):,}"
 
         return info
 

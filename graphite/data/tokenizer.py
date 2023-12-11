@@ -36,23 +36,23 @@ class Tokenizer():
             Formatted string with useful information.
         """
 
-        info = '-------------------------------------------------'
-        info += f'\n{self.__class__.__name__}'
-        info += '\n-------------------------------------------------'
-        info += f"\n{'writers':<{26}}: {len(self.writers) - 1:,}"
-        info += f"\n{'words':<{26}}: {len(self.words):,}"
-        info += f"\n{'chars':<{26}}: {len(self.chars) - 4:,}"
-        info += f"\n{'lexical_shape':<{26}}: {self.lexical_shape}"
-        info += '\n-------------------------------------------------'
+        info = '=================================================='
+        info += f'\n{self.__class__.__name__.center(50)}'
+        info += '\n=================================================='
+        info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
+        info += f"\n{'words':<{25}}: {len(self.words):,}"
+        info += f"\n{'chars':<{25}}: {len(self.chars) - 4:,}"
+        info += f"\n{'lexical_shape':<{25}}: {self.lexical_shape}"
+        info += "\n--------------------------------------------------"
 
         chars = ''.join(self.chars)
         chunks = [chars[i:i+20] for i in range(0, len(chars), 20)]
 
-        info += f"\n{'charset':<{26}}: {chunks[0]}"
+        info += f"\n{'charset':<{25}}: {chunks[0]}"
         for chunk in chunks[1:]:
             info += f"\n{'':<26}  {chunk}"
 
-        info += '\n-------------------------------------------------'
+        info += "\n--------------------------------------------------"
 
         for key, value in self.metadata.items():
             info += f"\n{key:26}: {value:,}"
