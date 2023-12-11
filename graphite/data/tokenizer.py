@@ -46,16 +46,16 @@ class Tokenizer():
         info += "\n--------------------------------------------------"
 
         chars = ''.join(self.chars)
-        chunks = [chars[i:i+20] for i in range(0, len(chars), 20)]
+        chunks = [chars[i:i+22] for i in range(0, len(chars), 22)]
 
         info += f"\n{'charset':<{25}}: {chunks[0]}"
         for chunk in chunks[1:]:
-            info += f"\n{'':<26}  {chunk}"
+            info += f"\n{'':<{25}}  {chunk}"
 
         info += "\n--------------------------------------------------"
 
         for key, value in self.metadata.items():
-            info += f"\n{key:26}: {value:,}"
+            info += f"\n{key:<{25}}: {value:,}"
 
         return info
 
