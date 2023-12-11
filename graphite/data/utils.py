@@ -61,8 +61,7 @@ def format_text(text):
         text = pattern.sub(replacement, text)
 
     text = html.unescape(text)
-    text = re.sub(r'[ \t]+', ' ', text).strip()
-    text = re.sub(r'\n\s+|\s+\n', '\n', text).strip()
+    text = ' '.join(text.replace('\n', '﹗').split()).replace('﹗', '\n').strip()
 
     return text
 
