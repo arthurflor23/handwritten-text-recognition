@@ -311,7 +311,7 @@ class Dataset():
             A dictionary with raw and processed data.
         """
 
-        samples = {'source': {}, 'encode': {}}
+        samples = {'source': {}, 'encoded': {}}
         keepstats = hasattr(self, '_source')
 
         def build(x):
@@ -333,7 +333,7 @@ class Dataset():
 
             source, encode = zip(*results)
             samples['source'][partition] = np.array(source, dtype=object)
-            samples['encode'][partition] = np.array(encode, dtype=object)
+            samples['encoded'][partition] = np.array(encode, dtype=object)
 
         return samples
 
@@ -352,7 +352,7 @@ class Dataset():
             A dictionary with raw and processed multigrams.
         """
 
-        multigrams = {'source': [], 'encode': []}
+        multigrams = {'source': [], 'encoded': []}
 
         if 'synthesis' not in self.mode:
             return multigrams
@@ -383,77 +383,94 @@ class Dataset():
                 encode = [future.result() for future in futures]
 
             multigrams['source'].extend(source)
-            multigrams['encode'].extend(encode)
+            multigrams['encoded'].extend(encode)
 
         multigrams['source'] = np.array(multigrams['source'], dtype=object)
-        multigrams['encode'] = np.array(multigrams['encode'], dtype=object)
+        multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
 
         return multigrams
 
-#     def get_generator(self,
-#                       partition,
-#                       batch_size=8,
-#                       augmentor=None,
-#                       raw_data=False,
-#                       shuffle=True):
-#         """
-#         Generates a batch of data samples for the specified partition.
+    def get_generator(self,
+                      partition,
+                      batch_size=8,
+                      augmentor=None,
+                      use_source=False,
+                      prepare_batch=True,
+                      shuffle=False):
+        """
+        Generates a batch of samples for the partition.
 
-#         Parameters
-#         ----------
-#         partition : dict
-#             The dataset partition which will be create the generator.
-#         batch_size : int, optional
-#             The number of samples in each batch.
-#         augmentor : Augmentor, optional
-#             The Augmentor class.
-#         raw_data : bool, optional
-#             Specifies whether to generate raw or processed data.
-#         shuffle : bool, optional
-#             Specifies whether shuffles per epoch.
+        Parameters
+        ----------
+        partition : str
+            The dataset partition which will be create the generator.
+        batch_size : int, optional
+            The number of samples in each batch.
+        augmentor : Augmentor, optional
+            The Augmentor instance.
+        use_source : bool, optional
+            Specifies whether to generate source or encoded data.
+        prepare_batch : bool, optional
+            Specifies whether to prepare data for model input.
+        shuffle : bool, optional
+            Specifies whether data is shuffled by epoch.
 
-#         Returns
-#         -------
-#         tuple
-#             A generator for data batches and steps per epoch.
-#         """
+        Returns
+        -------
+        tuple
+            The generator of batches and the steps per epoch.
+        """
 
-#         def generator(partition, subset, indices):
-#             batch_index = 0
+        def generator(subset, partition):
 
-#             while True:
-#                 if batch_index >= partition['size']:
-#                     if shuffle:
-#                         np.random.shuffle(indices)
-#                     batch_index = 0
+            data_length = len(self.samples[subset][partition])
+            indices = np.arange(data_length)
+            batch_index = 0
 
-#                 batch_indices = indices[batch_index:batch_index + batch_size]
-#                 batch_index += batch_size
+            while True:
+                if batch_index >= data_length:
+                    if shuffle:
+                        np.random.shuffle(indices)
+                    batch_index = 0
 
-#                 batch_data = partition[subset][batch_indices]
+                batch_indices = indices[batch_index:batch_index + batch_size]
+                batch_index += batch_size
 
-#                 x_data = batch_data[:, 0]
-#                 y_data = batch_data[:, 2]
+                batch = self.samples[subset][partition][batch_indices]
 
-#                 if self.lazy_mode or raw_data:
-#                     x_data = [self._read_image(data[0], data[1]) for data in batch_data]
+                x_data = [data['image'] for data in batch]
+                y_data = [data['text'] for data in batch]
 
-#                 if augmentor:
-#                     x_data = [augmentor.augmentation(x, x_data) for x in x_data]
+                if use_source:
+                    yield (x_data, y_data)
+                else:
+                    if self.lazy_mode:
+                        x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-#                 if not raw_data:
-#                     x_data = self._pad_batch_data(x_data, 255, np.uint8)
-#                     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
+                    if 'synthesis' in self.mode:
+                        # synthesis
+                        # (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
+                        yield (x_data, y_data)
+                    else:
 
-#                 yield (x_data, y_data)
+                        if augmentor:
+                            x_data = [augmentor.augmentation(x, x_data) for x in x_data]
+                            x_data = [utils.resize_image(x, self.image_shape) for x in x_data]
 
-#         subset = 'raw' if raw_data else 'data'
-#         indices = np.arange(partition['size'])
+                        # if prepare_batch:
+                        #     x_data = self._pad_batch_data(x_data, 255, np.uint8)
+                        #     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
 
-#         batch_generator = generator(partition, subset, indices)
-#         steps_per_epoch = int(np.ceil(partition['size'] / batch_size))
+                    yield (x_data, y_data)
 
-#         return batch_generator, steps_per_epoch
+        subset = 'source' if use_source else 'encoded'
+        data_length = len(self.samples[subset][partition])
+
+        batch_generator = generator(subset, partition)
+        steps_per_epoch = int(np.ceil(data_length / batch_size))
+
+        return batch_generator, steps_per_epoch
+
 
 #     def _pad_batch_data(self, batch_data, pad_value, dtype=None):
 #         """
