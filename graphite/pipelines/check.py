@@ -94,7 +94,7 @@ def check(args):
             # image and text (with augmentation, with padding)
             cv2.imshow('Input Image', inp_images[i])
             print('Input Label')
-            print(inp_labels[i], '\n')
+            print(inp_labels[i].squeeze(axis=-1).tolist(), '\n')
 
             print('Press Enter to continue or Esc to stop...\n\n')
             key = cv2.waitKey(0)
