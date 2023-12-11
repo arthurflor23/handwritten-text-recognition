@@ -1,11 +1,11 @@
-# import cv2
+import cv2
 
-# from data import Augmentor, Dataset
+from data import Augmentor, Dataset
 
 
 def check(args):
     """
-    Checks and displays data samples from a dataset.
+    Checks and displays samples from the dataset.
 
     Parameters
     ----------
@@ -13,88 +13,92 @@ def check(args):
         A namespace object containing all the arguments required.
     """
 
-    print(args)
+    dataset = Dataset(mode='recognition',
+                      source=args.source,
+                      text_level=args.text_level,
+                      image_shape=args.image_shape,
+                      training_ratio=args.training_ratio,
+                      validation_ratio=args.validation_ratio,
+                      test_ratio=args.test_ratio,
+                      lazy_mode=args.lazy_mode,
+                      seed=args.seed)
+    print(dataset)
 
-    ##########################################
-    # # def print_section(content):
-    # #     print(f"\n{'=' * 72}\n{content}\n{'=' * 72}\n")
+    augmentor = Augmentor(binarize=args.binarize,
+                          erode=args.erode,
+                          dilate=args.dilate,
+                          elastic=args.elastic,
+                          perspective=args.perspective,
+                          mixup=args.mixup,
+                          shear=args.shear,
+                          scale=args.scale,
+                          rotate=args.rotate,
+                          shift_y=args.shift_y,
+                          shift_x=args.shift_x,
+                          salt_and_pepper=args.salt_and_pepper,
+                          gaussian_noise=args.gaussian_noise,
+                          gaussian_blur=args.gaussian_blur,
+                          seed=args.seed)
+    print(augmentor)
 
-    # dataset = Dataset(source=args.source,
-    #                   text_level=args.text_level,
-    #                   image_shape=args.image_shape,
-    #                   training_ratio=args.training_ratio,
-    #                   validation_ratio=args.validation_ratio,
-    #                   test_ratio=args.test_ratio,
-    #                   binarization=args.binarization,
-    #                   lazy_mode=args.lazy_mode,
-    #                   seed=args.seed)
+    src_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=None,
+                                             use_source=True,
+                                             prepare_batch=False,
+                                             shuffle=False)
 
-    # if args.verbose > 0:
-    #     # print_section(dataset)
-    #     print(dataset)
-    ##########################################
+    enc_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=None,
+                                             use_source=False,
+                                             prepare_batch=False,
+                                             shuffle=False)
 
-    # print()
-    # print(dataset.dt['training']['data'][1])
-    # print(dataset.dt['training']['data'][1][0].shape)
-    # print()
-    # print(dataset.dt['training']['raw_data'][1])
+    aug_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=augmentor,
+                                             use_source=False,
+                                             prepare_batch=False,
+                                             shuffle=False)
 
-    # augmentor = Augmentor(erode=args.erode,
-    #                       dilate=args.dilate,
-    #                       elastic=args.elastic,
-    #                       perspective=args.perspective,
-    #                       mixup=args.mixup,
-    #                       shear=args.shear,
-    #                       scale=args.scale,
-    #                       rotate=args.rotate,
-    #                       shift_y=args.shift_y,
-    #                       shift_x=args.shift_x,
-    #                       salt_and_pepper=args.salt_and_pepper,
-    #                       gaussian_noise=args.gaussian_noise,
-    #                       gaussian_blur=args.gaussian_blur,
-    #                       seed=args.seed)
+    inp_generator, _ = dataset.get_generator(partition='training',
+                                             batch_size=args.batch_size,
+                                             augmentor=augmentor,
+                                             use_source=False,
+                                             prepare_batch=True,
+                                             shuffle=False)
 
-    # if args.verbose > 1:
-    #     print_section(augmentor)
+    print('\nChecking samples...\n')
+    while True:
+        src_images, src_labels = next(src_generator)
+        enc_images, enc_labels = next(enc_generator)
+        aug_images, _ = next(aug_generator)
+        inp_images, inp_labels = next(inp_generator)
 
-    # src_generator, _ = dataset.get_generator(dataset.training,
-    #                                          batch_size=args.batch_size,
-    #                                          augmentor=None,
-    #                                          raw_data=True,
-    #                                          shuffle=False)
+        for i in range(args.batch_size):
+            # raw image and text
+            print('Source Image (path)')
+            print(src_images[i], '\n')
+            print('Source Label')
+            print(src_labels[i], '\n')
 
-    # aug_generator, _ = dataset.get_generator(dataset.training,
-    #                                          batch_size=args.batch_size,
-    #                                          augmentor=augmentor,
-    #                                          raw_data=False,
-    #                                          shuffle=False)
+            # image and text (no augmentation, no padding)
+            cv2.imshow('Image', enc_images[i])
+            print('Encoded Label')
+            print(enc_labels[i], '\n')
 
-    # print("\nChecking samples...\n")
+            # image (with augmentation, no padding)
+            cv2.imshow('Augmented Image', aug_images[i])
 
-    # while True:
-    #     src_images, src_labels = next(src_generator)
-    #     aug_images, aug_labels = next(aug_generator)
+            # image and text (with augmentation, with padding)
+            cv2.imshow('Input Image', inp_images[i])
+            print('Input Label')
+            print(inp_labels[i], '\n')
 
-    #     for i in range(len(src_images)):
-    #         cv2.imshow("Source Image", src_images[i])
-    #         cv2.imshow("Augmented Image", aug_images[i])
+            print('Press Enter to continue or Esc to stop...\n\n')
+            key = cv2.waitKey(0)
 
-    #         print("\nSource Label")
-
-    #         for j in range(len(src_labels[i])):
-    #             print("Length", len(src_labels[i][j]))
-    #             print(src_labels[i][j])
-
-    #         print("\nEncoded Label")
-
-    #         for j in range(len(aug_labels[i])):
-    #             print("Length", len(aug_labels[i][j]))
-    #             print([list(x) for x in aug_labels[i][j]])
-
-    #         print("\n\nPress Enter to continue or Esc to stop...\n")
-    #         key = cv2.waitKey(0)
-
-    #         if key == 27:
-    #             cv2.destroyAllWindows()
-    #             return
+            if key == 27:
+                cv2.destroyAllWindows()
+                return
