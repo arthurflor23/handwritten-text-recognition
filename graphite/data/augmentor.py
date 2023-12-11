@@ -82,37 +82,32 @@ class Augmentor():
 
     def __repr__(self):
         """
-        Returns a string representation of the object with useful information.
+        Provides a formatted string with useful information.
 
         Returns
         -------
         str
-            The string representation of the object.
+            Formatted string with useful information.
         """
 
-        info = f"""
-            ============================================
-            Augmentor Configuration
-            --------------------------------------------
-            Binarize                {self.binarize_params}
-            Erode                   {self.erode_params}
-            Dilate                  {self.dilate_params}
-            Elastic                 {self.elastic_params}
-            Perspective             {self.perspective_params}
-            Mixup                   {self.mixup_params}
-            Shear                   {self.shear_params}
-            Scale                   {self.scale_params}
-            Rotate                  {self.rotate_params}
-            Shift-y                 {self.shift_y_params}
-            Shift-x                 {self.shift_x_params}
-            Salt and Pepper Noise   {self.salt_and_pepper_params}
-            Gaussian Noise          {self.gaussian_noise_params}
-            Gaussian Blur           {self.gaussian_blur_params}
-            Seed                    {self.seed}
-            ============================================
-        """
-
-        info = '\n'.join([x.strip() for x in info.splitlines()]).strip()
+        info = '=================================================='
+        info += f"\n{self.__class__.__name__.center(50)}"
+        info += '\n=================================================='
+        info += f"\n{'binarize':<{25}}: {self.binarize_params or '-'}"
+        info += f"\n{'erode':<{25}}: {self.erode_params or '-'}"
+        info += f"\n{'dilate':<{25}}: {self.dilate_params or '-'}"
+        info += f"\n{'elastic':<{25}}: {self.elastic_params or '-'}"
+        info += f"\n{'perspective':<{25}}: {self.perspective_params or '-'}"
+        info += f"\n{'mixup':<{25}}: {self.mixup_params or '-'}"
+        info += f"\n{'shear':<{25}}: {self.shear_params or '-'}"
+        info += f"\n{'scale':<{25}}: {self.scale_params or '-'}"
+        info += f"\n{'rotate':<{25}}: {self.rotate_params or '-'}"
+        info += f"\n{'shift_y':<{25}}: {self.shift_y_params or '-'}"
+        info += f"\n{'shift_x':<{25}}: {self.shift_x_params or '-'}"
+        info += f"\n{'salt_and_pepper':<{25}}: {self.salt_and_pepper_params or '-'}"
+        info += f"\n{'gaussian_noise':<{25}}: {self.gaussian_noise_params or '-'}"
+        info += f"\n{'gaussian_blur':<{25}}: {self.gaussian_blur_params or '-'}"
+        info += f"\n{'seed':<{25}}: {self.seed}"
 
         return info
 
