@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
 
     # augmentor
-    parser.add_argument('--binarize', default=None, nargs=2, type=float, help='Binarization parameters')
+    parser.add_argument('--binarize', default=None, nargs='+', help='Binarization parameters')
     parser.add_argument('--erode', default=[0.66, 3, 1], nargs=3, type=float, help='Erosion parameters')
     parser.add_argument('--dilate', default=[0.33, 2, 1], nargs=3, type=float, help='Dilation parameters')
     parser.add_argument('--elastic', default=[0.66, 29, 1.0], nargs=3, type=float, help='Elastic parameters')
