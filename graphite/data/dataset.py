@@ -117,6 +117,7 @@ class Dataset():
         info += f"\n{'Total Data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
         info += "\n--------------------------------------------------"
         info += f"\n{'Multigrams':<{25}}: {len(self.multigrams['source']):,}"
+        info += f"\n{self.tokenizer}"
 
         return info
 
