@@ -64,7 +64,7 @@ class Dataset():
         self.mode = mode
         self.source = source
         self.text_level = text_level
-        self.image_shape = tuple(image_shape)
+        self.image_shape = tuple(image_shape or [])
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -101,22 +101,22 @@ class Dataset():
         info = '=================================================='
         info += f"\n{self.__class__.__name__.center(50)}"
         info += '\n=================================================='
-        info += f"\n{'Mode':<{25}}: {self.mode or '-'}"
-        info += f"\n{'Source':<{25}}: {self.source or '-'}"
-        info += f"\n{'Text Level':<{25}}: {self.text_level or '-'}"
-        info += f"\n{'Image Shape':<{25}}: {self.image_shape or '-'}"
-        info += f"\n{'Training Ratio':<{25}}: {self.training_ratio or '-'}"
-        info += f"\n{'Validation Ratio':<{25}}: {self.validation_ratio or '-'}"
-        info += f"\n{'Test Ratio':<{25}}: {self.test_ratio or '-'}"
-        info += f"\n{'Lazy Mode':<{25}}: {self.lazy_mode}"
-        info += f"\n{'Seed':<{25}}: {self.seed}"
+        info += f"\n{'mode':<{25}}: {self.mode or '-'}"
+        info += f"\n{'source':<{25}}: {self.source or '-'}"
+        info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"
+        info += f"\n{'image_shape':<{25}}: {self.image_shape or '-'}"
+        info += f"\n{'training_ratio':<{25}}: {self.training_ratio or '-'}"
+        info += f"\n{'validation_ratio':<{25}}: {self.validation_ratio or '-'}"
+        info += f"\n{'test_ratio':<{25}}: {self.test_ratio or '-'}"
+        info += f"\n{'lazy_mode':<{25}}: {self.lazy_mode}"
+        info += f"\n{'seed':<{25}}: {self.seed}"
         info += "\n--------------------------------------------------"
-        info += f"\n{'Training Data':<{25}}: {len(self.samples['source']['training']):,}"
-        info += f"\n{'Validaiton Data':<{25}}: {len(self.samples['source']['validation']):,}"
-        info += f"\n{'Test Data':<{25}}: {len(self.samples['source']['test']):,}"
-        info += f"\n{'Total Data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
+        info += f"\n{'training_data':<{25}}: {len(self.samples['source']['training']):,}"
+        info += f"\n{'validaiton_data':<{25}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'test_data':<{25}}: {len(self.samples['source']['test']):,}"
+        info += f"\n{'total_data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
         info += "\n--------------------------------------------------"
-        info += f"\n{'Multigrams':<{25}}: {len(self.multigrams['source']):,}"
+        info += f"\n{'multigrams':<{25}}: {len(self.multigrams['source']):,}"
         info += f"\n{self.tokenizer}"
 
         return info
