@@ -93,10 +93,7 @@ if __name__ == '__main__':
         assert len(args.images) > 0, "--images must be defined"
 
     # pipelines
-    if args.check:
-        pipelines.check(args)
-
-    elif args.training:
+    if args.training:
         pipelines.training(args)
 
     elif args.test:
@@ -104,3 +101,6 @@ if __name__ == '__main__':
 
     elif args.inference:
         pipelines.inference(args)
+
+    else:
+        pipelines.check(args)
