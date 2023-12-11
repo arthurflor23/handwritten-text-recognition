@@ -422,13 +422,12 @@ class Dataset():
         """
 
         def generator(subset, partition):
-
-            data_length = len(self.samples[subset][partition])
-            indices = np.arange(data_length)
+            samples_length = len(self.samples[subset][partition])
+            indices = np.arange(samples_length)
             batch_index = 0
 
             while True:
-                if batch_index >= data_length:
+                if batch_index >= samples_length:
                     if shuffle:
                         np.random.shuffle(indices)
                     batch_index = 0
@@ -441,19 +440,29 @@ class Dataset():
                 x_data = [data['image'] for data in batch]
                 y_data = [data['text'] for data in batch]
 
-                if use_source:
-                    yield (x_data, y_data)
-                else:
+                if not use_source:
                     if self.lazy_mode:
                         x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-                    if 'synthesis' in self.mode and 'recognition' in self.mode:
-                        print('synthesis+recognition')
+                    if 'synthesis' in self.mode:
+                        x_aug_data = x_data.copy()
+                        y_aug_data = np.random.choice(self.multigrams[subset][partition], batch_size)
 
-                    elif 'synthesis' in self.mode:
-                        # synthesis
-                        # (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
-                        yield (x_data, y_data)
+                        if augmentor:
+                            x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
+                            x_aug_data = [utils.resize_image(x, self.image_shape) for x in x_aug_data]
+
+                        if prepare_batch:
+                            x_data = utils.prepare_image_batch(x_data, self.image_shape)
+                            y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
+
+                            x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
+                            y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
+
+                        w_data = [data['writer'] for data in batch]
+                        w_data = np.array(w_data, dtype=np.int32)
+
+                        x_data = (x_data, y_data, w_data, x_aug_data, y_aug_data)
 
                     elif 'recognition' in self.mode:
                         if augmentor:
@@ -464,12 +473,12 @@ class Dataset():
                             x_data = utils.prepare_image_batch(x_data, self.image_shape)
                             y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
 
-                    yield (x_data, y_data)
+                yield (x_data, y_data)
 
         subset = 'source' if use_source else 'encoded'
-        data_length = len(self.samples[subset][partition])
+        samples_length = len(self.samples[subset][partition])
 
         batch_generator = generator(subset, partition)
-        steps_per_epoch = int(np.ceil(data_length / batch_size))
+        steps_per_epoch = int(np.ceil(samples_length / batch_size))
 
         return batch_generator, steps_per_epoch
