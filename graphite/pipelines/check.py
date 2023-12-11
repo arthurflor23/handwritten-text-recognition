@@ -69,36 +69,38 @@ def check(args):
                                              prepare_batch=True,
                                              shuffle=False)
 
-    print('\nChecking samples...\n')
-    while True:
-        src_images, src_labels = next(src_generator)
-        enc_images, enc_labels = next(enc_generator)
-        aug_images, _ = next(aug_generator)
-        inp_images, inp_labels = next(inp_generator)
+    if args.check:
+        print('\nChecking samples...\n')
 
-        for i in range(args.batch_size):
-            # raw image and text
-            print('Source Image (path)')
-            print(src_images[i], '\n')
-            print('Source Label')
-            print(src_labels[i], '\n')
+        while True:
+            src_images, src_labels = next(src_generator)
+            enc_images, enc_labels = next(enc_generator)
+            aug_images, _ = next(aug_generator)
+            inp_images, inp_labels = next(inp_generator)
 
-            # image and text (no augmentation, no padding)
-            cv2.imshow('Image', enc_images[i])
-            print('Encoded Label')
-            print(enc_labels[i], '\n')
+            for i in range(args.batch_size):
+                # raw image and text
+                print('Source Image (path)')
+                print(src_images[i], '\n')
+                print('Source Label')
+                print(src_labels[i], '\n')
 
-            # image (with augmentation, no padding)
-            cv2.imshow('Augmented Image', aug_images[i])
+                # image and text (no augmentation, no padding)
+                cv2.imshow('Image', enc_images[i])
+                print('Encoded Label')
+                print(enc_labels[i], '\n')
 
-            # image and text (with augmentation, with padding)
-            cv2.imshow('Input Image', inp_images[i])
-            print('Input Label')
-            print(inp_labels[i].squeeze(axis=-1).tolist(), '\n')
+                # image (with augmentation, no padding)
+                cv2.imshow('Augmented Image', aug_images[i])
 
-            print('Press Enter to continue or Esc to stop...\n\n')
-            key = cv2.waitKey(0)
+                # image and text (with augmentation, with padding)
+                cv2.imshow('Input Image', inp_images[i])
+                print('Input Label')
+                print(inp_labels[i].squeeze(axis=-1).tolist(), '\n')
 
-            if key == 27:
-                cv2.destroyAllWindows()
-                return
+                print('Press Enter to continue or Esc to stop...\n\n')
+                key = cv2.waitKey(0)
+
+                if key == 27:
+                    cv2.destroyAllWindows()
+                    return
