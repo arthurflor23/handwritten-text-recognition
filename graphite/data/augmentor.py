@@ -149,7 +149,7 @@ class Augmentor():
         ]
 
         for transform_func, params in transformations:
-            if params is not None and len(params) > 0 and np.random.random() < params[0]:
+            if params is not None and len(params) > 0 and np.random.random() < float(params[0]):
                 image = transform_func(image, *params[1:])
 
         return image
