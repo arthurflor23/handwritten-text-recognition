@@ -447,19 +447,22 @@ class Dataset():
                     if self.lazy_mode:
                         x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-                    if 'synthesis' in self.mode:
+                    if 'synthesis' in self.mode and 'recognition' in self.mode:
+                        print('synthesis+recognition')
+
+                    elif 'synthesis' in self.mode:
                         # synthesis
                         # (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
                         yield (x_data, y_data)
-                    else:
 
+                    elif 'recognition' in self.mode:
                         if augmentor:
                             x_data = [augmentor.augmentation(x, x_data) for x in x_data]
                             x_data = [utils.resize_image(x, self.image_shape) for x in x_data]
 
-                        # if prepare_batch:
-                        #     x_data = self._pad_batch_data(x_data, 255, np.uint8)
-                        #     y_data = self._pad_batch_data(y_data, self.tokenizer.pad_tk_index, np.int32)
+                        if prepare_batch:
+                            x_data = utils.prepare_image_batch(x_data, self.image_shape)
+                            y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
 
                     yield (x_data, y_data)
 
@@ -470,36 +473,3 @@ class Dataset():
         steps_per_epoch = int(np.ceil(data_length / batch_size))
 
         return batch_generator, steps_per_epoch
-
-
-#     def _pad_batch_data(self, batch_data, pad_value, dtype=None):
-#         """
-#         Pads each 2D sub-array in the batch data to the maximum height and width.
-
-#         Parameters
-#         ----------
-#         data : list
-#             List of 2D sub-arrays to be padded.
-#         pad_value : int, optional
-#             Padding value.
-#         dtype : data-type, optional
-#             Desired data type of output array.
-
-#         Returns
-#         -------
-#         ndarray
-#             Padded batch data.
-#         """
-
-#         max_height = max(len(data) for data in batch_data)
-#         max_width = max(len(item) for data in batch_data for item in data)
-
-#         padded = np.full((len(batch_data), max_height, max_width), pad_value, dtype=dtype)
-
-#         for i, data in enumerate(batch_data):
-#             for j, item in enumerate(data):
-#                 padded[i, j, :len(item)] = item
-
-#         padded = np.expand_dims(padded, axis=-1)
-
-#         return padded
