@@ -330,9 +330,9 @@ class Dataset():
                 futures = [executor.submit(build, x) for x in data[partition]]
                 results = [future.result() for future in futures]
 
-            sources, encode = zip(*results)
-            samples['source'][partition] = list(sources)
-            samples['encode'][partition] = list(encode)
+            source, encode = zip(*results)
+            samples['source'][partition] = np.array(source, dtype=object)
+            samples['encode'][partition] = np.array(encode, dtype=object)
 
         return samples
 
@@ -383,6 +383,9 @@ class Dataset():
 
             multigrams['source'].extend(source)
             multigrams['encode'].extend(encode)
+
+        multigrams['source'] = np.array(multigrams['source'], dtype=object)
+        multigrams['encode'] = np.array(multigrams['encode'], dtype=object)
 
         return multigrams
 
