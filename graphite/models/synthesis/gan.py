@@ -22,12 +22,23 @@ class HandwritingSynthesis(tf.keras.Model):
 
     References
     ----------
-    - [GANs Trained by a Two Time-Scale Update Rule Converge to a Local Equilibrium](https://arxiv.org/abs/1706.08500)
-    - [HiGAN+: Handwriting Imitation GAN with Disentangled Representations](https://dl.acm.org/doi/10.1145/3550070)
-    - [Large Scale GAN Training for High Fidelity Natural Image Synthesis](https://arxiv.org/abs/1809.11096v2)
-    - [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3)
-    - [ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation](https://arxiv.org/abs/2003.10557)
-    - [Wasserstein GAN](https://arxiv.org/abs/1701.07875)
+    GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash Equilibrium
+        https://arxiv.org/abs/1706.08500
+
+    HiGAN+: Handwriting Imitation GAN with Disentangled Representations
+        https://dl.acm.org/doi/10.1145/3550070
+
+    Large Scale GAN Training for High Fidelity Natural Image Synthesis
+        https://arxiv.org/abs/1809.11096v2
+
+    Modulating early visual processing by language
+        https://arxiv.org/abs/1707.00683v3
+
+    ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation
+        https://arxiv.org/abs/2003.10557
+
+    Wasserstein GAN
+        https://arxiv.org/abs/1701.07875
     """
 
     def __init__(self,
@@ -583,7 +594,7 @@ class Generator(tf.keras.Model):
         chunks = tf.keras.layers.Lambda(
             lambda x: tf.convert_to_tensor(tf.split(x, len(self.blocks), axis=-1)), name='split')(latent_dense)
 
-        latent_expanded = tf.keras.layers.Lambda(
+        latent_expanded = tf. keras.layers.Lambda(
             lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
 
         text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
