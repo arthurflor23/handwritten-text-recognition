@@ -47,6 +47,26 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
         self.fn = fn[normalization]
 
+    def get_config(self):
+        """
+        Returns the config of the optimizer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the optimizer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'optimizer': tf.keras.optimizers.serialize(self.optimizer),
+            'normalization': self.normalization,
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
     def apply_gradients(self, grads_and_vars, name=None, skip_gradients_aggregation=False):
         """
         Apply gradients to variables.
@@ -222,24 +242,6 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         """
 
         return tf.math.reduce_std(grad)
-
-    def get_config(self):
-        """
-        Returns the config of the optimizer.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the optimizer.
-        """
-
-        config = {
-            'optimizer': tf.keras.optimizers.serialize(self.optimizer),
-            'normalization': self.normalization,
-            'epsilon': self.epsilon,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
 
     @classmethod
     def from_config(cls, config):

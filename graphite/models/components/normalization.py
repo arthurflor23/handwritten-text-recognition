@@ -31,6 +31,27 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.momentum = momentum
         self.epsilon = epsilon
 
+    def get_config(self):
+        """
+        Return the config of the layer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'momentum': self.momentum,
+            'epsilon': self.epsilon,
+            'mean': self.mean,
+            'variance': self.variance,
+        })
+
+        return config
+
     def build(self, input_shape):
         """
         Create the layer's weights.
@@ -95,25 +116,6 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         return normalized
 
-    def get_config(self):
-        """
-        Return the config of the layer.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the layer.
-        """
-
-        config = {
-            'momentum': self.momentum,
-            'epsilon': self.epsilon,
-            'mean': self.mean,
-            'variance': self.variance,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
-
 
 class SpectralNormalization(tf.keras.layers.Wrapper):
     """
@@ -143,6 +145,24 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         super().__init__(layer, **kwargs)
 
         self.power_iterations = power_iterations
+
+    def get_config(self):
+        """
+        Return the config of the wrapper.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the wrapper.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'power_iterations': self.power_iterations,
+        })
+
+        return config
 
     def build(self, input_shape):
         """
@@ -238,19 +258,3 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         """
 
         return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
-
-    def get_config(self):
-        """
-        Return the config of the wrapper.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the wrapper.
-        """
-
-        config = {
-            'power_iterations': self.power_iterations,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
