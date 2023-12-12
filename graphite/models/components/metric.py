@@ -18,10 +18,17 @@ class KID(tf.keras.metrics.Metric):
 
     References
     ----------
-    - [Demystifying MMD GANs](https://arxiv.org/abs/1801.01401).
-    - [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/abs/1512.00567).
-    - [InceptionV3](https://keras.io/api/applications/inceptionv3/).
-    - [ImageNet](https://www.tensorflow.org/datasets/catalog/imagenet2012).
+    Demystifying MMD GANs
+        https://arxiv.org/abs/1801.01401
+
+    Rethinking the Inception Architecture for Computer Vision
+        https://arxiv.org/abs/1512.00567
+
+    InceptionV3
+        https://keras.io/api/applications/inceptionv3/
+
+    ImageNet
+        https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
     def __init__(self, name='kid', **kwargs):
