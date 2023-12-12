@@ -86,7 +86,8 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         """
 
         if not skip_gradients_aggregation:
-            grads_and_vars = [(grad / (self.fn(grad) + self.epsilon), var) for grad, var in grads_and_vars]
+            grads_and_vars = [(grad / (self.fn(grad) + self.epsilon), var)
+                              for grad, var in grads_and_vars if grad is not None]
 
         return self.optimizer.apply_gradients(grads_and_vars, name=name)
 
