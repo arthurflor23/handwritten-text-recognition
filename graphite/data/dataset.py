@@ -459,11 +459,8 @@ class Dataset():
                             x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
                             y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
 
-                        if 'recognition' in self.mode:
-                            x_data = (x_data, x_aug_data, y_aug_data)
-                        else:
-                            w_data = np.array([data['writer'] for data in batch], dtype=np.int32)
-                            x_data = (x_data, x_aug_data, y_aug_data, w_data)
+                        w_data = np.array([data['writer'] for data in batch], dtype=np.int32)
+                        x_data = (x_data, x_aug_data, y_aug_data, w_data)
 
                     elif 'recognition' in self.mode:
                         if augmentor:
