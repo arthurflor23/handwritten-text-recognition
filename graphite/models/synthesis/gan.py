@@ -281,7 +281,6 @@ class HandwritingSynthesis(tf.keras.Model):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
         self.kid_metric = KID()
 
     def train_step(self, input_data):
