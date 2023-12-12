@@ -13,8 +13,11 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
 
     References
     ----------
-    - [Attention Is All You Need](https://arxiv.org/abs/1706.03762).
-    - [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
+    Attention Is All You Need
+        https://arxiv.org/abs/1706.03762
+
+    Spectral Normalization for GANs
+        https://arxiv.org/abs/1802.05957
     """
 
     def __init__(self, **kwargs):
