@@ -1,14 +1,15 @@
 import tensorflow as tf
 
-from models.components import ConditionalBatchNormalization
-from models.components import CTCLoss
-from models.components import CTXLoss
-from models.components import ExtractPatches
-from models.components import L1Loss
-from models.components import SpectralNormalization
-from models.components import SpectralSelfAttention
+from models.components.attention import SpectralSelfAttention
+from models.components.loss import CTCLoss
+from models.components.loss import CTXLoss
+from models.components.loss import L1Loss
 from models.components.metric import KID
+from models.components.normalization import ConditionalBatchNormalization
+from models.components.normalization import SpectralNormalization
 from models.components.optimizer import NormalizedOptimizer
+from models.components.processing import AdaptiveDenseReshape
+from models.components.processing import ExtractPatches
 
 
 class HandwritingSynthesis(tf.keras.Model):
@@ -550,15 +551,17 @@ class Generator(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
             'latent_dim': self.latent_dim,
             'embedding_dim': self.embedding_dim,
             'blocks': self.blocks,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
+
+        return config
 
     def build_model(self):
         """
@@ -639,7 +642,6 @@ class Generator(tf.keras.Model):
             tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
 
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
 
@@ -694,14 +696,14 @@ class Discriminator(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'image_shape': self.image_shape,
             'patch_shape': self.patch_shape,
             'embedding_dim': self.embedding_dim,
             'blocks': self.blocks,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
 
     def build_model(self):
         """
@@ -749,7 +751,6 @@ class Discriminator(tf.keras.Model):
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
 
@@ -797,13 +798,13 @@ class StyleBackbone(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'image_shape': self.image_shape,
             'features_shape': self.features_shape,
             'blocks': self.blocks,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
 
     def build_model(self):
         """
@@ -859,7 +860,6 @@ class StyleBackbone(tf.keras.Model):
 
         self.features_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
 
@@ -906,12 +906,12 @@ class StyleEncoder(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'features_shape': self.features_shape,
             'latent_dim': self.latent_dim,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
 
     def build_model(self):
         """
@@ -941,7 +941,6 @@ class StyleEncoder(tf.keras.Model):
             name='reparameterize')([mu, logvar])
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
 
@@ -988,12 +987,12 @@ class WriterIdentification(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'features_shape': self.features_shape,
             'writer_dim': self.writer_dim,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
 
     def build_model(self):
         """
@@ -1015,7 +1014,6 @@ class WriterIdentification(tf.keras.Model):
         outputs = tf.keras.layers.Dense(self.writer_dim)(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
 
@@ -1066,13 +1064,13 @@ class HandwritingRecognition(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
             'blocks': self.blocks,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
 
     def build_model(self):
         """
@@ -1121,14 +1119,12 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        lexical_prod = tf.math.reduce_prod(self.lexical_shape[:-1]).numpy()
-        units = tf.math.ceil((conv.get_shape()[3] * lexical_prod) / (conv.get_shape()[1] * conv.get_shape()[2]))
+        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
 
-        dense = tf.keras.layers.Dense(units=units)(conv)
-        dense = tf.keras.layers.Reshape(target_shape=(lexical_prod, -1))(dense)
+        bgru = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         bgru = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(dense)
+            tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
         bgru = tf.keras.layers.Dense(units=256)(bgru)
 
         bgru = tf.keras.layers.Bidirectional(
@@ -1138,6 +1134,5 @@ class HandwritingRecognition(tf.keras.Model):
         outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(bgru)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-
         self.summary = self.model.summary
         self.call = self.model.call
