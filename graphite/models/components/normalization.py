@@ -8,7 +8,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     References
     ----------
-    - [Modulating early visual processing by language](https://arxiv.org/abs/1707.00683v3).
+    Modulating early visual processing by language
+        https://arxiv.org/abs/1707.00683v3
     """
 
     def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
@@ -62,7 +63,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : list or tuple
-            The inputs tensor and the conditional data tensor.
+            The inputs tensors (data and conditional data).
         training : bool, optional
             Whether the layer should behave in training mode or in inference mode.
 
@@ -121,7 +122,8 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     References
     ----------
-    - [Spectral Normalization for GANs](https://arxiv.org/abs/1802.05957).
+    Spectral Normalization for GANs
+        https://arxiv.org/abs/1802.05957
     """
 
     def __init__(self, layer, power_iterations=1, **kwargs):
