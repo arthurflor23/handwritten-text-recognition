@@ -253,8 +253,6 @@ class HandwritingSynthesis(tf.keras.Model):
             The learning rate for the optimizer.
         """
 
-        super().compile(run_eagerly=False)
-
         self.g_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
@@ -281,8 +279,9 @@ class HandwritingSynthesis(tf.keras.Model):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
         self.kid = KID()
+
+        super().compile(run_eagerly=False)
 
     def train_step(self, input_data):
         """
