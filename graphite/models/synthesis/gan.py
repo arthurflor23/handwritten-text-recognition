@@ -11,7 +11,7 @@ from models.components.metric import KID
 from models.components.optimizer import NormalizedOptimizer
 
 
-class SynthesisModel(tf.keras.Model):
+class HandwritingSynthesis(tf.keras.Model):
     """
     A comprehensive synthesis model built on the TensorFlow Keras framework.
 
@@ -42,7 +42,7 @@ class SynthesisModel(tf.keras.Model):
                  discriminator_blocks,
                  **kwargs):
         """
-        Initialize the SynthesisModel with specified parameters for each sub-model.
+        Initialize the synthesis model with specified parameters for each sub-model.
 
         Parameters
         ----------
@@ -70,41 +70,41 @@ class SynthesisModel(tf.keras.Model):
 
         super().__init__(**kwargs)
 
-        self.generator = GeneratorModel(image_shape=image_shape,
-                                        lexical_shape=lexical_shape,
-                                        latent_dim=latent_dim,
-                                        embedding_dim=embedding_dim,
-                                        blocks=generator_blocks,
-                                        name='generator')
+        self.generator = Generator(image_shape=image_shape,
+                                   lexical_shape=lexical_shape,
+                                   latent_dim=latent_dim,
+                                   embedding_dim=embedding_dim,
+                                   blocks=generator_blocks,
+                                   name='generator')
 
-        self.discriminator = DiscriminatorModel(image_shape=image_shape,
-                                                patch_shape=None,
-                                                embedding_dim=embedding_dim,
-                                                blocks=discriminator_blocks,
-                                                name='discriminator')
+        self.discriminator = Discriminator(image_shape=image_shape,
+                                           patch_shape=None,
+                                           embedding_dim=embedding_dim,
+                                           blocks=discriminator_blocks,
+                                           name='discriminator')
 
-        self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
-                                                      patch_shape=patch_shape,
-                                                      embedding_dim=embedding_dim,
-                                                      blocks=discriminator_blocks,
-                                                      name='patch_discriminator')
+        self.patch_discriminator = Discriminator(image_shape=image_shape,
+                                                 patch_shape=patch_shape,
+                                                 embedding_dim=embedding_dim,
+                                                 blocks=discriminator_blocks,
+                                                 name='patch_discriminator')
 
-        self.style_backbone = StyleBackboneModel(image_shape=image_shape,
-                                                 blocks=backbone_blocks,
-                                                 name='style_backbone')
+        self.style_backbone = StyleBackbone(image_shape=image_shape,
+                                            blocks=backbone_blocks,
+                                            name='style_backbone')
 
-        self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_shape,
-                                               latent_dim=latent_dim,
-                                               name='style_encoder')
+        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
+                                          latent_dim=latent_dim,
+                                          name='style_encoder')
 
-        self.writer_identifier = WriterIdentifierModel(features_shape=self.style_backbone.features_shape,
-                                                       writer_dim=writer_dim,
-                                                       name='writer_identifier')
+        self.writer_identification = WriterIdentification(features_shape=self.style_backbone.features_shape,
+                                                          writer_dim=writer_dim,
+                                                          name='writer_identification')
 
-        self.text_recognizer = TextRecognizerModel(image_shape=image_shape,
-                                                   lexical_shape=lexical_shape,
-                                                   blocks=backbone_blocks,
-                                                   name='text_recognizer')
+        self.handwriting_recognition = HandwritingRecognition(image_shape=image_shape,
+                                                              lexical_shape=lexical_shape,
+                                                              blocks=backbone_blocks,
+                                                              name='handwriting_recognition')
 
         self.names = [
             self.generator.name,
@@ -112,8 +112,8 @@ class SynthesisModel(tf.keras.Model):
             self.patch_discriminator.name,
             self.style_backbone.name,
             self.style_encoder.name,
-            self.writer_identifier.name,
-            self.text_recognizer.name,
+            self.writer_identification.name,
+            self.handwriting_recognition.name,
         ]
 
     def summary(self):
@@ -349,11 +349,11 @@ class SynthesisModel(tf.keras.Model):
 
                 # writer identifier loss
                 aug_features_inputs, _ = self.style_backbone(aug_image_inputs, training=True)
-                wid_logits = self.writer_identifier(aug_features_inputs, training=True)
+                wid_logits = self.writer_identification(aug_features_inputs, training=True)
                 w_loss = self.cls_loss(writer_inputs, wid_logits)
 
                 # recognizer loss
-                aug_ctc_logits = self.text_recognizer(aug_image_inputs, training=True)
+                aug_ctc_logits = self.handwriting_recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
@@ -362,11 +362,11 @@ class SynthesisModel(tf.keras.Model):
             p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
 
-            w_gradients = w_tape.gradient(w_loss, self.writer_identifier.trainable_weights)
-            self.w_optimizer.apply_gradients(zip(w_gradients, self.writer_identifier.trainable_weights))
+            w_gradients = w_tape.gradient(w_loss, self.writer_identification.trainable_weights)
+            self.w_optimizer.apply_gradients(zip(w_gradients, self.writer_identification.trainable_weights))
 
-            r_gradients = r_tape.gradient(r_loss, self.text_recognizer.trainable_weights)
-            self.r_optimizer.apply_gradients(zip(r_gradients, self.text_recognizer.trainable_weights))
+            r_gradients = r_tape.gradient(r_loss, self.handwriting_recognition.trainable_weights)
+            self.r_optimizer.apply_gradients(zip(r_gradients, self.handwriting_recognition.trainable_weights))
 
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
@@ -405,16 +405,16 @@ class SynthesisModel(tf.keras.Model):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_fake_ctc_logits = self.text_recognizer(fake_fake_images, training=True)
+            fake_fake_ctc_logits = self.handwriting_recognition(fake_fake_images, training=True)
             fake_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, fake_fake_ctc_logits)
 
-            real_fake_ctc_logits = self.text_recognizer(real_fake_images, training=True)
+            real_fake_ctc_logits = self.handwriting_recognition(real_fake_images, training=True)
             real_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, real_fake_ctc_logits)
 
-            real_real_ctc_logits = self.text_recognizer(real_real_images, training=True)
+            real_real_ctc_logits = self.handwriting_recognition(real_real_images, training=True)
             real_real_ctc_loss = self.ctc_loss(m_text_inputs, real_real_ctc_logits)
 
-            fake_real_ctc_logits = self.text_recognizer(fake_real_images, training=True)
+            fake_real_ctc_logits = self.handwriting_recognition(fake_real_images, training=True)
             fake_real_ctc_loss = self.ctc_loss(m_text_inputs, fake_real_ctc_logits)
 
             ctc_loss = fake_fake_ctc_loss + real_fake_ctc_loss + real_real_ctc_loss + fake_real_ctc_loss
@@ -437,11 +437,11 @@ class SynthesisModel(tf.keras.Model):
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.writer_identifier(real_fake_features_inputs, training=True)
+            real_fake_wid_logits = self.writer_identification(real_fake_features_inputs, training=True)
             real_fake_wid_loss = self.cls_loss(m_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.writer_identifier(real_real_features_inputs, training=True)
+            real_real_wid_logits = self.writer_identification(real_real_features_inputs, training=True)
             real_real_wid_loss = self.cls_loss(m_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
@@ -485,7 +485,7 @@ class SynthesisModel(tf.keras.Model):
         }
 
 
-class GeneratorModel(tf.keras.Model):
+class Generator(tf.keras.Model):
     """
     A generator model that combines latent and vocabulary data for generative tasks.
 
@@ -501,7 +501,7 @@ class GeneratorModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initialize the GeneratorModel with specified parameters.
+        Initialize the generator model with specified parameters.
 
         Parameters
         ----------
@@ -548,60 +548,6 @@ class GeneratorModel(tf.keras.Model):
         }
         base_config = super().get_config()
         return {**base_config, **config}
-
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
 
     def build_model(self):
         """
@@ -683,8 +629,11 @@ class GeneratorModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
 
+        self.summary = self.model.summary
+        self.call = self.model.call
 
-class DiscriminatorModel(tf.keras.Model):
+
+class Discriminator(tf.keras.Model):
     """
     A discriminator model that evaluates the authenticity of generated images.
 
@@ -699,7 +648,7 @@ class DiscriminatorModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initialize the DiscriminatorModel with specified parameters.
+        Initialize the discriminator model with specified parameters.
 
         Parameters
         ----------
@@ -742,60 +691,6 @@ class DiscriminatorModel(tf.keras.Model):
         }
         base_config = super().get_config()
         return {**base_config, **config}
-
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
 
     def build_model(self):
         """
@@ -844,8 +739,11 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
 
+        self.summary = self.model.summary
+        self.call = self.model.call
 
-class StyleBackboneModel(tf.keras.Model):
+
+class StyleBackbone(tf.keras.Model):
     """
     A backbone model that extracts style patterns from images.
 
@@ -858,7 +756,7 @@ class StyleBackboneModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initialize the StyleBackboneModel with specified parameters.
+        Initialize the style backbone model with specified parameters.
 
         Parameters
         ----------
@@ -895,60 +793,6 @@ class StyleBackboneModel(tf.keras.Model):
         }
         base_config = super().get_config()
         return {**base_config, **config}
-
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
 
     def build_model(self):
         """
@@ -1005,8 +849,11 @@ class StyleBackboneModel(tf.keras.Model):
         self.features_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
+        self.summary = self.model.summary
+        self.call = self.model.call
 
-class StyleEncoderModel(tf.keras.Model):
+
+class StyleEncoder(tf.keras.Model):
     """
     An encoder model that encodes extracted style features from images into a representative style vector.
 
@@ -1019,7 +866,7 @@ class StyleEncoderModel(tf.keras.Model):
                  latent_dim,
                  **kwargs):
         """
-        Initialize the StyleEncoderModel with specified parameters.
+        Initialize the style encoder model with specified parameters.
 
         Parameters
         ----------
@@ -1055,60 +902,6 @@ class StyleEncoderModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
-
     def build_model(self):
         """
         Initializes and builds the neural network model.
@@ -1138,8 +931,11 @@ class StyleEncoderModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
+        self.summary = self.model.summary
+        self.call = self.model.call
 
-class WriterIdentifierModel(tf.keras.Model):
+
+class WriterIdentification(tf.keras.Model):
     """
     A writer identifier model that classifies handwriting images based on extracted style features.
 
@@ -1152,7 +948,7 @@ class WriterIdentifierModel(tf.keras.Model):
                  writer_dim,
                  **kwargs):
         """
-        Initialize the WriterIdentifierModel with specified parameters.
+        Initialize the writer identification model with specified parameters.
 
         Parameters
         ----------
@@ -1188,60 +984,6 @@ class WriterIdentifierModel(tf.keras.Model):
         base_config = super().get_config()
         return {**base_config, **config}
 
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
-
     def build_model(self):
         """
         Initializes and builds the neural network model.
@@ -1263,8 +1005,11 @@ class WriterIdentifierModel(tf.keras.Model):
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
+        self.summary = self.model.summary
+        self.call = self.model.call
 
-class TextRecognizerModel(tf.keras.Model):
+
+class HandwritingRecognition(tf.keras.Model):
     """
     A recognizer model that transcribes handwriting text from images.
 
@@ -1278,7 +1023,7 @@ class TextRecognizerModel(tf.keras.Model):
                  blocks,
                  **kwargs):
         """
-        Initialize the TextRecognizerModel with specified parameters.
+        Initialize the handwriting recognition model with specified parameters.
 
         Parameters
         ----------
@@ -1317,60 +1062,6 @@ class TextRecognizerModel(tf.keras.Model):
         }
         base_config = super().get_config()
         return {**base_config, **config}
-
-    def summary(self,
-                line_length=None,
-                positions=None,
-                print_fn=None,
-                expand_nested=False,
-                show_trainable=False,
-                layer_range=None):
-        """
-        Prints a string summary of the network architecture.
-
-        Parameters
-        ----------
-        line_length : int, optional
-            Total length of printed lines.
-        positions : list of float, optional
-            Positions of log elements in each line.
-        print_fn : callable, optional
-            Print function to use.
-        expand_nested : bool, optional
-            Whether to expand nested models.
-        show_trainable : bool, optional
-            Whether to show if a layer is trainable.
-        layer_range : list or tuple, optional
-            Range of layers to include in the model summary.
-        """
-
-        self.model.summary(line_length,
-                           positions,
-                           print_fn,
-                           expand_nested,
-                           show_trainable,
-                           layer_range)
-
-    def call(self, inputs, training=None, mask=None):
-        """
-        Executes the model on new inputs.
-
-        Parameters
-        ----------
-        inputs : tensor or collection of tensors
-            Input data to the model.
-        training : bool, optional
-            Whether the call is for training.
-        mask : tensor, optional
-            An optional mask (or masks) to be applied on the inputs.
-
-        Returns
-        -------
-        tensor
-            The output tensor from the model after processing the inputs.
-        """
-
-        return self.model(inputs, training, mask)
 
     def build_model(self):
         """
@@ -1436,3 +1127,6 @@ class TextRecognizerModel(tf.keras.Model):
         outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(bgru)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+
+        self.summary = self.model.summary
+        self.call = self.model.call
