@@ -64,7 +64,7 @@ class CTXLoss(tf.keras.losses.Loss):
     """
     Contextual loss for comparing high-level features between two tensors.
 
-    Useful in tasks like style transfer and feature alignment. This loss 
+    Useful in tasks like style transfer and feature alignment. This loss
         function measures the feature similarities between two tensors.
     """
 
