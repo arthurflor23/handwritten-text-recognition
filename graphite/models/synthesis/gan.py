@@ -253,6 +253,8 @@ class HandwritingSynthesis(tf.keras.Model):
             The learning rate for the optimizer.
         """
 
+        super().compile(run_eagerly=False)
+
         self.g_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
@@ -279,9 +281,8 @@ class HandwritingSynthesis(tf.keras.Model):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid = KID()
 
-        super().compile(run_eagerly=False)
+        self.kid_metric = KID()
 
     def train_step(self, input_data):
         """
@@ -485,10 +486,10 @@ class HandwritingSynthesis(tf.keras.Model):
         real_latent_inputs, _, _ = self.style_encoder(real_features_inputs, training=False)
         real_real_images = self.generator([real_latent_inputs, text_inputs], training=False)
 
-        self.kid.update_state(image_inputs, real_real_images)
+        self.kid_metric.update_state(image_inputs, real_real_images)
 
         return {
-            "kid": self.kid.result(),
+            "kid": self.kid_metric.result(),
             "g_loss": g_loss,
             "d_loss": d_loss,
             "w_loss": w_loss,
