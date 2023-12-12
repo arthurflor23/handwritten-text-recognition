@@ -17,7 +17,7 @@ class HandwritingRecognition(tf.keras.Model):
         https://ieeexplore.ieee.org/document/9266005
 
     A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios
-        https://www.sciencedirect.com/science/article/abs/pii/S0167865522001052    
+        https://www.sciencedirect.com/science/article/abs/pii/S0167865522001052
     """
 
     def __init__(self,
