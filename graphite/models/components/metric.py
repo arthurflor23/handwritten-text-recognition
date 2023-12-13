@@ -31,7 +31,7 @@ class KID(tf.keras.metrics.Metric):
         https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
-    def __init__(self, name='kid', **kwargs):
+    def __init__(self, name='kernel_inception_distance', **kwargs):
         """
         Initialize the KID metric instance.
 
