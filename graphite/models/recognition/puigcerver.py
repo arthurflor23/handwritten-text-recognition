@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from models.components.loss import CTCLoss
+from models.components.metric import EditDistance
 from models.components.optimizer import NormalizedOptimizer
 from models.components.processing import AdaptiveDenseReshape
 
@@ -78,7 +79,7 @@ class HandwritingRecognition(tf.keras.Model):
         optimizer = NormalizedOptimizer(
             tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
 
-        super().compile(optimizer=optimizer, loss=CTCLoss(), run_eagerly=False)
+        super().compile(optimizer=optimizer, loss=CTCLoss(), metrics=[EditDistance()], run_eagerly=False)
 
     def build_model(self):
         """
