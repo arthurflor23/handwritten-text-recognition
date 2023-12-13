@@ -99,11 +99,7 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = GatedConv2D(filters=16,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=False)(conv)
+        conv = GatedConv2D(filters=16)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=32,
                                       kernel_size=(3, 3),
@@ -114,11 +110,7 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = GatedConv2D(filters=32,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=False)(conv)
+        conv = GatedConv2D(filters=32)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=40,
                                       kernel_size=(2, 4),
@@ -129,12 +121,7 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = GatedConv2D(filters=40,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=False,
-                           kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
+        conv = GatedConv2D(filters=40, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
 
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 
@@ -147,12 +134,7 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = GatedConv2D(filters=48,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=False,
-                           kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
+        conv = GatedConv2D(filters=48, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
 
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 
@@ -165,12 +147,7 @@ class HandwritingRecognition(tf.keras.Model):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = GatedConv2D(filters=56,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=False,
-                           kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
+        conv = GatedConv2D(filters=56, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(conv)
 
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 

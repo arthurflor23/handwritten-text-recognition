@@ -102,11 +102,7 @@ class HandwritingRecognition(tf.keras.Model):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = GatedConv2D(filters=16,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=True)(conv)
+        conv = GatedConv2D(filters=16, fullgate=False)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=32,
                                       kernel_size=(3, 3),
@@ -114,11 +110,7 @@ class HandwritingRecognition(tf.keras.Model):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = GatedConv2D(filters=32,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=True)(conv)
+        conv = GatedConv2D(filters=32, fullgate=False)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=64,
                                       kernel_size=(2, 4),
@@ -126,11 +118,7 @@ class HandwritingRecognition(tf.keras.Model):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = GatedConv2D(filters=64,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           use_partial_gating=True)(conv)
+        conv = GatedConv2D(filters=64, fullgate=False)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=128,
                                       kernel_size=(3, 3),
