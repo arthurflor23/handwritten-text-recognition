@@ -6,7 +6,7 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
     Layer that applies a dense layer followed by a reshape operation.
     """
 
-    def __init__(self, target_shape, **kwargs):
+    def __init__(self, target_shape, merge_last_dims=True, **kwargs):
         """
         Process that applies a dense layer followed by a reshape operation.
 
@@ -19,6 +19,7 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.target_shape = target_shape
+        self.merge_last_dims = merge_last_dims
 
         self.dense = []
         self.batch_norm = []
@@ -37,6 +38,7 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
 
         config.update({
             'target_shape': self.target_shape,
+            'merge_last_dims': self.merge_last_dims,
         })
 
         return config
@@ -53,8 +55,7 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        target_shape = [-1, input_shape[-1] * input_shape[-2]]
-        self.merge_last_dims = tf.keras.layers.Reshape(target_shape=target_shape)
+        self.merged_shape = (-1, input_shape[-1] * input_shape[-2])
 
         for units in self.target_shape[:-1]:
             self.dense.append(tf.keras.layers.Dense(units, activation='tanh'))
@@ -77,7 +78,8 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
             Output tensor reshaped.
         """
 
-        inputs = self.merge_last_dims(inputs)
+        if self.merge_last_dims:
+            inputs = tf.keras.layers.Reshape(self.merged_shape)(inputs)
 
         input_shape = tf.shape(inputs)
         input_dims = len(input_shape) - 1
