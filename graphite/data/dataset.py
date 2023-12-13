@@ -460,7 +460,7 @@ class Dataset():
                             y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
 
                         w_data = np.array([data['writer'] for data in batch], dtype=np.int32)
-                        x_data = (x_data, x_aug_data, y_aug_data, w_data)
+                        x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
 
                     elif 'recognition' in self.mode:
                         if augmentor:
