@@ -540,6 +540,10 @@ class Generator(tf.keras.Model):
 
         self.build_model()
 
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
+
     def get_config(self):
         """
         Retrieves the configuration of the model for serialization.
@@ -641,8 +645,6 @@ class Generator(tf.keras.Model):
             tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
 
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
 
 
 class Discriminator(tf.keras.Model):
@@ -684,6 +686,10 @@ class Discriminator(tf.keras.Model):
         self.blocks = blocks
 
         self.build_model()
+
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
     def get_config(self):
         """
@@ -750,8 +756,6 @@ class Discriminator(tf.keras.Model):
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
 
 
 class StyleBackbone(tf.keras.Model):
@@ -786,6 +790,10 @@ class StyleBackbone(tf.keras.Model):
         self.blocks = blocks
 
         self.build_model()
+
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
     def get_config(self):
         """
@@ -859,8 +867,6 @@ class StyleBackbone(tf.keras.Model):
 
         self.features_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
 
 
 class StyleEncoder(tf.keras.Model):
@@ -894,6 +900,10 @@ class StyleEncoder(tf.keras.Model):
         self.latent_dim = latent_dim
 
         self.build_model()
+
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
     def get_config(self):
         """
@@ -940,8 +950,6 @@ class StyleEncoder(tf.keras.Model):
             name='reparameterize')([mu, logvar])
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
 
 
 class WriterIdentification(tf.keras.Model):
@@ -975,6 +983,10 @@ class WriterIdentification(tf.keras.Model):
         self.writer_dim = writer_dim
 
         self.build_model()
+
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
     def get_config(self):
         """
@@ -1013,8 +1025,6 @@ class WriterIdentification(tf.keras.Model):
         outputs = tf.keras.layers.Dense(self.writer_dim)(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
 
 
 class HandwritingRecognition(tf.keras.Model):
@@ -1052,6 +1062,10 @@ class HandwritingRecognition(tf.keras.Model):
         self.blocks = blocks
 
         self.build_model()
+
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
     def get_config(self):
         """
@@ -1133,5 +1147,3 @@ class HandwritingRecognition(tf.keras.Model):
         outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(bgru)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call

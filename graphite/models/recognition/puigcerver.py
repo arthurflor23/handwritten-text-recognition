@@ -40,6 +40,10 @@ class HandwritingRecognition(tf.keras.Model):
 
         self.build_model()
 
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
+
     def get_config(self):
         """
         Retrieves the configuration of the model for serialization.
@@ -147,5 +151,3 @@ class HandwritingRecognition(tf.keras.Model):
         outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(dense)
 
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
-        self.summary = self.model.summary
-        self.call = self.model.call
