@@ -161,21 +161,6 @@ class HandwritingSynthesis(tf.keras.Model):
 
         return info
 
-    def summary(self):
-        """
-        Print a summary of each sub-model.
-
-        This method provides information about total, trainable, and non-trainable parameters,
-            as well as the size in MB of each sub-model.
-        """
-
-        for name in self.names:
-            if not hasattr(self, name):
-                continue
-
-            model = getattr(self, name)
-            model.summary()
-
     def get_weights(self):
         """
         Retrieve the weights of the sub-models.
@@ -303,7 +288,7 @@ class HandwritingSynthesis(tf.keras.Model):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid_metric = KID()
+        self.kid = KID()
 
     def train_step(self, input_data):
         """
@@ -528,10 +513,10 @@ class HandwritingSynthesis(tf.keras.Model):
         x_data, _ = input_data
 
         generated_images = self.call(x_data, training=False)
-        self.kid_metric.update_state(x_data[0], generated_images)
+        self.kid.update_state(x_data[0], generated_images)
 
         return {
-            'kernel_inception_distance': self.kid_metric.result(),
+            'kernel_inception_distance': self.kid.result(),
         }
 
     def call(self, x_data, training=None):
