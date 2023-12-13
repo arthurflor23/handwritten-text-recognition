@@ -19,6 +19,8 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.target_shape = target_shape
+        self.dense = []
+        self.batch_norm = []
 
     def get_config(self):
         """
@@ -48,13 +50,16 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
             Shape of the input to the layer.
         """
 
-        target_prod = tf.math.reduce_prod(self.target_shape[:-1]).numpy()
-        units = tf.math.ceil((input_shape[-1] * target_prod) / (input_shape[1] * input_shape[2]))
+        super().build(input_shape)
 
-        self.dense = tf.keras.layers.Dense(units=int(units))
-        self.target_reshape = self.target_shape[:-1] + [-1]
+        input_shape = [-1, input_shape[-1] * input_shape[-2]]
+        self.reshape = tf.keras.layers.Reshape(input_shape)
 
-    def call(self, inputs):
+        for units in self.target_shape[:-1]:
+            self.dense.append(tf.keras.layers.Dense(units, activation='tanh'))
+            self.batch_norm.append(tf.keras.layers.BatchNormalization())
+
+    def call(self, inputs, training=None):
         """
         Calls the dense and reshape layers on the input tensors.
 
@@ -62,6 +67,8 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
         ----------
         inputs : tensor
             Input tensor to the layer.
+        training : bool, optional
+            If True, apply spectral normalization during training.
 
         Returns
         -------
@@ -69,8 +76,34 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
             Output tensor reshaped.
         """
 
-        x = self.dense(inputs)
-        return tf.keras.layers.Reshape(target_shape=self.target_reshape)(x)
+        inputs = self.reshape(inputs)
+        input_shape = tf.shape(inputs)
+
+        input_dims = len(inputs.shape[1:])
+        target_dims = len(self.target_shape)
+
+        if target_dims > input_dims:
+            dim_size = tf.ones(target_dims - input_dims, dtype=tf.int32)
+            new_shape = tf.concat([input_shape[:1], dim_size, input_shape[1:]], axis=0)
+            inputs = tf.reshape(inputs, new_shape)
+
+        elif target_dims < input_dims:
+            dim_size = tf.reduce_prod(input_shape[-(input_dims - target_dims + 1):])
+            new_shape = tf.concat([input_shape[:-(input_dims - target_dims)], [dim_size]], axis=0)
+            inputs = tf.reshape(inputs, new_shape)
+
+        for i in range(len(self.dense)):
+            perm_order = [0] + [j+1 for j in range(target_dims) if i != j] + [i+1]
+            inputs = tf.transpose(inputs, perm=perm_order)
+
+            inputs = self.dense[i](inputs)
+            inputs = self.batch_norm[i](inputs, training=training)
+
+            reset_perm_order = [j for j in range(target_dims)]
+            reset_perm_order = reset_perm_order[:i+1] + [target_dims] + reset_perm_order[i+1:]
+            inputs = tf.transpose(inputs, perm=reset_perm_order)
+
+        return inputs
 
 
 class ExtractPatches(tf.keras.layers.Layer):
