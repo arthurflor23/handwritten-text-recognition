@@ -98,9 +98,9 @@ class Dataset():
             Formatted string with useful information.
         """
 
-        info = '=================================================='
+        info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
-        info += '\n=================================================='
+        info += "\n--------------------------------------------------"
         info += f"\n{'mode':<{25}}: {self.mode or '-'}"
         info += f"\n{'source':<{25}}: {self.source or '-'}"
         info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"

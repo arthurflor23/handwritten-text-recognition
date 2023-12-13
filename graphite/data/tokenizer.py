@@ -38,7 +38,7 @@ class Tokenizer():
 
         info = '=================================================='
         info += f'\n{self.__class__.__name__.center(50)}'
-        info += '\n=================================================='
+        info += '\n--------------------------------------------------'
         info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
         info += f"\n{'words':<{25}}: {len(self.words):,}"
         info += f"\n{'chars':<{25}}: {len(self.chars) - 4:,}"
