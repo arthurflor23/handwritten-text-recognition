@@ -139,8 +139,8 @@ class HandwritingRecognition(tf.keras.Model):
                                       activation='tanh')(conv)
 
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
-        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
 
+        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
         blstm = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
