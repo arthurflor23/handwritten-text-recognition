@@ -1079,7 +1079,7 @@ class WriterIdentification(tf.keras.Model):
 
 class HandwritingRecognition(tf.keras.Model):
     """
-    A recognizer model that transcribes handwriting text from images.
+    A recognizer model that transcribes handwritten texts from images.
 
     This model is designed to extract textual information from images of handwriting,
         facilitating tasks like optical character recognition and handwriting analysis.
