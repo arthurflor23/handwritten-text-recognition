@@ -287,13 +287,10 @@ class HandwritingSynthesis(tf.keras.Model):
         """
         Perform the training step on the provided batch of data.
 
-        This method conducts both the discriminator and generator phases of training,
-        computes the losses, applies gradients, and updates the metrics.
-
         Parameters
         ----------
         input_data : list or tuple
-            A batch of data ([images, texts, writers, augmented images, augmented texts], []).
+            A batch of data (x_data, y_data).
 
         Returns
         -------
@@ -301,7 +298,7 @@ class HandwritingSynthesis(tf.keras.Model):
             A dictionary containing metrics and losses.
         """
 
-        (image_inputs, aug_image_inputs, aug_text_inputs, writer_inputs), text_inputs = input_data
+        (image_inputs, text_inputs, aug_image_inputs, aug_text_inputs, writer_inputs), _ = input_data
 
         batch_size = tf.shape(image_inputs)[0]
         batch_quarter = tf.math.maximum(1, batch_size // 4)
@@ -481,19 +478,65 @@ class HandwritingSynthesis(tf.keras.Model):
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
 
         # metric phase
-        real_features_inputs, _ = self.style_backbone(image_inputs, training=False)
-        real_latent_inputs, _, _ = self.style_encoder(real_features_inputs, training=False)
-        real_real_images = self.generator([real_latent_inputs, text_inputs], training=False)
-
-        self.kid_metric.update_state(image_inputs, real_real_images)
+        metrics = self.test_step(input_data)
 
         return {
             'g_loss': g_loss,
             'd_loss': d_loss,
             'w_loss': w_loss,
             'r_loss': r_loss,
+            **metrics,
+        }
+
+    def test_step(self, input_data):
+        """
+        Perform the testing step on the provided batch of data.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            A dictionary containing evaluation metrics.
+        """
+
+        x_data, _ = input_data
+
+        generated_images = self.call(x_data, training=False)
+        self.kid_metric.update_state(x_data[0], generated_images)
+
+        return {
             'kernel_inception_distance': self.kid_metric.result(),
         }
+
+    def call(self, x_data, training=None):
+        """
+        Processes input images and text through the style backbone, encoder,
+            and generator to produce generated images.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data).
+        training : bool, optional
+            Indicates whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            The generated images.
+        """
+
+        image_inputs, text_inputs, _, _, _ = x_data
+
+        features_inputs, _ = self.style_backbone(image_inputs, training=training)
+        latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
+        generated_images = self.generator([latent_inputs, text_inputs], training=training)
+
+        return generated_images
 
 
 class Generator(tf.keras.Model):
