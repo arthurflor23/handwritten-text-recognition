@@ -182,8 +182,8 @@ class HandwritingRecognition(tf.keras.Model):
 
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
 
+        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
         bgru = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
