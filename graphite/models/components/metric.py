@@ -1,6 +1,97 @@
 import tensorflow as tf
 
 
+class EditDistance(tf.keras.metrics.Metric):
+    """
+    Metric that calculates the normalized edit distance between sequences.
+
+    References
+    ----------
+    Binary Codes Capable of Correcting Deletions, Insertions and Reversals
+        https://mi.mathnet.ru/dan31411
+    """
+
+    def __init__(self, beam_width=15, name='edit_distance', **kwargs):
+        """
+        Initialize the EditDistance metric instance.
+
+        Parameters
+        ----------
+        beam_width : int, optional
+            The width of the beam for CTC beam search decoder.
+        name : str, optional
+            The name of the metric.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.beam_width = beam_width
+        self.tracker = tf.keras.metrics.Mean()
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        """
+        Update the metric state with new data.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Ground truth label sequences.
+        y_pred : tf.Tensor
+            Predicted sequences, typically the logits from a model.
+        sample_weight : tf.Tensor, optional
+            Sample weights.
+        """
+
+        y_true = tf.reshape(y_true, [tf.shape(y_true)[0], -1])
+        y_pred = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]])
+
+        inputs = tf.transpose(y_pred, [1, 0, 2])
+        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
+
+        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                   sequence_length=sequence_length,
+                                                   beam_width=self.beam_width,
+                                                   top_paths=1)
+
+        y_true_indices = tf.where(y_true != 0)
+        y_true_values = tf.gather_nd(y_true, y_true_indices)
+        y_true_shape = tf.shape(y_true, out_type=tf.int64)
+        y_true_sparse = tf.SparseTensor(y_true_indices, y_true_values, y_true_shape)
+
+        edit_distance = tf.edit_distance(decoded[0], y_true_sparse, normalize=True)
+        value = tf.reduce_mean(edit_distance)
+
+        if sample_weight is not None:
+            batch_size = tf.cast(tf.shape(y_pred)[0], dtype=tf.float32)
+
+            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
+            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
+            value = tf.reduce_sum(value * sample_weight)
+
+        self.tracker.update_state(value)
+
+    def result(self):
+        """
+        Return the current result of the metric.
+
+        Returns
+        -------
+        float
+            The current value.
+        """
+
+        return self.tracker.result()
+
+    def reset_state(self):
+        """
+        Reset the state of the metric.
+        """
+
+        self.tracker.reset_state()
+
+
 class KID(tf.keras.metrics.Metric):
     """
     Kernel Inception Distance (KID) metric class.
@@ -111,97 +202,6 @@ class KID(tf.keras.metrics.Metric):
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
 
         if sample_weight is not None:
-            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
-            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
-            value = tf.reduce_sum(value * sample_weight)
-
-        self.tracker.update_state(value)
-
-    def result(self):
-        """
-        Return the current result of the metric.
-
-        Returns
-        -------
-        float
-            The current value.
-        """
-
-        return self.tracker.result()
-
-    def reset_state(self):
-        """
-        Reset the state of the metric.
-        """
-
-        self.tracker.reset_state()
-
-
-class EditDistance(tf.keras.metrics.Metric):
-    """
-    Metric that calculates the normalized edit distance between sequences.
-
-    References
-    ----------
-    Binary Codes Capable of Correcting Deletions, Insertions and Reversals
-        https://mi.mathnet.ru/dan31411
-    """
-
-    def __init__(self, beam_width=10, name='edit_distance', **kwargs):
-        """
-        Initialize the EditDistance metric instance.
-
-        Parameters
-        ----------
-        beam_width : int, optional
-            The width of the beam for CTC beam search decoder.
-        name : str, optional
-            The name of the metric.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(name=name, **kwargs)
-
-        self.beam_width = beam_width
-        self.tracker = tf.keras.metrics.Mean()
-
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        """
-        Update the metric state with new data.
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            Ground truth label sequences.
-        y_pred : tf.Tensor
-            Predicted sequences, typically the logits from a model.
-        sample_weight : tf.Tensor, optional
-            Sample weights.
-        """
-
-        y_true = tf.reshape(y_true, [tf.shape(y_true)[0], -1])
-        y_pred = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]])
-
-        inputs = tf.transpose(y_pred, [1, 0, 2])
-        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
-
-        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=inputs,
-                                                   sequence_length=sequence_length,
-                                                   beam_width=self.beam_width,
-                                                   top_paths=1)
-
-        y_true_indices = tf.where(y_true != 0)
-        y_true_values = tf.gather_nd(y_true, y_true_indices)
-        y_true_shape = tf.shape(y_true, out_type=tf.int64)
-        y_true_sparse = tf.SparseTensor(y_true_indices, y_true_values, y_true_shape)
-
-        edit_distance = tf.edit_distance(decoded[0], y_true_sparse, normalize=True)
-        value = tf.reduce_mean(edit_distance)
-
-        if sample_weight is not None:
-            batch_size = tf.cast(tf.shape(y_pred)[0], dtype=tf.float32)
-
             sample_weight = tf.cast(sample_weight, dtype=tf.float32)
             sample_weight /= tf.reduce_sum(sample_weight) / batch_size
             value = tf.reduce_sum(value * sample_weight)
