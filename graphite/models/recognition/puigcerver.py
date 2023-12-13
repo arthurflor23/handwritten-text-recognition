@@ -7,7 +7,8 @@ from models.components.processing import AdaptiveDenseReshape
 
 class HandwritingRecognition(tf.keras.Model):
     """
-    ...
+    TensorFlow model for multilingual handwriting recognition using CNNs and BiLSTMs.
+    It's based on traditional deep learning methods for offline handwriting recognition (CRNN).
 
     References
     ----------
