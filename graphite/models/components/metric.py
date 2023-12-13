@@ -11,7 +11,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=15, name='edit_distance', **kwargs):
+    def __init__(self, beam_width=15, epsilon=1e-7, name='edit_distance', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
@@ -19,6 +19,8 @@ class EditDistance(tf.keras.metrics.Metric):
         ----------
         beam_width : int, optional
             The width of the beam for CTC beam search decoder.
+        epsilon : float, optional
+            Small constant to avoid log of zero.
         name : str, optional
             The name of the metric.
         **kwargs : dict
@@ -28,6 +30,8 @@ class EditDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.beam_width = beam_width
+        self.epsilon = epsilon
+
         self.tracker = tf.keras.metrics.Mean()
 
     def update_state(self, y_true, y_pred, sample_weight=None):
@@ -37,30 +41,27 @@ class EditDistance(tf.keras.metrics.Metric):
         Parameters
         ----------
         y_true : tf.Tensor
-            Ground truth label sequences.
+            Tensor of true labels.
         y_pred : tf.Tensor
-            Predicted sequences, typically the logits from a model.
+            Tensor of predicted labels.
         sample_weight : tf.Tensor, optional
             Sample weights.
         """
 
-        y_true = tf.reshape(y_true, [tf.shape(y_true)[0], -1])
-        y_pred = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]])
+        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        inputs = tf.transpose(y_pred, [1, 0, 2])
-        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
+        labels = tf.sparse.from_dense(y_true)
+        logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + self.epsilon)
 
-        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=inputs,
-                                                   sequence_length=sequence_length,
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+
+        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=logits,
+                                                   sequence_length=tf.cast(logit_length, dtype=tf.int32),
                                                    beam_width=self.beam_width,
                                                    top_paths=1)
 
-        y_true_indices = tf.where(y_true != 0)
-        y_true_values = tf.gather_nd(y_true, y_true_indices)
-        y_true_shape = tf.shape(y_true, out_type=tf.int64)
-        y_true_sparse = tf.SparseTensor(y_true_indices, y_true_values, y_true_shape)
-
-        edit_distance = tf.edit_distance(decoded[0], y_true_sparse, normalize=True)
+        edit_distance = tf.edit_distance(decoded[0], labels, normalize=True)
         value = tf.reduce_mean(edit_distance)
 
         if sample_weight is not None:
