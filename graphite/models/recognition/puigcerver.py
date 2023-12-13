@@ -1,8 +1,19 @@
 import tensorflow as tf
 
+from models.components.convolution import GatedConv2D
+from models.components.loss import CTCLoss
+from models.components.optimizer import NormalizedOptimizer
+from models.components.processing import AdaptiveDenseReshape
+
 
 class HandwritingRecognition(tf.keras.Model):
     """
+    ...
+
+    References
+    ----------
+    Are multidimensional recurrent layers really necessary for handwritten text recognition?
+        https://ieeexplore.ieee.org/document/8269951
     """
 
     def __init__(self,
@@ -39,12 +50,14 @@ class HandwritingRecognition(tf.keras.Model):
             A dictionary containing the configuration of the model.
         """
 
-        config = {
+        config = super().get_config()
+
+        config.update({
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
+        })
+
+        return config
 
     def compile(self, learning_rate=0.001):
         """
@@ -58,7 +71,10 @@ class HandwritingRecognition(tf.keras.Model):
             The learning rate for the optimizer.
         """
 
-        super().compile(run_eagerly=False)
+        optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
+
+        super().compile(optimizer=optimizer, loss=CTCLoss(), run_eagerly=False)
 
     def build_model(self):
         """
@@ -68,9 +84,68 @@ class HandwritingRecognition(tf.keras.Model):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        print('build_model')
+        inputs = tf.keras.Input(shape=self.image_shape)
 
-        # self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+        conv = tf.keras.layers.Conv2D(filters=16,
+                                      kernel_size=(3, 3),
+                                      strides=(1, 1),
+                                      padding='same')(inputs)
 
-        # self.summary = self.model.summary
-        # self.call = self.model.call
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
+
+        conv = tf.keras.layers.Conv2D(filters=32,
+                                      kernel_size=(3, 3),
+                                      strides=(1, 1),
+                                      padding='same')(conv)
+
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
+        conv = tf.keras.layers.Dropout(rate=0.2)(conv)
+
+        conv = tf.keras.layers.Conv2D(filters=48,
+                                      kernel_size=(3, 3),
+                                      strides=(1, 1),
+                                      padding='same')(conv)
+
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
+        conv = tf.keras.layers.Dropout(rate=0.2)(conv)
+
+        conv = tf.keras.layers.Conv2D(filters=64,
+                                      kernel_size=(3, 3),
+                                      strides=(1, 1),
+                                      padding='same')(conv)
+
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
+        conv = tf.keras.layers.Dropout(rate=0.2)(conv)
+
+        conv = tf.keras.layers.Conv2D(filters=80,
+                                      kernel_size=(3, 3),
+                                      strides=(1, 1),
+                                      padding='same')(conv)
+
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
+
+        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
+        blstm = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
+
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+
+        blstm = tf.keras.layers.Dropout(rate=0.5)(blstm)
+        dense = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+
+        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(dense)
+
+        self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
+        self.summary = self.model.summary
+        self.call = self.model.call
