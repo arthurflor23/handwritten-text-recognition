@@ -90,9 +90,9 @@ class Augmentor():
             Formatted string with useful information.
         """
 
-        info = '=================================================='
+        info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
-        info += '\n=================================================='
+        info += "\n--------------------------------------------------"
         info += f"\n{'binarize':<{25}}: {self.binarize_params or '-'}"
         info += f"\n{'erode':<{25}}: {self.erode_params or '-'}"
         info += f"\n{'dilate':<{25}}: {self.dilate_params or '-'}"
