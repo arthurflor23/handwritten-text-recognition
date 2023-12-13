@@ -128,6 +128,39 @@ class HandwritingSynthesis(tf.keras.Model):
             self.handwriting_recognition.name,
         ]
 
+    def __repr__(self):
+        """
+        Provides a formatted string with useful information.
+
+        Returns
+        -------
+        str
+            Formatted string with useful information.
+        """
+
+        info = "=================================================="
+        info += f"\n{self.__class__.__name__.center(50)}"
+
+        for name in self.names:
+            if not hasattr(self, name):
+                continue
+
+            model = getattr(self, name)
+
+            trainable_count = sum([tf.size(x).numpy() for x in model.trainable_variables])
+            non_trainable_count = sum([tf.size(x).numpy() for x in model.non_trainable_variables])
+            total_count = trainable_count + non_trainable_count
+
+            info += "\n--------------------------------------------------"
+            info += f"\n{'Model':<{25}}: {model.name}"
+            info += "\n--------------------------------------------------"
+            info += f"\n{'Total params':<{25}}: {total_count:,}"
+            info += f"\n{'Trainable params':<{25}}: {trainable_count:,}"
+            info += f"\n{'Non-trainable params':<{25}}: {non_trainable_count:,}"
+            info += f"\n{'Size (MB)':<{25}}: {(total_count*4) / (1024**2):,.2f}"
+
+        return info
+
     def summary(self):
         """
         Print a summary of each sub-model.
@@ -137,22 +170,11 @@ class HandwritingSynthesis(tf.keras.Model):
         """
 
         for name in self.names:
-            if getattr(self, name) is None:
+            if not hasattr(self, name):
                 continue
 
             model = getattr(self, name)
-
-            trainable_count = sum([tf.size(x).numpy() for x in model.trainable_variables])
-            non_trainable_count = sum([tf.size(x).numpy() for x in model.non_trainable_variables])
-            total_count = trainable_count + non_trainable_count
-
-            print('-------------------------------------')
-            print(f'Model: {model.name:>30}')
-            print('-------------------------------------')
-            print(f'Total params: {total_count:23,}')
-            print(f'Trainable params: {trainable_count:19,}')
-            print(f'Non-trainable params: {non_trainable_count:15,}')
-            print(f'Size (MB): {(total_count*4) / (1024**2):26,.2f}')
+            model.summary()
 
     def get_weights(self):
         """
