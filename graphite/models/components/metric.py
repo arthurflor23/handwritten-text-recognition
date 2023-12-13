@@ -45,7 +45,7 @@ class KID(tf.keras.metrics.Metric):
 
         super().__init__(name=name, **kwargs)
 
-        self.kid_tracker = tf.keras.metrics.Mean()
+        self.tracker = tf.keras.metrics.Mean()
         self.kid_image_size = (299, 299, 3)
 
         self.encoder = tf.keras.Sequential([
@@ -78,40 +78,44 @@ class KID(tf.keras.metrics.Metric):
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
         return (features_1 @ tf.transpose(features_2) / feature_dimensions + 1.0) ** 3.0
 
-    def update_state(self, real_images, generated_images, sample_weight=None):
+    def update_state(self, y_true, y_pred, sample_weight=None):
         """
         Update the metric state with new data.
 
         Parameters
         ----------
-        real_images : tf.Tensor
+        y_true : tf.Tensor
             Batch of real images.
-        generated_images : tf.Tensor
+        y_pred : tf.Tensor
             Batch of generated images.
         sample_weight : tf.Tensor, optional
             Sample weights.
         """
 
-        real_features = self.encoder(real_images, training=False)
-        generated_features = self.encoder(generated_images, training=False)
+        real_features = self.encoder(y_true, training=False)
+        generated_features = self.encoder(y_pred, training=False)
 
         kernel_real = self.polynomial_kernel(real_features, real_features)
         kernel_generated = self.polynomial_kernel(generated_features, generated_features)
         kernel_cross = self.polynomial_kernel(real_features, generated_features)
 
-        batch_size = tf.shape(real_features)[0]
-        batch_size_f = tf.cast(batch_size, dtype=tf.float32)
+        batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / (batch_size_f * (batch_size_f - 1.0))
+        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0))
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / (batch_size_f * (batch_size_f - 1.0))
-
+        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0))
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
-        kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
-        self.kid_tracker.update_state(kid)
+        value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
+
+        if sample_weight is not None:
+            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
+            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
+            value = tf.reduce_sum(value * sample_weight)
+
+        self.tracker.update_state(value)
 
     def result(self):
         """
@@ -120,14 +124,105 @@ class KID(tf.keras.metrics.Metric):
         Returns
         -------
         float
-            The current KID value.
+            The current value.
         """
 
-        return self.kid_tracker.result()
+        return self.tracker.result()
 
     def reset_state(self):
         """
         Reset the state of the metric.
         """
 
-        self.kid_tracker.reset_state()
+        self.tracker.reset_state()
+
+
+class EditDistance(tf.keras.metrics.Metric):
+    """
+    Metric that calculates the normalized edit distance between sequences.
+
+    References
+    ----------
+    Binary Codes Capable of Correcting Deletions, Insertions and Reversals
+        https://mi.mathnet.ru/dan31411
+    """
+
+    def __init__(self, beam_width=10, name='edit_distance', **kwargs):
+        """
+        Initialize the EditDistance metric instance.
+
+        Parameters
+        ----------
+        beam_width : int, optional
+            The width of the beam for CTC beam search decoder.
+        name : str, optional
+            The name of the metric.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.beam_width = beam_width
+        self.tracker = tf.keras.metrics.Mean()
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        """
+        Update the metric state with new data.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Ground truth label sequences.
+        y_pred : tf.Tensor
+            Predicted sequences, typically the logits from a model.
+        sample_weight : tf.Tensor, optional
+            Sample weights.
+        """
+
+        y_true = tf.reshape(y_true, [tf.shape(y_true)[0], -1])
+        y_pred = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]])
+
+        inputs = tf.transpose(y_pred, [1, 0, 2])
+        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
+
+        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                   sequence_length=sequence_length,
+                                                   beam_width=self.beam_width,
+                                                   top_paths=1)
+
+        y_true_indices = tf.where(y_true != 0)
+        y_true_values = tf.gather_nd(y_true, y_true_indices)
+        y_true_shape = tf.shape(y_true, out_type=tf.int64)
+        y_true_sparse = tf.SparseTensor(y_true_indices, y_true_values, y_true_shape)
+
+        edit_distance = tf.edit_distance(decoded[0], y_true_sparse, normalize=True)
+        value = tf.reduce_mean(edit_distance)
+
+        if sample_weight is not None:
+            batch_size = tf.cast(tf.shape(y_pred)[0], dtype=tf.float32)
+
+            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
+            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
+            value = tf.reduce_sum(value * sample_weight)
+
+        self.tracker.update_state(value)
+
+    def result(self):
+        """
+        Return the current result of the metric.
+
+        Returns
+        -------
+        float
+            The current value.
+        """
+
+        return self.tracker.result()
+
+    def reset_state(self):
+        """
+        Reset the state of the metric.
+        """
+
+        self.tracker.reset_state()
