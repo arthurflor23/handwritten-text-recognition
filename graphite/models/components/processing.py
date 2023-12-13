@@ -19,6 +19,7 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.target_shape = target_shape
+
         self.dense = []
         self.batch_norm = []
 
@@ -52,8 +53,8 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        input_shape = [-1, input_shape[-1] * input_shape[-2]]
-        self.reshape = tf.keras.layers.Reshape(input_shape)
+        target_shape = [-1, input_shape[-1] * input_shape[-2]]
+        self.merge_last_dims = tf.keras.layers.Reshape(target_shape=target_shape)
 
         for units in self.target_shape[:-1]:
             self.dense.append(tf.keras.layers.Dense(units, activation='tanh'))
@@ -76,10 +77,10 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
             Output tensor reshaped.
         """
 
-        inputs = self.reshape(inputs)
-        input_shape = tf.shape(inputs)
+        inputs = self.merge_last_dims(inputs)
 
-        input_dims = len(inputs.shape[1:])
+        input_shape = tf.shape(inputs)
+        input_dims = len(input_shape) - 1
         target_dims = len(self.target_shape)
 
         if target_dims > input_dims:
@@ -93,15 +94,15 @@ class AdaptiveDenseReshape(tf.keras.layers.Layer):
             inputs = tf.reshape(inputs, new_shape)
 
         for i in range(len(self.dense)):
-            perm_order = [0] + [j+1 for j in range(target_dims) if i != j] + [i+1]
-            inputs = tf.transpose(inputs, perm=perm_order)
+            perm = [0] + [j+1 for j in range(target_dims) if i != j] + [i+1]
+            inputs = tf.transpose(inputs, perm=perm)
 
             inputs = self.dense[i](inputs)
             inputs = self.batch_norm[i](inputs, training=training)
 
-            reset_perm_order = [j for j in range(target_dims)]
-            reset_perm_order = reset_perm_order[:i+1] + [target_dims] + reset_perm_order[i+1:]
-            inputs = tf.transpose(inputs, perm=reset_perm_order)
+            reset_perm = [j for j in range(target_dims)]
+            reset_perm = reset_perm[:i+1] + [target_dims] + reset_perm[i+1:]
+            inputs = tf.transpose(inputs, perm=reset_perm)
 
         return inputs
 
