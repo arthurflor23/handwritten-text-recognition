@@ -488,11 +488,11 @@ class HandwritingSynthesis(tf.keras.Model):
         self.kid_metric.update_state(image_inputs, real_real_images)
 
         return {
-            "kid": self.kid_metric.result(),
-            "g_loss": g_loss,
-            "d_loss": d_loss,
-            "w_loss": w_loss,
-            "r_loss": r_loss,
+            'g_loss': g_loss,
+            'd_loss': d_loss,
+            'w_loss': w_loss,
+            'r_loss': r_loss,
+            'kernel_inception_distance': self.kid_metric.result(),
         }
 
 
