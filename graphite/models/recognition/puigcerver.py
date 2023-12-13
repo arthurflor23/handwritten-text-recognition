@@ -1,6 +1,5 @@
 import tensorflow as tf
 
-from models.components.convolution import GatedConv2D
 from models.components.loss import CTCLoss
 from models.components.optimizer import NormalizedOptimizer
 from models.components.processing import AdaptiveDenseReshape
