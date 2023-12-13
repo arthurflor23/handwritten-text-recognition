@@ -16,7 +16,7 @@ class HandwritingSynthesis(tf.keras.Model):
     """
     A comprehensive synthesis model built on the TensorFlow Keras framework.
 
-    This model integrates several sub-models including a generator, discriminator,
+    This model integrates several submodels including a generator, discriminator,
         patch discriminator, style backbone, style encoder, writer identifier, and text recognizer.
     Each of these components is specialized for different aspects of image and text processing,
         and they work together to enable complex synthesis and recognition tasks.
@@ -54,7 +54,7 @@ class HandwritingSynthesis(tf.keras.Model):
                  discriminator_blocks,
                  **kwargs):
         """
-        Initialize the synthesis model with specified parameters for each sub-model.
+        Initialize the synthesis model with specified parameters for each submodel.
 
         Parameters
         ----------
@@ -163,12 +163,12 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def get_weights(self):
         """
-        Retrieve the weights of the sub-models.
+        Retrieve the weights of the submodels.
 
         Returns
         -------
         dict
-            A dictionary with sub-model names as keys and their weights as values.
+            A dictionary with submodel names as keys and their weights as values.
         """
 
         with self.distribute_strategy.scope():
@@ -184,12 +184,12 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def set_weights(self, weights):
         """
-        Set the weights for the sub-models.
+        Set the weights for the submodels.
 
         Parameters
         ----------
         weights : dict
-            A dictionary with sub-model names as keys and their weights as values.
+            A dictionary with submodel names as keys and their weights as values.
         """
 
         for name in self.names:
@@ -200,7 +200,7 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def save_weights(self, filepath, overwrite=True, save_format=None, options=None):
         """
-        Save the weights of the sub-models.
+        Save the weights of the submodels.
 
         Parameters
         ----------
@@ -225,7 +225,7 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
         """
-        Load the weights for the sub-models.
+        Load the weights for the submodels.
 
         Parameters
         ----------
@@ -250,7 +250,7 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def compile(self, learning_rate=0.001):
         """
-        Configure the sub-models for training.
+        Configure the submodels for training.
 
         This method sets up the optimizers, loss functions, and metrics for the model.
 

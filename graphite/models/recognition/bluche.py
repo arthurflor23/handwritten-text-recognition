@@ -67,7 +67,7 @@ class HandwritingRecognition(tf.keras.Model):
 
     def compile(self, learning_rate=0.001):
         """
-        Configure the sub-models for training.
+        Configure the submodels for training.
 
         This method sets up the optimizers, loss functions, and metrics for the model.
 
