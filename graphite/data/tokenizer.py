@@ -18,11 +18,12 @@ class Tokenizer():
         self.eos_tk = '◗'
         self.unk_tk = '◬'
 
-        self.lexical_shape = []
-        self.writers = [self.unk_tk]
-
         self.words = []
         self.chars = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk]
+        self.writers = [self.unk_tk]
+
+        self.lexical_shape = []
+        self.writers_shape = []
 
         self._initialize_metadata()
 
@@ -39,10 +40,11 @@ class Tokenizer():
         info = '=================================================='
         info += f'\n{self.__class__.__name__.center(50)}'
         info += '\n--------------------------------------------------'
-        info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
         info += f"\n{'words':<{25}}: {len(self.words):,}"
         info += f"\n{'chars':<{25}}: {len(self.chars) - 4:,}"
+        info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
         info += f"\n{'lexical_shape':<{25}}: {self.lexical_shape}"
+        info += f"\n{'writers_shape':<{25}}: {self.writers_shape}"
         info += "\n--------------------------------------------------"
 
         chars = ''.join(self.chars)
@@ -146,13 +148,6 @@ class Tokenizer():
                 self.metadata[f'avg_{key}'] = round(
                     self._metadata[f'total_{key}'] / self._metadata[count_key])
 
-        self.lexical_shape = (
-            self.metadata['max_paragraphs_per_page'],
-            self.metadata['max_lines_per_paragraph'],
-            self.metadata['max_chars_per_line'],
-            len(self.chars) + 1,
-        )
-
     def encode_text(self, text, keepstats=False):
         """
         Encode text into a nested list of character indices.
@@ -180,6 +175,13 @@ class Tokenizer():
                     self.chars.append(char)
 
             self._update_text_stats(text)
+
+            self.lexical_shape = tuple([
+                self.metadata['max_paragraphs_per_page'],
+                self.metadata['max_lines_per_paragraph'],
+                self.metadata['max_chars_per_line'],
+                len(self.chars) + 1,
+            ])
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
 
@@ -260,6 +262,7 @@ class Tokenizer():
 
         if keepstats and writer not in self.writers:
             self.writers.append(writer)
+            self.writers_shape = tuple([len(self.writers) + 1])
 
         writer_to_index = {writer: idx for idx, writer in enumerate(self.writers)}
         encoded_writer = writer_to_index.get(writer, writer_to_index.get(self.unk_tk))
