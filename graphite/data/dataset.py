@@ -16,8 +16,8 @@ class Dataset():
     def __init__(self,
                  mode='recognition',
                  source=None,
-                 text_level=None,
-                 image_shape=None,
+                 text_level='line',
+                 image_shape=(128, 1024, 1),
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -62,7 +62,8 @@ class Dataset():
         self.mode = mode
         self.source = source
         self.text_level = text_level
-        self.image_shape = tuple(image_shape or [])
+        self.image_shape = tuple(image_shape)
+        self.model_shape = tuple([image_shape[1], image_shape[0]] + image_shape[2:])
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -103,6 +104,7 @@ class Dataset():
         info += f"\n{'source':<{25}}: {self.source or '-'}"
         info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"
         info += f"\n{'image_shape':<{25}}: {self.image_shape or '-'}"
+        info += f"\n{'model_shape':<{25}}: {self.model_shape or '-'}"
         info += f"\n{'training_ratio':<{25}}: {self.training_ratio or '-'}"
         info += f"\n{'validation_ratio':<{25}}: {self.validation_ratio or '-'}"
         info += f"\n{'test_ratio':<{25}}: {self.test_ratio or '-'}"
