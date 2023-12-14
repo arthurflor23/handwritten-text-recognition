@@ -70,6 +70,8 @@ class HandwritingRecognition(tf.keras.Model):
         info += f"\n{'Non-trainable params':<{25}}: {non_trainable_count:,}"
         info += f"\n{'Size (MB)':<{25}}: {(total_count*4) / (1024**2):,.2f}"
 
+        return info
+
     def get_config(self):
         """
         Retrieves the configuration of the model for serialization.
