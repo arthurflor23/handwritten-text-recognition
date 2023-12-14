@@ -17,8 +17,8 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
     def __init__(self,
                  synthesis,
                  recognition,
-                 prob_fake_images=1.0,
-                 prob_fake_texts=1.0,
+                 fake_images_prob=1.0,
+                 fake_texts_prob=1.0,
                  **kwargs):
         """
         Initialize the synthesis with recognition model.
@@ -29,9 +29,9 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             Synthesis model for style transfer.
         recognition : HandwritingRecognition instance
             Recognition model for transcribing text.
-        prob_fake_images : float, optional
+        fake_images_prob : float, optional
             Probability to use fake images.
-        prob_fake_texts : float, optional
+        fake_texts_prob : float, optional
             Probability to use fake texts.
         **kwargs : dict
             Additional keyword arguments.
@@ -44,8 +44,8 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
         self.generator = synthesis.generator
         self.handwriting_recognition = recognition
 
-        self.prob_fake_images = prob_fake_images
-        self.prob_fake_texts = prob_fake_texts
+        self.fake_images_prob = fake_images_prob
+        self.fake_texts_prob = fake_texts_prob
 
         self.names = [
             self.style_backbone.name,
@@ -214,10 +214,10 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
         images = aug_image_inputs
         texts = text_inputs
 
-        if random.random() < self.prob_fake_images:
+        if random.random() < self.fake_images_prob:
             images = image_inputs
 
-            if random.random() < self.prob_fake_texts:
+            if random.random() < self.fake_texts_prob:
                 texts = aug_text_inputs
 
             features_inputs, _ = self.style_backbone(images, training=False)
