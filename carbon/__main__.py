@@ -88,22 +88,22 @@ if __name__ == '__main__':
 
     # required parameters
     if not args.check:
-        assert args.mode, "--mode must be defined"
+        assert args.mode, '--mode must be defined'
 
     if args.check or args.training or args.test:
-        assert args.source, "--source must be defined"
+        assert args.source, '--source must be defined'
 
     if args.training or args.test or args.inference:
-        assert args.synthesis or args.recognition, "--synthesis or --recognition must be defined"
+        assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
 
     if args.test or args.inference:
-        assert args.run_index is not None, "--run-index must be defined"
+        assert args.run_index is not None, '--run-index must be defined'
 
     if args.inference and args.mode == 'synthesis':
-        assert len(args.texts) > 0, "--texts must be defined"
+        assert len(args.texts) > 0, '--texts must be defined'
 
     if args.inference and args.mode == 'recognition':
-        assert len(args.images) > 0, "--images must be defined"
+        assert len(args.images) > 0, '--images must be defined'
 
     # pipelines
     if args.check:
