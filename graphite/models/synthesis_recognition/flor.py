@@ -1,3 +1,4 @@
+import random
 import tensorflow as tf
 
 from models.components.loss import CTCLoss
@@ -7,10 +8,33 @@ from models.components.optimizer import NormalizedOptimizer
 
 class HandwritingSynthesisRecognition(tf.keras.Model):
     """
+    A handwriting synthesis with recognition model on the TensorFlow Keras framework.
+
+    This model combines components for style transfer and text generation (synthesis)
+        with a handwriting recognition model.
     """
 
-    def __init__(self, synthesis, recognition, **kwargs):
+    def __init__(self,
+                 synthesis,
+                 recognition,
+                 prob_fake_images=1.0,
+                 prob_fake_texts=1.0,
+                 **kwargs):
         """
+        Initialize the synthesis with recognition model.
+
+        Parameters
+        ----------
+        synthesis : HandwritingSynthesis instance
+            Synthesis model for style transfer.
+        recognition : HandwritingRecognition instance
+            Recognition model for transcribing text.
+        prob_fake_images : float, optional
+            Probability to use fake images.
+        prob_fake_texts : float, optional
+            Probability to use fake texts.
+        **kwargs : dict
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
@@ -19,6 +43,9 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
         self.style_encoder = synthesis.style_encoder
         self.generator = synthesis.generator
         self.handwriting_recognition = recognition
+
+        self.prob_fake_images = prob_fake_images
+        self.prob_fake_texts = prob_fake_texts
 
         self.names = [
             self.style_backbone.name,
@@ -161,7 +188,7 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
 
         super().compile(run_eagerly=False)
 
-        self.r_optimizer = NormalizedOptimizer(
+        self.optimizer = NormalizedOptimizer(
             tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
 
         self.ctc_loss = CTCLoss()
@@ -182,7 +209,34 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             A dictionary containing metrics and losses.
         """
 
-        print('train_step')
+        (image_inputs, text_inputs, aug_image_inputs, aug_text_inputs, _), _ = input_data
+
+        images = aug_image_inputs
+        texts = text_inputs
+
+        if random.random() < self.prob_fake_images:
+            images = image_inputs
+
+            if random.random() < self.prob_fake_texts:
+                texts = aug_text_inputs
+
+            features_inputs, _ = self.style_backbone(images, training=False)
+            latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
+            images = self.generator([latent_inputs, texts], training=False)
+
+        with tf.GradientTape() as tape:
+            ctc_logits = self.handwriting_recognition(images, training=True)
+            ctc_loss = self.ctc_loss(texts, ctc_logits)
+
+        gradients = tape.gradient(ctc_loss, self.handwriting_recognition.trainable_weights)
+        self.optimizer.apply_gradients(zip(gradients, self.handwriting_recognition.trainable_weights))
+
+        self.edit_distance.update_state(texts, ctc_logits)
+
+        return {
+            'ctc_loss': ctc_loss,
+            'edit_distance': self.edit_distance.result(),
+        }
 
     def test_step(self, input_data):
         """
@@ -199,7 +253,17 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             A dictionary containing evaluation metrics.
         """
 
-        print('test_step')
+        x_data, y_data = input_data
+
+        ctc_logits = self.call(x_data, training=False)
+        ctc_loss = self.ctc_loss(y_data, ctc_logits)
+
+        self.edit_distance.update_state(y_data, ctc_logits)
+
+        return {
+            'ctc_loss': ctc_loss,
+            'edit_distance': self.edit_distance.result(),
+        }
 
     def call(self, x_data, training=None):
         """
@@ -218,4 +282,8 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             The generated images.
         """
 
-        print('call')
+        image_inputs, _, _, _, _ = x_data
+
+        ctc_logits = self.handwriting_recognition(image_inputs, training=training)
+
+        return ctc_logits
