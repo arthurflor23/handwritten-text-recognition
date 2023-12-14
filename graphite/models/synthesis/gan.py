@@ -46,7 +46,7 @@ class HandwritingSynthesis(tf.keras.Model):
                  image_shape,
                  patch_shape,
                  lexical_shape,
-                 writer_dim,
+                 writers_shape,
                  latent_dim,
                  embedding_dim,
                  backbone_blocks,
@@ -64,7 +64,7 @@ class HandwritingSynthesis(tf.keras.Model):
             The shape of patches for the patch discriminator.
         lexical_shape : tuple or list
             The shape of the lexical input.
-        writer_dim : int
+        writers_shape : int
             The dimension for the writer identifier.
         latent_dim : int
             The latent dimension size for the style encoder.
@@ -110,7 +110,7 @@ class HandwritingSynthesis(tf.keras.Model):
                                           name='style_encoder')
 
         self.writer_identification = WriterIdentification(features_shape=self.style_backbone.features_shape,
-                                                          writer_dim=writer_dim,
+                                                          writers_shape=writers_shape,
                                                           name='writer_identification')
 
         self.handwriting_recognition = HandwritingRecognition(image_shape=image_shape,
@@ -1012,7 +1012,7 @@ class WriterIdentification(tf.keras.Model):
 
     def __init__(self,
                  features_shape,
-                 writer_dim,
+                 writers_shape,
                  **kwargs):
         """
         Initialize the writer identification model with specified parameters.
@@ -1021,7 +1021,7 @@ class WriterIdentification(tf.keras.Model):
         ----------
         features_shape : list or tuple
             Shape of the input features.
-        writer_dim : int
+        writers_shape : int
             Number of writers to classify.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
@@ -1030,7 +1030,7 @@ class WriterIdentification(tf.keras.Model):
         super().__init__(**kwargs)
 
         self.features_shape = features_shape
-        self.writer_dim = writer_dim
+        self.writers_shape = writers_shape
 
         self.build_model()
 
@@ -1052,7 +1052,7 @@ class WriterIdentification(tf.keras.Model):
 
         config.update({
             'features_shape': self.features_shape,
-            'writer_dim': self.writer_dim,
+            'writers_shape': self.writers_shape,
         })
 
     def build_model(self):
@@ -1072,7 +1072,7 @@ class WriterIdentification(tf.keras.Model):
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
 
-        outputs = tf.keras.layers.Dense(self.writer_dim)(style_dense)
+        outputs = tf.keras.layers.Dense(self.writers_shape[0])(style_dense)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
