@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
-    parser.add_argument('--epochs', default=1000000, type=int, help='Maximum number of epochs')
+    parser.add_argument('--epochs', default=None, type=int, help='Maximum number of epochs')
     parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
     parser.add_argument('--learning-rate', default=1e-3, type=float, help='Optimizer learning rate')
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
@@ -79,7 +79,6 @@ if __name__ == '__main__':
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--seed', default=1234, type=int, help='Seed value')
-    parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
 
