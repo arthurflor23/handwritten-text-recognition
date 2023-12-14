@@ -46,6 +46,33 @@ class HandwritingRecognition(tf.keras.Model):
             self.summary = self.model.summary
             self.call = self.model.call
 
+    def __repr__(self):
+        """
+        Provides a formatted string with useful information.
+
+        Returns
+        -------
+        str
+            Formatted string with useful information.
+        """
+
+        info = "=================================================="
+        info += f"\n{self.__class__.__name__.center(50)}"
+
+        trainable_count = sum([tf.size(x).numpy() for x in self.model.trainable_variables])
+        non_trainable_count = sum([tf.size(x).numpy() for x in self.model.non_trainable_variables])
+        total_count = trainable_count + non_trainable_count
+
+        info += "\n--------------------------------------------------"
+        info += f"\n{'Model':<{25}}: {self.model.name}"
+        info += "\n--------------------------------------------------"
+        info += f"\n{'Total params':<{25}}: {total_count:,}"
+        info += f"\n{'Trainable params':<{25}}: {trainable_count:,}"
+        info += f"\n{'Non-trainable params':<{25}}: {non_trainable_count:,}"
+        info += f"\n{'Size (MB)':<{25}}: {(total_count*4) / (1024**2):,.2f}"
+
+        return info
+
     def get_config(self):
         """
         Retrieves the configuration of the model for serialization.
