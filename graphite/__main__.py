@@ -12,7 +12,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # models
-    parser.add_argument('--mode', default='recognition', help='Define application mode')
+    parser.add_argument('--mode', default=None, help='Define application mode')
     parser.add_argument('--synthesis', default=None, help='Define synthesis model')
     parser.add_argument('--recognition', default=None, help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
@@ -43,6 +43,16 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian-noise', default=None, nargs=2, type=float, help='Gaussian noise parameters')
     parser.add_argument('--gaussian-blur', default=None, nargs=3, type=float, help='Gaussian blur parameters')
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
+
+    # synthesis
+    parser.add_argument('--latent-dim', default=128, type=int, help='Latent dimension size')
+    parser.add_argument('--embedding-dim', default=128, type=int, help='Embedding dimension size')
+    parser.add_argument('--patch-shape', default=[32, 32, 1], nargs=3, type=int, help='Patches for discriminator')
+    parser.add_argument('--backbone-blocks', default=[16, 32, 64, 128], nargs='+', type=int, help='Filters')
+    parser.add_argument('--generator-blocks', default=[256, 128, 64, 64], nargs='+', type=int, help='Filters')
+    parser.add_argument('--discriminator-blocks', default=[64, 128, 256, 256], nargs='+', type=int, help='Filters')
+    parser.add_argument('--prob-fake-images', default=1.0, type=float, help='Probability to use fake images')
+    parser.add_argument('--prob-fake-texts', default=1.0, type=float, help='Probability to use fake texts')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
@@ -77,6 +87,9 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
     # required parameters
+    if not args.check:
+        assert args.mode, "--mode must be defined"
+
     if args.check or args.training or args.test:
         assert args.source, "--source must be defined"
 
@@ -93,7 +106,10 @@ if __name__ == '__main__':
         assert len(args.images) > 0, "--images must be defined"
 
     # pipelines
-    if args.training:
+    if args.check:
+        pipelines.check(args)
+
+    elif args.training:
         pipelines.training(args)
 
     elif args.test:
@@ -101,6 +117,3 @@ if __name__ == '__main__':
 
     elif args.inference:
         pipelines.inference(args)
-
-    else:
-        pipelines.check(args)
