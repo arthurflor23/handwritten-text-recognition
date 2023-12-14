@@ -51,8 +51,8 @@ if __name__ == '__main__':
     parser.add_argument('--backbone-blocks', default=[16, 32, 64, 128], nargs='+', type=int, help='Filters')
     parser.add_argument('--generator-blocks', default=[256, 128, 64, 64], nargs='+', type=int, help='Filters')
     parser.add_argument('--discriminator-blocks', default=[64, 128, 256, 256], nargs='+', type=int, help='Filters')
-    parser.add_argument('--prob-fake-images', default=1.0, type=float, help='Probability to use fake images')
-    parser.add_argument('--prob-fake-texts', default=1.0, type=float, help='Probability to use fake texts')
+    parser.add_argument('--fake-images-prob', default=1.0, type=float, help='Probability to use fake images')
+    parser.add_argument('--fake-texts-prob', default=1.0, type=float, help='Probability to use fake texts')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
