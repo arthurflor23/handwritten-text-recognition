@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
-    parser.add_argument('--image-shape', default=[128, 1024, 1], nargs=3, type=int, help='Define image shape (HxWxC)')
+    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (WxHxC)')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -42,17 +42,10 @@ if __name__ == '__main__':
     parser.add_argument('--salt-and-pepper', default=None, nargs=2, type=float, help='Salt & pepper parameters')
     parser.add_argument('--gaussian-noise', default=None, nargs=2, type=float, help='Gaussian noise parameters')
     parser.add_argument('--gaussian-blur', default=None, nargs=3, type=float, help='Gaussian blur parameters')
-    parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
+    parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable augmentation')
 
     # synthesis
-    parser.add_argument('--latent-dim', default=128, type=int, help='Latent dimension size')
-    parser.add_argument('--embedding-dim', default=128, type=int, help='Embedding dimension size')
-    parser.add_argument('--patch-shape', default=[32, 32, 1], nargs=3, type=int, help='Patches for discriminator')
-    parser.add_argument('--backbone-blocks', default=[16, 32, 64, 128], nargs='+', type=int, help='Filters')
-    parser.add_argument('--generator-blocks', default=[256, 128, 64, 64], nargs='+', type=int, help='Filters')
-    parser.add_argument('--discriminator-blocks', default=[64, 128, 256, 256], nargs='+', type=int, help='Filters')
-    parser.add_argument('--fake-images-prob', default=1.0, type=float, help='Probability to use fake images')
-    parser.add_argument('--fake-texts-prob', default=1.0, type=float, help='Probability to use fake texts')
+    parser.add_argument('--synthetic-data', default=1.0, type=float, help='Probability to use fake data')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
