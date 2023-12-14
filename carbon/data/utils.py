@@ -113,7 +113,7 @@ def prepare_image_batch(image_batch, target_shape=None, pad_value=255, dtype=np.
     ----------
     image_batch : list
         List of image arrays.
-    target_shape : tuple, optional
+    target_shape : list or tuple, optional
         Target shape for padding.
     pad_value : int, optional
         Value used for padding.
@@ -155,7 +155,7 @@ def read_image(image_path, bbox=None, image_shape=None):
         The path to the image file.
     bbox : list, optional
         The bbox coordinates ([x, y, width, height]).
-    image_shape : list, optional
+    image_shape : list or tuple, optional
         Image shape for resizing.
 
     Returns
@@ -207,7 +207,7 @@ def read_image(image_path, bbox=None, image_shape=None):
 
         image = image[y:y+height, x:x+width]
 
-    if image.size > 0 and image_shape is not None:
+    if image_shape is not None:
         image = resize_image(image, target_shape=image_shape)
 
     return image
@@ -221,8 +221,8 @@ def resize_image(image, target_shape):
     ----------
     image : ndarray
         Input image.
-    target_shape : list
-        Target shape as [height, width, channels].
+    target_shape : list or tuple
+        Target shape.
 
     Returns
     -------
@@ -230,8 +230,11 @@ def resize_image(image, target_shape):
         Resized image.
     """
 
+    if not target_shape:
+        return image
+
     h, w = image.shape
-    target_h, target_w = target_shape[:2]
+    target_w, target_h = target_shape[:2]
 
     if h > target_h or w > target_w:
         aspect_ratio = w / h
