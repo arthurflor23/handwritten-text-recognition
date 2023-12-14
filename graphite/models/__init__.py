@@ -1,1 +1,1 @@
-from models.carbon import Carbon
+from models.graphite import Graphite
