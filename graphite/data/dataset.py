@@ -1,5 +1,4 @@
 import os
-import random
 import zipfile
 import importlib
 import numpy as np
@@ -58,7 +57,6 @@ class Dataset():
             Seed for random shuffle.
         """
 
-        random.seed(seed)
         np.random.seed(seed)
 
         self.mode = mode

@@ -1,5 +1,4 @@
 import cv2
-import random
 import numpy as np
 
 
@@ -61,7 +60,6 @@ class Augmentor():
             Seed for random values from numpy.
         """
 
-        random.seed(seed)
         np.random.seed(seed)
 
         self.binarize_params = binarize
