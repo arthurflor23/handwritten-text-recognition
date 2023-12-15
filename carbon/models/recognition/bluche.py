@@ -7,7 +7,7 @@ from models.components.optimizer import NormalizedOptimizer
 from models.components.processing import AdaptiveDenseReshape
 
 
-class HandwritingRecognition(tf.keras.Model):
+class RecognitionModel(tf.keras.Model):
     """
     TensorFlow model for multilingual handwriting recognition using CNNs and BiLSTMs.
     Features gated convolutional layers for enhanced feature extraction.
@@ -35,7 +35,7 @@ class HandwritingRecognition(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='recognition', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
