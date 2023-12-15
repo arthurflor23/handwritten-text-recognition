@@ -16,7 +16,7 @@ class Source():
         'bbox' : list
             bounding box coordinates [x, y, h, w] (empty if no bbox).
         'text' : str
-            text content, with '\n' and '\n\n' as line and paragraph breaks.
+            text content with '\n' as line breaks.
         'writer' : str
             writer's unique ID ('1' for unique writer).
     """
