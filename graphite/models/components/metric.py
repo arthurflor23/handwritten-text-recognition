@@ -56,7 +56,7 @@ class EditDistance(tf.keras.metrics.Metric):
 
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
 
-        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=logits,
+        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=tf.cast(logits, dtype=tf.float32),
                                                    sequence_length=tf.cast(logit_length, dtype=tf.int32),
                                                    beam_width=self.beam_width,
                                                    top_paths=1)
