@@ -88,17 +88,16 @@ def prepare_text_batch(text_batch, target_shape=None, pad_value=0, dtype=np.int6
     """
 
     if target_shape:
-        max_paragraphs, max_lines, max_chars = target_shape[:3]
+        max_lines, max_chars = target_shape[:2]
     else:
-        max_paragraphs = max(len(text) for text in text_batch)
-        max_lines = max(len(paragraph) for text in text_batch for paragraph in text)
-        max_chars = max(len(line) for text in text_batch for paragraph in text for line in paragraph)
+        max_lines = max(len(line) for line in text_batch)
+        max_chars = max(len(chars) for line in text_batch for chars in line)
 
-    padded = np.full((len(text_batch), max_paragraphs, max_lines, max_chars), pad_value, dtype=dtype)
+    padded = np.full((len(text_batch), max_lines, max_chars), pad_value, dtype=dtype)
 
     for i, text in enumerate(text_batch):
-        paragraphs, lines, chars = np.asarray(text).shape
-        padded[i, :paragraphs, :lines, :chars] = text
+        lines, chars = np.asarray(text).shape
+        padded[i, :lines, :chars] = text
 
     text_batch = np.expand_dims(padded, axis=-1)
 
