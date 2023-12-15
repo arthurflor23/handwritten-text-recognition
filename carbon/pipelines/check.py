@@ -13,7 +13,7 @@ def check(args):
         A namespace object containing all the arguments required.
     """
 
-    dataset = Dataset(mode='recognition',
+    dataset = Dataset(workflow='recognition',
                       source=args.source,
                       text_level=args.text_level,
                       image_shape=args.image_shape,
