@@ -1,3 +1,5 @@
+import re
+
 
 class Tokenizer():
     """
@@ -43,6 +45,7 @@ class Tokenizer():
         info += f"\n{'words':<{25}}: {len(self.words):,}"
         info += f"\n{'chars':<{25}}: {len(self.chars) - 4:,}"
         info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
+        info += '\n--------------------------------------------------'
         info += f"\n{'lexical_shape':<{25}}: {self.lexical_shape}"
         info += f"\n{'writers_shape':<{25}}: {self.writers_shape}"
         info += "\n--------------------------------------------------"
@@ -176,12 +179,14 @@ class Tokenizer():
 
             self._update_text_stats(text)
 
-            self.lexical_shape = tuple([
-                self.metadata['max_paragraphs_per_page'],
-                self.metadata['max_lines_per_paragraph'],
-                self.metadata['max_chars_per_line'],
+            def next_power_of_two(n):
+                return 1 if n == 0 else 2 ** (n - 1).bit_length()
+
+            self.lexical_shape = (
+                next_power_of_two(self.metadata['max_lines_per_page']),
+                next_power_of_two(self.metadata['max_chars_per_line'] + 2),
                 len(self.chars) + 1,
-            ])
+            )
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
 
@@ -190,23 +195,16 @@ class Tokenizer():
         eos_idx = char_to_index.get(self.eos_tk)
         unk_idx = char_to_index.get(self.unk_tk)
 
-        text = [x.split('\n') for x in text.split('\n\n')]
-
-        max_length = max(len(line) for paragraph in text for line in paragraph)
-        padding_length = max_length + 2
+        text = [' '.join(x.split()) for x in re.sub(r'\n\n+', '\n', text).split('\n')]
+        max_length = max([len(line) for line in text]) + 2
 
         encoded_text = []
-        for paragraph in text:
+        for line in text:
+            encoded_line = [char_to_index.get(char, unk_idx) for char in line]
+            encoded_line = [sos_idx] + encoded_line + [eos_idx]
 
-            encoded_paragraph = []
-            for line in paragraph:
-                encoded_line = [char_to_index.get(char, unk_idx) for char in line]
-                encoded_line = [sos_idx] + encoded_line + [eos_idx]
-
-                padding = (padding_length - len(encoded_line))
-                encoded_paragraph.append(encoded_line + [pad_idx] * padding)
-
-            encoded_text.append(encoded_paragraph)
+            padding = (max_length - len(encoded_line))
+            encoded_text.append(encoded_line + ([pad_idx] * padding))
 
         return encoded_text
 
@@ -229,16 +227,11 @@ class Tokenizer():
         index_to_char = {idx: char for idx, char in enumerate(self.chars)}
 
         decoded_text = []
-        for encoded_paragraph in encoded_text:
+        for encoded_line in encoded_text:
+            decoded_line = [index_to_char.get(encoded_char, '') for encoded_char in encoded_line]
+            decoded_text.append(''.join(decoded_line))
 
-            decoded_paragraph = []
-            for encoded_line in encoded_paragraph:
-                decoded_line = [index_to_char.get(encoded_char, '') for encoded_char in encoded_line]
-                decoded_paragraph.append(''.join(decoded_line))
-
-            decoded_text.append('\n'.join(decoded_paragraph))
-
-        decoded_text = '\n\n'.join(decoded_text)
+        decoded_text = '\n'.join(decoded_text)
         decoded_text = decoded_text.translate(translation_table)
 
         return decoded_text
@@ -262,7 +255,7 @@ class Tokenizer():
 
         if keepstats and writer not in self.writers:
             self.writers.append(writer)
-            self.writers_shape = tuple([len(self.writers) + 1])
+            self.writers_shape = tuple([len(self.writers)])
 
         writer_to_index = {writer: idx for idx, writer in enumerate(self.writers)}
         encoded_writer = writer_to_index.get(writer, writer_to_index.get(self.unk_tk))
