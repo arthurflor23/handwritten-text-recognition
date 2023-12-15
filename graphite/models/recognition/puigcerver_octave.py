@@ -4,7 +4,6 @@ from models.components.convolution import OctConv2D
 from models.components.loss import CTCLoss
 from models.components.metric import EditDistance
 from models.components.optimizer import NormalizedOptimizer
-from models.components.processing import AdaptiveDenseReshape
 
 
 class RecognitionModel(tf.keras.Model):
@@ -192,18 +191,15 @@ class RecognitionModel(tf.keras.Model):
         octconv = tf.keras.layers.BatchNormalization()(octconv)
         octconv = tf.keras.layers.Activation('relu')(octconv)
 
-        octconv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(octconv)
-        blstm = tf.keras.layers.Reshape(target_shape=(-1, octconv.get_shape()[-1]))(octconv)
-
+        blstm = tf.keras.layers.Reshape(target_shape=(octconv.get_shape()[1], -1))(octconv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-
         blstm = tf.keras.layers.Dropout(rate=0.5)(blstm)
-        dense = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
-        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(dense)
+        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape[:-1] + (-1,))(blstm)
+        outputs = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(outputs)
 
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
