@@ -356,7 +356,7 @@ class Dataset():
             return multigrams
 
         def build(x):
-            words = x['text'].replace('\n\n', ' ').replace('\n', ' ').split()
+            words = x['text'].replace('\n', ' ').split()
             multigrams = []
 
             for i in range(len(words)):
