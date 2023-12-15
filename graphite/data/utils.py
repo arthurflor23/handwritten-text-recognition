@@ -66,7 +66,7 @@ def format_text(text):
     return text
 
 
-def prepare_text_batch(text_batch, target_shape=None, pad_value=0, dtype=np.int32):
+def prepare_text_batch(text_batch, target_shape=None, pad_value=0, dtype=np.int64):
     """
     Pads a batch of text data to a uniform shape.
 
