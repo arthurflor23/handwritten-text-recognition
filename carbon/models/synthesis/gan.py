@@ -71,34 +71,34 @@ class SynthesisModel(tf.keras.Model):
         generator_blocks = [256, 128, 64, 64]
         discriminator_blocks = [64, 128, 256, 256]
 
-        self.generator = Generator(image_shape=image_shape,
-                                   lexical_shape=lexical_shape,
-                                   latent_dim=latent_dim,
-                                   embedding_dim=embedding_dim,
-                                   blocks=generator_blocks)
+        self.generator = GeneratorModel(image_shape=image_shape,
+                                        lexical_shape=lexical_shape,
+                                        latent_dim=latent_dim,
+                                        embedding_dim=embedding_dim,
+                                        blocks=generator_blocks)
 
-        self.style_backbone = StyleBackbone(image_shape=image_shape,
+        self.style_backbone = StyleBackboneModel(image_shape=image_shape,
+                                                 blocks=backbone_blocks)
+
+        self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_shape,
+                                               latent_dim=latent_dim)
+
+        self.discriminator = DiscriminatorModel(image_shape=image_shape,
+                                                patch_shape=None,
+                                                embedding_dim=embedding_dim,
+                                                blocks=discriminator_blocks)
+
+        self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
+                                                      patch_shape=patch_shape,
+                                                      embedding_dim=embedding_dim,
+                                                      blocks=discriminator_blocks)
+
+        self.identification = IdentificationModel(features_shape=self.style_backbone.features_shape,
+                                                  writers_shape=writers_shape)
+
+        self.recognition = RecognitionModel(image_shape=image_shape,
+                                            lexical_shape=lexical_shape,
                                             blocks=backbone_blocks)
-
-        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
-                                          latent_dim=latent_dim)
-
-        self.discriminator = Discriminator(image_shape=image_shape,
-                                           patch_shape=None,
-                                           embedding_dim=embedding_dim,
-                                           blocks=discriminator_blocks)
-
-        self.patch_discriminator = Discriminator(image_shape=image_shape,
-                                                 patch_shape=patch_shape,
-                                                 embedding_dim=embedding_dim,
-                                                 blocks=discriminator_blocks)
-
-        self.identification = WriterIdentification(features_shape=self.style_backbone.features_shape,
-                                                   writers_shape=writers_shape)
-
-        self.recognition = HandwritingRecognition(image_shape=image_shape,
-                                                  lexical_shape=lexical_shape,
-                                                  blocks=backbone_blocks)
 
         self.names = [
             self.generator.name,
@@ -528,7 +528,7 @@ class SynthesisModel(tf.keras.Model):
         return generated_images
 
 
-class Generator(tf.keras.Model):
+class GeneratorModel(tf.keras.Model):
     """
     A generator model that combines latent and vocabulary data for generative tasks.
 
@@ -679,7 +679,7 @@ class Generator(tf.keras.Model):
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
 
 
-class Discriminator(tf.keras.Model):
+class DiscriminatorModel(tf.keras.Model):
     """
     A discriminator model that evaluates the authenticity of generated images.
 
@@ -790,7 +790,7 @@ class Discriminator(tf.keras.Model):
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
 
 
-class StyleBackbone(tf.keras.Model):
+class StyleBackboneModel(tf.keras.Model):
     """
     A backbone model that extracts style patterns from images.
 
@@ -901,7 +901,7 @@ class StyleBackbone(tf.keras.Model):
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
 
-class StyleEncoder(tf.keras.Model):
+class StyleEncoderModel(tf.keras.Model):
     """
     An encoder model that encodes extracted style features from images into a representative style vector.
 
@@ -984,7 +984,7 @@ class StyleEncoder(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class WriterIdentification(tf.keras.Model):
+class IdentificationModel(tf.keras.Model):
     """
     A writer identifier model that classifies handwriting images based on extracted style features.
 
@@ -1059,7 +1059,7 @@ class WriterIdentification(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class HandwritingRecognition(tf.keras.Model):
+class RecognitionModel(tf.keras.Model):
     """
     A recognizer model that transcribes handwritten texts from images.
 
