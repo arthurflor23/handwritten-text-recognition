@@ -44,14 +44,8 @@ class HandwritingSynthesis(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
-                 patch_shape,
                  lexical_shape,
                  writers_shape,
-                 latent_dim,
-                 embedding_dim,
-                 backbone_blocks,
-                 generator_blocks,
-                 discriminator_blocks,
                  **kwargs):
         """
         Initialize the synthesis model with specified parameters for each submodel.
@@ -60,27 +54,22 @@ class HandwritingSynthesis(tf.keras.Model):
         ----------
         image_shape : tuple or list
             The shape of the input images.
-        patch_shape : tuple or list
-            The shape of patches for the patch discriminator.
         lexical_shape : tuple or list
             The shape of the lexical input.
         writers_shape : int
             The dimension for the writer identifier.
-        latent_dim : int
-            The latent dimension size for the style encoder.
-        embedding_dim : int
-            The embedding dimension size.
-        backbone_blocks : tuple or list
-            The blocks of filters for the style backbone model.
-        generator_blocks : tuple or list
-            The blocks of filters for the generator model.
-        discriminator_blocks : tuple or list
-            The blocks of filters for the discriminator models.
         **kwargs : dict
             Additional keyword arguments for the TensorFlow Keras Model.
         """
 
         super().__init__(**kwargs)
+
+        latent_dim = 128
+        embedding_dim = 128
+        patch_shape = [32, 32, 1]
+        backbone_blocks = [16, 32, 64, 128]
+        generator_blocks = [256, 128, 64, 64]
+        discriminator_blocks = [64, 128, 256, 256]
 
         self.generator = Generator(image_shape=image_shape,
                                    lexical_shape=lexical_shape,
