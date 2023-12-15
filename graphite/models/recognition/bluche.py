@@ -4,7 +4,6 @@ from models.components.convolution import GatedConv2D
 from models.components.loss import CTCLoss
 from models.components.metric import EditDistance
 from models.components.optimizer import NormalizedOptimizer
-from models.components.processing import AdaptiveDenseReshape
 
 
 class RecognitionModel(tf.keras.Model):
@@ -160,15 +159,14 @@ class RecognitionModel(tf.keras.Model):
 
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
 
-        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
-        blstm = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
-
+        blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
-        dense = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+        blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
-        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(dense)
+        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape[:-1] + (-1,))(blstm)
+        outputs = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(outputs)
 
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
