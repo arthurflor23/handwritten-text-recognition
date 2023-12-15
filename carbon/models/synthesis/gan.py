@@ -12,7 +12,7 @@ from models.components.processing import AdaptiveDenseReshape
 from models.components.processing import ExtractPatches
 
 
-class HandwritingSynthesis(tf.keras.Model):
+class SynthesisModel(tf.keras.Model):
     """
     A comprehensive synthesis model built on the TensorFlow Keras framework.
 
@@ -62,7 +62,7 @@ class HandwritingSynthesis(tf.keras.Model):
             Additional keyword arguments for the TensorFlow Keras Model.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='synthesis', **kwargs)
 
         latent_dim = 128
         embedding_dim = 128
@@ -75,46 +75,39 @@ class HandwritingSynthesis(tf.keras.Model):
                                    lexical_shape=lexical_shape,
                                    latent_dim=latent_dim,
                                    embedding_dim=embedding_dim,
-                                   blocks=generator_blocks,
-                                   name='generator')
+                                   blocks=generator_blocks)
+
+        self.style_backbone = StyleBackbone(image_shape=image_shape,
+                                            blocks=backbone_blocks)
+
+        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
+                                          latent_dim=latent_dim)
 
         self.discriminator = Discriminator(image_shape=image_shape,
                                            patch_shape=None,
                                            embedding_dim=embedding_dim,
-                                           blocks=discriminator_blocks,
-                                           name='discriminator')
+                                           blocks=discriminator_blocks)
 
         self.patch_discriminator = Discriminator(image_shape=image_shape,
                                                  patch_shape=patch_shape,
                                                  embedding_dim=embedding_dim,
-                                                 blocks=discriminator_blocks,
-                                                 name='patch_discriminator')
+                                                 blocks=discriminator_blocks)
 
-        self.style_backbone = StyleBackbone(image_shape=image_shape,
-                                            blocks=backbone_blocks,
-                                            name='style_backbone')
+        self.identification = WriterIdentification(features_shape=self.style_backbone.features_shape,
+                                                   writers_shape=writers_shape)
 
-        self.style_encoder = StyleEncoder(features_shape=self.style_backbone.features_shape,
-                                          latent_dim=latent_dim,
-                                          name='style_encoder')
-
-        self.writer_identification = WriterIdentification(features_shape=self.style_backbone.features_shape,
-                                                          writers_shape=writers_shape,
-                                                          name='writer_identification')
-
-        self.handwriting_recognition = HandwritingRecognition(image_shape=image_shape,
-                                                              lexical_shape=lexical_shape,
-                                                              blocks=backbone_blocks,
-                                                              name='handwriting_recognition')
+        self.recognition = HandwritingRecognition(image_shape=image_shape,
+                                                  lexical_shape=lexical_shape,
+                                                  blocks=backbone_blocks)
 
         self.names = [
             self.generator.name,
-            self.discriminator.name,
-            self.patch_discriminator.name,
             self.style_backbone.name,
             self.style_encoder.name,
-            self.writer_identification.name,
-            self.handwriting_recognition.name,
+            self.discriminator.name,
+            self.patch_discriminator.name,
+            self.identification.name,
+            self.recognition.name,
         ]
 
     def __repr__(self):
@@ -353,11 +346,11 @@ class HandwritingSynthesis(tf.keras.Model):
 
                 # writer identifier loss
                 aug_features_inputs, _ = self.style_backbone(aug_image_inputs, training=True)
-                wid_logits = self.writer_identification(aug_features_inputs, training=True)
+                wid_logits = self.identification(aug_features_inputs, training=True)
                 w_loss = self.cls_loss(writer_inputs, wid_logits)
 
                 # recognizer loss
-                aug_ctc_logits = self.handwriting_recognition(aug_image_inputs, training=True)
+                aug_ctc_logits = self.recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
@@ -366,11 +359,11 @@ class HandwritingSynthesis(tf.keras.Model):
             p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
 
-            w_gradients = w_tape.gradient(w_loss, self.writer_identification.trainable_weights)
-            self.w_optimizer.apply_gradients(zip(w_gradients, self.writer_identification.trainable_weights))
+            w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
+            self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
 
-            r_gradients = r_tape.gradient(r_loss, self.handwriting_recognition.trainable_weights)
-            self.r_optimizer.apply_gradients(zip(r_gradients, self.handwriting_recognition.trainable_weights))
+            r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
+            self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
@@ -409,16 +402,16 @@ class HandwritingSynthesis(tf.keras.Model):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_fake_ctc_logits = self.handwriting_recognition(fake_fake_images, training=True)
+            fake_fake_ctc_logits = self.recognition(fake_fake_images, training=True)
             fake_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, fake_fake_ctc_logits)
 
-            real_fake_ctc_logits = self.handwriting_recognition(real_fake_images, training=True)
+            real_fake_ctc_logits = self.recognition(real_fake_images, training=True)
             real_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, real_fake_ctc_logits)
 
-            real_real_ctc_logits = self.handwriting_recognition(real_real_images, training=True)
+            real_real_ctc_logits = self.recognition(real_real_images, training=True)
             real_real_ctc_loss = self.ctc_loss(m_text_inputs, real_real_ctc_logits)
 
-            fake_real_ctc_logits = self.handwriting_recognition(fake_real_images, training=True)
+            fake_real_ctc_logits = self.recognition(fake_real_images, training=True)
             fake_real_ctc_loss = self.ctc_loss(m_text_inputs, fake_real_ctc_logits)
 
             ctc_loss = fake_fake_ctc_loss + real_fake_ctc_loss + real_real_ctc_loss + fake_real_ctc_loss
@@ -441,11 +434,11 @@ class HandwritingSynthesis(tf.keras.Model):
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.writer_identification(real_fake_features_inputs, training=True)
+            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=True)
             real_fake_wid_loss = self.cls_loss(m_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.writer_identification(real_real_features_inputs, training=True)
+            real_real_wid_logits = self.identification(real_real_features_inputs, training=True)
             real_real_wid_loss = self.cls_loss(m_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
@@ -569,7 +562,7 @@ class Generator(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='generator', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -717,7 +710,7 @@ class Discriminator(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='discriminator', **kwargs)
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
@@ -822,7 +815,7 @@ class StyleBackbone(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='style_backbone', **kwargs)
 
         self.image_shape = image_shape
         self.features_shape = None
@@ -933,7 +926,7 @@ class StyleEncoder(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='style_encoder', **kwargs)
 
         self.features_shape = features_shape
         self.latent_dim = latent_dim
@@ -1016,7 +1009,7 @@ class WriterIdentification(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='identification', **kwargs)
 
         self.features_shape = features_shape
         self.writers_shape = writers_shape
@@ -1094,7 +1087,7 @@ class HandwritingRecognition(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='recognition', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
