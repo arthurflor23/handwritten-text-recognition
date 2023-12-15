@@ -6,7 +6,7 @@ from models.components.metric import EditDistance
 from models.components.optimizer import NormalizedOptimizer
 
 
-class HandwritingSynthesisRecognition(tf.keras.Model):
+class SynthesisRecognitionModel(tf.keras.Model):
     """
     A handwriting synthesis with recognition model on the TensorFlow Keras framework.
 
@@ -18,7 +18,7 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
                  generator,
                  style_encoder,
                  style_backbone,
-                 handwriting_recognition,
+                 recognition,
                  synthesis_ratio=1.0,
                  **kwargs):
         """
@@ -32,7 +32,7 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             StyleEncoder model for encoding extracted style features.
         style_backbone : StyleBackbone instance
             StyleBackbone model for extracting style patterns from images.
-        handwriting_recognition : HandwritingRecognition instance
+        recognition : HandwritingRecognition instance
             Recognition model for transcribing text.
         synthesis_ratio : float, optional
             Probability to use synthetic data.
@@ -40,19 +40,19 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             Additional keyword arguments.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='synthesis_recognition', **kwargs)
 
         self.generator = generator
         self.style_encoder = style_encoder
         self.style_backbone = style_backbone
-        self.handwriting_recognition = handwriting_recognition
+        self.recognition = recognition
         self.synthesis_ratio = synthesis_ratio
 
         self.names = [
             self.generator.name,
             self.style_encoder.name,
             self.style_backbone.name,
-            self.handwriting_recognition.name,
+            self.recognition.name,
         ]
 
     def __repr__(self):
@@ -224,11 +224,11 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
             images = self.generator([latent_inputs, texts], training=False)
 
         with tf.GradientTape() as tape:
-            ctc_logits = self.handwriting_recognition(images, training=True)
+            ctc_logits = self.recognition(images, training=True)
             ctc_loss = self.ctc_loss(texts, ctc_logits)
 
-        gradients = tape.gradient(ctc_loss, self.handwriting_recognition.trainable_weights)
-        self.optimizer.apply_gradients(zip(gradients, self.handwriting_recognition.trainable_weights))
+        gradients = tape.gradient(ctc_loss, self.recognition.trainable_weights)
+        self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
         self.edit_distance.update_state(texts, ctc_logits)
 
@@ -283,6 +283,6 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
 
         image_inputs, _, _, _, _ = x_data
 
-        ctc_logits = self.handwriting_recognition(image_inputs, training=training)
+        ctc_logits = self.recognition(image_inputs, training=training)
 
         return ctc_logits
