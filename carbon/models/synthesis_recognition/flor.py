@@ -15,42 +15,43 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
     """
 
     def __init__(self,
-                 synthesis,
-                 recognition,
-                 fake_images_prob=1.0,
-                 fake_texts_prob=1.0,
+                 generator,
+                 style_encoder,
+                 style_backbone,
+                 handwriting_recognition,
+                 synthesis_ratio=1.0,
                  **kwargs):
         """
         Initialize the synthesis with recognition model.
 
         Parameters
         ----------
-        synthesis : HandwritingSynthesis instance
-            Synthesis model for style transfer.
-        recognition : HandwritingRecognition instance
+        generator : Generator instance
+            Generator model for image generation.
+        style_encoder : StyleEncoder instance
+            StyleEncoder model for encoding extracted style features.
+        style_backbone : StyleBackbone instance
+            StyleBackbone model for extracting style patterns from images.
+        handwriting_recognition : HandwritingRecognition instance
             Recognition model for transcribing text.
-        fake_images_prob : float, optional
-            Probability to use fake images.
-        fake_texts_prob : float, optional
-            Probability to use fake texts.
+        synthesis_ratio : float, optional
+            Probability to use synthetic data.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.style_backbone = synthesis.style_backbone
-        self.style_encoder = synthesis.style_encoder
-        self.generator = synthesis.generator
-        self.handwriting_recognition = recognition
-
-        self.fake_images_prob = fake_images_prob
-        self.fake_texts_prob = fake_texts_prob
+        self.generator = generator
+        self.style_encoder = style_encoder
+        self.style_backbone = style_backbone
+        self.handwriting_recognition = handwriting_recognition
+        self.synthesis_ratio = synthesis_ratio
 
         self.names = [
-            self.style_backbone.name,
-            self.style_encoder.name,
             self.generator.name,
+            self.style_encoder.name,
+            self.style_backbone.name,
             self.handwriting_recognition.name,
         ]
 
@@ -214,11 +215,9 @@ class HandwritingSynthesisRecognition(tf.keras.Model):
         images = aug_image_inputs
         texts = text_inputs
 
-        if random.random() < self.fake_images_prob:
+        if random.random() <= self.synthesis_ratio:
             images = image_inputs
-
-            if random.random() < self.fake_texts_prob:
-                texts = aug_text_inputs
+            texts = aug_text_inputs
 
             features_inputs, _ = self.style_backbone(images, training=False)
             latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
