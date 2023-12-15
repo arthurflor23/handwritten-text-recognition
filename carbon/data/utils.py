@@ -127,7 +127,7 @@ def prepare_image_batch(image_batch, target_shape=None, pad_value=255, dtype=np.
     """
 
     if target_shape:
-        max_height, max_width = target_shape[:2]
+        max_width, max_height = target_shape[:2]
     else:
         max_height = max(len(height) for height in image_batch)
         max_width = max(len(width) for image in image_batch for width in image)
