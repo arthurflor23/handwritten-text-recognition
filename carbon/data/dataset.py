@@ -14,7 +14,7 @@ class Dataset():
     """
 
     def __init__(self,
-                 mode='recognition',
+                 workflow='recognition',
                  source=None,
                  text_level='line',
                  image_shape=(1024, 128, 1),
@@ -31,8 +31,8 @@ class Dataset():
 
         Parameters
         ----------
-        mode : str, optional
-            Dataset application mode.
+        workflow : str, optional
+            Dataset workflow.
         source : str, optional
             The data source name.
         text_level : str, optional
@@ -59,7 +59,7 @@ class Dataset():
 
         np.random.seed(seed)
 
-        self.mode = mode
+        self.workflow = workflow
         self.source = source
         self.text_level = text_level
         self.image_shape = tuple(image_shape or [])
@@ -99,7 +99,7 @@ class Dataset():
         info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
         info += "\n--------------------------------------------------"
-        info += f"\n{'mode':<{25}}: {self.mode or '-'}"
+        info += f"\n{'workflow':<{25}}: {self.workflow or '-'}"
         info += f"\n{'source':<{25}}: {self.source or '-'}"
         info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"
         info += f"\n{'image_shape':<{25}}: {self.image_shape or '-'}"
@@ -352,7 +352,7 @@ class Dataset():
 
         multigrams = {'source': [], 'encoded': []}
 
-        if 'synthesis' not in self.mode:
+        if 'synthesis' not in self.workflow:
             return multigrams
 
         def build(x):
@@ -442,7 +442,7 @@ class Dataset():
                     if self.lazy_mode:
                         x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-                    if 'synthesis' in self.mode:
+                    if 'synthesis' in self.workflow:
                         x_aug_data = x_data.copy()
                         y_aug_data = np.random.choice(self.multigrams[subset][partition], batch_size)
 
@@ -460,7 +460,7 @@ class Dataset():
                         w_data = np.array([data['writer'] for data in batch], dtype=np.int32)
                         x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
 
-                    elif 'recognition' in self.mode:
+                    elif 'recognition' in self.workflow:
                         if augmentor:
                             x_data = [augmentor.augmentation(x, x_data) for x in x_data]
                             x_data = [utils.resize_image(x, self.image_shape) for x in x_data]
