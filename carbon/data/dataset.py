@@ -23,7 +23,7 @@ class Dataset():
                  test_ratio=None,
                  lazy_mode=False,
                  data=None,
-                 tokenizer=Tokenizer(),
+                 tokenizer=None,
                  artifact_path='assets',
                  seed=None):
         """
@@ -67,7 +67,7 @@ class Dataset():
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
         self.lazy_mode = lazy_mode
-        self.tokenizer = tokenizer
+        self.tokenizer = tokenizer or Tokenizer()
         self.artifact_path = artifact_path
         self.seed = seed
 
