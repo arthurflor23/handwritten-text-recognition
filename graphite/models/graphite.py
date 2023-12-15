@@ -43,6 +43,8 @@ class Graphite():
         self.recognition_label = f"recognition.{recognition}"
 
         if workflow is not None:
+            self.experiment = mlflow.set_experiment(experiment_name)
+
             synthesis_model = None
             recognition_model = None
 
@@ -70,8 +72,6 @@ class Graphite():
 
             elif recognition_model:
                 self.model = recognition_model
-
-        # experiment = mlflow.set_experiment(experiment)
 
         # with mlflow.start_run(run_id=None, run_name=str(datetime.datetime.now())) as _:
         #     mlflow.set_tags({'graphite.label': 'synthesis:gan,recognition:bluche'})
@@ -218,8 +218,6 @@ class CarbonModel(tf.keras.Model):
         self.style_backbone = style_backbone
         self.recognition = recognition
         self.synthesis_ratio = synthesis_ratio
-
-        print('alokahaha', self.generator.name)
 
         self.names = [
             self.generator.name,
