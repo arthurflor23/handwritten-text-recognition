@@ -85,12 +85,10 @@ class SynthesisModel(tf.keras.Model):
 
         self.discriminator = DiscriminatorModel(image_shape=image_shape,
                                                 patch_shape=None,
-                                                embedding_dim=embedding_dim,
                                                 blocks=discriminator_blocks)
 
         self.patch_discriminator = DiscriminatorModel(image_shape=image_shape,
                                                       patch_shape=patch_shape,
-                                                      embedding_dim=embedding_dim,
                                                       blocks=discriminator_blocks)
 
         self.identification = IdentificationModel(features_shape=self.style_backbone.features_shape,
@@ -690,7 +688,6 @@ class DiscriminatorModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  patch_shape,
-                 embedding_dim,
                  blocks,
                  **kwargs):
         """
@@ -702,8 +699,6 @@ class DiscriminatorModel(tf.keras.Model):
             Shape of the input image.
         patch_shape : list, tuple or None
             Defines whether to apply patches for processing.
-        embedding_dim : int
-            Dimension of the embedding space.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
         **kwargs : dict
@@ -714,7 +709,6 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
-        self.embedding_dim = embedding_dim
         self.blocks = blocks
 
         self.build_model()
@@ -738,7 +732,6 @@ class DiscriminatorModel(tf.keras.Model):
         config.update({
             'image_shape': self.image_shape,
             'patch_shape': self.patch_shape,
-            'embedding_dim': self.embedding_dim,
             'blocks': self.blocks,
         })
 
