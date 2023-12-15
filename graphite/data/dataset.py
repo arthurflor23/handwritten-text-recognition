@@ -24,7 +24,7 @@ class Dataset():
                  lazy_mode=False,
                  data=None,
                  tokenizer=None,
-                 artifact_path='assets',
+                 artifact_path='datasets',
                  seed=None):
         """
         Initialize the Dataset instance.
