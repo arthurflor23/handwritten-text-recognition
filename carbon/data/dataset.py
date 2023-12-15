@@ -136,7 +136,7 @@ class Dataset():
 
         module_name = importlib.util.resolve_name(f".source.{source}", __package__)
         module_spec = importlib.util.find_spec(module_name)
-        assert module_spec is not None, "source file must be created"
+        assert module_spec is not None, 'source file must be created'
 
         module = importlib.import_module(module_name, __package__)
 
