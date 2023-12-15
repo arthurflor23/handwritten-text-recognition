@@ -8,7 +8,6 @@ from models.components.metric import KID
 from models.components.normalization import ConditionalBatchNormalization
 from models.components.normalization import SpectralNormalization
 from models.components.optimizer import NormalizedOptimizer
-from models.components.processing import AdaptiveDenseReshape
 from models.components.processing import ExtractPatches
 
 
@@ -1157,18 +1156,14 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        conv = AdaptiveDenseReshape(target_shape=self.lexical_shape)(conv)
-
-        bgru = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
-
-        bgru = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
         bgru = tf.keras.layers.Dense(units=256)(bgru)
 
-        bgru = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
-        bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
+        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Dense(units=256)(bgru)
 
-        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape)(bgru)
+        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape[:-1] + (-1,))(bgru)
+        outputs = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
