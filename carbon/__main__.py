@@ -12,11 +12,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # models
-    parser.add_argument('--mode', default=None, help='Define application mode')
+    parser.add_argument('--workflow', default=None, help='Define workflow')
     parser.add_argument('--synthesis', default=None, help='Define synthesis model')
     parser.add_argument('--recognition', default=None, help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
-    parser.add_argument('--run-index', default=None, type=int, help='Define run index')
+
+    # mlflow
+    parser.add_argument('--synthesis-index', default=None, type=int, help='Define a synthesis run index')
+    parser.add_argument('--recognition-index', default=None, type=int, help='Define a recognition run index')
+    parser.add_argument('--experiment-name', default='Default', help='Define an experiment name')
 
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
@@ -45,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable augmentation')
 
     # synthesis
-    parser.add_argument('--synthetic-data', default=1.0, type=float, help='Probability to use fake data')
+    parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Probability to use synthetic data')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
@@ -80,22 +84,28 @@ if __name__ == '__main__':
 
     # required parameters
     if not args.check:
-        assert args.mode, '--mode must be defined'
+        assert args.workflow, '--workflow must be defined'
 
     if args.check or args.training or args.test:
         assert args.source, '--source must be defined'
+
+    if args.workflow and 'synthesis' in args.workflow:
+        assert args.synthesis, '--synthesis must be defined'
+
+        if args.inference:
+            assert len(args.texts) > 0, '--texts must be defined'
+
+    if args.workflow and 'recognition' in args.workflow:
+        assert args.recognition, '--recognition must be defined'
+
+        if args.inference:
+            assert len(args.images) > 0, '--images must be defined'
 
     if args.training or args.test or args.inference:
         assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
 
     if args.test or args.inference:
         assert args.run_index is not None, '--run-index must be defined'
-
-    if args.inference and args.mode == 'synthesis':
-        assert len(args.texts) > 0, '--texts must be defined'
-
-    if args.inference and args.mode == 'recognition':
-        assert len(args.images) > 0, '--images must be defined'
 
     # pipelines
     if args.check:
