@@ -6,7 +6,7 @@ class CTCLoss(tf.keras.losses.Loss):
     Connectionist Temporal Classification (CTC) loss for sequence recognition task.
     """
 
-    def __init__(self, epsilon=1e-7, **kwargs):
+    def __init__(self, epsilon=1e-8, **kwargs):
         """
         Initialize the CTCLoss instance.
 
@@ -68,7 +68,7 @@ class CTXLoss(tf.keras.losses.Loss):
         function measures the feature similarities between two tensors.
     """
 
-    def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, loss_type='l2', **kwargs):
+    def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-8, loss_type='l2', **kwargs):
         """
         Initialize the CTXLoss instance.
 
