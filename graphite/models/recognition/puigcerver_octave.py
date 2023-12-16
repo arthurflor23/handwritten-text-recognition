@@ -191,7 +191,7 @@ class RecognitionModel(tf.keras.Model):
         octconv = tf.keras.layers.BatchNormalization()(octconv)
         octconv = tf.keras.layers.Activation('relu')(octconv)
 
-        blstm = tf.keras.layers.Reshape(target_shape=[octconv.get_shape()[1], -1])(octconv)
+        blstm = tf.keras.layers.Reshape(target_shape=(octconv.get_shape()[1], -1))(octconv)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)

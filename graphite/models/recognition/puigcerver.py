@@ -163,7 +163,7 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
-        blstm = tf.keras.layers.Reshape(target_shape=[conv.get_shape()[1], -1])(conv)
+        blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
