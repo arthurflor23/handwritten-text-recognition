@@ -90,14 +90,6 @@ class SynthesizerModel(SynthesizerBaseModel):
             A dictionary containing metrics and losses.
         """
 
-        return {
-            'g_loss': 0.01,
-            'd_loss': 0.01,
-            'w_loss': 0.01,
-            'r_loss': 0.01,
-            'kernel_inception_distance': 0.01,
-        }
-
         (image_inputs, text_inputs, aug_image_inputs, aug_text_inputs, writer_inputs), _ = input_data
 
         batch_size = tf.shape(image_inputs)[0]
