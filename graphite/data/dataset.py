@@ -121,7 +121,7 @@ class Dataset():
 
     def _import_source(self, source):
         """
-        Dynamically imports the specified source.
+        Dynamically imports and returns a class from a specified source.
 
         Parameters
         ----------
@@ -130,8 +130,8 @@ class Dataset():
 
         Returns
         -------
-        source : instance of Source class
-            An instance of the Source class from the imported module.
+        class
+            The dynamically imported class.
         """
 
         module_name = importlib.util.resolve_name(f".source.{source}", __package__)
