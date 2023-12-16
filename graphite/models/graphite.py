@@ -44,38 +44,38 @@ class Graphite():
         if workflow is not None:
             self.experiment = mlflow.set_experiment(experiment_name)
 
-            SynthesizerModel = None
-            SynthesizerRecognizerModel = None
+            SynthesisModel = None
+            SynthesisRecognitionModel = None
 
             if 'synthesis' in self.workflow:
-                SynthesizerModel = self._import_model(module=self.synthesis_label,
-                                                      class_name='SynthesizerModel')
+                SynthesisModel = self._import_model(module=self.synthesis_label,
+                                                    class_name='SynthesisModel')
 
             if 'recognition' in self.workflow:
-                SynthesizerRecognizerModel = self._import_model(module=self.recognition_label,
-                                                                class_name='SynthesizerRecognizerModel')
+                SynthesisRecognitionModel = self._import_model(module=self.recognition_label,
+                                                               class_name='SynthesisRecognitionModel')
 
-            if SynthesizerModel and not SynthesizerRecognizerModel:
-                self.model = SynthesizerModel(image_shape=self.image_shape,
-                                              lexical_shape=self.tokenizer.lexical_shape,
-                                              writers_shape=self.tokenizer.writers_shape)
-            elif SynthesizerRecognizerModel:
-                synthesizer_params = {}
+            if SynthesisModel and not SynthesisRecognitionModel:
+                self.model = SynthesisModel(image_shape=self.image_shape,
+                                            lexical_shape=self.tokenizer.lexical_shape,
+                                            writers_shape=self.tokenizer.writers_shape)
+            elif SynthesisRecognitionModel:
+                synthesis_params = {}
 
-                if SynthesizerModel:
-                    synthesizer = SynthesizerModel(image_shape=self.image_shape,
-                                                   lexical_shape=self.tokenizer.lexical_shape,
-                                                   writers_shape=self.tokenizer.writers_shape)
-                    synthesizer_params = {
-                        'style_backbone': synthesizer.style_backbone,
-                        'style_encoder': synthesizer.style_encoder,
-                        'generator': synthesizer.generator,
+                if SynthesisModel:
+                    synthesis = SynthesisModel(image_shape=self.image_shape,
+                                               lexical_shape=self.tokenizer.lexical_shape,
+                                               writers_shape=self.tokenizer.writers_shape)
+                    synthesis_params = {
+                        'style_backbone': synthesis.style_backbone,
+                        'style_encoder': synthesis.style_encoder,
+                        'generator': synthesis.generator,
                         'synthesis_ratio': self.synthesis_ratio,
                     }
 
-                self.model = SynthesizerRecognizerModel(image_shape=self.image_shape,
-                                                        lexical_shape=self.tokenizer.lexical_shape,
-                                                        **synthesizer_params)
+                self.model = SynthesisRecognitionModel(image_shape=self.image_shape,
+                                                       lexical_shape=self.tokenizer.lexical_shape,
+                                                       **synthesis_params)
 
         # with mlflow.start_run(run_id=None, run_name=str(datetime.datetime.now())) as _:
         #     mlflow.set_tags({'graphite.label': 'synthesis:gan,recognition:bluche'})
@@ -280,11 +280,11 @@ class Graphite():
         Parameters
         ----------
         synthesis : str, optional
-            Identifier for synthesis model.
+            Identification for synthesis model.
         synthesis_index : int, optional
             Run index for the synthesis model.
         recognition : str, optional
-            Identifier for recognition model.
+            Identification for recognition model.
         recognition_index : int, optional
             Run index for the recognition model.
         experiment_name : str, optional
