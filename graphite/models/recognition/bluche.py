@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from models.carbon import SynthesisRecognitionBaseModel
+from models.components.model import SynthesisRecognitionBaseModel
 from models.components.convolution import GatedConv2D
 
 
