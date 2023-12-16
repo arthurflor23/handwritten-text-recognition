@@ -18,7 +18,7 @@ class CTCLoss(tf.keras.losses.Loss):
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='ctc_loss', **kwargs)
 
         self.epsilon = epsilon
 
@@ -86,7 +86,7 @@ class CTXLoss(tf.keras.losses.Loss):
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='ctx_loss', **kwargs)
 
         self.sigma = sigma
         self.alpha = alpha
@@ -253,7 +253,7 @@ class L1Loss(tf.keras.losses.Loss):
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name='l1_loss', **kwargs)
 
     def call(self, y_true, y_pred):
         """
