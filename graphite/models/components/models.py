@@ -417,7 +417,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
         images = aug_image_inputs
         texts = text_inputs
 
-        if self.style_backbone and self.style_encoder and self.generator:
+        if self.generator and self.style_backbone and self.style_encoder:
             if random.random() <= self.synthesis_ratio:
                 images = image_inputs
                 texts = aug_text_inputs
