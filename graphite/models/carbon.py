@@ -10,6 +10,10 @@ from models.components.optimizer import NormalizedOptimizer
 
 
 class BaseModel(tf.keras.Model):
+    """
+    A base model class that extends tf.keras.Model, providing additional
+        functionalities for model representation and weight management.
+    """
 
     def __repr__(self):
         """
@@ -134,6 +138,8 @@ class BaseModel(tf.keras.Model):
 
 class SynthesisBaseModel(BaseModel):
     """
+    SynthesisBaseModel extends BaseModel to provide additional
+        functionalities to synthesis models.
     """
 
     def __init__(self,
@@ -153,7 +159,7 @@ class SynthesisBaseModel(BaseModel):
         writers_shape : int
             The dimension for the writer identification.
         **kwargs : dict
-            Additional keyword arguments for the TensorFlow Keras Model.
+            Additional keyword arguments.
         """
 
         super().__init__(name='synthesis', **kwargs)
@@ -298,7 +304,8 @@ class SynthesisBaseModel(BaseModel):
 
 class SynthesisRecognitionBaseModel(BaseModel):
     """
-    A handwriting recognition base model.
+    SynthesisRecognitionBaseModel extends BaseModel to provide additional
+        functionalities to synthesis and recognition models.
     """
 
     def __init__(self,
@@ -310,6 +317,24 @@ class SynthesisRecognitionBaseModel(BaseModel):
                  synthesis_ratio=1.0,
                  **kwargs):
         """
+        Initializes the synthesis and recognition model.
+
+        Parameters
+        ----------
+        image_shape : tuple or list
+            The shape of the input images.
+        lexical_shape : tuple or list
+            The shape of the lexical input.
+        style_backbone : StyleBackbone instance
+            StyleBackbone model for extracting style patterns from images.
+        style_encoder : StyleEncoder instance
+            StyleEncoder model for encoding extracted style features.
+        generator : Generator instance
+            Generator model for image generation.
+        synthesis_ratio : float, optional
+            Probability to use synthetic data.
+        **kwargs : dict
+            Additional keyword arguments.
         """
 
         super().__init__(name='synthesis_recognition', **kwargs)
