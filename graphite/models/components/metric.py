@@ -93,7 +93,7 @@ class EditDistance(tf.keras.metrics.Metric):
         self.tracker.reset_state()
 
 
-class KID(tf.keras.metrics.Metric):
+class KernelInceptionDistance(tf.keras.metrics.Metric):
     """
     Kernel Inception Distance (KID) metric class.
 
