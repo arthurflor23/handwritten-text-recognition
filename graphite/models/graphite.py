@@ -37,8 +37,8 @@ class Graphite():
         self.synthesis_label = f"synthesis.{synthesis}"
         self.recognition_label = f"recognition.{recognition}"
 
-        self._is_synthesis = workflow and 'synthesis' in workflow
-        self._is_recognition = workflow and 'recognition' in workflow
+        self._is_synthesis = 'synthesis' in workflow if workflow else False
+        self._is_recognition = 'recognition' in workflow if workflow else False
 
         if workflow is not None:
             self.experiment = mlflow.set_experiment(experiment_name)
