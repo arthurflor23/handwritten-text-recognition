@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-from models.carbon import SynthesizerRecognizerBaseModel
+from models.carbon import SynthesisRecognitionBaseModel
 from models.components.convolution import GatedConv2D
 
 
-class SynthesizerRecognizerModel(SynthesizerRecognizerBaseModel):
+class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):
     """
     TensorFlow model for multilingual handwriting recognition using CNNs and GRUs.
     Features gated convolutional layers for enhanced feature extraction.

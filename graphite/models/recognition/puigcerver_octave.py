@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-from models.carbon import SynthesizerRecognizerBaseModel
+from models.carbon import SynthesisRecognitionBaseModel
 from models.components.convolution import OctConv2D
 
 
-class SynthesizerRecognizerModel(SynthesizerRecognizerBaseModel):
+class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):
     """
     TensorFlow model for multilingual handwriting recognition using OCNN and BiLSTMs.
     It's based on traditional deep learning methods for offline handwriting recognition (CRNN).
