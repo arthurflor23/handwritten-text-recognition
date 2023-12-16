@@ -1,16 +1,16 @@
 import tensorflow as tf
 
-from models.carbon import SynthesizerBaseModel
+from models.carbon import SynthesisBaseModel
 from models.components.attention import SpectralSelfAttention
 from models.components.normalization import ConditionalBatchNormalization
 from models.components.normalization import SpectralNormalization
 from models.components.processing import ExtractPatches
 
 
-class SynthesizerModel(SynthesizerBaseModel):
+class SynthesisModel(SynthesisBaseModel):
     """
     This model integrates several submodels including a generator, discriminator,
-        patch discriminator, style backbone, style encoder, writer identifier, and text recognizer.
+        patch discriminator, style backbone, style encoder, writer identification, and text recognition.
 
     References
     ----------
@@ -68,12 +68,12 @@ class SynthesizerModel(SynthesizerBaseModel):
                                                       patch_shape=patch_shape,
                                                       blocks=discriminator_blocks)
 
-        self.identifier = IdentifierModel(features_shape=self.style_backbone.features_shape,
-                                          writers_shape=self.writers_shape)
+        self.identification = IdentificationModel(features_shape=self.style_backbone.features_shape,
+                                                  writers_shape=self.writers_shape)
 
-        self.recognizer = RecognizerModel(image_shape=self.image_shape,
-                                          lexical_shape=self.lexical_shape,
-                                          blocks=backbone_blocks)
+        self.recognition = RecognitionModel(image_shape=self.image_shape,
+                                            lexical_shape=self.lexical_shape,
+                                            blocks=backbone_blocks)
 
     def train_step(self, input_data):
         """
@@ -147,13 +147,13 @@ class SynthesizerModel(SynthesizerBaseModel):
 
                 d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
 
-                # writer identifier loss
+                # writer identification loss
                 aug_features_inputs, _ = self.style_backbone(aug_image_inputs, training=True)
-                wid_logits = self.identifier(aug_features_inputs, training=True)
+                wid_logits = self.identification(aug_features_inputs, training=True)
                 w_loss = self.cls_loss(writer_inputs, wid_logits)
 
-                # recognizer loss
-                aug_ctc_logits = self.recognizer(aug_image_inputs, training=True)
+                # recognition loss
+                aug_ctc_logits = self.recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
@@ -162,11 +162,11 @@ class SynthesizerModel(SynthesizerBaseModel):
             p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
 
-            w_gradients = w_tape.gradient(w_loss, self.identifier.trainable_weights)
-            self.w_optimizer.apply_gradients(zip(w_gradients, self.identifier.trainable_weights))
+            w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
+            self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
 
-            r_gradients = r_tape.gradient(r_loss, self.recognizer.trainable_weights)
-            self.r_optimizer.apply_gradients(zip(r_gradients, self.recognizer.trainable_weights))
+            r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
+            self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
@@ -205,16 +205,16 @@ class SynthesizerModel(SynthesizerBaseModel):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_fake_ctc_logits = self.recognizer(fake_fake_images, training=True)
+            fake_fake_ctc_logits = self.recognition(fake_fake_images, training=True)
             fake_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, fake_fake_ctc_logits)
 
-            real_fake_ctc_logits = self.recognizer(real_fake_images, training=True)
+            real_fake_ctc_logits = self.recognition(real_fake_images, training=True)
             real_fake_ctc_loss = self.ctc_loss(m_aug_text_inputs, real_fake_ctc_logits)
 
-            real_real_ctc_logits = self.recognizer(real_real_images, training=True)
+            real_real_ctc_logits = self.recognition(real_real_images, training=True)
             real_real_ctc_loss = self.ctc_loss(m_text_inputs, real_real_ctc_logits)
 
-            fake_real_ctc_logits = self.recognizer(fake_real_images, training=True)
+            fake_real_ctc_logits = self.recognition(fake_real_images, training=True)
             fake_real_ctc_loss = self.ctc_loss(m_text_inputs, fake_real_ctc_logits)
 
             ctc_loss = fake_fake_ctc_loss + real_fake_ctc_loss + real_real_ctc_loss + fake_real_ctc_loss
@@ -237,11 +237,11 @@ class SynthesizerModel(SynthesizerBaseModel):
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.identifier(real_fake_features_inputs, training=True)
+            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=True)
             real_fake_wid_loss = self.cls_loss(m_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.identifier(real_real_features_inputs, training=True)
+            real_real_wid_logits = self.identification(real_real_features_inputs, training=True)
             real_real_wid_loss = self.cls_loss(m_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
@@ -732,9 +732,9 @@ class StyleEncoderModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class IdentifierModel(tf.keras.Model):
+class IdentificationModel(tf.keras.Model):
     """
-    A writer identifier model that classifies handwriting images based on extracted style features.
+    A writer identification model that classifies handwriting images based on extracted style features.
 
     This model is designed to identify the writer of a given handwriting sample
         by analyzing the stylistic features of the handwriting.
@@ -745,7 +745,7 @@ class IdentifierModel(tf.keras.Model):
                  writers_shape,
                  **kwargs):
         """
-        Initialize the writer identifier model with specified parameters.
+        Initialize the writer identification model with specified parameters.
 
         Parameters
         ----------
@@ -757,7 +757,7 @@ class IdentifierModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='identifier', **kwargs)
+        super().__init__(name='identification', **kwargs)
 
         self.features_shape = features_shape
         self.writers_shape = writers_shape
@@ -807,9 +807,9 @@ class IdentifierModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class RecognizerModel(tf.keras.Model):
+class RecognitionModel(tf.keras.Model):
     """
-    A recognizer model that transcribes handwritten texts from images.
+    A recognition model that transcribes handwritten texts from images.
 
     This model is designed to extract textual information from images of handwriting,
         facilitating tasks like optical character recognition and handwriting analysis.
@@ -835,7 +835,7 @@ class RecognizerModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='recognizer', **kwargs)
+        super().__init__(name='recognition', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
