@@ -957,7 +957,7 @@ class StyleEncoderModel(tf.keras.Model):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
             name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
@@ -1040,7 +1040,7 @@ class IdentificationModel(tf.keras.Model):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
             name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
