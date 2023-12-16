@@ -5,7 +5,7 @@ from models.components.loss import CTCLoss
 from models.components.loss import CTXLoss
 from models.components.loss import L1Loss
 from models.components.metric import EditDistance
-from models.components.metric import KID
+from models.components.metric import KernelInceptionDistance
 from models.components.optimizer import NormalizedOptimizer
 
 
@@ -180,6 +180,7 @@ class SynthesizerBaseModel(BaseModel):
             'recognizer',
         ]
 
+        self.monitor = 'kernel_inception_distance'
         self.build_model()
 
     def get_config(self):
@@ -242,7 +243,7 @@ class SynthesizerBaseModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid = KID()
+        self.kid = KernelInceptionDistance()
 
     def test_step(self, input_data):
         """
@@ -265,7 +266,7 @@ class SynthesizerBaseModel(BaseModel):
         self.kid.update_state(x_data[0], generated_images)
 
         return {
-            'kernel_inception_distance': self.kid.result(),
+            self.kid.name: self.kid.result(),
         }
 
     def call(self, x_data, training=None):
@@ -329,6 +330,7 @@ class SynthesizerRecognizerBaseModel(BaseModel):
             'generator',
         ]
 
+        self.monitor = 'val_edit_distance'
         self.build_model()
 
     def get_config(self):
@@ -409,8 +411,8 @@ class SynthesizerRecognizerBaseModel(BaseModel):
         self.edit_distance.update_state(texts, ctc_logits)
 
         return {
-            'ctc_loss': ctc_loss,
-            'edit_distance': self.edit_distance.result(),
+            self.ctc_loss.name: ctc_loss,
+            self.edit_distance.name: self.edit_distance.result(),
         }
 
     def test_step(self, input_data):
