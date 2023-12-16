@@ -1,12 +1,12 @@
 import random
 import tensorflow as tf
 
-from models.components.loss import CTCLoss
-from models.components.loss import CTXLoss
-from models.components.loss import L1Loss
-from models.components.metric import EditDistance
-from models.components.metric import KernelInceptionDistance
-from models.components.optimizer import NormalizedOptimizer
+from models.components.losses import CTCLoss
+from models.components.losses import CTXLoss
+from models.components.losses import L1Loss
+from models.components.metrics import EditDistance
+from models.components.metrics import KernelInceptionDistance
+from models.components.optimizers import NormalizedOptimizer
 
 
 class BaseModel(tf.keras.Model):
