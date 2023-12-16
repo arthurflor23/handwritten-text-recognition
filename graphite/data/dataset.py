@@ -226,7 +226,7 @@ class Dataset():
                             continue
 
                         np.random.shuffle(merged)
-                        index = round((ratios[i] + 1e-7) * total_merged)
+                        index = round((ratios[i] + 1e-8) * total_merged)
 
                         data[i] = merged[:index]
                         merged = merged[index:]
@@ -237,7 +237,7 @@ class Dataset():
                         continue
 
                     np.random.shuffle(data[i])
-                    index = round((ratios[i] + 1e-7) * len(data[i])) \
+                    index = round((ratios[i] + 1e-8) * len(data[i])) \
                         if isinstance(ratios[i], float) else ratios[i]
 
                     data[i] = data[i][:index]
@@ -356,13 +356,23 @@ class Dataset():
             return multigrams
 
         def build(x):
+            lines = x['text'].split('\n')
+            max_line_length = max(len(line) for line in lines)
+
             words = x['text'].replace('\n', ' ').split()
             multigrams = []
 
             for i in range(len(words)):
                 for j in range(i + 1, len(words) + 1):
-                    multigram = ' '.join(words[i:j])
-                    multigrams.append(multigram)
+                    multigram = ''
+                    for u in range(i, j):
+                        last_line = multigram.split('\n')[-1]
+                        next_line_length = len(last_line) + len(words[u]) + 1
+
+                        splitter = ' ' if next_line_length < max_line_length else '\n'
+                        multigram += f"{splitter}{words[u]}"
+
+                    multigrams.append(multigram.strip())
 
             return multigrams
 
@@ -378,10 +388,10 @@ class Dataset():
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(self.tokenizer.encode_text, x, False) for x in source]
-                encode = [future.result() for future in futures]
+                encoded = [future.result() for future in futures]
 
             multigrams['source'].extend(source)
-            multigrams['encoded'].extend(encode)
+            multigrams['encoded'].extend(encoded)
 
         multigrams['source'] = np.array(multigrams['source'], dtype=object)
         multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
@@ -421,6 +431,8 @@ class Dataset():
 
         def generator(subset, partition):
             samples_length = len(self.samples[subset][partition])
+            multigrams_length = len(self.multigrams[subset])
+
             indices = np.arange(samples_length)
             batch_index = 0
 
@@ -443,8 +455,10 @@ class Dataset():
                         x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
                     if 'synthesis' in self.workflow:
+                        multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
+
                         x_aug_data = x_data.copy()
-                        y_aug_data = np.random.choice(self.multigrams[subset][partition], batch_size)
+                        y_aug_data = self.multigrams[subset][multigrams_indices]
 
                         if augmentor:
                             x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
