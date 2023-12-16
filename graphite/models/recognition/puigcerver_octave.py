@@ -1,7 +1,7 @@
 import tensorflow as tf
 
+from models.components.layers import OctConv2D
 from models.components.models import SynthesisRecognitionBaseModel
-from models.components.convolution import OctConv2D
 
 
 class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):

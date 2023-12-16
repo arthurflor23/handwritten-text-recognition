@@ -1,7 +1,7 @@
 import tensorflow as tf
 
+from models.components.layers import GatedConv2D
 from models.components.models import SynthesisRecognitionBaseModel
-from models.components.convolution import GatedConv2D
 
 
 class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):

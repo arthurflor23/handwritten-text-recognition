@@ -311,9 +311,9 @@ class SynthesisRecognitionBaseModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
+                 generator=None,
                  style_backbone=None,
                  style_encoder=None,
-                 generator=None,
                  synthesis_ratio=1.0,
                  **kwargs):
         """
@@ -325,34 +325,34 @@ class SynthesisRecognitionBaseModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
+        generator : Generator instance
+            Generator model for image generation.
         style_backbone : StyleBackbone instance
             StyleBackbone model for extracting style patterns from images.
         style_encoder : StyleEncoder instance
             StyleEncoder model for encoding extracted style features.
-        generator : Generator instance
-            Generator model for image generation.
         synthesis_ratio : float, optional
             Probability to use synthetic data.
         **kwargs : dict
             Additional keyword arguments.
         """
 
-        super().__init__(name='synthesis_recognition', **kwargs)
+        super().__init__(name='recognition', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
 
-        self.recognition = None
+        self.generator = generator
         self.style_backbone = style_backbone
         self.style_encoder = style_encoder
-        self.generator = generator
+        self.recognition = None
 
         self.model_names = [
-            'recognition',
+            'generator',
             'style_backbone',
             'style_encoder',
-            'generator',
+            'recognition',
         ]
 
         self.monitor = 'val_edit_distance'
