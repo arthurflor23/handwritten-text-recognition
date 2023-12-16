@@ -459,34 +459,26 @@ class Dataset():
                     if self.lazy_mode:
                         x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-                    if 'synthesis' in self.workflow:
-                        multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
+                    x_aug_data = x_data.copy()
+                    y_aug_data = []
 
-                        x_aug_data = x_data.copy()
+                    if multigrams_length:
+                        multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
                         y_aug_data = [data['text'] for data in self.multigrams[subset][multigrams_indices]]
 
-                        if augmentor:
-                            x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
-                            x_aug_data = [utils.resize_image(x, self.image_shape) for x in x_aug_data]
+                    if augmentor:
+                        x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
+                        x_aug_data = [utils.resize_image(x, self.image_shape) for x in x_aug_data]
 
-                        if prepare_batch:
-                            x_data = utils.prepare_image_batch(x_data, self.image_shape)
-                            y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
+                    if prepare_batch:
+                        x_data = utils.prepare_image_batch(x_data, self.image_shape)
+                        y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
 
-                            x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
-                            y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
+                        x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
+                        y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
 
-                        w_data = np.array([data['writer'] for data in batch], dtype=np.int64)
-                        x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
-
-                    elif 'recognition' in self.workflow:
-                        if augmentor:
-                            x_data = [augmentor.augmentation(x, x_data) for x in x_data]
-                            x_data = [utils.resize_image(x, self.image_shape) for x in x_data]
-
-                        if prepare_batch:
-                            x_data = utils.prepare_image_batch(x_data, self.image_shape)
-                            y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
+                    w_data = np.array([data['writer'] for data in batch], dtype=np.int64)
+                    x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
 
                 yield (x_data, y_data)
 
