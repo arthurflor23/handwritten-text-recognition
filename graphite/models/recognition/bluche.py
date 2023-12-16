@@ -104,7 +104,11 @@ class RecognitionModel(tf.keras.Model):
         """
 
         optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate,
+                                      weight_decay=0.001,
+                                      beta_1=0.9,
+                                      beta_2=0.999,
+                                      epsilon=1e-8))
 
         super().compile(optimizer=optimizer, loss=CTCLoss(), metrics=[EditDistance()], run_eagerly=False)
 
@@ -160,13 +164,13 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
-        blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
-        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape[:-1] + (-1,))(blstm)
-        outputs = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(outputs)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
 
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
