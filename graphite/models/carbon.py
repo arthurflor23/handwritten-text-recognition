@@ -132,7 +132,7 @@ class BaseModel(tf.keras.Model):
                                    options=options)
 
 
-class SynthesizerBaseModel(BaseModel):
+class SynthesisBaseModel(BaseModel):
     """
     """
 
@@ -151,12 +151,12 @@ class SynthesizerBaseModel(BaseModel):
         lexical_shape : tuple or list
             The shape of the lexical input.
         writers_shape : int
-            The dimension for the writer identifier.
+            The dimension for the writer identification.
         **kwargs : dict
             Additional keyword arguments for the TensorFlow Keras Model.
         """
 
-        super().__init__(name='synthesizer', **kwargs)
+        super().__init__(name='synthesis', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -167,8 +167,8 @@ class SynthesizerBaseModel(BaseModel):
         self.style_encoder = None
         self.discriminator = None
         self.patch_discriminator = None
-        self.identifier = None
-        self.recognizer = None
+        self.identification = None
+        self.recognition = None
 
         self.model_names = [
             'generator',
@@ -176,8 +176,8 @@ class SynthesizerBaseModel(BaseModel):
             'style_encoder',
             'discriminator',
             'patch_discriminator',
-            'identifier',
-            'recognizer',
+            'identification',
+            'recognition',
         ]
 
         self.monitor = 'kernel_inception_distance'
@@ -296,7 +296,7 @@ class SynthesizerBaseModel(BaseModel):
         return generated_images
 
 
-class SynthesizerRecognizerBaseModel(BaseModel):
+class SynthesisRecognitionBaseModel(BaseModel):
     """
     A handwriting recognition base model.
     """
@@ -312,19 +312,19 @@ class SynthesizerRecognizerBaseModel(BaseModel):
         """
         """
 
-        super().__init__(name='synthesizer_recognizer', **kwargs)
+        super().__init__(name='synthesis_recognition', **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
 
-        self.recognizer = None
+        self.recognition = None
         self.style_backbone = style_backbone
         self.style_encoder = style_encoder
         self.generator = generator
 
         self.model_names = [
-            'recognizer',
+            'recognition',
             'style_backbone',
             'style_encoder',
             'generator',
@@ -402,11 +402,11 @@ class SynthesizerRecognizerBaseModel(BaseModel):
                 images = self.generator([latent_inputs, texts], training=False)
 
         with tf.GradientTape() as tape:
-            ctc_logits = self.recognizer(images, training=True)
+            ctc_logits = self.recognition(images, training=True)
             ctc_loss = self.ctc_loss(texts, ctc_logits)
 
-        gradients = tape.gradient(ctc_loss, self.recognizer.trainable_weights)
-        self.optimizer.apply_gradients(zip(gradients, self.recognizer.trainable_weights))
+        gradients = tape.gradient(ctc_loss, self.recognition.trainable_weights)
+        self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
         self.edit_distance.update_state(texts, ctc_logits)
 
@@ -461,6 +461,6 @@ class SynthesizerRecognizerBaseModel(BaseModel):
 
         image_inputs, _, _, _, _ = x_data
 
-        ctc_logits = self.recognizer(image_inputs, training=training)
+        ctc_logits = self.recognition(image_inputs, training=training)
 
         return ctc_logits
