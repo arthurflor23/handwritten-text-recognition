@@ -40,7 +40,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         self.sample_steps = sample_steps
         self.latent_dim = latent_dim
         self.monitor = monitor
-        self.best = np.inf
+        self.best_value = np.inf
 
     def _save_images(self, epoch, images, name):
         """
@@ -56,13 +56,13 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Base name for saved image files.
         """
 
-        filepath = os.path.join(self.filepath, str(epoch + 1))
+        filepath = os.path.join(self.filepath, f"epoch{epoch + 1}")
         os.makedirs(filepath, exist_ok=True)
 
         images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
 
         for j, image in enumerate(images):
-            filename = os.path.join(filepath, f"{j + 1}_{name}.png")
+            filename = os.path.join(filepath, f"{j + 1:03}_{name}.png")
             cv2.imwrite(filename, image)
 
     def on_epoch_end(self, epoch, logs=None):
@@ -80,8 +80,10 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Currently available log data.
         """
 
-        if logs.get(self.monitor, np.inf) <= self.best:
-            self.best = logs[self.monitor]
+        current_value = logs.get(self.monitor, np.inf)
+
+        if current_value < self.best_value:
+            self.best_value = current_value
 
             for _ in range(self.sample_steps):
                 images, texts = next(self.sample_data)
