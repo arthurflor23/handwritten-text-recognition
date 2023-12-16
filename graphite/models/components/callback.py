@@ -12,7 +12,12 @@ class GANMonitor(tf.keras.callbacks.Callback):
         where an improvement in the specified metric is observed.
     """
 
-    def __init__(self, filepath, latent_dim, input_data, batch_size=4, metric='kid'):
+    def __init__(self,
+                 filepath,
+                 sample_data,
+                 sample_steps,
+                 latent_dim,
+                 monitor):
         """
         Initialize the GANMonitor callback with specified parameters.
 
@@ -20,22 +25,22 @@ class GANMonitor(tf.keras.callbacks.Callback):
         ----------
         filepath : str
             Path where images will be saved.
+        sample_data : generator, optional
+            Generator yielding samples data batches.
+        sample_steps : int, optional
+            Number of steps per sample run.
         latent_dim : int
             Dimensionality of the latent space.
-        input_data : list
-            Dataset used for generating images.
-        batch_size : int, optional
-            Number of samples per batch of input data.
-        metric : str, optional
+        monitor : str, optional
             Name of the metric to monitor for improvement.
         """
 
         self.filepath = filepath
+        self.sample_data = sample_data
+        self.sample_steps = sample_steps
         self.latent_dim = latent_dim
-        self.input_data = input_data
-        self.batch_size = batch_size
-        self.metric = metric
-        self.best_metric = np.inf
+        self.monitor = monitor
+        self.best = np.inf
 
     def _save_images(self, epoch, images, name):
         """
@@ -75,16 +80,14 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Currently available log data.
         """
 
-        if logs.get(self.metric, np.inf) <= self.best_metric:
-            self.best_metric = logs[self.metric]
+        if logs.get(self.monitor, np.inf) <= self.best:
+            self.best = logs[self.monitor]
 
-            for i in range(0, len(self.input_data), self.batch_size):
-                images, texts = self.input_data[i:i + self.batch_size]
+            for _ in range(self.sample_steps):
+                images, texts = next(self.sample_data)
 
-                # random latent images
-                random_latent_inputs = tf.random.normal(shape=(len(images), self.latent_dim))
-                random_latent_images = self.model.generator([random_latent_inputs, texts], training=False)
-                self._save_images(epoch, random_latent_images, name='random_style')
+                # original images
+                self._save_images(epoch, images, name='authentic')
 
                 # guided latent images
                 guided_features_inputs, _ = self.model.style_backbone(images, training=False)
@@ -92,5 +95,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 guided_latent_images = self.model.generator([guided_latent_inputs, texts], training=False)
                 self._save_images(epoch, guided_latent_images, name='guided_style')
 
-                # original images
-                self._save_images(epoch, images, name='authentic')
+                # random latent images
+                random_latent_inputs = tf.random.normal(shape=(len(images), self.latent_dim))
+                random_latent_images = self.model.generator([random_latent_inputs, texts], training=False)
+                self._save_images(epoch, random_latent_images, name='random_style')
