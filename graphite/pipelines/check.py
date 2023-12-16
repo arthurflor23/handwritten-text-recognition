@@ -13,14 +13,14 @@ def check(args):
         A namespace object containing all the arguments required.
     """
 
-    dataset = Dataset(workflow='recognition',
-                      source=args.source,
+    dataset = Dataset(source=args.source,
                       text_level=args.text_level,
                       image_shape=args.image_shape,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
+                      multigrams=True,
                       seed=args.seed)
     print(dataset)
 
@@ -42,6 +42,7 @@ def check(args):
     print(augmentor)
 
     src_generator, _ = dataset.get_generator(partition='training',
+                                             samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=None,
                                              use_source=True,
@@ -49,6 +50,7 @@ def check(args):
                                              shuffle=False)
 
     enc_generator, _ = dataset.get_generator(partition='training',
+                                             samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=None,
                                              use_source=False,
@@ -56,6 +58,7 @@ def check(args):
                                              shuffle=False)
 
     aug_generator, _ = dataset.get_generator(partition='training',
+                                             samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
                                              use_source=False,
@@ -63,6 +66,7 @@ def check(args):
                                              shuffle=False)
 
     inp_generator, _ = dataset.get_generator(partition='training',
+                                             samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
                                              use_source=False,
