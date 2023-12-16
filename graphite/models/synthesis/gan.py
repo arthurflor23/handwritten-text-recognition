@@ -242,25 +242,25 @@ class SynthesisModel(tf.keras.Model):
         super().compile(run_eagerly=False)
 
         self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.p_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.e_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
@@ -957,7 +957,7 @@ class StyleEncoderModel(tf.keras.Model):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
             name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
@@ -1040,7 +1040,7 @@ class IdentificationModel(tf.keras.Model):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
+            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-8,
             name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
