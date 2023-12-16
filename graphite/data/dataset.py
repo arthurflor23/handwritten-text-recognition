@@ -14,7 +14,6 @@ class Dataset():
     """
 
     def __init__(self,
-                 workflow='recognition',
                  source=None,
                  text_level='line',
                  image_shape=(1024, 128, 1),
@@ -24,6 +23,7 @@ class Dataset():
                  lazy_mode=False,
                  data=None,
                  tokenizer=None,
+                 multigrams=False,
                  artifact_path='datasets',
                  seed=None):
         """
@@ -31,8 +31,6 @@ class Dataset():
 
         Parameters
         ----------
-        workflow : str, optional
-            Dataset workflow.
         source : str, optional
             The data source name.
         text_level : str, optional
@@ -51,6 +49,8 @@ class Dataset():
             Data for inference mode.
         tokenizer : object, optional
             Tokenizer used in input data.
+        multigrams : bool, optional
+            Enable multigrams process.
         artifact_path : str, optional
             Path name to fetch the data.
         seed : int, optional
@@ -59,7 +59,6 @@ class Dataset():
 
         np.random.seed(seed)
 
-        self.workflow = workflow
         self.source = source
         self.text_level = text_level
         self.image_shape = tuple(image_shape or [])
@@ -68,6 +67,7 @@ class Dataset():
         self.test_ratio = test_ratio
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
+        self.multigrams = multigrams
         self.artifact_path = artifact_path
         self.seed = seed
 
@@ -99,7 +99,6 @@ class Dataset():
         info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
         info += "\n--------------------------------------------------"
-        info += f"\n{'workflow':<{25}}: {self.workflow or '-'}"
         info += f"\n{'source':<{25}}: {self.source or '-'}"
         info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"
         info += f"\n{'image_shape':<{25}}: {self.image_shape or '-'}"
@@ -357,7 +356,7 @@ class Dataset():
 
         multigrams = {'source': [], 'encoded': []}
 
-        if 'synthesis' not in self.workflow:
+        if not self.multigrams:
             return multigrams
 
         def build(x):
@@ -405,6 +404,7 @@ class Dataset():
 
     def get_generator(self,
                       partition,
+                      samples=None,
                       batch_size=8,
                       augmentor=None,
                       use_source=False,
@@ -417,6 +417,8 @@ class Dataset():
         ----------
         partition : str
             The dataset partition which will be create the generator.
+        samples : int, optional
+            Fetch a specific number of samples.
         batch_size : int, optional
             The number of samples in each batch.
         augmentor : Augmentor, optional
@@ -434,15 +436,13 @@ class Dataset():
             The generator of batches and the steps per epoch.
         """
 
-        def generator(subset, partition):
-            samples_length = len(self.samples[subset][partition])
-            multigrams_length = len(self.multigrams[subset])
-
-            indices = np.arange(samples_length)
+        def generator(data, multigrams):
+            data_length, multigrams_length = len(data), len(multigrams)
+            indices = np.arange(data_length)
             batch_index = 0
 
             while True:
-                if batch_index >= samples_length:
+                if batch_index >= data_length:
                     if shuffle:
                         np.random.shuffle(indices)
                     batch_index = 0
@@ -450,7 +450,7 @@ class Dataset():
                 batch_indices = indices[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                batch = self.samples[subset][partition][batch_indices]
+                batch = data[batch_indices]
 
                 x_data = [data['image'] for data in batch]
                 y_data = [data['text'] for data in batch]
@@ -464,7 +464,7 @@ class Dataset():
 
                     if multigrams_length:
                         multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
-                        y_aug_data = [data['text'] for data in self.multigrams[subset][multigrams_indices]]
+                        y_aug_data = [data['text'] for data in multigrams[multigrams_indices]]
 
                     if augmentor:
                         x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
@@ -477,15 +477,21 @@ class Dataset():
                         x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
                         y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
 
-                    w_data = np.array([data['writer'] for data in batch], dtype=np.int64)
-                    x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
+                    if samples is None:
+                        w_data = np.array([data['writer'] for data in batch], dtype=np.int64)
+                        x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
 
                 yield (x_data, y_data)
 
         subset = 'source' if use_source else 'encoded'
-        samples_length = len(self.samples[subset][partition])
 
-        steps_per_epoch = int(np.ceil(samples_length / batch_size)) or None
-        batch_generator = generator(subset, partition) if steps_per_epoch else None
+        if samples is None:
+            data = self.samples[subset][partition]
+        else:
+            data = self.samples[subset][partition][:samples]
+            batch_size = min(len(data), batch_size)
+
+        steps_per_epoch = int(np.ceil(len(data) / batch_size)) or None
+        batch_generator = generator(data, self.multigrams[subset]) if steps_per_epoch else None
 
         return batch_generator, steps_per_epoch
