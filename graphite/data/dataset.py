@@ -109,7 +109,7 @@ class Dataset():
         info += f"\n{'seed':<{25}}: {self.seed}"
         info += "\n--------------------------------------------------"
         info += f"\n{'training_data':<{25}}: {len(self.samples['source']['training']):,}"
-        info += f"\n{'validaiton_data':<{25}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'validation_data':<{25}}: {len(self.samples['source']['validation']):,}"
         info += f"\n{'test_data':<{25}}: {len(self.samples['source']['test']):,}"
         info += f"\n{'total_data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
         info += "\n--------------------------------------------------"
@@ -463,7 +463,7 @@ class Dataset():
                     y_aug_data = []
 
                     if multigrams_length:
-                        multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
+                        multigrams_indices = np.random.choice(multigrams_length, len(batch))
                         y_aug_data = [data['text'] for data in multigrams[multigrams_indices]]
 
                     if augmentor:
