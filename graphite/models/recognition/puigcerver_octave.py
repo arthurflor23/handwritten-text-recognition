@@ -191,15 +191,17 @@ class RecognitionModel(tf.keras.Model):
         octconv = tf.keras.layers.BatchNormalization()(octconv)
         octconv = tf.keras.layers.Activation('relu')(octconv)
 
-        blstm = tf.keras.layers.Reshape(target_shape=(octconv.get_shape()[1], -1))(octconv)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Dropout(rate=0.5)(blstm)
+        blstm = tf.keras.layers.Reshape(target_shape=[octconv.get_shape()[1], -1])(octconv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=self.lexical_shape[:-1] + (-1,))(blstm)
-        outputs = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(outputs)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+
+        blstm = tf.keras.layers.Dropout(rate=0.5)(blstm)
+        blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
 
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
