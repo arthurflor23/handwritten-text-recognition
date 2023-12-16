@@ -105,7 +105,7 @@ class BaseModel(tf.keras.Model):
             model = getattr(self, name, None)
 
             if model is not None:
-                model.save_weights(filepath=filepath.replace('model', name),
+                model.save_weights(filepath=filepath.replace('<model>', name),
                                    overwrite=overwrite,
                                    save_format=save_format,
                                    options=options)
@@ -130,7 +130,7 @@ class BaseModel(tf.keras.Model):
             model = getattr(self, name, None)
 
             if model is not None:
-                model.load_weights(filepath=filepath.replace('model', name),
+                model.load_weights(filepath=filepath.replace('<model>', name),
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch,
                                    options=options)
