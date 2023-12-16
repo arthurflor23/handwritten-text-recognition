@@ -325,6 +325,11 @@ class Dataset():
             return source, encode
 
         for partition in data:
+            if not data[partition]:
+                samples['source'][partition] = []
+                samples['encoded'][partition] = []
+                continue
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(build, x) for x in data[partition]]
                 results = [future.result() for future in futures]
@@ -367,10 +372,10 @@ class Dataset():
                     multigram = ''
                     for u in range(i, j):
                         last_line = multigram.split('\n')[-1]
-                        next_line_length = len(last_line) + len(words[u]) + 1
+                        next_line_length = len(last_line) + len(words[u])
 
-                        splitter = ' ' if next_line_length < max_line_length else '\n'
-                        multigram += f"{splitter}{words[u]}"
+                        br = '\n' if u < j and next_line_length > max_line_length else ' '
+                        multigram += f"{br}{words[u]}"
 
                     multigrams.append(multigram.strip())
 
@@ -390,8 +395,8 @@ class Dataset():
                 futures = [executor.submit(self.tokenizer.encode_text, x, False) for x in source]
                 encoded = [future.result() for future in futures]
 
-            multigrams['source'].extend(source)
-            multigrams['encoded'].extend(encoded)
+            multigrams['source'].extend([{'text': x} for x in source])
+            multigrams['encoded'].extend([{'text': x} for x in encoded])
 
         multigrams['source'] = np.array(multigrams['source'], dtype=object)
         multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
@@ -458,7 +463,7 @@ class Dataset():
                         multigrams_indices = np.random.choice(multigrams_length, batch_size, replace=False)
 
                         x_aug_data = x_data.copy()
-                        y_aug_data = self.multigrams[subset][multigrams_indices]
+                        y_aug_data = [data['text'] for data in self.multigrams[subset][multigrams_indices]]
 
                         if augmentor:
                             x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
@@ -488,7 +493,7 @@ class Dataset():
         subset = 'source' if use_source else 'encoded'
         samples_length = len(self.samples[subset][partition])
 
-        batch_generator = generator(subset, partition)
-        steps_per_epoch = int(np.ceil(samples_length / batch_size))
+        steps_per_epoch = int(np.ceil(samples_length / batch_size)) or None
+        batch_generator = generator(subset, partition) if steps_per_epoch else None
 
         return batch_generator, steps_per_epoch
