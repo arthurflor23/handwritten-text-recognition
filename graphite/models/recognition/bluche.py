@@ -104,11 +104,7 @@ class RecognitionModel(tf.keras.Model):
         """
 
         optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate,
-                                      weight_decay=0.001,
-                                      beta_1=0.9,
-                                      beta_2=0.999,
-                                      epsilon=1e-8))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
 
         super().compile(optimizer=optimizer, loss=CTCLoss(), metrics=[EditDistance()], run_eagerly=False)
 
