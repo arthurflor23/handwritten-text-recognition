@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from models.components.model import SynthesisRecognitionBaseModel
+from models.components.models import SynthesisRecognitionBaseModel
 
 
 class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):

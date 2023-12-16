@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from models.components.model import SynthesisBaseModel
+from models.components.models import SynthesisBaseModel
 from models.components.attention import SpectralSelfAttention
 from models.components.normalization import ConditionalBatchNormalization
 from models.components.normalization import SpectralNormalization

@@ -5,7 +5,7 @@ import datetime
 import importlib
 import tensorflow as tf
 
-from models.components.callback import GANMonitor
+from models.components.callbacks import GANMonitor
 
 
 class Graphite():
