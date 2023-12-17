@@ -32,7 +32,7 @@ class BaseModel(tf.keras.Model):
         info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
 
-        for name in self.model_names:
+        for name in self.names:
             model = getattr(self, name, None)
 
             if model is None:
@@ -65,7 +65,7 @@ class BaseModel(tf.keras.Model):
         with self.distribute_strategy.scope():
             weights = {}
 
-            for name in self.model_names:
+            for name in self.names:
                 model = getattr(self, name, None)
 
                 if model is not None:
@@ -83,7 +83,7 @@ class BaseModel(tf.keras.Model):
             A dictionary with submodel names as keys and their weights as values.
         """
 
-        for name in self.model_names:
+        for name in self.names:
             model = getattr(self, name, None)
 
             if model is not None:
@@ -105,7 +105,7 @@ class BaseModel(tf.keras.Model):
             Optional arguments to pass to tf.train.Checkpoint.save.
         """
 
-        for name in self.model_names:
+        for name in self.names:
             model = getattr(self, name, None)
 
             if model is not None:
@@ -130,7 +130,7 @@ class BaseModel(tf.keras.Model):
             Optional arguments to pass to tf.train.Checkpoint.load.
         """
 
-        for name in self.model_names:
+        for name in self.names:
             model = getattr(self, name, None)
 
             if model is not None:
@@ -180,7 +180,7 @@ class SynthesisBaseModel(BaseModel):
         self.identification = None
         self.recognition = None
 
-        self.model_names = [
+        self.names = [
             'generator',
             'style_backbone',
             'style_encoder',
@@ -352,7 +352,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
         self.style_encoder = style_encoder
         self.recognition = None
 
-        self.model_names = [
+        self.names = [
             'generator',
             'style_backbone',
             'style_encoder',
