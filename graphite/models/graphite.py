@@ -356,7 +356,8 @@ class Graphite():
 
         if ctc_decode:
             tokenizer = self.tokenizer if token_decode else None
-            predictions, probabilities = self.model.ctc_decode(predictions=predictions,
+            predictions, probabilities = self.model.ctc_decode(x=predictions,
+                                                               steps=test_steps,
                                                                top_paths=top_paths,
                                                                beam_width=beam_width,
                                                                tokenizer=tokenizer,
@@ -428,12 +429,12 @@ class Graphite():
             artifact_path = self.set_run_info(run)
             logs_path = os.path.join(artifact_path, 'logs')
 
-            def save_content(info_type, content, metric=False, json_content=False):
+            def save_content(name, content, metric=False, json_content=False):
                 if content is not None:
-                    artifact = os.path.join(logs_path, f"{info_type}.log")
+                    artifact = os.path.join(logs_path, f"{name}.log")
 
                     if metric:
-                        sufix = '_'.join(info_type.split('_')[1:])
+                        sufix = '_'.join(name.split('_')[1:])
                         sufix = f"_{sufix}" if sufix else ''
                         mlflow.log_metrics({f"test_{k}{sufix}": content[k] for k in content})
 
