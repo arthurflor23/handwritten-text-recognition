@@ -299,12 +299,6 @@ class Graphite():
                                monitor=self.model.monitor),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
-            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
-
-            with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
-                pickle.dump(self.tokenizer, f)
-
             history = self.model.fit(x=training_gen,
                                      steps_per_epoch=training_steps,
                                      validation_data=validation_gen,
@@ -317,7 +311,22 @@ class Graphite():
             best_monitor_index = history.history[self.model.monitor].index(min_monitor_value)
 
             metrics = {k: history.history[k][best_monitor_index] for k in history.history if k != 'lr'}
-            mlflow.log_metrics(metrics)
+
+            train_metrics = {k: metrics[k] for k in metrics if not k.startswith('val')}
+            valid_metrics = {k: metrics[k] for k in metrics if k.startswith('val')}
+
+            mlflow.log_metrics(train_metrics)
+            mlflow.log_metrics(valid_metrics)
+
+            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
+            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
+            mlflow.end_run()
+
+        self.save_context(metrics=train_metrics, prefix='train')
+        self.save_context(metrics=valid_metrics, prefix='valid')
+
+        with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
+            pickle.dump(self.tokenizer, f)
 
         return history
 
@@ -404,7 +413,8 @@ class Graphite():
                      metrics=None,
                      evaluations=None,
                      spelling_metrics=None,
-                     spelling_evaluations=None):
+                     spelling_evaluations=None,
+                     prefix='test'):
         """
         Save relevant context information to MLflow and log files.
 
@@ -422,6 +432,8 @@ class Graphite():
             Spelling metrics.
         spelling_evaluations : list or None, optional
             Spelling evaluations.
+        prefix : str, optional
+            Prefix used in the metric logs.
         """
 
         run_info = self.get_run_info()
@@ -437,7 +449,7 @@ class Graphite():
                     artifact = os.path.join(logs_path, f"{name}.log")
 
                     if metric:
-                        sufix = '_'.join(name.split('_')[1:])
+                        sufix = '_'.join(name.split('_')[2:])
                         sufix = f"_{sufix}" if sufix else ''
                         mlflow.log_metrics({f"test_{k}{sufix}": content[k] for k in content})
 
@@ -450,10 +462,12 @@ class Graphite():
             save_content('dataset', dataset)
             save_content('augmentor', augmentor)
             save_content('model', self.model)
-            save_content('metrics', metrics, metric=True, json_content=True)
-            save_content('metrics_spelling', spelling_metrics, metric=True, json_content=True)
-            save_content('evaluations', evaluations, json_content=True)
-            save_content('evaluations_spelling', spelling_evaluations, json_content=True)
+
+            save_content(f"{prefix}_metrics", metrics, metric=True, json_content=True)
+            save_content(f"{prefix}_metrics_spelling", spelling_metrics, metric=True, json_content=True)
+            save_content(f"{prefix}_samples", evaluations, json_content=True)
+            save_content(f"{prefix}_samples_spelling", spelling_evaluations, json_content=True)
+            mlflow.end_run()
 
     @staticmethod
     def get_tokenizer(synthesis=None,
