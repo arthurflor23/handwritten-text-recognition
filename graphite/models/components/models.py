@@ -143,175 +143,9 @@ class BaseModel(tf.keras.Model):
                                    options=options)
 
 
-class SynthesisBaseModel(BaseModel):
+class RecognitionBaseModel(BaseModel):
     """
-    SynthesisBaseModel extends BaseModel to provide additional
-        functionalities to synthesis models.
-    """
-
-    def __init__(self,
-                 image_shape,
-                 lexical_shape,
-                 writers_shape,
-                 **kwargs):
-        """
-        Initialize the synthesis model with specified parameters for each submodel.
-
-        Parameters
-        ----------
-        image_shape : tuple or list
-            The shape of the input images.
-        lexical_shape : tuple or list
-            The shape of the lexical input.
-        writers_shape : int
-            The dimension for the writer identification.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(name='synthesis', **kwargs)
-
-        self.image_shape = image_shape
-        self.lexical_shape = lexical_shape
-        self.writers_shape = writers_shape
-
-        self.generator = None
-        self.style_backbone = None
-        self.style_encoder = None
-        self.discriminator = None
-        self.patch_discriminator = None
-        self.identification = None
-        self.recognition = None
-
-        self.names = [
-            'generator',
-            'style_backbone',
-            'style_encoder',
-            'discriminator',
-            'patch_discriminator',
-            'identification',
-            'recognition',
-        ]
-
-        self.monitor = 'kid'
-        self.build_model()
-
-    def get_config(self):
-        """
-        Retrieves the configuration of the model for serialization.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the model.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'image_shape': self.image_shape,
-            'lexical_shape': self.lexical_shape,
-            'writers_shape': self.writers_shape,
-        })
-
-        return config
-
-    def compile(self, learning_rate=0.001):
-        """
-        Configure the submodels.
-
-        This method sets up the optimizers, loss functions, and metrics for the model.
-
-        Parameters
-        ----------
-        learning_rate : float, optional
-            The learning rate for the optimizer.
-        """
-
-        super().compile(run_eagerly=False)
-
-        self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.p_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.e_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
-
-        self.l1_loss = L1Loss()
-        self.ctx_loss = CTXLoss()
-        self.ctc_loss = CTCLoss()
-        self.kld_loss = tf.keras.losses.KLDivergence()
-        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid = KernelInceptionDistance()
-
-    def test_step(self, input_data):
-        """
-        Perform the testing step on the provided batch of data.
-
-        Parameters
-        ----------
-        input_data : list or tuple
-            A batch of data (x_data, y_data).
-
-        Returns
-        -------
-        dict
-            A dictionary containing evaluation metrics.
-        """
-
-        x_data, _ = input_data
-
-        generated_images = self.call(x_data, training=False)
-        self.kid.update_state(x_data[0], generated_images)
-
-        return {
-            self.kid.name: self.kid.result(),
-        }
-
-    def call(self, x_data, training=None):
-        """
-        Processes input images and text through the style backbone, encoder,
-            and generator to produce generated images.
-
-        Parameters
-        ----------
-        input_data : list or tuple
-            A batch of data (x_data).
-        training : bool, optional
-            Indicates whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            The generated images.
-        """
-
-        image_inputs, text_inputs, _, _, _ = x_data
-
-        features_inputs, _ = self.style_backbone(image_inputs, training=training)
-        latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
-        generated_images = self.generator([latent_inputs, text_inputs], training=training)
-
-        return generated_images
-
-
-class SynthesisRecognitionBaseModel(BaseModel):
-    """
-    SynthesisRecognitionBaseModel extends BaseModel to provide additional
+    RecognitionBaseModel extends BaseModel to provide additional
         functionalities to synthesis and recognition models.
     """
 
@@ -646,3 +480,169 @@ class SynthesisRecognitionBaseModel(BaseModel):
         metrics = {k: np.mean(metrics[k]) for k in metrics}
 
         return metrics, evaluations
+
+
+class SynthesisBaseModel(BaseModel):
+    """
+    SynthesisBaseModel extends BaseModel to provide additional
+        functionalities to synthesis models.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 lexical_shape,
+                 writers_shape,
+                 **kwargs):
+        """
+        Initialize the synthesis model with specified parameters for each submodel.
+
+        Parameters
+        ----------
+        image_shape : tuple or list
+            The shape of the input images.
+        lexical_shape : tuple or list
+            The shape of the lexical input.
+        writers_shape : int
+            The dimension for the writer identification.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(name='synthesis', **kwargs)
+
+        self.image_shape = image_shape
+        self.lexical_shape = lexical_shape
+        self.writers_shape = writers_shape
+
+        self.generator = None
+        self.style_backbone = None
+        self.style_encoder = None
+        self.discriminator = None
+        self.patch_discriminator = None
+        self.identification = None
+        self.recognition = None
+
+        self.names = [
+            'generator',
+            'style_backbone',
+            'style_encoder',
+            'discriminator',
+            'patch_discriminator',
+            'identification',
+            'recognition',
+        ]
+
+        self.monitor = 'kid'
+        self.build_model()
+
+    def get_config(self):
+        """
+        Retrieves the configuration of the model for serialization.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the model.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'image_shape': self.image_shape,
+            'lexical_shape': self.lexical_shape,
+            'writers_shape': self.writers_shape,
+        })
+
+        return config
+
+    def compile(self, learning_rate=0.001):
+        """
+        Configure the submodels.
+
+        This method sets up the optimizers, loss functions, and metrics for the model.
+
+        Parameters
+        ----------
+        learning_rate : float, optional
+            The learning rate for the optimizer.
+        """
+
+        super().compile(run_eagerly=False)
+
+        self.g_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.d_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.p_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.b_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.e_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.w_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.r_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+
+        self.l1_loss = L1Loss()
+        self.ctx_loss = CTXLoss()
+        self.ctc_loss = CTCLoss()
+        self.kld_loss = tf.keras.losses.KLDivergence()
+        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.kid = KernelInceptionDistance()
+
+    def test_step(self, input_data):
+        """
+        Perform the testing step on the provided batch of data.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            A dictionary containing evaluation metrics.
+        """
+
+        x_data, _ = input_data
+
+        generated_images = self.call(x_data, training=False)
+        self.kid.update_state(x_data[0], generated_images)
+
+        return {
+            self.kid.name: self.kid.result(),
+        }
+
+    def call(self, x_data, training=None):
+        """
+        Processes input images and text through the style backbone, encoder,
+            and generator to produce generated images.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data).
+        training : bool, optional
+            Indicates whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            The generated images.
+        """
+
+        image_inputs, text_inputs, _, _, _ = x_data
+
+        features_inputs, _ = self.style_backbone(image_inputs, training=training)
+        latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
+        generated_images = self.generator([latent_inputs, text_inputs], training=training)
+
+        return generated_images
