@@ -211,7 +211,7 @@ class SynthesisBaseModel(BaseModel):
 
     def compile(self, learning_rate=0.001):
         """
-        Configure the submodels for training.
+        Configure the submodels.
 
         This method sets up the optimizers, loss functions, and metrics for the model.
 
@@ -379,7 +379,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
     def compile(self, learning_rate=0.001):
         """
-        Configure the submodels for training.
+        Configure the submodels.
 
         This method sets up the optimizers, loss functions, and metrics for the model.
 
