@@ -1,10 +1,10 @@
 import tensorflow as tf
 
 from models.components.layers import GatedConv2D
-from models.components.models import SynthesisRecognitionBaseModel
+from models.components.models import RecognitionBaseModel
 
 
-class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):
+class RecognitionModel(RecognitionBaseModel):
     """
     TensorFlow model for multilingual handwriting recognition using CNNs and BiLSTMs.
     Features gated convolutional layers for enhanced feature extraction.

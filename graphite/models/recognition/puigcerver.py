@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-from models.components.models import SynthesisRecognitionBaseModel
+from models.components.models import RecognitionBaseModel
 
 
-class SynthesisRecognitionModel(SynthesisRecognitionBaseModel):
+class RecognitionModel(RecognitionBaseModel):
     """
     TensorFlow model for multilingual handwriting recognition using CNNs and BiLSTMs.
     It's based on traditional deep learning methods for offline handwriting recognition (CRNN).
