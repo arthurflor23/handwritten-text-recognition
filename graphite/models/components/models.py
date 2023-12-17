@@ -108,10 +108,10 @@ class BaseModel(tf.keras.Model):
 
         for name in self.names:
             model = getattr(self, name, None)
-            filepath = filepath.replace('<model>', name)
+            modelpath = filepath.replace('<model>', name)
 
             if model is not None:
-                model.save_weights(filepath=filepath,
+                model.save_weights(filepath=modelpath,
                                    overwrite=overwrite,
                                    save_format=save_format,
                                    options=options)
@@ -134,10 +134,10 @@ class BaseModel(tf.keras.Model):
 
         for name in self.names:
             model = getattr(self, name, None)
-            filepath = filepath.replace('<model>', name)
+            modelpath = filepath.replace('<model>', name)
 
-            if model is not None and os.path.isfile(filepath):
-                model.load_weights(filepath=filepath,
+            if model is not None and os.path.isfile(modelpath):
+                model.load_weights(filepath=modelpath,
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch,
                                    options=options)
