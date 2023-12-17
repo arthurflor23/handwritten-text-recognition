@@ -1,4 +1,8 @@
+import re
+import string
 import random
+import numpy as np
+import editdistance
 import tensorflow as tf
 
 from models.components.losses import CTCLoss
@@ -489,3 +493,127 @@ class SynthesisRecognitionBaseModel(BaseModel):
         ctc_logits = self.recognition(image_inputs, training=training)
 
         return ctc_logits
+
+    def ctc_decode(self, predictions, top_paths=1, beam_width=30, tokenizer=None, verbose=1):
+        """
+        Decode CTC predictions using beam search.
+
+        Parameters
+        ----------
+        predictions : numpy.ndarray
+            CTC predictions to be decoded.
+        top_paths : int
+            Number of top paths to consider.
+        beam_width : int
+            Beam width for beam search.
+        tokenizer : Tokenizer, optional
+            Tokenizer for decoding text predictions.
+        verbose : int, optional
+            Verbosity mode.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the decoded predictions and corresponding probabilities.
+        """
+
+        predictions, probabilities = np.log(predictions + 1e-8), np.array([])
+        progbar = tf.keras.utils.Progbar(target=predictions.shape[1], unit_name='decode', verbose=verbose)
+
+        decoded_paths, probabilities_list = [], []
+        sequence_length = [predictions.shape[2]] * predictions.shape[0]
+
+        beam_width = max(top_paths, beam_width)
+
+        for i in range(predictions.shape[1]):
+            progbar.update(i)
+
+            inputs = tf.transpose(predictions[:, i, :, :], perm=[1, 0, 2])
+            decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                                       sequence_length=sequence_length,
+                                                                       beam_width=beam_width,
+                                                                       top_paths=top_paths)
+
+            decoded_pads = []
+            for j in range(len(decoded)):
+                sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
+                paddings = [[0, 0], [0, predictions.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
+
+            decoded_paths.append(decoded_pads)
+            probabilities_list.append(tf.exp(log_probabilities))
+
+            progbar.update(i + 1)
+
+        predictions = np.transpose(tf.stack(decoded_paths, axis=1), (2, 0, 1, 3))
+        probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (0, 2, 1))
+
+        if tokenizer is not None:
+            predictions = np.array([[tokenizer.decode_text(top_path) for top_path in item]
+                                   for item in predictions], dtype=object)
+
+        return predictions, probabilities
+
+    def ctc_evaluate(self, x, steps, predictions, verbose=1):
+        """
+        Evaluate CTC predictions on the given data.
+
+        Parameters
+        ----------
+        x : Dataset generator
+            Input data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+        predictions : np.ndarray
+            Predictions to be evaluated.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
+        batch_index = 0
+
+        metrics = {'character_error_rate': [], 'word_error_rate': []}
+        evaluations = []
+
+        for i in range(steps):
+            progbar.update(i)
+
+            _, y_true = next(x)
+            batch_size = len(y_true)
+
+            y_pred = predictions[batch_index:batch_index + batch_size]
+
+            for true_label, pred_label in zip(y_true, y_pred):
+                pattern = f'([{re.escape(string.punctuation)}])'
+                true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split()).strip()
+
+                local_evaluation = {'ground_truth': true_label, 'top_paths': []}
+
+                for _, top_path in enumerate(pred_label):
+                    top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split()).strip()
+
+                    distance = editdistance.eval(list(true_label), list(top_path))
+                    character_error_rate = distance / max(len(true_label), len(top_path))
+
+                    distance = editdistance.eval(true_label.split(), top_path.split())
+                    word_error_rate = distance / max(len(true_label.split()), len(top_path.split()))
+
+                    metrics['character_error_rate'].append(character_error_rate)
+                    metrics['word_error_rate'].append(word_error_rate)
+
+                    local_evaluation['top_paths'].append(top_path)
+
+                evaluations.append(local_evaluation)
+
+            batch_index += batch_size
+            progbar.update(i + 1)
+
+        metrics = {key: np.mean(metrics[key]) for key in metrics}
+
+        return metrics, evaluations
