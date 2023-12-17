@@ -1,6 +1,7 @@
 import os
-import mlflow
+import json
 import pickle
+import mlflow
 import datetime
 import importlib
 import tensorflow as tf
@@ -305,11 +306,17 @@ class Graphite():
 
             history = self.model.fit(x=training_gen,
                                      steps_per_epoch=training_steps,
-                                     validation_gen=validation_gen,
+                                     validation_data=validation_gen,
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
                                      epochs=(epochs or 1000000),
                                      verbose=1)
+
+            min_monitor_value = min(history.history[self.model.monitor])
+            best_monitor_index = history.history[self.model.monitor].index(min_monitor_value)
+
+            metrics = {k: history.history[k][best_monitor_index] for k in history.history if k != 'lr'}
+            mlflow.log_metrics(metrics)
 
         return history
 
@@ -356,7 +363,7 @@ class Graphite():
                                                                verbose=1)
 
             corrections = self.spell_checker.predict(predictions) \
-                if not token_decode or self.spell_checker is None else predictions
+                if token_decode and self.spell_checker is not None else predictions
 
         return predictions, corrections, probabilities
 
@@ -388,6 +395,61 @@ class Graphite():
                                                        verbose=1)
 
         return metrics, evaluations
+
+    def save_context(self,
+                     dataset=None,
+                     augmentor=None,
+                     metrics=None,
+                     evaluations=None,
+                     spelling_metrics=None,
+                     spelling_evaluations=None):
+        """
+        Save relevant context information to MLflow and log files.
+
+        Parameters
+        ----------
+        dataset : Dataset instance or None, optional
+            Dataset object instance.
+        augmentor : Augmentor instance or None, optional
+            Augmentor object instance.
+        metrics : dict or None, optional
+            Model metrics.
+        evaluations : list or None, optional
+            Model evaluations.
+        spelling_metrics : dict or None, optional
+            Spelling metrics.
+        spelling_evaluations : list or None, optional
+            Spelling evaluations.
+        """
+
+        run_id, run_name, _ = self.get_run_info()
+
+        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
+            artifact_path = self.set_run_info(run)
+            logs_path = os.path.join(artifact_path, 'logs')
+
+            def save_content(info_type, content, metric=False, json_content=False):
+                if content is not None:
+                    artifact = os.path.join(logs_path, f"{info_type}.log")
+
+                    if metric:
+                        sufix = '_'.join(info_type.split('_')[1:])
+                        sufix = f"_{sufix}" if sufix else ''
+                        mlflow.log_metrics({f"test_{k}{sufix}": content[k] for k in content})
+
+                    if json_content:
+                        content = json.dumps(metrics, indent=4)
+
+                    with open(artifact, 'w') as f:
+                        f.write(f"{content}".strip())
+
+            save_content('dataset', dataset)
+            save_content('augmentor', augmentor)
+            save_content('model', self.model)
+            save_content('metrics', metrics, metric=True, json_content=True)
+            save_content('metrics_spelling', spelling_metrics, metric=True, json_content=True)
+            save_content('evaluations', evaluations, json_content=True)
+            save_content('evaluations_spelling', spelling_evaluations, json_content=True)
 
     @staticmethod
     def get_tokenizer(synthesis=None,
