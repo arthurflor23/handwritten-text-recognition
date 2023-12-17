@@ -3,7 +3,6 @@ import mlflow
 import pickle
 import datetime
 import importlib
-import numpy as np
 import tensorflow as tf
 
 from models.components.callbacks import GANMonitor
@@ -35,6 +34,7 @@ class Graphite():
         self.experiment_name = experiment_name
 
         self.model = None
+        self.spell_checker = None
 
         self._mlflow_run = None
         self._synthesis_module = None
@@ -137,12 +137,57 @@ class Graphite():
 
         self.model.compile(learning_rate=learning_rate)
 
+    def get_run_info(self):
+        """
+        Get information about the current MLflow run.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the run ID, run name and artifacts path.
+        """
+
+        run_id = None
+        run_name = str(datetime.datetime.now())
+        artifact_path = None
+
+        if self._mlflow_run is not None:
+            run_id = self._mlflow_run.info.run_id
+            run_name = self._mlflow_run.info.run_name
+
+            artifact_uri = os.path.join(self._mlflow_run.info.artifact_uri, 'artifacts')
+            artifact_path = artifact_uri.replace('file://', '')
+
+        return run_id, run_name, artifact_path
+
+    def set_run_info(self, run=None):
+        """
+        Set the MLflow run information.
+
+        Parameters
+        ----------
+        run : MLflow Run, optional
+            MLflow Run object to set as the current run.
+
+        Returns
+        -------
+        str
+            The artifacts path.
+        """
+
+        if run is not None:
+            self._mlflow_run = run
+
+        _, _, artifact_path = self.get_run_info()
+
+        return artifact_path
+
     def fit(self,
-            training_data,
+            training_gen,
             training_steps=None,
-            validation_data=None,
+            validation_gen=None,
             validation_steps=None,
-            monitor_samples_data=None,
+            monitor_samples_gen=None,
             monitor_samples_steps=None,
             plateau_factor=0.1,
             plateau_cooldown=0,
@@ -154,15 +199,15 @@ class Graphite():
 
         Parameters
         ----------
-        training_data : generator
+        training_gen : generator
             Generator yielding training data batches.
         training_steps : int, optional
             Number of steps per training epoch.
-        validation_data : generator, optional
+        validation_gen : generator, optional
             Generator yielding validation data batches.
         validation_steps : int, optional
             Number of steps per validation run.
-        monitor_samples_data : generator, optional
+        monitor_samples_gen : generator, optional
             Generator yielding samples data batches.
         monitor_samples_steps : int, optional
             Number of steps per sample run.
@@ -184,10 +229,7 @@ class Graphite():
         """
 
         with mlflow.start_run(run_name=str(datetime.datetime.now())) as run:
-            self._mlflow_run = run
-
-            artifact_uri = os.path.join(run.info.artifact_uri, 'artifacts')
-            artifact_path = artifact_uri.replace('file://', '')
+            artifact_path = self.set_run_info(run)
 
             logs_path = os.path.join(artifact_path, 'logs')
             os.makedirs(logs_path, exist_ok=True)
@@ -248,22 +290,22 @@ class Graphite():
 
                 callbacks.extend([
                     GANMonitor(filepath=samples_path,
-                               sample_data=monitor_samples_data,
+                               sample_gen=monitor_samples_gen,
                                sample_steps=monitor_samples_steps,
                                latent_dim=self.model.generator.latent_dim,
                                monitor=self.model.monitor),
                 ])
 
             mlflow.set_tags({
-                'mlflow.module': f"{self._synthesis_module}:{self._recognition_module}",
+                'graphite.module': f"{self._synthesis_module}:{self._recognition_module}",
             })
 
             with open(os.path.join(artifact_path, 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
 
-            history = self.model.fit(x=training_data,
+            history = self.model.fit(x=training_gen,
                                      steps_per_epoch=training_steps,
-                                     validation_data=validation_data,
+                                     validation_gen=validation_gen,
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
                                      epochs=(epochs or 1000000),
@@ -272,31 +314,80 @@ class Graphite():
         return history
 
     def predict(self,
-                test_data,
+                test_gen,
                 test_steps,
                 top_paths=1,
                 beam_width=30,
                 ctc_decode=True,
                 token_decode=True):
         """
+        Make predictions on test data with optional CTC decoding and spelling correction.
+
+        Parameters
+        ----------
+        test_gen : tf.data.Dataset
+            Test data for predictions.
+        test_steps : int
+            Number of steps for prediction.
+        top_paths : int, optional
+            Number of top paths for CTC decoding.
+        beam_width : int, optional
+            Beam width for CTC decoding.
+        ctc_decode : bool, optional
+            Perform CTC decoding on predictions.
+        token_decode : bool, optional
+            Decode tokens during CTC decoding.
+
+        Returns
+        -------
+        tuple
+            Predictions, corrections, and probabilities (if CTC decoding is used).
         """
 
-        run_id = None
-        run_name = str(datetime.datetime.now())
+        predictions = self.model.predict(x=test_gen, steps=test_steps, verbose=1)
+        corrections, probabilities = None, None
 
-        if self._mlflow_run is not None:
-            run_id = self._mlflow_run.info.run_id
-            run_name = self._mlflow_run.info.run_name
+        if ctc_decode:
+            tokenizer = self.tokenizer if token_decode else None
+            predictions, probabilities = self.model.ctc_decode(predictions=predictions,
+                                                               top_paths=top_paths,
+                                                               beam_width=beam_width,
+                                                               tokenizer=tokenizer,
+                                                               verbose=1)
 
-        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
-            self._mlflow_run = run
+            corrections = self.spell_checker.predict(predictions) \
+                if not token_decode or self.spell_checker is None else predictions
 
-            predictions = self.model.predict(x=test_data, steps=test_steps, verbose=1)
-            # predictions, probabilities = np.log(predictions + 1e-7), np.array([])
+        return predictions, corrections, probabilities
 
-            print('#########################')
-            print(predictions)
-            print('#########################')
+    def evaluate(self,
+                 label_gen,
+                 label_steps,
+                 predictions):
+        """
+        Evaluate CTC predictions on the given labeled data.
+
+        Parameters
+        ----------
+        label_gen : Dataset generator
+            Labeled data for evaluation.
+        label_steps : int
+            Number of steps for evaluation.
+        predictions : np.ndarray
+            Predictions to be evaluated.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        metrics, evaluations = self.model.ctc_evaluate(x=label_gen,
+                                                       steps=label_steps,
+                                                       predictions=predictions,
+                                                       verbose=1)
+
+        return metrics, evaluations
 
     @staticmethod
     def get_tokenizer(synthesis=None,
@@ -332,7 +423,7 @@ class Graphite():
 
             experiment = mlflow.set_experiment(experiment_name)
             experiment_ids = [experiment.experiment_id]
-            filter_string = f"status='FINISHED' AND tag.mlflow.module LIKE '%{label}%'"
+            filter_string = f"status='FINISHED' AND tag.graphite.module LIKE '%{label}%'"
 
             df = mlflow.search_runs(experiment_ids=experiment_ids,
                                     filter_string=filter_string,
