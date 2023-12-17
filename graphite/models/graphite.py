@@ -138,7 +138,11 @@ class Graphite():
             MLFlow Run entity.
         """
 
-        # if mlrun is not None:
+        if mlrun is not None:
+            artifact_path = mlrun.info.artifact_uri.replace('file://', '')
+            artifact_path = os.path.join(artifact_path, '<model>.h5')
+
+            self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=False)
 
         self.model.compile(learning_rate=learning_rate)
 
@@ -159,9 +163,7 @@ class Graphite():
         if self._mlrun is not None:
             run_id = self._mlrun.info.run_id
             run_name = self._mlrun.info.run_name
-
-            artifact_uri = os.path.join(self._mlrun.info.artifact_uri, 'artifacts')
-            artifact_path = artifact_uri.replace('file://', '')
+            artifact_path = self._mlrun.info.artifact_uri.replace('file://', '')
 
         return run_id, run_name, artifact_path
 
@@ -446,7 +448,7 @@ class Graphite():
                         mlflow.log_metrics({f"test_{k}{sufix}": content[k] for k in content})
 
                     if json_content:
-                        content = json.dumps(metrics, indent=4)
+                        content = json.dumps(content, indent=4)
 
                     with open(artifact, 'w') as f:
                         f.write(f"{content}".strip())
@@ -500,12 +502,13 @@ class Graphite():
 
                 if not df.empty and run_index < len(df):
                     mlrun = mlflow.get_run(df.iloc[run_index]['run_id'])
-                    return mlrun.info.artifact_uri.replace('file://', ''), mlrun
+                    artifact_path = mlrun.info.artifact_uri.replace('file://', '')
+                    return mlrun, artifact_path
 
             return None, None
 
-        s_path, s_mlrun = get_artifacts_path('synthesis', synthesis, synthesis_index)
-        r_path, r_mlrun = get_artifacts_path('recognition', recognition, recognition_index)
+        s_mlrun, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
+        r_mlrun, r_path = get_artifacts_path('recognition', recognition, recognition_index)
 
         tokenizer = None
         mlrun = s_mlrun or r_mlrun
