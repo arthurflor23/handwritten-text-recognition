@@ -35,30 +35,30 @@ class Graphite():
         self.experiment_name = experiment_name
 
         self.model = None
-        self.spell_checker = None
+        self.spelling_model = None
 
-        self._mlflow_run = None
-        self._mlflow_synthesis = None
-        self._mlflow_recognition = None
+        self._mlrun = None
+        self._mlrun_synthesis = None
+        self._mlrun_recognition = None
 
         if workflow is not None:
             mlflow.set_experiment(experiment_name)
 
             if 'synthesis' in workflow:
-                self._mlflow_synthesis = str(synthesis)
+                self._mlrun_synthesis = str(synthesis)
 
             if 'recognition' in workflow:
-                self._mlflow_recognition = str(recognition)
+                self._mlrun_recognition = str(recognition)
 
             SynthesisModel = None
             SynthesisRecognitionModel = None
 
-            if self._mlflow_synthesis:
-                module = f"synthesis.{self._mlflow_synthesis}"
+            if self._mlrun_synthesis:
+                module = f"synthesis.{self._mlrun_synthesis}"
                 SynthesisModel = self._import_model(module, 'SynthesisModel')
 
-            if self._mlflow_recognition:
-                module = f"recognition.{self._mlflow_recognition}"
+            if self._mlrun_recognition:
+                module = f"recognition.{self._mlrun_recognition}"
                 SynthesisRecognitionModel = self._import_model(module, 'SynthesisRecognitionModel')
 
             if SynthesisModel and not SynthesisRecognitionModel:
@@ -126,7 +126,7 @@ class Graphite():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=0.001):
+    def compile(self, learning_rate=0.001, mlrun=None):
         """
         Compile the models.
 
@@ -134,7 +134,11 @@ class Graphite():
         ----------
         learning_rate : float, optional
             The learning rate for the optimizer.
+        mlrun : mlflow.entities.Run object, optional
+            MLFlow Run entity.
         """
+
+        # if mlrun is not None:
 
         self.model.compile(learning_rate=learning_rate)
 
@@ -152,11 +156,11 @@ class Graphite():
         run_name = str(datetime.datetime.now())
         artifact_path = None
 
-        if self._mlflow_run is not None:
-            run_id = self._mlflow_run.info.run_id
-            run_name = self._mlflow_run.info.run_name
+        if self._mlrun is not None:
+            run_id = self._mlrun.info.run_id
+            run_name = self._mlrun.info.run_name
 
-            artifact_uri = os.path.join(self._mlflow_run.info.artifact_uri, 'artifacts')
+            artifact_uri = os.path.join(self._mlrun.info.artifact_uri, 'artifacts')
             artifact_path = artifact_uri.replace('file://', '')
 
         return run_id, run_name, artifact_path
@@ -177,7 +181,7 @@ class Graphite():
         """
 
         if run is not None:
-            self._mlflow_run = run
+            self._mlrun = run
 
         _, _, artifact_path = self.get_run_info()
 
@@ -245,7 +249,7 @@ class Graphite():
                     append=True,
                 ),
                 tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(artifact_path, '<model>.keras'),
+                    filepath=os.path.join(artifact_path, '<model>.h5'),
                     mode='min',
                     monitor=self.model.monitor,
                     save_freq='epoch',
@@ -297,8 +301,8 @@ class Graphite():
                                monitor=self.model.monitor),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': self._mlflow_synthesis})
-            mlflow.set_tags({'graphite.recognition': self._mlflow_recognition})
+            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
+            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
 
             with open(os.path.join(artifact_path, 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -362,8 +366,8 @@ class Graphite():
                                                                tokenizer=tokenizer,
                                                                verbose=1)
 
-            corrections = self.spell_checker.predict(predictions) \
-                if token_decode and self.spell_checker is not None else predictions
+            corrections = self.spelling_model.predict(predictions) \
+                if token_decode and self.spelling_model is not None else predictions
 
         return predictions, corrections, probabilities
 
@@ -478,41 +482,49 @@ class Graphite():
         Returns
         -------
         tuple
-            (tokenizer, artifacts_path) or (None, None) if not found.
+            (tokenizer, mlrun) or (None, None) if not found.
         """
 
         def get_artifacts_path(tag_name, tag_value, run_index):
-            if run_index is None:
-                return None
+            if run_index is not None:
+                experiment = mlflow.set_experiment(experiment_name)
+                experiment_ids = [experiment.experiment_id]
 
-            experiment = mlflow.set_experiment(experiment_name)
-            experiment_ids = [experiment.experiment_id]
+                filter_string = f"status='FINISHED' AND tag.graphite.{tag_name}='{tag_value}'"
 
-            filter_string = f"status='FINISHED' AND tag.graphite.{tag_name}='{tag_value}'"
+                df = mlflow.search_runs(experiment_ids=experiment_ids,
+                                        filter_string=filter_string,
+                                        order_by=['tags.mlflow.runName ASC'])
 
-            df = mlflow.search_runs(experiment_ids=experiment_ids,
-                                    filter_string=filter_string,
-                                    order_by=['tags.mlflow.runName ASC'])
+                if not df.empty and run_index < len(df):
+                    mlrun = mlflow.get_run(df.iloc[run_index]['run_id'])
+                    return mlrun.info.artifact_uri.replace('file://', ''), mlrun
 
-            if not df.empty:
-                run_context = mlflow.get_run(df.iloc[run_index]['run_id'])
-                artifacts_uri = os.path.join(run_context.info.artifact_uri, 'artifacts')
-                artifacts_path = artifacts_uri.replace('file://', '')
-                return artifacts_path if os.path.isdir(artifacts_path) else None
+            return None, None
 
-            return None
+        s_path, s_mlrun = get_artifacts_path('synthesis', synthesis, synthesis_index)
+        r_path, r_mlrun = get_artifacts_path('recognition', recognition, recognition_index)
 
-        synthesis_uri = get_artifacts_path('synthesis', synthesis, synthesis_index)
-        recognition_uri = get_artifacts_path('recognition', recognition, recognition_index)
-
-        artifacts_path = (synthesis_uri or recognition_uri)
         tokenizer = None
+        mlrun = s_mlrun or r_mlrun
+        artifacts_path = s_path or r_path
 
-        if artifacts_path and os.path.isdir(artifacts_path):
+        if artifacts_path:
             tokenizer_uri = os.path.join(artifacts_path, 'tokenizer.pkl')
 
             if os.path.isfile(tokenizer_uri):
-                with open(tokenizer_uri, 'rb') as f:
-                    tokenizer = pickle.load(f)
+                try:
+                    with open(tokenizer_uri, 'rb') as f:
+                        tokenizer = pickle.load(f)
+                except Exception as e:
+                    print(f"Error loading tokenizer: {e}")
 
-        return tokenizer, artifacts_path
+        if mlrun:
+            print('==================================================')
+            print(f"{'Loading Mlrun'.center(50)}")
+            print('--------------------------------------------------')
+            print(f"{'experiment_id':<{25}}: {mlrun.info.experiment_id[:23]}")
+            print(f"{'run_id':<{25}}: {mlrun.info.run_id[:23]}")
+            print(f"{'run_name':<{25}}: {mlrun.info.run_name[:23]}")
+
+        return tokenizer, mlrun
