@@ -139,55 +139,49 @@ class Graphite():
         """
 
         if mlrun is not None:
-            artifact_path = self.set_run_info(mlrun)
-            artifact_path = os.path.join(artifact_path, '<model>.h5')
+            run_info = self.get_run_info(mlrun=mlrun)
+            artifact_path = os.path.join(run_info['artifact_path'], '<model>.h5')
 
             self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=False)
 
         self.model.compile(learning_rate=learning_rate)
 
-    def get_run_info(self):
+    def get_run_info(self, mlrun=None, create=False):
         """
         Get information about the current MLflow run.
 
+        Parameters
+        ----------
+        run : MLflow Run, optional
+            MLflow Run object to set as the current run.
+        create : bool, optional
+            Create a new mlrun.
+
         Returns
         -------
-        tuple
-            A tuple containing the run ID, run name and artifacts path.
+        dict
+            A dict containing the run ID, run name and artifacts path.
         """
 
         run_id = None
         run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         artifact_path = None
 
-        if self._mlrun is not None:
+        if mlrun is not None:
+            self._mlrun = mlrun
+
+        if self._mlrun is not None and not create:
             run_id = self._mlrun.info.run_id
             run_name = self._mlrun.info.run_name
             artifact_path = self._mlrun.info.artifact_uri.replace('file://', '')
 
-        return run_id, run_name, artifact_path
+        run_info = {
+            'id': run_id,
+            'name': run_name,
+            'artifact_path': artifact_path,
+        }
 
-    def set_run_info(self, run=None):
-        """
-        Set the MLflow run information.
-
-        Parameters
-        ----------
-        run : MLflow Run, optional
-            MLflow Run object to set as the current run.
-
-        Returns
-        -------
-        str
-            The artifacts path.
-        """
-
-        if run is not None:
-            self._mlrun = run
-
-        _, _, artifact_path = self.get_run_info()
-
-        return artifact_path
+        return run_info
 
     def fit(self,
             training_gen,
@@ -235,15 +229,15 @@ class Graphite():
             Training and validation progress details.
         """
 
-        run_id, run_name, _ = self.get_run_info()
+        run_info = self.get_run_info(create=True)
 
-        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
-            artifact_path = self.set_run_info(run)
+        with mlflow.start_run(run_name=run_info['name']) as run:
+            run_info = self.get_run_info(mlrun=run)
 
-            logs_path = os.path.join(artifact_path, 'logs')
+            logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
 
-            tensorboard_path = os.path.join(artifact_path, 'tensorboard')
+            tensorboard_path = os.path.join(run_info['artifact_path'], 'tensorboard')
             os.makedirs(tensorboard_path, exist_ok=True)
 
             callbacks = [
@@ -253,7 +247,7 @@ class Graphite():
                     append=True,
                 ),
                 tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(artifact_path, '<model>.h5'),
+                    filepath=os.path.join(run_info['artifact_path'], '<model>.h5'),
                     mode='min',
                     monitor=self.model.monitor,
                     save_freq='epoch',
@@ -294,7 +288,7 @@ class Graphite():
             ]
 
             if 'synthesis' in self.workflow:
-                samples_path = os.path.join(artifact_path, 'samples')
+                samples_path = os.path.join(run_info['artifact_path'], 'samples')
                 os.makedirs(samples_path, exist_ok=True)
 
                 callbacks.extend([
@@ -308,7 +302,7 @@ class Graphite():
             mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
             mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
 
-            with open(os.path.join(artifact_path, 'tokenizer.pkl'), 'wb') as f:
+            with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
 
             history = self.model.fit(x=training_gen,
@@ -430,12 +424,12 @@ class Graphite():
             Spelling evaluations.
         """
 
-        run_id, run_name, _ = self.get_run_info()
+        run_info = self.get_run_info()
 
-        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
-            artifact_path = self.set_run_info(run)
+        with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
+            run_info = self.get_run_info(mlrun=run)
 
-            logs_path = os.path.join(artifact_path, 'logs')
+            logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
 
             def save_content(name, content, metric=False, json_content=False):
