@@ -1,3 +1,4 @@
+import os
 import re
 import string
 import random
@@ -107,9 +108,10 @@ class BaseModel(tf.keras.Model):
 
         for name in self.names:
             model = getattr(self, name, None)
+            filepath = filepath.replace('<model>', name)
 
             if model is not None:
-                model.save_weights(filepath=filepath.replace('<model>', name),
+                model.save_weights(filepath=filepath,
                                    overwrite=overwrite,
                                    save_format=save_format,
                                    options=options)
@@ -132,9 +134,10 @@ class BaseModel(tf.keras.Model):
 
         for name in self.names:
             model = getattr(self, name, None)
+            filepath = filepath.replace('<model>', name)
 
-            if model is not None:
-                model.load_weights(filepath=filepath.replace('<model>', name),
+            if model is not None and os.path.isfile(filepath):
+                model.load_weights(filepath=filepath,
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch,
                                    options=options)
