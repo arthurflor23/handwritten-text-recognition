@@ -11,6 +11,8 @@ from models.components.callbacks import GANMonitor
 
 class Graphite():
     """
+    Graphite is a configurable model framework for synthesis and recognition tasks,
+        integrating various components and supporting MLflow experimentation.
     """
 
     def __init__(self,
@@ -23,6 +25,26 @@ class Graphite():
                  synthesis_ratio=1.0,
                  experiment_name='Default'):
         """
+        Initializes the Graphite model with specified components.
+
+        Parameters
+        ----------
+        workflow : str, optional
+            Workflow to be used.
+        synthesis : str, optional
+            Identifier for the synthesis model to be used.
+        recognition : str, optional
+            Identifier for the recognition model to be used.
+        spelling : str, optional
+            Identifier for the spelling correction model to be used.
+        image_shape : tuple, optional
+            Shape of the input images.
+        tokenizer : Tokenizer, optional
+            Tokenizer for processing text data.
+        synthesis_ratio : float, optional
+            Ratio determining the synthesis influence.
+        experiment_name : str, optional
+            Name of the MLflow experiment.
         """
 
         self.workflow = workflow
