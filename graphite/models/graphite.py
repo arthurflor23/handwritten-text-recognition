@@ -332,8 +332,13 @@ class Graphite():
                                      epochs=(epochs or 1000000),
                                      verbose=1)
 
-            min_monitor_value = min(history.history[self.model.monitor])
-            best_monitor_index = history.history[self.model.monitor].index(min_monitor_value)
+            monitor = self.model.monitor
+
+            if self.model.monitor not in history.history:
+                monitor = self.model.monitor.replace('val_', '')
+
+            min_monitor_value = min(history.history[monitor])
+            best_monitor_index = history.history[monitor].index(min_monitor_value)
 
             metrics = {k: history.history[k][best_monitor_index] for k in history.history if k != 'lr'}
 
@@ -383,6 +388,9 @@ class Graphite():
             Predictions, corrections, and probabilities (if CTC decoding is used).
         """
 
+        if test_gen is None:
+            return None, None, None
+
         predictions = self.model.predict(x=test_gen, steps=test_steps, verbose=1)
         corrections, probabilities = None, None
 
@@ -421,6 +429,9 @@ class Graphite():
         tuple
             Metrics and evaluations.
         """
+
+        if label_gen is None:
+            return None, None
 
         metrics, evaluations = self.model.ctc_evaluate(x=label_gen,
                                                        steps=label_steps,
