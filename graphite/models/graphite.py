@@ -288,16 +288,19 @@ class Graphite():
             ]
 
             if 'synthesis' in self.workflow:
-                samples_path = os.path.join(run_info['artifact_path'], 'samples')
-                os.makedirs(samples_path, exist_ok=True)
+                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis')
+                os.makedirs(synthesis_path, exist_ok=True)
 
                 callbacks.extend([
-                    GANMonitor(filepath=samples_path,
+                    GANMonitor(filepath=synthesis_path,
                                sample_gen=monitor_samples_gen,
                                sample_steps=monitor_samples_steps,
                                latent_dim=self.model.generator.latent_dim,
                                monitor=self.model.monitor),
                 ])
+
+            with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
+                pickle.dump(self.tokenizer, f)
 
             history = self.model.fit(x=training_gen,
                                      steps_per_epoch=training_steps,
@@ -324,9 +327,6 @@ class Graphite():
 
         self.save_context(metrics=train_metrics, prefix='train')
         self.save_context(metrics=valid_metrics, prefix='valid')
-
-        with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
-            pickle.dump(self.tokenizer, f)
 
         return history
 
