@@ -73,21 +73,21 @@ class Graphite():
                 self._mlrun_recognition = str(recognition)
 
             SynthesisModel = None
-            SynthesisRecognitionModel = None
+            RecognitionModel = None
 
             if self._mlrun_synthesis:
                 module = f"synthesis.{self._mlrun_synthesis}"
-                SynthesisModel = self._import_model(module, 'SynthesisModel')
+                SynthesisModel = self._import_model(module=module, class_name='SynthesisModel')
 
             if self._mlrun_recognition:
                 module = f"recognition.{self._mlrun_recognition}"
-                SynthesisRecognitionModel = self._import_model(module, 'SynthesisRecognitionModel')
+                RecognitionModel = self._import_model(module=module, class_name='RecognitionModel')
 
-            if SynthesisModel and not SynthesisRecognitionModel:
+            if SynthesisModel and not RecognitionModel:
                 self.model = SynthesisModel(image_shape=self.image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
                                             writers_shape=self.tokenizer.writers_shape)
-            elif SynthesisRecognitionModel:
+            elif RecognitionModel:
                 synthesis_params = {}
 
                 if SynthesisModel:
@@ -101,9 +101,9 @@ class Graphite():
                         'synthesis_ratio': self.synthesis_ratio,
                     }
 
-                self.model = SynthesisRecognitionModel(image_shape=self.image_shape,
-                                                       lexical_shape=self.tokenizer.lexical_shape,
-                                                       **synthesis_params)
+                self.model = RecognitionModel(image_shape=self.image_shape,
+                                              lexical_shape=self.tokenizer.lexical_shape,
+                                              **synthesis_params)
 
     def __repr__(self):
         """
