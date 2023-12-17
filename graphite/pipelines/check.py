@@ -45,32 +45,32 @@ def check(args):
                                              samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=None,
-                                             use_source=True,
                                              prepare_batch=False,
+                                             use_source=True,
                                              shuffle=False)
 
     enc_generator, _ = dataset.get_generator(partition='training',
                                              samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=None,
-                                             use_source=False,
                                              prepare_batch=False,
+                                             use_source=False,
                                              shuffle=False)
 
     aug_generator, _ = dataset.get_generator(partition='training',
                                              samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
-                                             use_source=False,
                                              prepare_batch=False,
+                                             use_source=False,
                                              shuffle=False)
 
     inp_generator, _ = dataset.get_generator(partition='training',
                                              samples=100,
                                              batch_size=args.batch_size,
                                              augmentor=augmentor,
-                                             use_source=False,
                                              prepare_batch=True,
+                                             use_source=False,
                                              shuffle=False)
 
     if args.check:
