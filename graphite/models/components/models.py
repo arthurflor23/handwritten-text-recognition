@@ -190,7 +190,7 @@ class SynthesisBaseModel(BaseModel):
             'recognition',
         ]
 
-        self.monitor = 'kernel_inception_distance'
+        self.monitor = 'kid'
         self.build_model()
 
     def get_config(self):
@@ -359,7 +359,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
             'recognition',
         ]
 
-        self.monitor = 'val_edit_distance'
+        self.monitor = 'val_cer'
         self.build_model()
 
     def get_config(self):
@@ -467,8 +467,8 @@ class SynthesisRecognitionBaseModel(BaseModel):
         self.edit_distance.update_state(y_data, ctc_logits)
 
         return {
-            'ctc_loss': ctc_loss,
-            'edit_distance': self.edit_distance.result(),
+            self.ctc_loss.name: ctc_loss,
+            self.edit_distance.name: self.edit_distance.result(),
         }
 
     def call(self, x_data, training=None):
@@ -578,7 +578,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
         batch_index = 0
 
-        metrics = {'character_error_rate': [], 'word_error_rate': []}
+        metrics = {'cer': [], 'wer': []}
         evaluations = []
 
         for i in range(steps):
@@ -604,8 +604,8 @@ class SynthesisRecognitionBaseModel(BaseModel):
                     distance = editdistance.eval(true_label.split(), top_path.split())
                     word_error_rate = distance / max(len(true_label.split()), len(top_path.split()))
 
-                    metrics['character_error_rate'].append(character_error_rate)
-                    metrics['word_error_rate'].append(word_error_rate)
+                    metrics['cer'].append(character_error_rate)
+                    metrics['wer'].append(word_error_rate)
 
                     local_evaluation['top_paths'].append(top_path)
 
@@ -614,6 +614,6 @@ class SynthesisRecognitionBaseModel(BaseModel):
             batch_index += batch_size
             progbar.update(i + 1)
 
-        metrics = {key: np.mean(metrics[key]) for key in metrics}
+        metrics = {k: np.mean(metrics[k]) for k in metrics}
 
         return metrics, evaluations

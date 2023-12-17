@@ -11,7 +11,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=15, epsilon=1e-8, name='edit_distance', **kwargs):
+    def __init__(self, beam_width=15, epsilon=1e-8, name='cer', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
@@ -123,7 +123,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
-    def __init__(self, name='kernel_inception_distance', **kwargs):
+    def __init__(self, name='kid', **kwargs):
         """
         Initialize the KID metric instance.
 
