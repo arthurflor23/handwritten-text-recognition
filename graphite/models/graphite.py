@@ -139,7 +139,7 @@ class Graphite():
         """
 
         if mlrun is not None:
-            artifact_path = mlrun.info.artifact_uri.replace('file://', '')
+            artifact_path = self.set_run_info(mlrun)
             artifact_path = os.path.join(artifact_path, '<model>.h5')
 
             self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=False)
