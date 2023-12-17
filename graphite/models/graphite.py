@@ -38,28 +38,28 @@ class Graphite():
         self.spell_checker = None
 
         self._mlflow_run = None
-        self._synthesis_module = None
-        self._recognition_module = None
+        self._mlflow_synthesis = None
+        self._mlflow_recognition = None
 
         if workflow is not None:
+            mlflow.set_experiment(experiment_name)
+
             if 'synthesis' in workflow:
-                self._synthesis_module = f"synthesis.{synthesis}"
+                self._mlflow_synthesis = str(synthesis)
 
             if 'recognition' in workflow:
-                self._recognition_module = f"recognition.{recognition}"
-
-            mlflow.set_experiment(experiment_name)
+                self._mlflow_recognition = str(recognition)
 
             SynthesisModel = None
             SynthesisRecognitionModel = None
 
-            if self._synthesis_module:
-                SynthesisModel = self._import_model(module=self._synthesis_module,
-                                                    class_name='SynthesisModel')
+            if self._mlflow_synthesis:
+                module = f"synthesis.{self._mlflow_synthesis}"
+                SynthesisModel = self._import_model(module, 'SynthesisModel')
 
-            if self._recognition_module:
-                SynthesisRecognitionModel = self._import_model(module=self._recognition_module,
-                                                               class_name='SynthesisRecognitionModel')
+            if self._mlflow_recognition:
+                module = f"recognition.{self._mlflow_recognition}"
+                SynthesisRecognitionModel = self._import_model(module, 'SynthesisRecognitionModel')
 
             if SynthesisModel and not SynthesisRecognitionModel:
                 self.model = SynthesisModel(image_shape=self.image_shape,
@@ -285,7 +285,7 @@ class Graphite():
                 ),
             ]
 
-            if self._synthesis_module:
+            if 'synthesis' in self.workflow:
                 samples_path = os.path.join(artifact_path, 'samples')
                 os.makedirs(samples_path, exist_ok=True)
 
@@ -297,9 +297,8 @@ class Graphite():
                                monitor=self.model.monitor),
                 ])
 
-            mlflow.set_tags({
-                'graphite.module': f"{self._synthesis_module}:{self._recognition_module}",
-            })
+            mlflow.set_tags({'graphite.synthesis': self._mlflow_synthesis})
+            mlflow.set_tags({'graphite.recognition': self._mlflow_recognition})
 
             with open(os.path.join(artifact_path, 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -427,7 +426,9 @@ class Graphite():
 
         with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
             artifact_path = self.set_run_info(run)
+
             logs_path = os.path.join(artifact_path, 'logs')
+            os.makedirs(logs_path, exist_ok=True)
 
             def save_content(name, content, metric=False, json_content=False):
                 if content is not None:
@@ -480,13 +481,14 @@ class Graphite():
             (tokenizer, artifacts_path) or (None, None) if not found.
         """
 
-        def get_artifacts_path(label, run_index):
+        def get_artifacts_path(tag_name, tag_value, run_index):
             if run_index is None:
                 return None
 
             experiment = mlflow.set_experiment(experiment_name)
             experiment_ids = [experiment.experiment_id]
-            filter_string = f"status='FINISHED' AND tag.graphite.module LIKE '%{label}%'"
+
+            filter_string = f"status='FINISHED' AND tag.graphite.{tag_name}='{tag_value}'"
 
             df = mlflow.search_runs(experiment_ids=experiment_ids,
                                     filter_string=filter_string,
@@ -497,10 +499,11 @@ class Graphite():
                 artifacts_uri = os.path.join(run_context.info.artifact_uri, 'artifacts')
                 artifacts_path = artifacts_uri.replace('file://', '')
                 return artifacts_path if os.path.isdir(artifacts_path) else None
+
             return None
 
-        synthesis_uri = get_artifacts_path(label=f"synthesis.{synthesis}", run_index=synthesis_index)
-        recognition_uri = get_artifacts_path(label=f"recognition.{recognition}", run_index=recognition_index)
+        synthesis_uri = get_artifacts_path('synthesis', synthesis, synthesis_index)
+        recognition_uri = get_artifacts_path('recognition', recognition, recognition_index)
 
         artifacts_path = (synthesis_uri or recognition_uri)
         tokenizer = None
