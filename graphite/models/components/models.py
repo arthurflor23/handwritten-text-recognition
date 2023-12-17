@@ -527,41 +527,52 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
-        predictions = np.log(x + 1e-8)
-        batch_size = predictions.shape[0] // steps
+        beam_width = max(top_paths, beam_width)
+        batch_size = int(np.ceil(x.shape[0] / steps))
 
-        decoded_paths, probabilities_list = [], []
+        predictions, probabilities = [], []
 
-        for i in range(steps):
-            progbar.update(i)
+        for step in range(steps):
+            progbar.update(step)
 
-            y_pred = predictions[i * batch_size: (i + 1) * batch_size]
-            sequence_length = [y_pred.shape[2]] * y_pred.shape[0]
+            start = step * batch_size
+            end = start + batch_size
 
-            for j in range(y_pred.shape[1]):
-                inputs = tf.transpose(y_pred[:, j, :, :], perm=[1, 0, 2])
+            batch_x = x[start:end, :, :, :]
+            batch_x = np.log(batch_x + 1e-8)
+
+            top_path_decoded, top_path_probabilities = [], []
+            sequence_length = [batch_x.shape[2]] * batch_x.shape[0]
+
+            for i in range(batch_x.shape[1]):
+                inputs = tf.transpose(batch_x[:, i, :, :], perm=[1, 0, 2])
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
-                                                                           top_paths=top_paths)
+                                                                           top_paths=2)
 
                 decoded_pads = []
-                for k in range(len(decoded)):
-                    sparse_decoded = tf.sparse.to_dense(decoded[k], default_value=-1)
-                    paddings = [[0, 0], [0, y_pred.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                for j in range(len(decoded)):
+                    sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
+                    paddings = [[0, 0], [0, batch_x.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
                     decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
 
-                decoded_paths.append(decoded_pads)
-                probabilities_list.append(tf.exp(log_probabilities))
+                top_path_decoded.append(decoded_pads)
+                top_path_probabilities.append(tf.exp(log_probabilities))
 
-            progbar.update(i + 1)
+            batch_decoded = np.transpose(tf.stack(top_path_decoded, axis=1), (2, 0, 1, 3))
+            batch_probabilities = np.transpose(tf.stack(top_path_probabilities, axis=1), (0, 2, 1))
 
-        predictions = np.transpose(tf.stack(decoded_paths, axis=1), (2, 0, 1, 3))
-        probabilities = np.transpose(tf.stack(probabilities_list, axis=1), (0, 2, 1))
+            if tokenizer is not None:
+                batch_decoded = [[tokenizer.decode_text(top_path) for top_path in x] for x in batch_decoded]
 
-        if tokenizer is not None:
-            predictions = np.array([[tokenizer.decode_text(top_path) for top_path in item]
-                                    for item in predictions], dtype=object)
+            predictions.append(batch_decoded)
+            probabilities.append(batch_probabilities)
+
+            progbar.update(step + 1)
+
+        predictions = np.concatenate(predictions, axis=0)
+        probabilities = np.concatenate(probabilities, axis=0)
 
         return predictions, probabilities
 
@@ -595,18 +606,20 @@ class SynthesisRecognitionBaseModel(BaseModel):
         metrics = {'cer': [], 'wer': []}
         evaluations = []
 
-        for i in range(steps):
-            progbar.update(i)
+        for step in range(steps):
+            progbar.update(step)
 
             _, y_true = next(x)
             batch_size = len(y_true)
 
-            y_pred = predictions[i * batch_size: (i + 1) * batch_size]
+            start = step * batch_size
+            end = start + batch_size
+
+            y_pred = predictions[start:end]
+            pattern = f'([{re.escape(string.punctuation)}])'
 
             for true_label, pred_label in zip(y_true, y_pred):
-                pattern = f'([{re.escape(string.punctuation)}])'
                 true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split())
-
                 local_evaluation = {'ground_truth': true_label, 'top_paths': []}
 
                 for _, top_path in enumerate(pred_label):
@@ -625,7 +638,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
                 evaluations.append(local_evaluation)
 
-            progbar.update(i + 1)
+            progbar.update(step + 1)
 
         metrics = {k: np.mean(metrics[k]) for k in metrics}
 
