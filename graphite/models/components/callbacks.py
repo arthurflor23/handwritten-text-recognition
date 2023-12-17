@@ -14,7 +14,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
     def __init__(self,
                  filepath,
-                 sample_data,
+                 sample_gen,
                  sample_steps,
                  latent_dim,
                  monitor):
@@ -25,7 +25,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         ----------
         filepath : str
             Path where images will be saved.
-        sample_data : generator, optional
+        sample_gen : generator, optional
             Generator yielding samples data batches.
         sample_steps : int, optional
             Number of steps per sample run.
@@ -36,7 +36,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         """
 
         self.filepath = filepath
-        self.sample_data = sample_data
+        self.sample_gen = sample_gen
         self.sample_steps = sample_steps
         self.latent_dim = latent_dim
         self.monitor = monitor
@@ -86,7 +86,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
             self.best_value = current_value
 
             for _ in range(self.sample_steps):
-                images, texts = next(self.sample_data)
+                images, texts = next(self.sample_gen)
 
                 # original images
                 self._save_images(epoch, images, name='authentic')
