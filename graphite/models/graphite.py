@@ -3,6 +3,7 @@ import mlflow
 import pickle
 import datetime
 import importlib
+import numpy as np
 import tensorflow as tf
 
 from models.components.callbacks import GANMonitor
@@ -34,24 +35,29 @@ class Graphite():
         self.experiment_name = experiment_name
 
         self.model = None
-        self.synthesis_label = f"synthesis.{synthesis}"
-        self.recognition_label = f"recognition.{recognition}"
 
-        self._is_synthesis = 'synthesis' in workflow if workflow else False
-        self._is_recognition = 'recognition' in workflow if workflow else False
+        self._mlflow_run = None
+        self._synthesis_module = None
+        self._recognition_module = None
 
         if workflow is not None:
-            self.experiment = mlflow.set_experiment(experiment_name)
+            if 'synthesis' in workflow:
+                self._synthesis_module = f"synthesis.{synthesis}"
+
+            if 'recognition' in workflow:
+                self._recognition_module = f"recognition.{recognition}"
+
+            mlflow.set_experiment(experiment_name)
 
             SynthesisModel = None
             SynthesisRecognitionModel = None
 
-            if self._is_synthesis:
-                SynthesisModel = self._import_model(module=self.synthesis_label,
+            if self._synthesis_module:
+                SynthesisModel = self._import_model(module=self._synthesis_module,
                                                     class_name='SynthesisModel')
 
-            if self._is_recognition:
-                SynthesisRecognitionModel = self._import_model(module=self.recognition_label,
+            if self._recognition_module:
+                SynthesisRecognitionModel = self._import_model(module=self._recognition_module,
                                                                class_name='SynthesisRecognitionModel')
 
             if SynthesisModel and not SynthesisRecognitionModel:
@@ -75,10 +81,6 @@ class Graphite():
                 self.model = SynthesisRecognitionModel(image_shape=self.image_shape,
                                                        lexical_shape=self.tokenizer.lexical_shape,
                                                        **synthesis_params)
-
-        # with mlflow.start_run(run_id=None, run_name=str(datetime.datetime.now())) as _:
-        #     mlflow.set_tags({'graphite.label': 'synthesis:gan,recognition:bluche'})
-        # exit()
 
     def __repr__(self):
         """
@@ -125,7 +127,7 @@ class Graphite():
 
     def compile(self, learning_rate=0.001):
         """
-        Configure the submodels for training.
+        Compile the models.
 
         Parameters
         ----------
@@ -181,10 +183,8 @@ class Graphite():
             Training and validation progress details.
         """
 
-        start_time = datetime.datetime.now()
-
-        with mlflow.start_run(run_name=str(start_time)) as run:
-            self.run = run
+        with mlflow.start_run(run_name=str(datetime.datetime.now())) as run:
+            self._mlflow_run = run
 
             artifact_uri = os.path.join(run.info.artifact_uri, 'artifacts')
             artifact_path = artifact_uri.replace('file://', '')
@@ -242,7 +242,7 @@ class Graphite():
                 ),
             ]
 
-            if self._is_synthesis:
+            if self._synthesis_module:
                 samples_path = os.path.join(artifact_path, 'samples')
                 os.makedirs(samples_path, exist_ok=True)
 
@@ -254,15 +254,49 @@ class Graphite():
                                monitor=self.model.monitor),
                 ])
 
+            mlflow.set_tags({
+                'mlflow.module': f"{self._synthesis_module}:{self._recognition_module}",
+            })
+
+            with open(os.path.join(artifact_path, 'tokenizer.pkl'), 'wb') as f:
+                pickle.dump(self.tokenizer, f)
+
             history = self.model.fit(x=training_data,
                                      steps_per_epoch=training_steps,
                                      validation_data=validation_data,
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
-                                     epochs=epochs or int(1e+6),
+                                     epochs=(epochs or 1000000),
                                      verbose=1)
 
         return history
+
+    def predict(self,
+                test_data,
+                test_steps,
+                top_paths=1,
+                beam_width=30,
+                ctc_decode=True,
+                token_decode=True):
+        """
+        """
+
+        run_id = None
+        run_name = str(datetime.datetime.now())
+
+        if self._mlflow_run is not None:
+            run_id = self._mlflow_run.info.run_id
+            run_name = self._mlflow_run.info.run_name
+
+        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
+            self._mlflow_run = run
+
+            predictions = self.model.predict(x=test_data, steps=test_steps, verbose=1)
+            # predictions, probabilities = np.log(predictions + 1e-7), np.array([])
+
+            print('#########################')
+            print(predictions)
+            print('#########################')
 
     @staticmethod
     def get_tokenizer(synthesis=None,
@@ -298,7 +332,7 @@ class Graphite():
 
             experiment = mlflow.set_experiment(experiment_name)
             experiment_ids = [experiment.experiment_id]
-            filter_string = f"status='FINISHED' AND tag.graphite.label LIKE '%{label}%'"
+            filter_string = f"status='FINISHED' AND tag.mlflow.module LIKE '%{label}%'"
 
             df = mlflow.search_runs(experiment_ids=experiment_ids,
                                     filter_string=filter_string,
