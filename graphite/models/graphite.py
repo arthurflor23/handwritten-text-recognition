@@ -153,7 +153,7 @@ class Graphite():
         """
 
         run_id = None
-        run_name = str(datetime.datetime.now())
+        run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         artifact_path = None
 
         if self._mlrun is not None:
@@ -233,7 +233,9 @@ class Graphite():
             Training and validation progress details.
         """
 
-        with mlflow.start_run(run_name=str(datetime.datetime.now())) as run:
+        run_id, run_name, _ = self.get_run_info()
+
+        with mlflow.start_run(run_id=run_id, run_name=run_name) as run:
             artifact_path = self.set_run_info(run)
 
             logs_path = os.path.join(artifact_path, 'logs')
