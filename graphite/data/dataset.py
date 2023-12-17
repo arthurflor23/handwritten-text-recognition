@@ -407,8 +407,8 @@ class Dataset():
                       samples=None,
                       batch_size=8,
                       augmentor=None,
-                      use_source=False,
                       prepare_batch=True,
+                      use_source=False,
                       shuffle=False):
         """
         Generates a batch of samples for the partition.
@@ -423,10 +423,10 @@ class Dataset():
             The number of samples in each batch.
         augmentor : Augmentor, optional
             The Augmentor instance.
-        use_source : bool, optional
-            Specifies whether to generate source or encoded data.
         prepare_batch : bool, optional
             Specifies whether to prepare data for model input.
+        use_source : bool, optional
+            Specifies whether to generate source or encoded data.
         shuffle : bool, optional
             Specifies whether data is shuffled by epoch.
 
