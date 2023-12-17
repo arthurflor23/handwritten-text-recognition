@@ -506,7 +506,7 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
         Parameters
         ----------
-        predictions : numpy.ndarray
+        x : numpy.ndarray
             CTC predictions to be decoded.
         steps : int
             Number of steps for decode.
