@@ -494,7 +494,13 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
         return ctc_logits
 
-    def ctc_decode(self, predictions, top_paths=1, beam_width=30, tokenizer=None, verbose=1):
+    def ctc_decode(self,
+                   x,
+                   steps,
+                   top_paths=1,
+                   beam_width=30,
+                   tokenizer=None,
+                   verbose=1):
         """
         Decode CTC predictions using beam search.
 
@@ -502,6 +508,8 @@ class SynthesisRecognitionBaseModel(BaseModel):
         ----------
         predictions : numpy.ndarray
             CTC predictions to be decoded.
+        steps : int
+            Number of steps for decode.
         top_paths : int
             Number of top paths to consider.
         beam_width : int
@@ -517,31 +525,34 @@ class SynthesisRecognitionBaseModel(BaseModel):
             A tuple containing the decoded predictions and corresponding probabilities.
         """
 
-        predictions, probabilities = np.log(predictions + 1e-8), np.array([])
-        progbar = tf.keras.utils.Progbar(target=predictions.shape[1], unit_name='decode', verbose=verbose)
+        progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
+
+        predictions = np.log(x + 1e-8)
+        batch_size = predictions.shape[0] // steps
 
         decoded_paths, probabilities_list = [], []
-        sequence_length = [predictions.shape[2]] * predictions.shape[0]
 
-        beam_width = max(top_paths, beam_width)
-
-        for i in range(predictions.shape[1]):
+        for i in range(steps):
             progbar.update(i)
 
-            inputs = tf.transpose(predictions[:, i, :, :], perm=[1, 0, 2])
-            decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
-                                                                       sequence_length=sequence_length,
-                                                                       beam_width=beam_width,
-                                                                       top_paths=top_paths)
+            y_pred = predictions[i * batch_size: (i + 1) * batch_size]
+            sequence_length = [y_pred.shape[2]] * y_pred.shape[0]
 
-            decoded_pads = []
-            for j in range(len(decoded)):
-                sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
-                paddings = [[0, 0], [0, predictions.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
-                decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
+            for j in range(y_pred.shape[1]):
+                inputs = tf.transpose(y_pred[:, j, :, :], perm=[1, 0, 2])
+                decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                                           sequence_length=sequence_length,
+                                                                           beam_width=beam_width,
+                                                                           top_paths=top_paths)
 
-            decoded_paths.append(decoded_pads)
-            probabilities_list.append(tf.exp(log_probabilities))
+                decoded_pads = []
+                for k in range(len(decoded)):
+                    sparse_decoded = tf.sparse.to_dense(decoded[k], default_value=-1)
+                    paddings = [[0, 0], [0, y_pred.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
+
+                decoded_paths.append(decoded_pads)
+                probabilities_list.append(tf.exp(log_probabilities))
 
             progbar.update(i + 1)
 
@@ -550,11 +561,15 @@ class SynthesisRecognitionBaseModel(BaseModel):
 
         if tokenizer is not None:
             predictions = np.array([[tokenizer.decode_text(top_path) for top_path in item]
-                                   for item in predictions], dtype=object)
+                                    for item in predictions], dtype=object)
 
         return predictions, probabilities
 
-    def ctc_evaluate(self, x, steps, predictions, verbose=1):
+    def ctc_evaluate(self,
+                     x,
+                     steps,
+                     predictions,
+                     verbose=1):
         """
         Evaluate CTC predictions on the given data.
 
@@ -576,7 +591,6 @@ class SynthesisRecognitionBaseModel(BaseModel):
         """
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
-        batch_index = 0
 
         metrics = {'cer': [], 'wer': []}
         evaluations = []
@@ -587,31 +601,30 @@ class SynthesisRecognitionBaseModel(BaseModel):
             _, y_true = next(x)
             batch_size = len(y_true)
 
-            y_pred = predictions[batch_index:batch_index + batch_size]
+            y_pred = predictions[i * batch_size: (i + 1) * batch_size]
 
             for true_label, pred_label in zip(y_true, y_pred):
                 pattern = f'([{re.escape(string.punctuation)}])'
-                true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split()).strip()
+                true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split())
 
                 local_evaluation = {'ground_truth': true_label, 'top_paths': []}
 
                 for _, top_path in enumerate(pred_label):
-                    top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split()).strip()
+                    top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
 
-                    distance = editdistance.eval(list(true_label), list(top_path))
-                    character_error_rate = distance / max(len(true_label), len(top_path))
+                    cer_distance = editdistance.eval(list(true_label), list(top_path))
+                    cer = cer_distance / max(len(true_label), len(top_path))
 
-                    distance = editdistance.eval(true_label.split(), top_path.split())
-                    word_error_rate = distance / max(len(true_label.split()), len(top_path.split()))
+                    wer_distance = editdistance.eval(true_label.split(), top_path.split())
+                    wer = wer_distance / max(len(true_label.split()), len(top_path.split()))
 
-                    metrics['cer'].append(character_error_rate)
-                    metrics['wer'].append(word_error_rate)
+                    metrics['cer'].append(cer)
+                    metrics['wer'].append(wer)
 
                     local_evaluation['top_paths'].append(top_path)
 
                 evaluations.append(local_evaluation)
 
-            batch_index += batch_size
             progbar.update(i + 1)
 
         metrics = {k: np.mean(metrics[k]) for k in metrics}
