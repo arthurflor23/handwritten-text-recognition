@@ -536,6 +536,8 @@ class Graphite():
             (tokenizer, mlrun) or (None, None) if not found.
         """
 
+        Graphite().fix_mlflow_artifacts_path()
+
         def get_artifacts_path(tag_name, tag_value, run_index):
             if run_index is not None:
                 experiment = mlflow.set_experiment(experiment_name)
@@ -553,8 +555,6 @@ class Graphite():
                     return mlrun, artifact_path
 
             return None, None
-
-        Graphite().fix_mlflow_artifacts_path()
 
         s_mlrun, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
         r_mlrun, r_path = get_artifacts_path('recognition', recognition, recognition_index)
