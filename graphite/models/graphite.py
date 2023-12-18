@@ -1,4 +1,6 @@
 import os
+import yaml
+import glob
 import json
 import pickle
 import mlflow
@@ -547,6 +549,8 @@ class Graphite():
 
             return None, None
 
+        Graphite().fix_mlflow_artifacts_path()
+
         s_mlrun, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
         r_mlrun, r_path = get_artifacts_path('recognition', recognition, recognition_index)
 
@@ -573,3 +577,23 @@ class Graphite():
             print(f"{'run_name':<{25}}: {mlrun.info.run_name[:23]}")
 
         return tokenizer, mlrun
+
+    @staticmethod
+    def fix_mlflow_artifacts_path(root_path='mlruns'):
+        artifact_path_keys = ['artifact_location', 'artifact_uri']
+        meta_files = glob.glob(os.path.join(root_path, '**', 'meta.yaml'), recursive=True)
+
+        for metadata_file in meta_files:
+            with open(metadata_file, 'r') as f:
+                y = yaml.safe_load(f)
+
+            update_needed = False
+            for artifact_path_key in artifact_path_keys:
+                new_path = f"file://{os.path.dirname(metadata_file)}"
+                if y.get(artifact_path_key, None) != new_path:
+                    y[artifact_path_key] = new_path
+                    update_needed = True
+
+            if update_needed:
+                with open(metadata_file, 'w') as f:
+                    yaml.dump(y, f, default_flow_style=False, sort_keys=False)
