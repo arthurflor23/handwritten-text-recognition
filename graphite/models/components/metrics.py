@@ -29,10 +29,9 @@ class EditDistance(tf.keras.metrics.Metric):
 
         super().__init__(name=name, **kwargs)
 
+        self.tracker = tf.keras.metrics.Mean()
         self.beam_width = beam_width
         self.epsilon = epsilon
-
-        self.tracker = tf.keras.metrics.Mean()
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         """
@@ -184,6 +183,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
             Sample weights.
         """
 
+        if tf.shape(y_true)[0] == 1:
+            y_true = tf.tile(y_true, [2, 1, 1, 1])
+            y_pred = tf.tile(y_pred, [2, 1, 1, 1])
+
         real_features = self.encoder(y_true, training=False)
         generated_features = self.encoder(y_pred, training=False)
 
@@ -194,10 +197,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0))
+        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0) + 1e-8)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0))
+        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0) + 1e-8)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
