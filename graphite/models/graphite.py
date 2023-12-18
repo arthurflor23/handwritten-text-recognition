@@ -164,7 +164,7 @@ class Graphite():
             run_info = self.get_run_info(mlrun=mlrun)
             artifact_path = os.path.join(run_info['artifact_path'], '<model>.h5')
 
-            self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=False)
+            self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=True)
 
         self.model.compile(learning_rate=learning_rate)
 
