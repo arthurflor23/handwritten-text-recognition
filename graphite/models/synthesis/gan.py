@@ -270,14 +270,18 @@ class SynthesisModel(SynthesisBaseModel):
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
 
         # metric phase
-        metrics = self.test_step(input_data)
+        features_inputs, _ = self.style_backbone(image_inputs, training=False)
+        latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
+        generated_images = self.generator([latent_inputs, text_inputs], training=False)
+
+        self.kid.update_state(image_inputs, generated_images)
 
         return {
             'g_loss': g_loss,
             'd_loss': d_loss,
             'w_loss': w_loss,
             'r_loss': r_loss,
-            **metrics,
+            self.kid.name: self.kid.result(),
         }
 
 
@@ -905,7 +909,9 @@ class RecognitionModel(tf.keras.Model):
 
             conv = tf.keras.layers.Add()([shortcut, block2])
             conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
-            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=2)(conv)
+
+            strides = (2, 2) if i % 2 == 0 else (1, 2)
+            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
 
         conv = tf.keras.layers.ReLU()(conv)
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
@@ -914,10 +920,10 @@ class RecognitionModel(tf.keras.Model):
 
         bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
         bgru = tf.keras.layers.Dense(units=256)(bgru)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
         bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(bgru)
