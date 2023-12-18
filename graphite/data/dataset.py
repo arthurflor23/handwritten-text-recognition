@@ -204,9 +204,11 @@ class Dataset():
             'test': parse_ratio(self.test_ratio),
         }
 
-        ratio = sum([ratios[i] for i in ratios if ratios[i] is not None])
+        ratio_list = [ratios[i] for i in ratios if ratios[i] is not None]
 
-        if ratio > 0:
+        if len(ratio_list) > 0:
+            ratio = sum(ratio_list)
+
             if isinstance(ratio, float) and ratio == 1.0:
                 merged = []
 
