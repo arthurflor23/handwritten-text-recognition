@@ -11,7 +11,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=15, epsilon=1e-8, name='cer', **kwargs):
+    def __init__(self, beam_width=1, epsilon=1e-8, name='cer', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
