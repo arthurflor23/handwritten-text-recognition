@@ -264,6 +264,9 @@ class Graphite():
             tensorboard_path = os.path.join(run_info['artifact_path'], 'tensorboard')
             os.makedirs(tensorboard_path, exist_ok=True)
 
+            monitor = self.model.monitor.replace('val_', '') \
+                if self.model.monitor.startswith('val_') and validation_gen is None else self.model.monitor
+
             callbacks = [
                 tf.keras.callbacks.CSVLogger(
                     filename=os.path.join(logs_path, 'epochs.log'),
@@ -273,7 +276,7 @@ class Graphite():
                 tf.keras.callbacks.ModelCheckpoint(
                     filepath=os.path.join(run_info['artifact_path'], '<model>.h5'),
                     mode='min',
-                    monitor=self.model.monitor,
+                    monitor=monitor,
                     save_freq='epoch',
                     save_best_only=True,
                     save_weights_only=True,
@@ -292,7 +295,7 @@ class Graphite():
                 ),
                 tf.keras.callbacks.EarlyStopping(
                     mode='min',
-                    monitor=self.model.monitor,
+                    monitor=monitor,
                     min_delta=1e-8,
                     patience=patience,
                     start_from_epoch=0,
@@ -301,7 +304,7 @@ class Graphite():
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
                     mode='min',
-                    monitor=self.model.monitor,
+                    monitor=monitor,
                     min_lr=1e-4,
                     min_delta=1e-8,
                     factor=plateau_factor,
@@ -336,9 +339,6 @@ class Graphite():
                                      epochs=(epochs or 1000000),
                                      verbose=1)
             mlflow.end_run()
-
-        monitor = self.model.monitor if self.model.monitor in history.history \
-            else self.model.monitor.replace('val_', '')
 
         best_metric_index = history.history[monitor].index(min(history.history[monitor]))
         metrics = {k: history.history[k][best_metric_index] for k in history.history if k != 'lr'}
