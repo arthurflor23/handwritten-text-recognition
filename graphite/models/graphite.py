@@ -580,6 +580,9 @@ class Graphite():
 
     @staticmethod
     def fix_mlflow_artifacts_path(root_path='mlruns'):
+        # current workaround for fixing paths when mlflow folder is moved.
+        # https://github.com/mlflow/mlflow/issues/3144
+
         artifact_path_keys = ['artifact_location', 'artifact_uri']
         meta_files = glob.glob(os.path.join(root_path, '**', 'meta.yaml'), recursive=True)
 
