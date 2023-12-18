@@ -333,7 +333,7 @@ class Graphite():
 
             monitor = self.model.monitor
 
-            if self.model.monitor not in history.history:
+            if monitor not in history.history:
                 monitor = self.model.monitor.replace('val_', '')
 
             min_monitor_value = min(history.history[monitor])
