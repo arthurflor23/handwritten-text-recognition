@@ -639,7 +639,7 @@ class StyleBackboneModel(tf.keras.Model):
             conv = tf.keras.layers.Add()([shortcut, block2])
             conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
 
-            strides = (2, 2) if i % 2 == 0 else (1, 2)
+            strides = (2, 2) if i + 1 == len(blocks[:-1]) // 2 else (1, 2)
             conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
 
             feats.append(conv)
@@ -912,7 +912,7 @@ class RecognitionModel(tf.keras.Model):
             conv = tf.keras.layers.Add()([shortcut, block2])
             conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
 
-            strides = (2, 2) if i % 2 == 0 else (1, 2)
+            strides = (2, 2) if i + 1 == len(blocks[:-1]) // 2 else (1, 2)
             conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
 
         conv = tf.keras.layers.ReLU()(conv)
