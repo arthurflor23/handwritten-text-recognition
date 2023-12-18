@@ -65,7 +65,6 @@ if __name__ == '__main__':
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
     parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
-    parser.add_argument('--share-top-paths', default=False, action='store_true', help='Use previous paths in metrics')
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
