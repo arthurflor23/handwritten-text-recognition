@@ -317,8 +317,7 @@ class Graphite():
                     GANMonitor(filepath=synthesis_path,
                                sample_gen=monitor_samples_gen,
                                sample_steps=monitor_samples_steps,
-                               latent_dim=self.model.generator.latent_dim,
-                               monitor=self.model.monitor),
+                               latent_dim=self.model.generator.latent_dim),
                 ])
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
