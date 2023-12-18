@@ -322,6 +322,9 @@ class Graphite():
                                latent_dim=self.model.generator.latent_dim),
                 ])
 
+            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
+            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
+
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
 
@@ -332,26 +335,16 @@ class Graphite():
                                      callbacks=callbacks,
                                      epochs=(epochs or 1000000),
                                      verbose=1)
-
-            monitor = self.model.monitor
-
-            if monitor not in history.history:
-                monitor = self.model.monitor.replace('val_', '')
-
-            min_monitor_value = min(history.history[monitor])
-            best_monitor_index = history.history[monitor].index(min_monitor_value)
-
-            metrics = {k: history.history[k][best_monitor_index] for k in history.history if k != 'lr'}
-
-            train_metrics = {k: metrics[k] for k in metrics if not k.startswith('val')}
-            valid_metrics = {k: metrics[k] for k in metrics if k.startswith('val')}
-
-            mlflow.log_metrics(train_metrics)
-            mlflow.log_metrics(valid_metrics)
-
-            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
-            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
             mlflow.end_run()
+
+        monitor = self.model.monitor if self.model.monitor in history.history \
+            else self.model.monitor.replace('val_', '')
+
+        best_metric_index = history.history[monitor].index(min(history.history[monitor]))
+        metrics = {k: history.history[k][best_metric_index] for k in history.history if k != 'lr'}
+
+        train_metrics = {k: metrics[k] for k in metrics if not k.startswith('val_')}
+        valid_metrics = {k.replace('val', ''): metrics[k] for k in metrics if k.startswith('val_')}
 
         self.save_context(metrics=train_metrics, prefix='train')
         self.save_context(metrics=valid_metrics, prefix='valid')
@@ -472,35 +465,34 @@ class Graphite():
 
         run_info = self.get_run_info()
 
+        def save_content(name, content, log_metric=False):
+            if content is not None:
+                artifact = os.path.join(logs_path, f"{name}.log")
+
+                if log_metric:
+                    suffix = '_'.join(name.split('_')[1:])
+                    mlflow.log_metrics({f"{prefix}_{k}_{suffix}".strip('_'): content[k] for k in content})
+
+                if isinstance(content, dict):
+                    content = json.dumps(content, indent=4, sort_keys=False)
+
+                with open(artifact, 'w') as f:
+                    f.write(f"{content}".strip())
+
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(mlrun=run)
 
             logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
 
-            def save_content(name, content, metric=False, json_content=False):
-                if content is not None:
-                    artifact = os.path.join(logs_path, f"{name}.log")
-
-                    if metric:
-                        sufix = '_'.join(name.split('_')[2:])
-                        sufix = f"_{sufix}" if sufix else ''
-                        mlflow.log_metrics({f"test_{k}{sufix}": content[k] for k in content})
-
-                    if json_content:
-                        content = json.dumps(content, indent=4)
-
-                    with open(artifact, 'w') as f:
-                        f.write(f"{content}".strip())
-
             save_content('dataset', dataset)
             save_content('augmentor', augmentor)
             save_content('model', self.model)
 
-            save_content(f"{prefix}_metrics", metrics, metric=True, json_content=True)
-            save_content(f"{prefix}_metrics_spelling", spelling_metrics, metric=True, json_content=True)
-            save_content(f"{prefix}_samples", evaluations, json_content=True)
-            save_content(f"{prefix}_samples_spelling", spelling_evaluations, json_content=True)
+            save_content('metrics', metrics, log_metric=True)
+            save_content('metrics_spelling', spelling_metrics, log_metric=True)
+            save_content('samples', evaluations)
+            save_content('samples_spelling', spelling_evaluations)
             mlflow.end_run()
 
     @staticmethod
@@ -579,24 +571,34 @@ class Graphite():
         return tokenizer, mlrun
 
     @staticmethod
-    def fix_mlflow_artifacts_path(root_path='mlruns'):
-        # current workaround for fixing paths when mlflow folder is moved.
-        # https://github.com/mlflow/mlflow/issues/3144
+    def fix_mlflow_artifacts_path():
+        """
+        This static method addresses the issue where MLflow artifact paths become
+            incorrect after moving the MLflow folder, by updating the paths in 'meta.yaml' files.
 
-        artifact_path_keys = ['artifact_location', 'artifact_uri']
-        meta_files = glob.glob(os.path.join(root_path, '**', 'meta.yaml'), recursive=True)
+        Notes
+        -----
+        Current workaround for fixing paths when mlflow folder is moved.
+        GitHub Issue: https://github.com/mlflow/mlflow/issues/3144
+        """
+
+        artifact_path_keys = {'artifact_location': '', 'artifact_uri': 'artifacts'}
+        meta_files = glob.glob(os.path.join('mlruns', '**', 'meta.yaml'), recursive=True)
 
         for metadata_file in meta_files:
             with open(metadata_file, 'r') as f:
-                y = yaml.safe_load(f)
+                yaml_file = yaml.safe_load(f)
 
             update_needed = False
-            for artifact_path_key in artifact_path_keys:
-                new_path = f"file://{os.path.dirname(metadata_file)}"
-                if y.get(artifact_path_key, None) != new_path:
-                    y[artifact_path_key] = new_path
+            for key in artifact_path_keys:
+                new_path = os.path.dirname(os.path.abspath(metadata_file))
+                new_path = os.path.join(new_path, artifact_path_keys[key])
+                new_path = f"file://{new_path}".rstrip('/')
+
+                if yaml_file.get(key, new_path) != new_path:
+                    yaml_file[key] = new_path
                     update_needed = True
 
             if update_needed:
                 with open(metadata_file, 'w') as f:
-                    yaml.dump(y, f, default_flow_style=False, sort_keys=False)
+                    yaml.dump(yaml_file, f, default_flow_style=False, sort_keys=False)
