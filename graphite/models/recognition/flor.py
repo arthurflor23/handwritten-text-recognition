@@ -78,7 +78,7 @@ class RecognitionModel(RecognitionBaseModel):
 
         conv = tf.keras.layers.Conv2D(filters=56,
                                       kernel_size=(2, 4),
-                                      strides=(2, 4),
+                                      strides=(1, 4),
                                       padding='same',
                                       kernel_initializer='he_uniform')(conv)
 
@@ -110,4 +110,4 @@ class RecognitionModel(RecognitionBaseModel):
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(bgru)
 
-        self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
+        self.recognition = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)

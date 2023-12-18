@@ -52,7 +52,7 @@ class RecognitionModel(RecognitionBaseModel):
 
         conv = tf.keras.layers.Conv2D(filters=64,
                                       kernel_size=(2, 4),
-                                      strides=(2, 4),
+                                      strides=(1, 4),
                                       padding='same',
                                       activation='tanh')(conv)
 

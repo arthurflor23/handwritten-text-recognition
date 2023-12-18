@@ -56,8 +56,8 @@ class RecognitionModel(RecognitionBaseModel):
         low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
-        high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
-        low = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(low)
+        high = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(high)
+        low = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(low)
 
         high = tf.keras.layers.Dropout(rate=0.2)(high)
         low = tf.keras.layers.Dropout(rate=0.2)(low)
@@ -111,4 +111,4 @@ class RecognitionModel(RecognitionBaseModel):
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
 
-        self.model = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
+        self.recognition = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
