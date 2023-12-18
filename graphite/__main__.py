@@ -3,6 +3,8 @@ import sys
 import argparse
 import pipelines
 
+from models.graphite import Graphite
+
 
 if __name__ == '__main__':
     """
@@ -12,9 +14,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # models
-    parser.add_argument('--workflow', default=None, help='Define workflow')
-    parser.add_argument('--synthesis', default=None, help='Define synthesis model')
-    parser.add_argument('--recognition', default=None, help='Define recognition model')
+    parser.add_argument('--workflow', default='recognition', help='Define workflow')
+    parser.add_argument('--synthesis', default='gan', help='Define synthesis model')
+    parser.add_argument('--recognition', default='flor', help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
 
     # mlflow
@@ -81,20 +83,20 @@ if __name__ == '__main__':
     # jupyter notebook compatibility
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-    # required parameters
-    if not args.check:
-        assert args.workflow, '--workflow must be defined'
+    # mlflow compatibility
+    Graphite().fix_mlflow_artifacts_path()
 
+    # required parameters
     if args.check or args.training or args.test:
         assert args.source, '--source must be defined'
 
-    if args.workflow and 'synthesis' in args.workflow:
+    if 'synthesis' in args.workflow:
         assert args.synthesis, '--synthesis must be defined'
 
         if args.inference:
             assert len(args.texts) > 0, '--texts must be defined'
 
-    if args.workflow and 'recognition' in args.workflow:
+    if 'recognition' in args.workflow:
         assert args.recognition, '--recognition must be defined'
 
         if args.inference:
