@@ -17,7 +17,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                  sample_gen,
                  sample_steps,
                  latent_dim,
-                 monitor):
+                 save_freq=5):
         """
         Initialize the GANMonitor callback with specified parameters.
 
@@ -31,16 +31,15 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Number of steps per sample run.
         latent_dim : int
             Dimensionality of the latent space.
-        monitor : str, optional
-            Name of the metric to monitor for improvement.
+        save_freq : int, optional
+            Epoch frequency for saving images.
         """
 
         self.filepath = filepath
         self.sample_gen = sample_gen
         self.sample_steps = sample_steps
         self.latent_dim = latent_dim
-        self.monitor = monitor
-        self.best_value = np.inf
+        self.save_freq = save_freq
 
     def _save_images(self, epoch, images, name):
         """
@@ -80,11 +79,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Currently available log data.
         """
 
-        current_value = logs.get(self.monitor, np.inf)
-
-        if current_value < self.best_value:
-            self.best_value = current_value
-
+        if (epoch + 1) % self.save_freq == 0:
             for _ in range(self.sample_steps):
                 images, texts = next(self.sample_gen)
 
