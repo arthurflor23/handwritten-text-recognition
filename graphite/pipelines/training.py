@@ -89,7 +89,9 @@ def training(args):
                  plateau_patience=args.plateau_patience,
                  patience=args.patience)
 
-    graphite.save_context(dataset=dataset, augmentor=augmentor)
+    graphite.save_context(params=args,
+                          dataset=dataset,
+                          augmentor=augmentor)
 
     if 'recognition' in args.workflow:
         test_gen, test_steps = dataset.get_generator(partition='test',
