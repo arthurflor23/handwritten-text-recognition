@@ -344,7 +344,7 @@ class Graphite():
         metrics = {k: history.history[k][best_metric_index] for k in history.history if k != 'lr'}
 
         train_metrics = {k: metrics[k] for k in metrics if not k.startswith('val_')}
-        valid_metrics = {k.replace('val', ''): metrics[k] for k in metrics if k.startswith('val_')}
+        valid_metrics = {k.replace('val_', ''): metrics[k] for k in metrics if k.startswith('val_')}
 
         self.save_context(metrics=train_metrics, prefix='train')
         self.save_context(metrics=valid_metrics, prefix='valid')
@@ -435,6 +435,7 @@ class Graphite():
         return metrics, evaluations
 
     def save_context(self,
+                     params=None,
                      dataset=None,
                      augmentor=None,
                      metrics=None,
@@ -447,6 +448,8 @@ class Graphite():
 
         Parameters
         ----------
+        params : dict or argparse.Namespace, optional
+            Parameters to be logged.
         dataset : Dataset instance or None, optional
             Dataset object instance.
         augmentor : Augmentor instance or None, optional
@@ -465,19 +468,23 @@ class Graphite():
 
         run_info = self.get_run_info()
 
-        def save_content(name, content, log_metric=False):
+        def log_content(filepath, content):
             if content is not None:
-                artifact = os.path.join(logs_path, f"{name}.log")
-
-                if log_metric:
-                    suffix = '_'.join(name.split('_')[1:])
-                    mlflow.log_metrics({f"{prefix}_{k}_{suffix}".strip('_'): content[k] for k in content})
-
-                if isinstance(content, dict):
+                if isinstance(content, dict) or isinstance(content, list):
                     content = json.dumps(content, indent=4, sort_keys=False)
-
-                with open(artifact, 'w') as f:
+                with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
+
+        def log_metric(content_name, content):
+            if content is not None:
+                suffix = '_'.join(content_name.split('_')[1:])
+                for key, value in content.items():
+                    mlflow.log_metric(f"{prefix}_{key}_{suffix}".strip('_'), value)
+
+        def log_params(content):
+            if content is not None:
+                params_dict = params if isinstance(params, dict) else vars(params)
+                mlflow.log_params(params_dict)
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(mlrun=run)
@@ -485,14 +492,20 @@ class Graphite():
             logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
 
-            save_content('dataset', dataset)
-            save_content('augmentor', augmentor)
-            save_content('model', self.model)
+            log_content(os.path.join(logs_path, 'data.log'), dataset)
+            log_content(os.path.join(logs_path, 'augmentor.log'), augmentor)
+            log_content(os.path.join(logs_path, 'model.log'), self.model)
+            log_content(os.path.join(logs_path, 'evaluations.log'), evaluations)
+            log_content(os.path.join(logs_path, 'evaluations_spelling.log'), spelling_evaluations)
 
-            save_content('metrics', metrics, log_metric=True)
-            save_content('metrics_spelling', spelling_metrics, log_metric=True)
-            save_content('samples', evaluations)
-            save_content('samples_spelling', spelling_evaluations)
+            log_params(params)
+
+            log_metric('metrics', metrics)
+            log_content(os.path.join(logs_path, f"{prefix}_metrics.log".strip('_')), metrics)
+
+            log_metric('metrics_spelling', spelling_metrics)
+            log_content(os.path.join(logs_path, f"{prefix}_metrics_spelling.log".strip('_')), spelling_metrics)
+
             mlflow.end_run()
 
     @staticmethod
