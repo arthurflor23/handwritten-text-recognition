@@ -67,23 +67,18 @@ def training(args):
                                                          shuffle=True)
 
     validation_gen, validation_steps = dataset.get_generator(partition='validation',
-                                                             batch_size=args.batch_size,
-                                                             augmentor=None,
-                                                             shuffle=False)
+                                                             batch_size=args.batch_size)
 
-    monitor_samples_gen, monitor_samples_steps = dataset.get_generator(partition='training',
-                                                                       samples=args.batch_size,
-                                                                       batch_size=args.batch_size,
-                                                                       augmentor=None,
-                                                                       shuffle=False)
+    sample_gen, sample_steps = dataset.get_generator(partition='training',
+                                                     samples=args.batch_size)
 
     graphite.fit(epochs=args.epochs,
                  training_gen=training_gen,
                  training_steps=training_steps,
                  validation_gen=validation_gen,
                  validation_steps=validation_steps,
-                 monitor_samples_gen=monitor_samples_gen,
-                 monitor_samples_steps=monitor_samples_steps,
+                 monitor_sample_gen=sample_gen,
+                 monitor_sample_steps=sample_steps,
                  plateau_factor=args.plateau_factor,
                  plateau_cooldown=args.plateau_cooldown,
                  plateau_patience=args.plateau_patience,
@@ -91,36 +86,46 @@ def training(args):
 
     graphite.save_context(params=args,
                           dataset=dataset,
-                          augmentor=augmentor)
+                          augmentor=augmentor,
+                          model=graphite.model)
 
     if 'recognition' in args.workflow:
-        test_gen, test_steps = dataset.get_generator(partition='test',
-                                                     batch_size=args.batch_size,
-                                                     augmentor=None,
-                                                     shuffle=False)
+        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
+        predictions, _ = graphite.predict_recognition(x=test_gen,
+                                                      steps=test_steps,
+                                                      top_paths=args.top_paths,
+                                                      beam_width=args.beam_width,
+                                                      corrections=False)
 
-        predictions, spelling_predictions, _ = graphite.predict(test_gen=test_gen,
-                                                                test_steps=test_steps,
-                                                                top_paths=args.top_paths,
-                                                                beam_width=args.beam_width,
-                                                                ctc_decode=True,
-                                                                token_decode=True)
+        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
+        corrections, _ = graphite.predict_recognition(x=test_gen,
+                                                      steps=test_steps,
+                                                      top_paths=args.top_paths,
+                                                      beam_width=args.beam_width,
+                                                      corrections=True)
 
-        label_gen, label_steps = dataset.get_generator(partition='test',
-                                                       batch_size=args.batch_size,
-                                                       augmentor=None,
-                                                       use_source=True,
-                                                       shuffle=False)
+        source_gen, source_steps = dataset.get_generator(partition='test',
+                                                         batch_size=args.batch_size,
+                                                         use_source=True)
+        p_metrics, p_evaluations = graphite.evaluate_recognition(x=predictions,
+                                                                 y=source_gen,
+                                                                 steps=source_steps)
 
-        metrics, evaluations = graphite.evaluate(label_gen=label_gen,
-                                                 label_steps=label_steps,
-                                                 predictions=predictions)
+        source_gen, source_steps = dataset.get_generator(partition='test',
+                                                         batch_size=args.batch_size,
+                                                         use_source=True)
+        s_metrics, s_evaluations = graphite.evaluate_recognition(x=corrections,
+                                                                 y=source_gen,
+                                                                 steps=source_steps)
 
-        spelling_metrics, spelling_evaluations = graphite.evaluate(label_gen=label_gen,
-                                                                   label_steps=label_steps,
-                                                                   predictions=spelling_predictions)
+        graphite.save_context(metrics=p_metrics, evaluations=p_evaluations, suffix='prediction')
+        graphite.save_context(metrics=s_metrics, evaluations=s_evaluations, suffix='spelling')
 
-        graphite.save_context(metrics=metrics,
-                              evaluations=evaluations,
-                              spelling_metrics=spelling_metrics,
-                              spelling_evaluations=spelling_evaluations)
+    elif 'synthesis' in args.workflow:
+        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
+        predictions = graphite.predict_synthesis(x=test_gen, steps=test_steps)
+
+        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
+        metrics, evaluations = graphite.evaluate_synthesis(x=predictions, y=test_gen, steps=test_steps)
+
+        graphite.save_context(metrics=metrics, evaluation_images=evaluations, suffix='prediction')
