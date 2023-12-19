@@ -266,8 +266,9 @@ class Graphite():
             tensorboard_path = os.path.join(run_info['artifact_path'], 'tensorboard')
             os.makedirs(tensorboard_path, exist_ok=True)
 
-            monitor = self.model.monitor.replace('val_', '') \
-                if self.model.monitor.startswith('val_') and validation_gen is None else self.model.monitor
+            monitor = self.model.monitor
+            if validation_gen is None and self.model.monitor.startswith('val_'):
+                monitor = self.model.monitor.replace('val_', '')
 
             callbacks = [
                 tf.keras.callbacks.CSVLogger(
