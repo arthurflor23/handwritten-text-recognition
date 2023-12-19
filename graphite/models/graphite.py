@@ -214,8 +214,8 @@ class Graphite():
             training_steps=None,
             validation_gen=None,
             validation_steps=None,
-            monitor_samples_gen=None,
-            monitor_samples_steps=None,
+            monitor_sample_gen=None,
+            monitor_sample_steps=None,
             plateau_factor=0.1,
             plateau_cooldown=0,
             plateau_patience=20,
@@ -234,9 +234,9 @@ class Graphite():
             Generator yielding validation data batches.
         validation_steps : int, optional
             Number of steps per validation run.
-        monitor_samples_gen : generator, optional
+        monitor_sample_gen : generator, optional
             Generator yielding samples data batches.
-        monitor_samples_steps : int, optional
+        monitor_sample_steps : int, optional
             Number of steps per sample run.
         plateau_factor : float, optional
             Factor for reducing the learning rate.
@@ -322,8 +322,8 @@ class Graphite():
 
                 callbacks.extend([
                     GANMonitor(filepath=synthesis_path,
-                               sample_gen=monitor_samples_gen,
-                               sample_steps=monitor_samples_steps,
+                               sample_gen=monitor_sample_gen,
+                               sample_steps=monitor_sample_steps,
                                latent_dim=self.model.generator.latent_dim),
                 ])
 
