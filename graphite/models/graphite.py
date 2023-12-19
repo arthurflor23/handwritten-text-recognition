@@ -1,4 +1,5 @@
 import os
+import cv2
 import yaml
 import glob
 import json
@@ -6,6 +7,7 @@ import pickle
 import mlflow
 import datetime
 import importlib
+import numpy as np
 import tensorflow as tf
 
 from models.components.callbacks import GANMonitor
@@ -34,11 +36,11 @@ class Graphite():
         workflow : str, optional
             Workflow to be used.
         synthesis : str, optional
-            Identifier for the synthesis model to be used.
+            Identifier for the synthesis model.
         recognition : str, optional
-            Identifier for the recognition model to be used.
+            Identifier for the recognition model.
         spelling : str, optional
-            Identifier for the spelling correction model to be used.
+            Identifier for the spelling correction model.
         image_shape : tuple, optional
             Shape of the input images.
         tokenizer : Tokenizer, optional
@@ -62,27 +64,27 @@ class Graphite():
         self.spelling_model = None
 
         self._mlrun = None
-        self._mlrun_synthesis = None
-        self._mlrun_recognition = None
+        self._synthesis = None
+        self._recognition = None
 
         if workflow is not None:
             mlflow.set_experiment(experiment_name)
 
             if 'synthesis' in workflow:
-                self._mlrun_synthesis = str(synthesis)
+                self._synthesis = str(synthesis)
 
             if 'recognition' in workflow:
-                self._mlrun_recognition = str(recognition)
+                self._recognition = str(recognition)
 
             SynthesisModel = None
             RecognitionModel = None
 
-            if self._mlrun_synthesis:
-                module = f"synthesis.{self._mlrun_synthesis}"
+            if self._synthesis:
+                module = f"synthesis.{self._synthesis}"
                 SynthesisModel = self._import_model(module=module, class_name='SynthesisModel')
 
-            if self._mlrun_recognition:
-                module = f"recognition.{self._mlrun_recognition}"
+            if self._recognition:
+                module = f"recognition.{self._recognition}"
                 RecognitionModel = self._import_model(module=module, class_name='RecognitionModel')
 
             if SynthesisModel and not RecognitionModel:
@@ -170,7 +172,7 @@ class Graphite():
 
         self.model.compile(learning_rate=learning_rate)
 
-    def get_run_info(self, mlrun=None, create=False):
+    def get_run_info(self, mlrun=None, create_new=False):
         """
         Get information about the current MLflow run.
 
@@ -178,7 +180,7 @@ class Graphite():
         ----------
         run : MLflow Run, optional
             MLflow Run object to set as the current run.
-        create : bool, optional
+        create_new : bool, optional
             Create a new mlrun.
 
         Returns
@@ -194,7 +196,7 @@ class Graphite():
         if mlrun is not None:
             self._mlrun = mlrun
 
-        if self._mlrun is not None and not create:
+        if self._mlrun is not None and not create_new:
             run_id = self._mlrun.info.run_id
             run_name = self._mlrun.info.run_name
             artifact_path = self._mlrun.info.artifact_uri.replace('file://', '')
@@ -253,7 +255,7 @@ class Graphite():
             Training and validation progress details.
         """
 
-        run_info = self.get_run_info(create=True)
+        run_info = self.get_run_info(create_new=True)
 
         with mlflow.start_run(run_name=run_info['name']) as run:
             run_info = self.get_run_info(mlrun=run)
@@ -325,8 +327,8 @@ class Graphite():
                                latent_dim=self.model.generator.latent_dim),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': self._mlrun_synthesis})
-            mlflow.set_tags({'graphite.recognition': self._mlrun_recognition})
+            mlflow.set_tags({'graphite.synthesis': self._synthesis})
+            mlflow.set_tags({'graphite.recognition': self._recognition})
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -351,21 +353,22 @@ class Graphite():
 
         return history
 
-    def predict(self,
-                test_gen,
-                test_steps,
-                top_paths=1,
-                beam_width=30,
-                ctc_decode=True,
-                token_decode=True):
+    def predict_recognition(self,
+                            x,
+                            steps,
+                            top_paths=1,
+                            beam_width=30,
+                            ctc_decode=True,
+                            token_decode=True,
+                            corrections=False):
         """
-        Make predictions on test data with optional CTC decoding and spelling correction.
+        Make predictions on test data with CTC decoding and spelling correction.
 
         Parameters
         ----------
-        test_gen : tf.data.Dataset
-            Test data for predictions.
-        test_steps : int
+        x : Dataset generator
+            Data for predictions.
+        steps : int
             Number of steps for prediction.
         top_paths : int, optional
             Number of top paths for CTC decoding.
@@ -375,48 +378,71 @@ class Graphite():
             Perform CTC decoding on predictions.
         token_decode : bool, optional
             Decode tokens during CTC decoding.
+        corrections : str, optional
+            Peform corrections using spelling model.
 
         Returns
         -------
         tuple
-            Predictions, corrections, and probabilities (if CTC decoding is used).
+            Predictions and probabilities.
         """
 
-        if test_gen is None:
-            return None, None, None
+        if x is None:
+            return None, None
 
-        predictions = self.model.predict(x=test_gen, steps=test_steps, verbose=1)
-        corrections, probabilities = None, None
+        predictions = self.model.predict(x=x, steps=steps, verbose=1)
+        probabilities = None
 
         if ctc_decode:
             tokenizer = self.tokenizer if token_decode else None
-            predictions, probabilities = self.model.ctc_decode(x=predictions,
-                                                               steps=test_steps,
-                                                               top_paths=top_paths,
-                                                               beam_width=beam_width,
-                                                               tokenizer=tokenizer,
-                                                               verbose=1)
+            predictions, probabilities = self.model.ctc_decoder(x=predictions,
+                                                                steps=steps,
+                                                                top_paths=top_paths,
+                                                                beam_width=beam_width,
+                                                                tokenizer=tokenizer,
+                                                                verbose=1)
 
-            corrections = self.spelling_model.predict(predictions) \
-                if token_decode and self.spelling_model is not None else predictions
+            if token_decode and corrections and self.spelling_model:
+                predictions = self.spelling_model.predict(predictions)
 
-        return predictions, corrections, probabilities
+        return predictions, probabilities
 
-    def evaluate(self,
-                 label_gen,
-                 label_steps,
-                 predictions):
+    def predict_synthesis(self, x, steps, decode=False):
         """
-        Evaluate CTC predictions on the given labeled data.
+        Make image generations with synthesis model using test data.
 
         Parameters
         ----------
-        label_gen : Dataset generator
-            Labeled data for evaluation.
-        label_steps : int
-            Number of steps for evaluation.
-        predictions : np.ndarray
+        x : Dataset generator
+            Data for predictions.
+        steps : int
+            Number of steps for prediction.
+        decode : bool, optional
+            Perform image decoding.
+        """
+
+        if x is None:
+            return None, None
+
+        predictions = self.model.predict(x=x, steps=steps, verbose=1)
+
+        if decode:
+            predictions = np.transpose((predictions + 1.0) * 127.5, (0, 2, 1, 3))
+
+        return predictions
+
+    def evaluate_recognition(self, x, y, steps):
+        """
+        Evaluate CTC predictions on the given source data.
+
+        Parameters
+        ----------
+        x : np.ndarray
             Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
 
         Returns
         -------
@@ -424,13 +450,36 @@ class Graphite():
             Metrics and evaluations.
         """
 
-        if label_gen is None:
+        if y is None:
             return None, None
 
-        metrics, evaluations = self.model.ctc_evaluate(x=label_gen,
-                                                       steps=label_steps,
-                                                       predictions=predictions,
-                                                       verbose=1)
+        metrics, evaluations = self.model.ctc_evaluator(x=x, y=y, steps=steps, verbose=1)
+
+        return metrics, evaluations
+
+    def evaluate_synthesis(self, x, y, steps):
+        """
+        Evaluate generator predictions on the given data.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        if y is None:
+            return None, None
+
+        metrics, evaluations = self.model.image_evaluator(x=x, y=y, steps=steps, verbose=1)
 
         return metrics, evaluations
 
@@ -438,11 +487,12 @@ class Graphite():
                      params=None,
                      dataset=None,
                      augmentor=None,
+                     model=None,
                      metrics=None,
                      evaluations=None,
-                     spelling_metrics=None,
-                     spelling_evaluations=None,
-                     prefix='test'):
+                     evaluation_images=None,
+                     prefix='test',
+                     suffix=None):
         """
         Save relevant context information to MLflow and log files.
 
@@ -454,57 +504,70 @@ class Graphite():
             Dataset object instance.
         augmentor : Augmentor instance or None, optional
             Augmentor object instance.
+        model : Model instance or None, optional
+            Model object instance.
         metrics : dict or None, optional
             Model metrics.
         evaluations : list or None, optional
-            Model evaluations.
-        spelling_metrics : dict or None, optional
-            Spelling metrics.
-        spelling_evaluations : list or None, optional
-            Spelling evaluations.
+            Model evaluation data.
+        evaluation_images: list or None, optional
+            Model evaluation images.
         prefix : str, optional
             Prefix used in the metric logs.
+        suffix : str, optional
+            Suffix used in the metric logs.
         """
 
         run_info = self.get_run_info()
 
-        def log_content(filepath, content):
+        def log_content(content_name, content):
             if content is not None:
+                logs_path = os.path.join(run_info['artifact_path'], 'logs')
+                os.makedirs(logs_path, exist_ok=True)
+
+                filepath = os.path.join(logs_path, f"{content_name}.log")
+
                 if isinstance(content, dict) or isinstance(content, list):
                     content = json.dumps(content, indent=4, sort_keys=False)
+
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
 
         def log_metric(content_name, content):
             if content is not None:
-                suffix = '_'.join(content_name.split('_')[1:])
                 for key, value in content.items():
-                    mlflow.log_metric(f"{prefix}_{key}_{suffix}".strip('_'), value)
+                    mlflow.log_metric(content_name.replace('<metric>', key), value)
 
         def log_params(content):
             if content is not None:
                 params_dict = params if isinstance(params, dict) else vars(params)
                 mlflow.log_params(params_dict)
 
+        def log_images(images):
+            if images is not None:
+                evaluation_path = os.path.join(run_info['artifact_path'], 'evaluations')
+                os.makedirs(evaluation_path, exist_ok=True)
+
+                for i, image in enumerate(images):
+                    authentic_path = os.path.join(evaluation_path, f"{i+1}_authentic.png")
+                    generated_path = os.path.join(evaluation_path, f"{i+1}_generated.png")
+
+                    cv2.imwrite(authentic_path, image[0])
+                    cv2.imwrite(generated_path, image[1])
+
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(mlrun=run)
 
-            logs_path = os.path.join(run_info['artifact_path'], 'logs')
-            os.makedirs(logs_path, exist_ok=True)
+            log_content('data', dataset)
+            log_content('augmentor', augmentor)
+            log_content('model', model)
+            log_content(f"{prefix or ''}_evaluations_{suffix or ''}".strip('_'), evaluations)
 
-            log_content(os.path.join(logs_path, 'data.log'), dataset)
-            log_content(os.path.join(logs_path, 'augmentor.log'), augmentor)
-            log_content(os.path.join(logs_path, 'model.log'), self.model)
-            log_content(os.path.join(logs_path, 'evaluations.log'), evaluations)
-            log_content(os.path.join(logs_path, 'evaluations_spelling.log'), spelling_evaluations)
-
+            log_images(evaluation_images)
             log_params(params)
 
-            log_metric('metrics', metrics)
-            log_content(os.path.join(logs_path, f"{prefix}_metrics.log".strip('_')), metrics)
-
-            log_metric('metrics_spelling', spelling_metrics)
-            log_content(os.path.join(logs_path, f"{prefix}_metrics_spelling.log".strip('_')), spelling_metrics)
+            log_content(f"{prefix or ''}_metrics_{suffix or ''}".strip('_'), metrics)
+            log_metric(f"{prefix or ''}_<metric>_{suffix or ''}".strip('_'), metrics)
 
             mlflow.end_run()
 
