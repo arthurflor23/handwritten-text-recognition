@@ -331,13 +331,13 @@ class RecognitionBaseModel(BaseModel):
 
         return ctc_logits
 
-    def ctc_decode(self,
-                   x,
-                   steps,
-                   top_paths=1,
-                   beam_width=30,
-                   tokenizer=None,
-                   verbose=1):
+    def ctc_decoder(self,
+                    x,
+                    steps,
+                    top_paths=1,
+                    beam_width=30,
+                    tokenizer=None,
+                    verbose=1):
         """
         Decode CTC predictions using beam search.
 
@@ -413,22 +413,18 @@ class RecognitionBaseModel(BaseModel):
 
         return predictions, probabilities
 
-    def ctc_evaluate(self,
-                     x,
-                     steps,
-                     predictions,
-                     verbose=1):
+    def ctc_evaluator(self, x, y, steps, verbose=1):
         """
         Evaluate CTC predictions on the given data.
 
         Parameters
         ----------
-        x : Dataset generator
-            Input data for evaluation.
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
         steps : int
             Number of steps for evaluation.
-        predictions : np.ndarray
-            Predictions to be evaluated.
         verbose : int, optional
             Verbosity level.
 
@@ -446,16 +442,16 @@ class RecognitionBaseModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, y_true = next(x)
+            _, y_true = next(y)
             batch_size = len(y_true)
 
             start = step * batch_size
             end = start + batch_size
 
-            y_pred = predictions[start:end]
+            x_pred = x[start:end]
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for true_label, pred_label in zip(y_true, y_pred):
+            for true_label, pred_label in zip(y_true, x_pred):
                 true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split())
                 local_evaluation = {'ground_truth': true_label, 'top_paths': []}
 
@@ -477,7 +473,7 @@ class RecognitionBaseModel(BaseModel):
 
             progbar.update(step + 1)
 
-        metrics = {k: np.mean(metrics[k]) for k in metrics}
+        metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
 
         return metrics, evaluations
 
@@ -646,3 +642,56 @@ class SynthesisBaseModel(BaseModel):
         generated_images = self.generator([latent_inputs, text_inputs], training=training)
 
         return generated_images
+
+    def image_evaluator(self, x, y, steps, verbose=1):
+        """
+        Evaluate generator predictions on the given data.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
+
+        metrics = {'kid': []}
+        evaluations = []
+
+        kid = KernelInceptionDistance()
+
+        for step in range(steps):
+            progbar.update(step)
+
+            y_data, _ = next(y)
+            batch_size = len(y_data[0])
+
+            start = step * batch_size
+            end = start + batch_size
+
+            x_pred = x[start:end]
+
+            kid.update_state(y_data[0], x_pred)
+            metrics['kid'].append(kid.result())
+
+            y_true = np.transpose((y_data[0] + 1.0) * 127.5, (0, 2, 1, 3))
+            x_pred = np.transpose((x_pred + 1.0) * 127.5, (0, 2, 1, 3))
+
+            evaluations.extend(list(zip(y_true, x_pred)))
+
+            progbar.update(step + 1)
+
+        metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
+
+        return metrics, evaluations
