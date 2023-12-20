@@ -66,7 +66,7 @@ if __name__ == '__main__':
     # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
-    parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
+    parser.add_argument('--beam-width', default=15, type=int, help='Beam width for CTC decoder')
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
@@ -112,11 +112,8 @@ if __name__ == '__main__':
     if args.check:
         pipelines.check(args)
 
-    elif args.training:
-        pipelines.training(args)
-
-    elif args.test:
-        pipelines.test(args)
+    elif args.training or args.test:
+        pipelines.run(args, training=args.training)
 
     elif args.inference:
         pipelines.inference(args)
