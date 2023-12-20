@@ -30,6 +30,7 @@ class EditDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.tracker = tf.keras.metrics.Mean()
+
         self.beam_width = beam_width
         self.epsilon = epsilon
 
@@ -122,7 +123,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
-    def __init__(self, name='kid', **kwargs):
+    def __init__(self, scale=1.0, offset=0.0, name='kid', **kwargs):
         """
         Initialize the KID metric instance.
 
@@ -137,12 +138,15 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.tracker = tf.keras.metrics.Mean()
+
+        self.scale = scale
+        self.offset = offset
         self.kid_image_size = (299, 299, 3)
 
         self.encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(input_shape=(None, None, 1)),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
-            tf.keras.layers.Rescaling(255.0),
+            tf.keras.layers.Rescaling(scale=self.scale, offset=self.offset),
             tf.keras.layers.Resizing(height=self.kid_image_size[0], width=self.kid_image_size[1]),
             tf.keras.layers.Lambda(tf.keras.applications.inception_v3.preprocess_input),
             tf.keras.applications.InceptionV3(include_top=False, input_shape=self.kid_image_size, weights='imagenet'),
