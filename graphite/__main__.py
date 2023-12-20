@@ -70,9 +70,9 @@ if __name__ == '__main__':
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
-    parser.add_argument('--image', default=[], nargs='+', help='List of image paths')
-    parser.add_argument('--bbox', default=[], nargs='+', help='Bounding box values for images (x, y, width, height)')
-    parser.add_argument('--text', default=[], nargs='+', help='List of arbitrary text inputs')
+    parser.add_argument('--image', default=None, help='Image path')
+    parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x, y, width, height)')
+    parser.add_argument('--text', default=None, help='Arbitrary text inputs')
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
@@ -94,19 +94,16 @@ if __name__ == '__main__':
         assert args.synthesis, '--synthesis must be defined'
 
         if args.inference:
-            assert len(args.texts) > 0, '--texts must be defined'
+            assert args.text, '--text must be defined'
 
     if 'recognition' in args.workflow:
         assert args.recognition, '--recognition must be defined'
 
         if args.inference:
-            assert len(args.images) > 0, '--images must be defined'
+            assert args.image, '--image must be defined'
 
     if args.training or args.test or args.inference:
         assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
-
-    if args.test or args.inference:
-        assert args.run_index is not None, '--run-index must be defined'
 
     # pipelines
     if args.check:
