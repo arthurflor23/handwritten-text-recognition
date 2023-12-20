@@ -335,7 +335,7 @@ class RecognitionBaseModel(BaseModel):
                     x,
                     steps,
                     top_paths=1,
-                    beam_width=30,
+                    beam_width=15,
                     tokenizer=None,
                     verbose=1):
         """

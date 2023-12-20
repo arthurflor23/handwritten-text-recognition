@@ -359,7 +359,7 @@ class Graphite():
                             x,
                             steps,
                             top_paths=1,
-                            beam_width=30,
+                            beam_width=15,
                             ctc_decode=True,
                             token_decode=True,
                             corrections=False):
@@ -405,7 +405,7 @@ class Graphite():
                                                                 verbose=1)
 
             if token_decode and corrections and self.spelling_model:
-                predictions = self.spelling_model.predict(predictions)
+                predictions = self.spelling_model.predict(x=predictions, steps=steps, verbose=1)
 
         return predictions, probabilities
 
