@@ -555,11 +555,11 @@ class Graphite():
                 os.makedirs(evaluation_path, exist_ok=True)
 
                 for i, image in enumerate(images):
-                    authentic_path = os.path.join(evaluation_path, f"{i+1}_authentic.png")
-                    generated_path = os.path.join(evaluation_path, f"{i+1}_generated.png")
+                    authentic_filepath = os.path.join(evaluation_path, f"{i+1}_authentic.png")
+                    generated_filepath = os.path.join(evaluation_path, f"{i+1}_generated.png")
 
-                    cv2.imwrite(authentic_path, image[0])
-                    cv2.imwrite(generated_path, image[1])
+                    cv2.imwrite(authentic_filepath, image[0])
+                    cv2.imwrite(generated_filepath, image[1])
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(context=run)
