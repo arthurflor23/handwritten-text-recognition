@@ -66,14 +66,14 @@ def format_text(text):
     return text
 
 
-def prepare_text_batch(text_batch, target_shape=None, pad_value=0, dtype=np.int64):
+def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     """
-    Pads a batch of text data to a uniform shape.
+    Pads a batch of data to a uniform shape.
 
     Parameters
     ----------
-    text_batch : list
-        List of texts.
+    data_batch : list
+        List of data.
     target_shape : tuple, optional
         Target shape for padding.
     pad_value : int, optional
@@ -84,61 +84,41 @@ def prepare_text_batch(text_batch, target_shape=None, pad_value=0, dtype=np.int6
     Returns
     -------
     numpy.ndarray
-        Padded text data.
+        Padded data.
     """
 
     if target_shape:
-        max_lines, max_chars = target_shape[:2]
+        max_height, max_width = target_shape[:2]
     else:
-        max_lines = max(len(line) for line in text_batch)
-        max_chars = max(len(chars) for line in text_batch for chars in line)
+        max_height = max(len(height) for height in data_batch)
+        max_width = max(len(width) for data in data_batch for width in data)
 
-    padded = np.full((len(text_batch), max_lines, max_chars), pad_value, dtype=dtype)
+    padded = np.full((len(data_batch), max_height, max_width), pad_value, dtype=dtype)
 
-    for i, text in enumerate(text_batch):
-        lines, chars = np.asarray(text).shape
-        padded[i, :lines, :chars] = text
+    for i, data in enumerate(data_batch):
+        height, width = np.asarray(data).shape
+        padded[i, :height, :width] = data
 
-    text_batch = np.expand_dims(padded, axis=-1)
-
-    return text_batch
+    return padded
 
 
-def prepare_image_batch(image_batch, target_shape=None, pad_value=255, dtype=np.uint8):
+def batch_image_processing(image_batch):
     """
-    Pads and processes a batch of image data to a uniform shape.
+    Processes a batch of image data for model input .
 
     Parameters
     ----------
     image_batch : list
         List of image arrays.
-    target_shape : list or tuple, optional
-        Target shape for padding.
-    pad_value : int, optional
-        Value used for padding.
-    dtype : data-type, optional
-        Data type of the output array.
 
     Returns
     -------
     numpy.ndarray
-        Padded and processed image data.
+        Processed image data.
     """
 
-    if target_shape:
-        max_width, max_height = target_shape[:2]
-    else:
-        max_height = max(len(height) for height in image_batch)
-        max_width = max(len(width) for image in image_batch for width in image)
-
-    padded = np.full((len(image_batch), max_height, max_width), pad_value, dtype=dtype)
-
-    for i, image in enumerate(image_batch):
-        height, width = np.asarray(image).shape
-        padded[i, :height, :width] = image
-
-    image_batch = np.expand_dims(padded, axis=-1)
-    image_batch = image_batch.transpose((0, 2, 1, 3))
+    image_batch = image_batch.transpose((0, 2, 1))
+    image_batch = np.expand_dims(image_batch, axis=-1)
     image_batch = (image_batch.astype(np.float32) / 127.5) - 1
 
     return image_batch
