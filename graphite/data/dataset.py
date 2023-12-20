@@ -260,7 +260,7 @@ class Dataset():
         def validate(index, item):
             item['text'] = utils.format_text(item['text'])
 
-            if not item['text'] and hasattr(self, '_source') is not None:
+            if not item['text'] and hasattr(self, '_source'):
                 print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
                 return index
 
