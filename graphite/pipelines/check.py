@@ -41,68 +41,97 @@ def check(args):
                           seed=args.seed)
     print(augmentor)
 
-    src_generator, _ = dataset.get_generator(partition='training',
-                                             samples=100,
-                                             batch_size=args.batch_size,
-                                             augmentor=None,
-                                             prepare_batch=False,
-                                             use_source=True,
-                                             shuffle=False)
+    source_gen, _ = dataset.get_generator(data_partition='training',
+                                          batch_size=args.batch_size,
+                                          batch_encoded=False,
+                                          batch_padding=False,
+                                          batch_processing=False,
+                                          augmentor=None,
+                                          shuffle=False)
 
-    enc_generator, _ = dataset.get_generator(partition='training',
-                                             samples=100,
-                                             batch_size=args.batch_size,
-                                             augmentor=None,
-                                             prepare_batch=False,
-                                             use_source=False,
-                                             shuffle=False)
+    encoded_gen, _ = dataset.get_generator(data_partition='training',
+                                           batch_size=args.batch_size,
+                                           batch_encoded=True,
+                                           batch_padding=False,
+                                           batch_processing=False,
+                                           augmentor=None,
+                                           shuffle=False)
 
-    aug_generator, _ = dataset.get_generator(partition='training',
-                                             samples=100,
+    padded_gen, _ = dataset.get_generator(data_partition='training',
+                                          batch_size=args.batch_size,
+                                          batch_encoded=True,
+                                          batch_padding=True,
+                                          batch_processing=False,
+                                          augmentor=None,
+                                          shuffle=False)
+
+    augmented_gen, _ = dataset.get_generator(data_partition='training',
                                              batch_size=args.batch_size,
+                                             batch_encoded=True,
+                                             batch_padding=True,
+                                             batch_processing=False,
                                              augmentor=augmentor,
-                                             prepare_batch=False,
-                                             use_source=False,
                                              shuffle=False)
 
-    inp_generator, _ = dataset.get_generator(partition='training',
-                                             samples=100,
+    processed_gen, _ = dataset.get_generator(data_partition='training',
                                              batch_size=args.batch_size,
+                                             batch_encoded=True,
+                                             batch_padding=True,
+                                             batch_processing=True,
                                              augmentor=augmentor,
-                                             prepare_batch=True,
-                                             use_source=False,
                                              shuffle=False)
 
     if args.check:
         print('\nChecking samples...\n')
 
         while True:
-            src_images, src_labels = next(src_generator)
-            enc_images, enc_labels = next(enc_generator)
-            aug_images, _ = next(aug_generator)
-            inp_images, inp_labels = next(inp_generator)
+            x_source_data, _ = next(source_gen)
+            image_source_data, text_source_data, writer_source_data, _, _ = x_source_data
 
-            for i in range(args.batch_size):
-                # raw image and text
-                print('Source Image (path)')
-                print(src_images[i], '\n')
-                print('Source Label')
-                print(src_labels[i], '\n')
+            x_encoded_data, _ = next(encoded_gen)
+            image_encoded_data, text_encoded_data, writer_encoded_data, _, _ = x_encoded_data
 
-                # image and text (no augmentation, no padding)
-                cv2.imshow('Image', enc_images[i])
-                print('Encoded Label')
-                print(enc_labels[i], '\n')
+            x_padded_data, _ = next(padded_gen)
+            image_padded_data, text_padded_data, _, _, _ = x_padded_data
 
-                # image (with augmentation, no padding)
-                cv2.imshow('Augmented Image', aug_images[i])
+            x_augmented_data, _ = next(augmented_gen)
+            _, _, _, image_augmented_data, _ = x_augmented_data
 
-                # image and text (with augmentation, with padding)
-                cv2.imshow('Input Image', inp_images[i])
-                print('Input Label')
-                print(inp_labels[i].squeeze(axis=-1).tolist(), '\n')
+            x_processed_data, _ = next(processed_gen)
+            _, _, _, image_processed_data, _ = x_processed_data
 
-                print('Press Enter to continue or Esc to stop...\n\n')
+            for i in range(len(image_source_data)):
+                # source
+                print('\n')
+                print('Path image')
+                print(image_source_data[i], '\n')
+
+                print('Source writer:', writer_source_data[i])
+                print('Encoded writer:', writer_encoded_data[i], '\n')
+
+                print('Source text')
+                print(text_source_data[i])
+                print('--------------------------------------------------\n')
+
+                # no augmentation and no padding
+                cv2.imshow('Image', image_encoded_data[i])
+                print('Encoded text')
+                print(text_encoded_data[i])
+                print('--------------------------------------------------\n')
+
+                # no augmentation and with padding
+                cv2.imshow('Padded image', image_padded_data[i])
+                print('Padded text')
+                print(text_padded_data[i].tolist())
+                print('--------------------------------------------------\n')
+
+                # with augmentation and with padding
+                cv2.imshow('Augmented image', image_augmented_data[i])
+
+                # with augmentation, with padding and input process
+                cv2.imshow('Processed image', image_processed_data[i])
+
+                print('Press Enter to continue or Esc to stop...\n')
                 key = cv2.waitKey(0)
 
                 if key == 27:
