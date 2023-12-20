@@ -52,8 +52,7 @@ def inference(args):
                         experiment_name=args.experiment_name)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate)
-    # graphite.compile(learning_rate=args.learning_rate, context=context)
+    graphite.compile(learning_rate=args.learning_rate, context=context)
 
     output_path = 'outputs'
     name = os.path.splitext(os.path.basename(args.image or ''))[0]
