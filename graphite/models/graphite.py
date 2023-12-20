@@ -12,6 +12,8 @@ import tensorflow as tf
 
 from models.components.callbacks import GANMonitor
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 class Graphite():
     """
@@ -63,7 +65,7 @@ class Graphite():
         self.model = None
         self.spelling_model = None
 
-        self._mlrun = None
+        self._context = None
         self._synthesis = None
         self._recognition = None
 
@@ -152,7 +154,7 @@ class Graphite():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=0.001, mlrun=None):
+    def compile(self, learning_rate=0.001, context=None):
         """
         Compile the models.
 
@@ -160,19 +162,19 @@ class Graphite():
         ----------
         learning_rate : float, optional
             The learning rate for the optimizer.
-        mlrun : mlflow.entities.Run object, optional
-            MLFlow Run entity.
+        context : mlflow.entities.Run object, optional
+            MLFlow run context.
         """
 
-        if mlrun is not None:
-            run_info = self.get_run_info(mlrun=mlrun)
+        if context is not None:
+            run_info = self.get_run_info(context=context)
             artifact_path = os.path.join(run_info['artifact_path'], '<model>.h5')
 
             self.model.load_weights(filepath=artifact_path, by_name=True, skip_mismatch=True)
 
         self.model.compile(learning_rate=learning_rate)
 
-    def get_run_info(self, mlrun=None, create_new=False):
+    def get_run_info(self, context=None, create_new=False):
         """
         Get information about the current MLflow run.
 
@@ -181,7 +183,7 @@ class Graphite():
         run : MLflow Run, optional
             MLflow Run object to set as the current run.
         create_new : bool, optional
-            Create a new mlrun.
+            Create a new run context.
 
         Returns
         -------
@@ -193,13 +195,13 @@ class Graphite():
         run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         artifact_path = None
 
-        if mlrun is not None:
-            self._mlrun = mlrun
+        if context is not None:
+            self._context = context
 
-        if self._mlrun is not None and not create_new:
-            run_id = self._mlrun.info.run_id
-            run_name = self._mlrun.info.run_name
-            artifact_path = self._mlrun.info.artifact_uri.replace('file://', '')
+        if self._context is not None and not create_new:
+            run_id = self._context.info.run_id
+            run_name = self._context.info.run_name
+            artifact_path = self._context.info.artifact_uri.replace('file://', '')
 
         run_info = {
             'id': run_id,
@@ -258,7 +260,7 @@ class Graphite():
         run_info = self.get_run_info(create_new=True)
 
         with mlflow.start_run(run_name=run_info['name']) as run:
-            run_info = self.get_run_info(mlrun=run)
+            run_info = self.get_run_info(context=run)
 
             logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
@@ -559,7 +561,7 @@ class Graphite():
                     cv2.imwrite(generated_path, image[1])
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
-            run_info = self.get_run_info(mlrun=run)
+            run_info = self.get_run_info(context=run)
 
             log_params(params)
             log_content('data', dataset)
@@ -601,7 +603,7 @@ class Graphite():
         Returns
         -------
         tuple
-            (tokenizer, mlrun) or (None, None) if not found.
+            (tokenizer, context) or (None, None) if not found.
         """
 
         Graphite().fix_mlflow_artifacts_path()
@@ -618,17 +620,17 @@ class Graphite():
                                         order_by=['tags.mlflow.runName ASC'])
 
                 if not df.empty and run_index < len(df):
-                    mlrun = mlflow.get_run(df.iloc[run_index]['run_id'])
-                    artifact_path = mlrun.info.artifact_uri.replace('file://', '')
-                    return mlrun, artifact_path
+                    context = mlflow.get_run(df.iloc[run_index]['run_id'])
+                    artifact_path = context.info.artifact_uri.replace('file://', '')
+                    return context, artifact_path
 
             return None, None
 
-        s_mlrun, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
-        r_mlrun, r_path = get_artifacts_path('recognition', recognition, recognition_index)
+        s_context, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
+        r_context, r_path = get_artifacts_path('recognition', recognition, recognition_index)
 
         tokenizer = None
-        mlrun = s_mlrun or r_mlrun
+        context = s_context or r_context
         artifacts_path = s_path or r_path
 
         if artifacts_path:
@@ -641,15 +643,15 @@ class Graphite():
                 except Exception as e:
                     print(f"Error loading tokenizer: {e}")
 
-        if mlrun:
+        if context:
             print('==================================================')
-            print(f"{'Loading Mlrun'.center(50)}")
+            print(f"{'Loading run context'.center(50)}")
             print('--------------------------------------------------')
-            print(f"{'experiment_id':<{25}}: {mlrun.info.experiment_id[:23]}")
-            print(f"{'run_id':<{25}}: {mlrun.info.run_id[:23]}")
-            print(f"{'run_name':<{25}}: {mlrun.info.run_name[:23]}")
+            print(f"{'experiment_id':<{25}}: {context.info.experiment_id[:23]}")
+            print(f"{'run_id':<{25}}: {context.info.run_id[:23]}")
+            print(f"{'run_name':<{25}}: {context.info.run_name[:23]}")
 
-        return tokenizer, mlrun
+        return tokenizer, context
 
     @staticmethod
     def fix_mlflow_artifacts_path():
