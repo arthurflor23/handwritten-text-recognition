@@ -90,7 +90,7 @@ class SynthesisModel(SynthesisBaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (image_inputs, text_inputs, aug_image_inputs, aug_text_inputs, writer_inputs), _ = input_data
+        (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
 
         batch_size = tf.shape(image_inputs)[0]
         batch_quarter = tf.math.maximum(1, batch_size // 4)
