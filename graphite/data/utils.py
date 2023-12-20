@@ -91,9 +91,9 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
         max_height, max_width = target_shape[:2]
     else:
         max_height = max(len(height) for height in data_batch)
-        max_width = max(len(width) for data in data_batch for width in data)
+        max_width = max(len(width) for height in data_batch for width in height)
 
-    padded = np.full((len(data_batch), max_height, max_width), pad_value, dtype=dtype)
+    padded = np.full((len(data_batch), max_height, max_width), fill_value=pad_value, dtype=dtype)
 
     for i, data in enumerate(data_batch):
         height, width = np.asarray(data).shape
@@ -102,13 +102,13 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     return padded
 
 
-def batch_image_processing(image_batch):
+def batch_image_processing(data_batch):
     """
     Processes a batch of image data for model input .
 
     Parameters
     ----------
-    image_batch : list
+    data_batch : list
         List of image arrays.
 
     Returns
@@ -117,11 +117,11 @@ def batch_image_processing(image_batch):
         Processed image data.
     """
 
-    image_batch = image_batch.transpose((0, 2, 1))
-    image_batch = np.expand_dims(image_batch, axis=-1)
-    image_batch = (image_batch.astype(np.float32) / 127.5) - 1
+    data_batch = data_batch.transpose((0, 2, 1))
+    data_batch = np.expand_dims(data_batch, axis=-1)
+    data_batch = (data_batch.astype(np.float32) / 127.5) - 1
 
-    return image_batch
+    return data_batch
 
 
 def read_image(image_path, bbox=None, image_shape=None):
@@ -142,6 +142,9 @@ def read_image(image_path, bbox=None, image_shape=None):
     ndarray
         The loaded image as a NumPy array.
     """
+
+    if image_path is None:
+        return np.full((1, 1), fill_value=0, dtype=np.uint8)
 
     if not isinstance(image_path, str):
         return image_path
