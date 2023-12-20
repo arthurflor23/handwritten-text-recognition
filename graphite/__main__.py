@@ -71,8 +71,9 @@ if __name__ == '__main__':
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
     parser.add_argument('--image', default=None, help='Image path')
-    parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x, y, width, height)')
-    parser.add_argument('--text', default=None, help='Arbitrary text inputs')
+    parser.add_argument('--bbox', default=[], nargs=4, help='Bounding box values for image (x, y, width, height)')
+    parser.add_argument('--text', default='', help='Text input')
+    parser.add_argument('--output', default='outputs', help='Inference output path')
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
