@@ -1,3 +1,5 @@
+import json
+
 from data import Augmentor, Dataset
 from models import Graphite
 
@@ -94,10 +96,15 @@ def run(args, training=None):
                               model=graphite.model)
 
     if 'recognition' in args.workflow:
-        prediction_configs = [
-            {'predict': True, 'corrections': False, 'suffix': None},
-            {'predict': args.spelling, 'corrections': True, 'suffix': 'spelling'},
-        ]
+        prediction_configs = [{
+            'predict': True,
+            'corrections': False,
+            'suffix': None,
+        }, {
+            'predict': args.spelling,
+            'corrections': True,
+            'suffix': 'spelling',
+        }]
 
         for config in prediction_configs:
             if not config['predict']:
@@ -106,13 +113,13 @@ def run(args, training=None):
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
-            predictions, _ = graphite.predict_recognition(x=test_gen,
-                                                          steps=test_steps,
-                                                          top_paths=args.top_paths,
-                                                          beam_width=args.beam_width,
-                                                          ctc_decode=True,
-                                                          token_decode=True,
-                                                          corrections=config['corrections'])
+            predictions, probabilities = graphite.predict_recognition(x=test_gen,
+                                                                      steps=test_steps,
+                                                                      top_paths=args.top_paths,
+                                                                      beam_width=args.beam_width,
+                                                                      ctc_decode=True,
+                                                                      token_decode=True,
+                                                                      corrections=config['corrections'])
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                              batch_size=args.batch_size,
@@ -121,10 +128,13 @@ def run(args, training=None):
 
             metrics, evaluations = graphite.evaluate_recognition(x=predictions,
                                                                  y=source_gen,
-                                                                 steps=source_steps)
+                                                                 steps=source_steps,
+                                                                 probabilities=probabilities)
 
             graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
-            print('Metrics:', metrics)
+
+            print(f"{(config['suffix'] or '')} metrics".strip().capitalize())
+            print(json.dumps(metrics, indent=4, sort_keys=False))
 
     elif 'synthesis' in args.workflow:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
@@ -142,4 +152,6 @@ def run(args, training=None):
                                                            steps=source_steps)
 
         graphite.save_context(metrics=metrics, evaluation_images=evaluations)
-        print('Metrics:', metrics)
+
+        print('Metrics')
+        print(json.dumps(metrics, indent=4, sort_keys=False))
