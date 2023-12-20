@@ -92,11 +92,14 @@ def training(args):
 
     if 'recognition' in args.workflow:
         prediction_configs = [
-            {'corrections': False, 'suffix': 'prediction'},
-            {'corrections': True, 'suffix': 'spelling'},
+            {'predict': True, 'corrections': False, 'suffix': None},
+            {'predict': args.spelling, 'corrections': True, 'suffix': 'spelling'},
         ]
 
         for config in prediction_configs:
+            if not config['predict']:
+                continue
+
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
