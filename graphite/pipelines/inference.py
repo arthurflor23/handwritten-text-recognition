@@ -54,10 +54,8 @@ def inference(args):
 
     graphite.compile(learning_rate=args.learning_rate, context=context)
 
-    output_path = 'outputs'
-    name = os.path.splitext(os.path.basename(args.image or ''))[0]
-
-    os.makedirs(output_path, exist_ok=True)
+    basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+    os.makedirs(args.output, exist_ok=True)
 
     if 'recognition' in args.workflow:
         prediction_configs = [{
@@ -95,7 +93,7 @@ def inference(args):
             content = json.dumps(content, indent=4, sort_keys=False)
             print(content)
 
-            filepath = os.path.join(output_path, f"{name}.json")
+            filepath = os.path.join(args.output, f"{basename}.json")
             with open(filepath, 'w') as f:
                 f.write(content)
 
@@ -105,7 +103,9 @@ def inference(args):
 
         predictions = graphite.predict_synthesis(x=infer_gen, steps=infer_steps)
 
-        filepath = f"{name}_{'guided_style' if args.image else 'random_style'}".strip('_')
+        style = 'guided_style' if args.image else 'random_style'
+        filepath = f"{basename}_{style}".strip('_')
+
         for i, image in enumerate(predictions):
-            generated_filepath = os.path.join(output_path, f"{filepath}.png")
+            generated_filepath = os.path.join(args.output, f"{filepath}.png")
             cv2.imwrite(generated_filepath, image)
