@@ -2,14 +2,16 @@ from data import Augmentor, Dataset
 from models import Graphite
 
 
-def training(args):
+def run(args, training=None):
     """
-    Performs the training phase.
+    Executes the training and testing phase.
 
     Parameters
     ----------
     args : argparse.Namespace
         A namespace object containing all the arguments required.
+    training : bool, optional
+        Whether to execute training phase.
     """
 
     tokenizer, mlrun = Graphite().get_tokenizer(synthesis=args.synthesis,
@@ -30,25 +32,6 @@ def training(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = None
-    if not args.disable_augmentation:
-        augmentor = Augmentor(binarize=args.binarize,
-                              erode=args.erode,
-                              dilate=args.dilate,
-                              elastic=args.elastic,
-                              perspective=args.perspective,
-                              mixup=args.mixup,
-                              shear=args.shear,
-                              scale=args.scale,
-                              rotate=args.rotate,
-                              shift_y=args.shift_y,
-                              shift_x=args.shift_x,
-                              salt_and_pepper=args.salt_and_pepper,
-                              gaussian_noise=args.gaussian_noise,
-                              gaussian_blur=args.gaussian_blur,
-                              seed=args.seed)
-        print(augmentor)
-
     graphite = Graphite(workflow=args.workflow,
                         synthesis=args.synthesis,
                         recognition=args.recognition,
@@ -61,34 +44,55 @@ def training(args):
 
     graphite.compile(learning_rate=args.learning_rate, mlrun=mlrun)
 
-    training_gen, training_steps = dataset.get_generator(data_partition='training',
+    if training:
+        augmentor = None
+
+        if not args.disable_augmentation:
+            augmentor = Augmentor(binarize=args.binarize,
+                                  erode=args.erode,
+                                  dilate=args.dilate,
+                                  elastic=args.elastic,
+                                  perspective=args.perspective,
+                                  mixup=args.mixup,
+                                  shear=args.shear,
+                                  scale=args.scale,
+                                  rotate=args.rotate,
+                                  shift_y=args.shift_y,
+                                  shift_x=args.shift_x,
+                                  salt_and_pepper=args.salt_and_pepper,
+                                  gaussian_noise=args.gaussian_noise,
+                                  gaussian_blur=args.gaussian_blur,
+                                  seed=args.seed)
+            print(augmentor)
+
+        training_gen, training_steps = dataset.get_generator(data_partition='training',
+                                                             batch_size=args.batch_size,
+                                                             augmentor=augmentor,
+                                                             shuffle=True)
+
+        validation_gen, validation_steps = dataset.get_generator(data_partition='validation',
+                                                                 batch_size=args.batch_size)
+
+        sample_gen, sample_steps = dataset.get_generator(data_partition='training',
                                                          batch_size=args.batch_size,
-                                                         augmentor=augmentor,
-                                                         shuffle=True)
+                                                         samples=args.batch_size)
 
-    validation_gen, validation_steps = dataset.get_generator(data_partition='validation',
-                                                             batch_size=args.batch_size)
+        graphite.fit(epochs=args.epochs,
+                     training_gen=training_gen,
+                     training_steps=training_steps,
+                     validation_gen=validation_gen,
+                     validation_steps=validation_steps,
+                     monitor_sample_gen=sample_gen,
+                     monitor_sample_steps=sample_steps,
+                     plateau_factor=args.plateau_factor,
+                     plateau_cooldown=args.plateau_cooldown,
+                     plateau_patience=args.plateau_patience,
+                     patience=args.patience)
 
-    sample_gen, sample_steps = dataset.get_generator(data_partition='training',
-                                                     batch_size=args.batch_size,
-                                                     samples=args.batch_size)
-
-    graphite.fit(epochs=args.epochs,
-                 training_gen=training_gen,
-                 training_steps=training_steps,
-                 validation_gen=validation_gen,
-                 validation_steps=validation_steps,
-                 monitor_sample_gen=sample_gen,
-                 monitor_sample_steps=sample_steps,
-                 plateau_factor=args.plateau_factor,
-                 plateau_cooldown=args.plateau_cooldown,
-                 plateau_patience=args.plateau_patience,
-                 patience=args.patience)
-
-    graphite.save_context(params=args,
-                          dataset=dataset,
-                          augmentor=augmentor,
-                          model=graphite.model)
+        graphite.save_context(params=args,
+                              dataset=dataset,
+                              augmentor=augmentor,
+                              model=graphite.model)
 
     if 'recognition' in args.workflow:
         prediction_configs = [
@@ -121,6 +125,7 @@ def training(args):
                                                                  steps=source_steps)
 
             graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
+            print('Metrics:', metrics)
 
     elif 'synthesis' in args.workflow:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
@@ -138,3 +143,4 @@ def training(args):
                                                            steps=source_steps)
 
         graphite.save_context(metrics=metrics, evaluation_images=evaluations)
+        print('Metrics:', metrics)
