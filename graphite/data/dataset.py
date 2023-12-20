@@ -405,30 +405,30 @@ class Dataset():
         return multigrams
 
     def get_generator(self,
-                      partition,
-                      samples=None,
+                      data_partition,
                       batch_size=8,
+                      batch_encoded=True,
+                      batch_padding=True,
+                      batch_processing=True,
                       augmentor=None,
-                      prepare_batch=True,
-                      use_source=False,
                       shuffle=False):
         """
         Generates a batch of samples for the partition.
 
         Parameters
         ----------
-        partition : str
+        data_partition : str
             The dataset partition which will be create the generator.
-        samples : int, optional
-            Fetch a specific number of samples.
         batch_size : int, optional
             The number of samples in each batch.
+        batch_encoded : bool, optional
+            Specifies whether to use source or encoded data.
+        batch_padding : bool, optional
+            Specifies whether to padding batch data.
+        batch_processing : bool, optional
+            Specifies whether to process batch data for model input.
         augmentor : Augmentor, optional
             The Augmentor instance.
-        prepare_batch : bool, optional
-            Specifies whether to prepare data for model input.
-        use_source : bool, optional
-            Specifies whether to generate source or encoded data.
         shuffle : bool, optional
             Specifies whether data is shuffled by epoch.
 
@@ -438,8 +438,10 @@ class Dataset():
             The generator of batches and the steps per epoch.
         """
 
-        def generator(data, multigrams):
-            data_length, multigrams_length = len(data), len(multigrams)
+        def batch_generator(data, multigrams):
+            data_length = len(data)
+            multigrams_length = len(multigrams)
+
             indices = np.arange(data_length)
             batch_index = 0
 
@@ -454,46 +456,50 @@ class Dataset():
 
                 batch = data[batch_indices]
 
-                x_data = [data['image'] for data in batch]
-                y_data = [data['text'] for data in batch]
+                image_data = [data['image'] for data in batch]
+                text_data = [data['text'] for data in batch]
+                writer_data = [data['writer'] for data in batch]
 
-                if not use_source:
+                aug_image_data = None
+                aug_text_data = None
+
+                if batch_encoded:
                     if self.lazy_mode:
-                        x_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
+                        image_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
 
-                    x_aug_data = x_data.copy()
-                    y_aug_data = []
+                    aug_image_data = image_data.copy()
+                    aug_text_data = text_data.copy()
 
                     if multigrams_length:
                         multigrams_indices = np.random.choice(multigrams_length, len(batch))
-                        y_aug_data = [data['text'] for data in multigrams[multigrams_indices]]
+                        aug_text_data = [data['text'] for data in multigrams[multigrams_indices]]
 
                     if augmentor:
-                        x_aug_data = [augmentor.augmentation(x, x_aug_data) for x in x_aug_data]
-                        x_aug_data = [utils.resize_image(x, self.image_shape) for x in x_aug_data]
+                        aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
+                        aug_image_data = [utils.resize_image(x, self.image_shape) for x in aug_image_data]
 
-                    if prepare_batch:
-                        x_data = utils.prepare_image_batch(x_data, self.image_shape)
-                        y_data = utils.prepare_text_batch(y_data, self.tokenizer.lexical_shape)
+                    if batch_padding:
+                        image_data = utils.batch_padding(image_data, self.image_shape[:2][::-1], 255, np.uint8)
+                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape[:2][::-1], 255, np.uint8)
 
-                        x_aug_data = utils.prepare_image_batch(x_aug_data, self.image_shape)
-                        y_aug_data = utils.prepare_text_batch(y_aug_data, self.tokenizer.lexical_shape)
+                        text_data = utils.batch_padding(text_data, self.tokenizer.lexical_shape, 0, np.int64)
+                        aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
 
-                    if samples is None:
-                        w_data = np.array([data['writer'] for data in batch], dtype=np.int64)
-                        x_data = (x_data, y_data, x_aug_data, y_aug_data, w_data)
+                    if batch_processing:
+                        image_data = utils.batch_image_processing(image_data)
+                        aug_image_data = utils.batch_image_processing(aug_image_data)
+
+                x_data = (image_data, text_data, writer_data, aug_image_data, aug_text_data)
+                y_data = (image_data, text_data, writer_data)
 
                 yield (x_data, y_data)
 
-        subset = 'source' if use_source else 'encoded'
+        subset = 'encoded' if batch_encoded else 'source'
 
-        if samples is None:
-            data = self.samples[subset][partition]
-        else:
-            data = self.samples[subset][partition][:samples]
-            batch_size = min(len(data), batch_size)
+        data = self.samples[subset][data_partition]
+        multigrams = self.multigrams[subset]
 
-        steps_per_epoch = int(np.ceil(len(data) / batch_size)) or None
-        batch_generator = generator(data, self.multigrams[subset]) if steps_per_epoch else None
+        steps = int(np.ceil(len(data) / batch_size)) or None
+        generator = batch_generator(data, multigrams) if steps else None
 
-        return batch_generator, steps_per_epoch
+        return generator, steps
