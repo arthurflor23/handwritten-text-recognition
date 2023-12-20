@@ -61,7 +61,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
 
         for j, image in enumerate(images):
-            filename = os.path.join(filepath, f"{j + 1:03}_{name}.png")
+            filename = os.path.join(filepath, f"{j + 1}_{name}.png")
             cv2.imwrite(filename, image)
 
     def on_epoch_end(self, epoch, logs=None):
@@ -79,20 +79,21 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Currently available log data.
         """
 
-        if (epoch + 1) % self.save_freq == 0:
+        if epoch % self.save_freq == 0:
             for _ in range(self.sample_steps):
-                images, texts = next(self.sample_gen)
+                _, sample_data = next(self.sample_gen)
+                image_data, text_data, _ = sample_data
 
                 # original images
-                self._save_images(epoch, images, name='authentic')
+                self._save_images(epoch, image_data, name='authentic')
 
                 # guided latent images
-                guided_features_inputs, _ = self.model.style_backbone(images, training=False)
+                guided_features_inputs, _ = self.model.style_backbone(image_data, training=False)
                 guided_latent_inputs, _, _ = self.model.style_encoder(guided_features_inputs, training=False)
-                guided_latent_images = self.model.generator([guided_latent_inputs, texts], training=False)
+                guided_latent_images = self.model.generator([guided_latent_inputs, text_data], training=False)
                 self._save_images(epoch, guided_latent_images, name='guided_style')
 
                 # random latent images
-                random_latent_inputs = tf.random.normal(shape=(len(images), self.latent_dim))
-                random_latent_images = self.model.generator([random_latent_inputs, texts], training=False)
+                random_latent_inputs = tf.random.normal(shape=(len(image_data), self.latent_dim))
+                random_latent_images = self.model.generator([random_latent_inputs, text_data], training=False)
                 self._save_images(epoch, random_latent_images, name='random_style')
