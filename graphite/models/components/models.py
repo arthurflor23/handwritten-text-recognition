@@ -253,15 +253,15 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (image_inputs, text_inputs, aug_image_inputs, aug_text_inputs, _), _ = input_data
+        (image_data, text_data, _, aug_image_data, aug_text_data), _ = input_data
 
-        images = aug_image_inputs
-        texts = text_inputs
+        images = aug_image_data
+        texts = text_data
 
         if self.generator and self.style_backbone and self.style_encoder:
             if random.random() <= self.synthesis_ratio:
-                images = image_inputs
-                texts = aug_text_inputs
+                images = image_data
+                texts = aug_text_data
 
                 features_inputs, _ = self.style_backbone(images, training=False)
                 latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
@@ -299,9 +299,9 @@ class RecognitionBaseModel(BaseModel):
         x_data, y_data = input_data
 
         ctc_logits = self.call(x_data, training=False)
-        ctc_loss = self.ctc_loss(y_data, ctc_logits)
+        ctc_loss = self.ctc_loss(y_data[1], ctc_logits)
 
-        self.edit_distance.update_state(y_data, ctc_logits)
+        self.edit_distance.update_state(y_data[1], ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
@@ -442,27 +442,29 @@ class RecognitionBaseModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, y_true = next(y)
-            batch_size = len(y_true)
+            _, y_data = next(y)
+            _, text_true_data, _ = y_data
+
+            batch_size = len(text_true_data)
 
             start = step * batch_size
             end = start + batch_size
 
-            x_pred = x[start:end]
+            text_pred_data = x[start:end]
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for true_label, pred_label in zip(y_true, x_pred):
-                true_label = ' '.join(re.sub(pattern, r' \1 ', true_label.replace('\n', ' ')).split())
-                local_evaluation = {'ground_truth': true_label, 'top_paths': []}
+            for text_true, text_pred in zip(text_true_data, text_pred_data):
+                text_true = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ')).split())
+                local_evaluation = {'ground_truth': text_true, 'top_paths': []}
 
-                for _, top_path in enumerate(pred_label):
+                for _, top_path in enumerate(text_pred):
                     top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
 
-                    cer_distance = editdistance.eval(list(true_label), list(top_path))
-                    cer = cer_distance / max(len(true_label), len(top_path))
+                    cer_distance = editdistance.eval(list(text_true), list(top_path))
+                    cer = cer_distance / max(len(text_true), len(top_path))
 
-                    wer_distance = editdistance.eval(true_label.split(), top_path.split())
-                    wer = wer_distance / max(len(true_label.split()), len(top_path.split()))
+                    wer_distance = editdistance.eval(text_true.split(), top_path.split())
+                    wer = wer_distance / max(len(text_true.split()), len(top_path.split()))
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
@@ -591,7 +593,7 @@ class SynthesisBaseModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.kld_loss = tf.keras.losses.KLDivergence()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid = KernelInceptionDistance()
+        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
     def test_step(self, input_data):
         """
@@ -669,26 +671,25 @@ class SynthesisBaseModel(BaseModel):
         metrics = {'kid': []}
         evaluations = []
 
-        kid = KernelInceptionDistance()
+        kid = KernelInceptionDistance(scale=1.0, offset=0.0)
 
         for step in range(steps):
             progbar.update(step)
 
-            y_data, _ = next(y)
-            batch_size = len(y_data[0])
+            _, y_data = next(y)
+            image_true_data, _, _ = y_data
+
+            batch_size = len(image_true_data)
 
             start = step * batch_size
             end = start + batch_size
 
-            x_pred = x[start:end]
+            image_pred_data = x[start:end]
 
-            kid.update_state(y_data[0], x_pred)
+            kid.update_state(image_true_data, image_pred_data)
             metrics['kid'].append(kid.result())
 
-            y_true = np.transpose((y_data[0] + 1.0) * 127.5, (0, 2, 1, 3))
-            x_pred = np.transpose((x_pred + 1.0) * 127.5, (0, 2, 1, 3))
-
-            evaluations.extend(list(zip(y_true, x_pred)))
+            evaluations.extend(list(zip(image_true_data, image_pred_data)))
 
             progbar.update(step + 1)
 
