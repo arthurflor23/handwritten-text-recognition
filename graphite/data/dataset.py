@@ -411,6 +411,7 @@ class Dataset():
                       batch_padding=True,
                       batch_processing=True,
                       augmentor=None,
+                      samples=None,
                       shuffle=False):
         """
         Generates a batch of samples for the partition.
@@ -429,6 +430,8 @@ class Dataset():
             Specifies whether to process batch data for model input.
         augmentor : Augmentor, optional
             The Augmentor instance.
+        samples : int, optional
+            Fetch a specific number of samples.
         shuffle : bool, optional
             Specifies whether data is shuffled by epoch.
 
@@ -464,8 +467,10 @@ class Dataset():
                 aug_text_data = None
 
                 if batch_encoded:
+                    writer_data = np.array(writer_data)
+
                     if self.lazy_mode:
-                        image_data = [utils.read_image(data['image'], data['bbox'], self.image_shape) for data in batch]
+                        image_data = [utils.read_image(x['image'], x['bbox'], self.image_shape) for x in batch]
 
                     aug_image_data = image_data.copy()
                     aug_text_data = text_data.copy()
@@ -496,8 +501,11 @@ class Dataset():
 
         subset = 'encoded' if batch_encoded else 'source'
 
-        data = self.samples[subset][data_partition]
+        data = self.samples[subset][data_partition] if samples is None \
+            else self.samples[subset][data_partition][:samples]
+
         multigrams = self.multigrams[subset]
+        batch_size = min(len(data), batch_size)
 
         steps = int(np.ceil(len(data) / batch_size)) or None
         generator = batch_generator(data, multigrams) if steps else None
