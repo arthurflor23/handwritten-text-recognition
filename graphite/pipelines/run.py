@@ -14,11 +14,11 @@ def run(args, training=None):
         Whether to execute training phase.
     """
 
-    tokenizer, mlrun = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                synthesis_index=args.synthesis_index,
-                                                recognition=args.recognition,
-                                                recognition_index=args.recognition_index,
-                                                experiment_name=args.experiment_name)
+    tokenizer, context = Graphite().get_tokenizer(synthesis=args.synthesis,
+                                                  synthesis_index=args.synthesis_index,
+                                                  recognition=args.recognition,
+                                                  recognition_index=args.recognition_index,
+                                                  experiment_name=args.experiment_name)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -42,7 +42,7 @@ def run(args, training=None):
                         experiment_name=args.experiment_name)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate, mlrun=mlrun)
+    graphite.compile(learning_rate=args.learning_rate, context=context)
 
     if training:
         augmentor = None
