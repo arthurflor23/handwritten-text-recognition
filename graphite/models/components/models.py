@@ -410,10 +410,11 @@ class RecognitionBaseModel(BaseModel):
 
         predictions = np.concatenate(predictions, axis=0)
         probabilities = np.concatenate(probabilities, axis=0)
+        probabilities = probabilities.squeeze(axis=-1).astype(float)
 
         return predictions, probabilities
 
-    def ctc_evaluator(self, x, y, steps, verbose=1):
+    def ctc_evaluator(self, x, y, steps, probabilities=None, verbose=1):
         """
         Evaluate CTC predictions on the given data.
 
@@ -425,6 +426,8 @@ class RecognitionBaseModel(BaseModel):
             Label data for evaluation.
         steps : int
             Number of steps for evaluation.
+        probabilities : numpy.ndarray, optional
+            Corresponding probabilities of the predictions.
         verbose : int, optional
             Verbosity level.
 
@@ -439,6 +442,9 @@ class RecognitionBaseModel(BaseModel):
         metrics = {'cer': [], 'wer': []}
         evaluations = []
 
+        if probabilities is None:
+            probabilities = [None] * len(x)
+
         for step in range(steps):
             progbar.update(step)
 
@@ -451,13 +457,15 @@ class RecognitionBaseModel(BaseModel):
             end = start + batch_size
 
             text_pred_data = x[start:end]
+            prob_pred_data = probabilities[start:end]
+
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for text_true, text_pred in zip(text_true_data, text_pred_data):
+            for text_true, text_pred, prob_pred in zip(text_true_data, text_pred_data, prob_pred_data):
                 text_true = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ')).split())
-                local_evaluation = {'ground_truth': text_true, 'top_paths': []}
+                local_evaluation = {'ground_truth': text_true}
 
-                for _, top_path in enumerate(text_pred):
+                for i, top_path in enumerate(text_pred):
                     top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
 
                     cer_distance = editdistance.eval(list(text_true), list(top_path))
@@ -469,7 +477,10 @@ class RecognitionBaseModel(BaseModel):
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
 
-                    local_evaluation['top_paths'].append(top_path)
+                    local_evaluation[f"top_path_{i+1}"] = {
+                        'probability': prob_pred if prob_pred is None else prob_pred[i],
+                        'prediction': top_path,
+                    }
 
                 evaluations.append(local_evaluation)
 
@@ -639,8 +650,12 @@ class SynthesisBaseModel(BaseModel):
 
         image_inputs, text_inputs, _, _, _ = x_data
 
-        features_inputs, _ = self.style_backbone(image_inputs, training=training)
-        latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
+        if tf.math.reduce_all(tf.equal(image_inputs, -1.)):
+            latent_inputs = tf.random.normal(shape=(len(text_inputs), self.generator.latent_dim))
+        else:
+            features_inputs, _ = self.style_backbone(image_inputs, training=training)
+            latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
+
         generated_images = self.generator([latent_inputs, text_inputs], training=training)
 
         return generated_images
