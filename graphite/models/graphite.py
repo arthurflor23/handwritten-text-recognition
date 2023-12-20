@@ -434,7 +434,7 @@ class Graphite():
 
         return predictions
 
-    def evaluate_recognition(self, x, y, steps):
+    def evaluate_recognition(self, x, y, steps, probabilities=None):
         """
         Evaluate CTC predictions on the given source data.
 
@@ -446,6 +446,8 @@ class Graphite():
             Label data for evaluation.
         steps : int
             Number of steps for evaluation.
+        probabilities : numpy.ndarray, optional
+            Corresponding probabilities of the predictions.
 
         Returns
         -------
@@ -456,7 +458,7 @@ class Graphite():
         if y is None:
             return None, None
 
-        metrics, evaluations = self.model.ctc_evaluator(x=x, y=y, steps=steps, verbose=1)
+        metrics, evaluations = self.model.ctc_evaluator(x=x, y=y, steps=steps, probabilities=probabilities, verbose=1)
 
         return metrics, evaluations
 
@@ -531,6 +533,7 @@ class Graphite():
                 filepath = os.path.join(logs_path, f"{label}.log")
 
                 if isinstance(content, dict) or isinstance(content, list):
+                    filepath = filepath.replace('.log', '.json')
                     content = json.dumps(content, indent=4, sort_keys=False)
 
                 with open(filepath, 'w') as f:
