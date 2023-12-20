@@ -140,8 +140,7 @@ def run(args, training=None):
         test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                      batch_size=args.batch_size)
 
-        predictions = graphite.predict_synthesis(x=test_gen,
-                                                 steps=test_steps)
+        predictions = graphite.predict_synthesis(x=test_gen, steps=test_steps)
 
         source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size,
