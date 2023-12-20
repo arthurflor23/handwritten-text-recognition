@@ -61,15 +61,16 @@ def training(args):
 
     graphite.compile(learning_rate=args.learning_rate, mlrun=mlrun)
 
-    training_gen, training_steps = dataset.get_generator(partition='training',
+    training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                          batch_size=args.batch_size,
                                                          augmentor=augmentor,
                                                          shuffle=True)
 
-    validation_gen, validation_steps = dataset.get_generator(partition='validation',
+    validation_gen, validation_steps = dataset.get_generator(data_partition='validation',
                                                              batch_size=args.batch_size)
 
-    sample_gen, sample_steps = dataset.get_generator(partition='training',
+    sample_gen, sample_steps = dataset.get_generator(data_partition='training',
+                                                     batch_size=args.batch_size,
                                                      samples=args.batch_size)
 
     graphite.fit(epochs=args.epochs,
@@ -90,42 +91,47 @@ def training(args):
                           model=graphite.model)
 
     if 'recognition' in args.workflow:
-        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
-        predictions, _ = graphite.predict_recognition(x=test_gen,
-                                                      steps=test_steps,
-                                                      top_paths=args.top_paths,
-                                                      beam_width=args.beam_width,
-                                                      corrections=False)
+        prediction_configs = [
+            {'corrections': False, 'suffix': 'prediction'},
+            {'corrections': True, 'suffix': 'spelling'},
+        ]
 
-        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
-        corrections, _ = graphite.predict_recognition(x=test_gen,
-                                                      steps=test_steps,
-                                                      top_paths=args.top_paths,
-                                                      beam_width=args.beam_width,
-                                                      corrections=True)
+        for config in prediction_configs:
+            test_gen, test_steps = dataset.get_generator(data_partition='test',
+                                                         batch_size=args.batch_size)
 
-        source_gen, source_steps = dataset.get_generator(partition='test',
-                                                         batch_size=args.batch_size,
-                                                         use_source=True)
-        p_metrics, p_evaluations = graphite.evaluate_recognition(x=predictions,
+            predictions, _ = graphite.predict_recognition(x=test_gen,
+                                                          steps=test_steps,
+                                                          top_paths=args.top_paths,
+                                                          beam_width=args.beam_width,
+                                                          ctc_decode=True,
+                                                          token_decode=True,
+                                                          corrections=config['corrections'])
+
+            source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_encoded=False,
+                                                             batch_processing=False)
+
+            metrics, evaluations = graphite.evaluate_recognition(x=predictions,
                                                                  y=source_gen,
                                                                  steps=source_steps)
 
-        source_gen, source_steps = dataset.get_generator(partition='test',
-                                                         batch_size=args.batch_size,
-                                                         use_source=True)
-        s_metrics, s_evaluations = graphite.evaluate_recognition(x=corrections,
-                                                                 y=source_gen,
-                                                                 steps=source_steps)
-
-        graphite.save_context(metrics=p_metrics, evaluations=p_evaluations, suffix='prediction')
-        graphite.save_context(metrics=s_metrics, evaluations=s_evaluations, suffix='spelling')
+            graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
     elif 'synthesis' in args.workflow:
-        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
-        predictions = graphite.predict_synthesis(x=test_gen, steps=test_steps)
+        test_gen, test_steps = dataset.get_generator(data_partition='test',
+                                                     batch_size=args.batch_size)
 
-        test_gen, test_steps = dataset.get_generator(partition='test', batch_size=args.batch_size)
-        metrics, evaluations = graphite.evaluate_synthesis(x=predictions, y=test_gen, steps=test_steps)
+        predictions = graphite.predict_synthesis(x=test_gen,
+                                                 steps=test_steps)
 
-        graphite.save_context(metrics=metrics, evaluation_images=evaluations, suffix='prediction')
+        source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                         batch_size=args.batch_size,
+                                                         batch_processing=False)
+
+        metrics, evaluations = graphite.evaluate_synthesis(x=predictions,
+                                                           y=source_gen,
+                                                           steps=source_steps)
+
+        graphite.save_context(metrics=metrics, evaluation_images=evaluations)
