@@ -318,7 +318,7 @@ class Graphite():
             ]
 
             if 'synthesis' in self.workflow:
-                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis')
+                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training_samples')
                 os.makedirs(synthesis_path, exist_ok=True)
 
                 callbacks.extend([
@@ -343,14 +343,15 @@ class Graphite():
                                      verbose=1)
             mlflow.end_run()
 
-        best_metric_index = history.history[monitor].index(min(history.history[monitor]))
-        metrics = {k: history.history[k][best_metric_index] for k in history.history if k != 'lr'}
+        if monitor in history.history:
+            best_metric_index = history.history[monitor].index(min(history.history[monitor]))
+            metrics = {k: history.history[k][best_metric_index] for k in history.history if k != 'lr'}
 
-        train_metrics = {k: metrics[k] for k in metrics if not k.startswith('val_')}
-        valid_metrics = {k.replace('val_', ''): metrics[k] for k in metrics if k.startswith('val_')}
+            training_metrics = {k: metrics[k] for k in metrics if not k.startswith('val_')}
+            validation_metrics = {k.replace('val_', ''): metrics[k] for k in metrics if k.startswith('val_')}
 
-        self.save_context(metrics=train_metrics, prefix='train')
-        self.save_context(metrics=valid_metrics, prefix='valid')
+            self.save_context(metrics=training_metrics, prefix='training')
+            self.save_context(metrics=validation_metrics, prefix='validation')
 
         return history
 
@@ -408,7 +409,7 @@ class Graphite():
 
         return predictions, probabilities
 
-    def predict_synthesis(self, x, steps, decode=False):
+    def predict_synthesis(self, x, steps):
         """
         Make image generations with synthesis model using test data.
 
@@ -418,17 +419,18 @@ class Graphite():
             Data for predictions.
         steps : int
             Number of steps for prediction.
-        decode : bool, optional
-            Perform image decoding.
+
+        Returns
+        -------
+        np.ndarray
+            Predictions.
         """
 
         if x is None:
-            return None, None
+            return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=1)
-
-        if decode:
-            predictions = np.transpose((predictions + 1.0) * 127.5, (0, 2, 1, 3))
+        predictions = np.transpose((predictions + 1.0) * 127.5, (0, 2, 1, 3))
 
         return predictions
 
@@ -521,12 +523,12 @@ class Graphite():
 
         run_info = self.get_run_info()
 
-        def log_content(content_name, content):
+        def log_content(label, content):
             if content is not None:
                 logs_path = os.path.join(run_info['artifact_path'], 'logs')
                 os.makedirs(logs_path, exist_ok=True)
 
-                filepath = os.path.join(logs_path, f"{content_name}.log")
+                filepath = os.path.join(logs_path, f"{label}.log")
 
                 if isinstance(content, dict) or isinstance(content, list):
                     content = json.dumps(content, indent=4, sort_keys=False)
@@ -534,19 +536,19 @@ class Graphite():
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
 
-        def log_metric(content_name, content):
+        def log_metric(label, content):
             if content is not None:
                 for key, value in content.items():
-                    mlflow.log_metric(content_name.replace('<metric>', key), value)
+                    mlflow.log_metric(label.replace('metrics', key), value)
 
         def log_params(content):
             if content is not None:
                 params_dict = params if isinstance(params, dict) else vars(params)
                 mlflow.log_params(params_dict)
 
-        def log_images(images):
+        def log_images(label, images):
             if images is not None:
-                evaluation_path = os.path.join(run_info['artifact_path'], 'evaluations')
+                evaluation_path = os.path.join(run_info['artifact_path'], 'synthesis', label)
                 os.makedirs(evaluation_path, exist_ok=True)
 
                 for i, image in enumerate(images):
@@ -559,16 +561,18 @@ class Graphite():
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(mlrun=run)
 
+            log_params(params)
             log_content('data', dataset)
             log_content('augmentor', augmentor)
             log_content('model', model)
-            log_content(f"{prefix or ''}_evaluations_{suffix or ''}".strip('_'), evaluations)
 
-            log_images(evaluation_images)
-            log_params(params)
+            evaluation_label = f"{prefix or ''}_evaluations_{suffix or ''}".strip('_')
+            log_content(evaluation_label, evaluations)
+            log_images(evaluation_label, evaluation_images)
 
-            log_content(f"{prefix or ''}_metrics_{suffix or ''}".strip('_'), metrics)
-            log_metric(f"{prefix or ''}_<metric>_{suffix or ''}".strip('_'), metrics)
+            metric_label = f"{prefix or ''}_metrics_{suffix or ''}".strip('_')
+            log_content(metric_label, metrics)
+            log_metric(metric_label, metrics)
 
             mlflow.end_run()
 
