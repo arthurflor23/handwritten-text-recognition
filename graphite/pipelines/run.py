@@ -32,6 +32,25 @@ def run(args, training=None):
                       seed=args.seed)
     print(dataset)
 
+    augmentor = None
+    if training and not args.disable_augmentation:
+        augmentor = Augmentor(binarize=args.binarize,
+                              erode=args.erode,
+                              dilate=args.dilate,
+                              elastic=args.elastic,
+                              perspective=args.perspective,
+                              mixup=args.mixup,
+                              shear=args.shear,
+                              scale=args.scale,
+                              rotate=args.rotate,
+                              shift_y=args.shift_y,
+                              shift_x=args.shift_x,
+                              salt_and_pepper=args.salt_and_pepper,
+                              gaussian_noise=args.gaussian_noise,
+                              gaussian_blur=args.gaussian_blur,
+                              seed=args.seed)
+        print(augmentor)
+
     graphite = Graphite(workflow=args.workflow,
                         synthesis=args.synthesis,
                         recognition=args.recognition,
@@ -45,26 +64,6 @@ def run(args, training=None):
     graphite.compile(learning_rate=args.learning_rate, context=context)
 
     if training:
-        augmentor = None
-
-        if not args.disable_augmentation:
-            augmentor = Augmentor(binarize=args.binarize,
-                                  erode=args.erode,
-                                  dilate=args.dilate,
-                                  elastic=args.elastic,
-                                  perspective=args.perspective,
-                                  mixup=args.mixup,
-                                  shear=args.shear,
-                                  scale=args.scale,
-                                  rotate=args.rotate,
-                                  shift_y=args.shift_y,
-                                  shift_x=args.shift_x,
-                                  salt_and_pepper=args.salt_and_pepper,
-                                  gaussian_noise=args.gaussian_noise,
-                                  gaussian_blur=args.gaussian_blur,
-                                  seed=args.seed)
-            print(augmentor)
-
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
                                                              augmentor=augmentor,
