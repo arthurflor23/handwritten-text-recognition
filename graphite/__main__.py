@@ -70,9 +70,9 @@ if __name__ == '__main__':
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
-    parser.add_argument('--images', default=[], nargs='+', help='List of image paths')
+    parser.add_argument('--image', default=[], nargs='+', help='List of image paths')
     parser.add_argument('--bbox', default=[], nargs='+', help='Bounding box values for images (x, y, width, height)')
-    parser.add_argument('--texts', default=[], nargs='+', help='List of arbitrary text inputs')
+    parser.add_argument('--text', default=[], nargs='+', help='List of arbitrary text inputs')
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
