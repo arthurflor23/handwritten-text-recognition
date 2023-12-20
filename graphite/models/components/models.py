@@ -386,7 +386,7 @@ class RecognitionBaseModel(BaseModel):
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
-                                                                           top_paths=2)
+                                                                           top_paths=top_paths)
 
                 decoded_pads = []
                 for j in range(len(decoded)):
