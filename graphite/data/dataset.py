@@ -178,9 +178,6 @@ class Dataset():
             The partitioned data.
         """
 
-        if not hasattr(self, '_source'):
-            return data
-
         def parse_ratio(ratio):
             if ratio is None:
                 return None
