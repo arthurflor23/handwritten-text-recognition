@@ -11,7 +11,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=1, epsilon=1e-8, name='cer', **kwargs):
+    def __init__(self, beam_width=1, epsilon=1e-7, name='cer', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
@@ -201,10 +201,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0) + 1e-8)
+        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0) + 1e-7)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0) + 1e-8)
+        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0) + 1e-7)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross

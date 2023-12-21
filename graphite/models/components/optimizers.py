@@ -9,7 +9,7 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
         the gradients according to a specified norm.
     """
 
-    def __init__(self, optimizer, normalization='l2', epsilon=1e-8, name='normalized_optimizer', **kwargs):
+    def __init__(self, optimizer, normalization='l2', epsilon=1e-7, name='normalized_optimizer', **kwargs):
         """
         Initializes the NormalizedOptimizer.
 
@@ -264,5 +264,5 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
         optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
         normalization = config.pop('normalization', 'l2')
-        epsilon = config.pop('epsilon', 1e-8)
+        epsilon = config.pop('epsilon', 1e-7)
         return cls(optimizer, normalization, epsilon, **config)
