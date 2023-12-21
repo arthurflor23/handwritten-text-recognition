@@ -1,5 +1,3 @@
-import json
-
 from data import Augmentor, Dataset
 from models import Graphite
 
@@ -133,8 +131,7 @@ def run(args, training=None):
 
             graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
-            print(f"{(config['suffix'] or '')} metrics".strip().capitalize())
-            print(json.dumps(metrics, indent=4, sort_keys=False))
+            print(f"{(config['suffix'] or '')} metrics".strip().capitalize(), metrics)
 
     elif 'synthesis' in args.workflow:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
@@ -152,5 +149,4 @@ def run(args, training=None):
 
         graphite.save_context(metrics=metrics, evaluation_images=evaluations)
 
-        print('Metrics')
-        print(json.dumps(metrics, indent=4, sort_keys=False))
+        print('Metrics', metrics)
