@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
-    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (WxHxC)')
+    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (w,h,c)')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
     parser.add_argument('--plateau-cooldown', default=0, type=int, help='Cooldown after rate plateau')
     parser.add_argument('--plateau-patience', default=20, type=int, help='Epochs before recognizing a plateau')
-    parser.add_argument('--patience', default=30, type=int, help='Epochs without improvement to stop')
+    parser.add_argument('--patience', default=40, type=int, help='Epochs without improvement to stop')
 
     # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
@@ -71,8 +71,8 @@ if __name__ == '__main__':
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
     parser.add_argument('--image', default=None, help='Image path')
-    parser.add_argument('--bbox', default=[], nargs=4, help='Bounding box values for image (x, y, width, height)')
-    parser.add_argument('--text', default='', help='Text input')
+    parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x,y,w,h)')
+    parser.add_argument('--text', default=None, help='Text input')
     parser.add_argument('--output', default='outputs', help='Inference output path')
 
     # others
