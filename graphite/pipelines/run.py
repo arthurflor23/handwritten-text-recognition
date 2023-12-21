@@ -131,7 +131,10 @@ def run(args, training=None):
 
             graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
-            print(f"{(config['suffix'] or '')} metrics".strip().capitalize(), metrics)
+            print('--------------------------------------------------\n')
+            print(f"{config['suffix'] or ''} metrics".strip(), '\n')
+            print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+            print('\n--------------------------------------------------')
 
     elif 'synthesis' in args.workflow:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
@@ -149,4 +152,7 @@ def run(args, training=None):
 
         graphite.save_context(metrics=metrics, evaluation_images=evaluations)
 
-        print('Metrics', metrics)
+        print('--------------------------------------------------\n')
+        print('metrics', '\n')
+        print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+        print('\n--------------------------------------------------')
