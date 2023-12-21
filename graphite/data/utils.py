@@ -19,6 +19,9 @@ def format_text(text):
         The formatted text.
     """
 
+    if not text:
+        return text
+
     substitutions = {
         r'[ ]': ' ',
         r'[＿]': '_',
@@ -143,11 +146,8 @@ def read_image(image_path, bbox=None, image_shape=None):
         The loaded image as a NumPy array.
     """
 
-    if image_path is None:
+    if not image_path:
         return np.full((1, 1), fill_value=0, dtype=np.uint8)
-
-    if not isinstance(image_path, str):
-        return image_path
 
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
