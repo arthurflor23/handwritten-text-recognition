@@ -90,7 +90,7 @@ def inference(args):
                         'prediction': x[i],
                     })
 
-            content = json.dumps(content, indent=4, sort_keys=False)
+            content = json.dumps(content, indent=4)
             print(content)
 
             filepath = os.path.join(args.output, f"{basename}.json")

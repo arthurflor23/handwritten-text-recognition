@@ -540,7 +540,7 @@ class Graphite():
 
                 if isinstance(content, dict) or isinstance(content, list):
                     filepath = filepath.replace('.log', '.json')
-                    content = json.dumps(content, indent=4, sort_keys=False)
+                    content = json.dumps(content, indent=4)
 
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
@@ -691,4 +691,4 @@ class Graphite():
 
             if update_needed:
                 with open(metadata_file, 'w') as f:
-                    yaml.dump(yaml_file, f, default_flow_style=False, sort_keys=False)
+                    yaml.dump(yaml_file, f, default_flow_style=False)
