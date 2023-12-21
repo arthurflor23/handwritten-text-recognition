@@ -19,9 +19,6 @@ def format_text(text):
         The formatted text.
     """
 
-    if not text:
-        return text
-
     substitutions = {
         r'[ ]': ' ',
         r'[＿]': '_',

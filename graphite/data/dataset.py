@@ -258,7 +258,7 @@ class Dataset():
         """
 
         def validate(index, item):
-            item['text'] = utils.format_text(item['text'])
+            item['text'] = utils.format_text(item['text'] or '')
 
             if not item['text'] and hasattr(self, '_source'):
                 print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
