@@ -5,11 +5,11 @@ import glob
 import json
 import pickle
 import mlflow
-import datetime
 import importlib
 import numpy as np
 import tensorflow as tf
 
+from datetime import datetime
 from models.components.callbacks import GANMonitor
 
 
@@ -66,26 +66,28 @@ class Graphite():
         self._context = None
         self._synthesis = None
         self._recognition = None
+        self._spelling = None
 
         if workflow is not None:
             mlflow.set_experiment(experiment_name)
 
-            if 'synthesis' in workflow:
-                self._synthesis = str(synthesis)
-
-            if 'recognition' in workflow:
-                self._recognition = str(recognition)
-
             SynthesisModel = None
             RecognitionModel = None
+            SpellingModel = None
 
-            if self._synthesis:
-                module = f"synthesis.{self._synthesis}"
-                SynthesisModel = self._import_model(module=module, class_name='SynthesisModel')
+            if 'synthesis' in workflow:
+                if synthesis:
+                    self._synthesis = synthesis
+                    SynthesisModel = self._import_model(f"synthesis.{synthesis}", class_name='SynthesisModel')
 
-            if self._recognition:
-                module = f"recognition.{self._recognition}"
-                RecognitionModel = self._import_model(module=module, class_name='RecognitionModel')
+            if 'recognition' in workflow:
+                if recognition:
+                    self._recognition = recognition
+                    RecognitionModel = self._import_model(f"recognition.{recognition}", class_name='RecognitionModel')
+
+                if spelling:
+                    self._spelling = spelling
+                    SpellingModel = self._import_model(f"spelling.{spelling}", class_name='SpellingModel')
 
             if SynthesisModel and not RecognitionModel:
                 self.model = SynthesisModel(image_shape=self.image_shape,
@@ -108,6 +110,9 @@ class Graphite():
                 self.model = RecognitionModel(image_shape=self.image_shape,
                                               lexical_shape=self.tokenizer.lexical_shape,
                                               **synthesis_params)
+
+                if SpellingModel:
+                    self.spelling_model = SpellingModel()
 
     def __repr__(self):
         """
@@ -190,7 +195,7 @@ class Graphite():
         """
 
         run_id = None
-        run_name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        run_name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         artifact_path = None
 
         if context is not None:
@@ -299,7 +304,7 @@ class Graphite():
                 tf.keras.callbacks.EarlyStopping(
                     mode='min',
                     monitor=monitor,
-                    min_delta=1e-8,
+                    min_delta=1e-7,
                     patience=patience,
                     start_from_epoch=0,
                     restore_best_weights=True,
@@ -309,7 +314,7 @@ class Graphite():
                     mode='min',
                     monitor=monitor,
                     min_lr=1e-4,
-                    min_delta=1e-8,
+                    min_delta=1e-7,
                     factor=plateau_factor,
                     cooldown=plateau_cooldown,
                     patience=plateau_patience,
@@ -328,8 +333,9 @@ class Graphite():
                                latent_dim=self.model.generator.latent_dim),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': self._synthesis})
-            mlflow.set_tags({'graphite.recognition': self._recognition})
+            mlflow.set_tags({'graphite.synthesis': str(self._synthesis)})
+            mlflow.set_tags({'graphite.recognition': str(self._recognition)})
+            mlflow.set_tags({'graphite.spelling': str(self._spelling)})
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
