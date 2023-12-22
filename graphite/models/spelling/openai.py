@@ -30,9 +30,9 @@ class SpellingModel():
         self.model = 'gpt-3.5-turbo-1106'
         self.max_tokens = 8192
 
-        self.instruction = ('Correct only evident spelling mistakes in texts inside tags while keeping '
-                            'the number of tags the same. Do not add extra text or alter correct texts. '
-                            'Retain the text\'s unique style and historical character.')
+        self.instruction = ('Correct only evident spelling mistakes in texts inside tags while keeping'
+                            ' the number of tags the same. Do not add extra text or alter correct texts.'
+                            ' Retain the text\'s unique style and historical character.')
 
         openai.api_key = self._get_api_key()
 
@@ -122,7 +122,6 @@ class SpellingModel():
 
             if len(corrected_encoded_batch_matches) != len(fallback_encoded_matches):
                 corrected_encoded_batch[i] = fallback
-                print('fallbacking...')
 
             for match in corrected_encoded_batch_matches:
                 tags = tuple(map(int, match[0].split('.')))
@@ -157,7 +156,7 @@ class SpellingModel():
 
         messages = [
             {'role': 'system', 'content': self.instruction},
-            {'role': 'user', 'content': '\n'.join(batch)},
+            {'role': 'user', 'content': '\n\n'.join(batch)},
         ]
 
         retry_limit = 10
@@ -167,7 +166,6 @@ class SpellingModel():
             try:
                 response = openai.chat.completions.create(model=self.model,
                                                           messages=messages,
-                                                          #   max_tokens=(self.max_tokens // 2),
                                                           temperature=0)
 
                 return response.choices[0].message.content.strip().split('\n')
