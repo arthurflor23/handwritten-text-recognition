@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from datetime import datetime
-from models.components.callbacks import GANMonitor
+from .components.callbacks import GANMonitor
 
 
 class Graphite():
@@ -123,6 +123,9 @@ class Graphite():
         str
             Formatted string with useful information.
         """
+
+        if not self.model:
+            return str(None)
 
         info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
@@ -652,7 +655,7 @@ class Graphite():
 
         if context:
             print('==================================================')
-            print(f"{'Loading run context'.center(50)}")
+            print(f"{'Run context'.center(50)}")
             print('--------------------------------------------------')
             print(f"{'experiment_id':<{25}}: {context.info.experiment_id[:23]}")
             print(f"{'run_id':<{25}}: {context.info.run_id[:23]}")
