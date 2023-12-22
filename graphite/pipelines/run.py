@@ -15,9 +15,9 @@ def run(args, training=None):
     """
 
     tokenizer, context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                  synthesis_index=args.synthesis_index,
+                                                  synthesis_run_index=args.synthesis_run_index,
                                                   recognition=args.recognition,
-                                                  recognition_index=args.recognition_index,
+                                                  recognition_run_index=args.recognition_run_index,
                                                   experiment_name=args.experiment_name)
 
     dataset = Dataset(source=args.source,
@@ -55,7 +55,7 @@ def run(args, training=None):
                         synthesis=args.synthesis,
                         recognition=args.recognition,
                         spelling=args.spelling,
-                        image_shape=args.image_shape,
+                        image_shape=dataset.image_shape,
                         tokenizer=dataset.tokenizer,
                         synthesis_ratio=args.synthesis_ratio,
                         experiment_name=args.experiment_name)
@@ -86,7 +86,8 @@ def run(args, training=None):
                      plateau_factor=args.plateau_factor,
                      plateau_cooldown=args.plateau_cooldown,
                      plateau_patience=args.plateau_patience,
-                     patience=args.patience)
+                     patience=args.patience,
+                     verbose=1)
 
         graphite.save_context(params=args,
                               dataset=dataset,
@@ -117,17 +118,18 @@ def run(args, training=None):
                                                                       beam_width=args.beam_width,
                                                                       ctc_decode=True,
                                                                       token_decode=True,
-                                                                      corrections=config['corrections'])
+                                                                      corrections=config['corrections'],
+                                                                      verbose=1)
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                              batch_size=args.batch_size,
-                                                             batch_encoded=False,
-                                                             batch_processing=False)
+                                                             batch_encoded=False)
 
             metrics, evaluations = graphite.evaluate_recognition(x=predictions,
                                                                  y=source_gen,
                                                                  steps=source_steps,
-                                                                 probabilities=probabilities)
+                                                                 probabilities=probabilities,
+                                                                 verbose=1)
 
             graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
@@ -144,11 +146,13 @@ def run(args, training=None):
 
         source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size,
-                                                         batch_processing=False)
+                                                         batch_processing=False,
+                                                         verbose=1)
 
         metrics, evaluations = graphite.evaluate_synthesis(x=predictions,
                                                            y=source_gen,
-                                                           steps=source_steps)
+                                                           steps=source_steps,
+                                                           verbose=1)
 
         graphite.save_context(metrics=metrics, evaluation_images=evaluations)
 
