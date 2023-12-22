@@ -84,8 +84,8 @@ The project has various command-line parameters that can be used to customize it
 
 #### MLflow
 
--   `--synthesis-index`: Define a synthesis model run index.
--   `--recognition-index`: Define a recognition model run index.
+-   `--synthesis-run-index`: Define a synthesis model run index.
+-   `--recognition-run-index`: Define a recognition model run index.
 -   `--experiment-name`: Define a MLflow experiment name.
 
 #### Dataset
@@ -165,7 +165,7 @@ This command will train the optical model on IAM dataset at the line level, usin
 **Example 2: Perform recognition model testing**
 
 ```bash
-python graphite --workflow recognition --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-index -1 --test
+python graphite --workflow recognition --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-index -1 --test
 ```
 
 This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition index, which loads the last trained model.
@@ -173,7 +173,7 @@ This command will perform testing phase on IAM dataset using the Flor optical ne
 **Example 3: Perform recognition model inference**
 
 ```bash
-python graphite --workflow recognition --recognition flor --beam-width 30 --recognition-index -1 --inference --image path/to/image1.png
+python graphite --workflow recognition --recognition flor --beam-width 30 --recognition-run-index -1 --inference --image path/to/image1.png
 ```
 
 This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition index, which loads the last trained model.
