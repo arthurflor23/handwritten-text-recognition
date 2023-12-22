@@ -2,7 +2,7 @@
 
 This project aims to provide a comprehensive solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition, such as line and paragraph level. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
-Furthermore, the project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows users to log and compare experiments, track metrics, and store trained models for reproducibility and experimentation. Explore the MLflow Dashboard for tracking experiments with `mlflow ui`.
+Furthermore, the project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows users to log and compare experiments, track metrics, and store trained models for reproducibility and experimentation. Explore the [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) for tracking experiments with `mlflow ui`.
 
 ## Getting Started
 
@@ -75,20 +75,20 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 The project has various command-line parameters that can be used to customize its behavior. Here is a list of the available parameters along with their descriptions:
 
-Models
+#### Models
 
 -   `--workflow`: Define applicaiton workflow (e.g., recognition, synthesis).
 -   `--synthesis`: Define the handwriting synthesis model to be used (e.g., gan).
 -   `--recognition`: Define the recognition model to be used (e.g., bluche, flor, puigcerver).
 -   `--spelling`: Define the spelling model to be used (e.g., openai).
 
-MLflow
+#### MLflow
 
 -   `--synthesis-index`: Define a synthesis model run index.
 -   `--recognition-index`: Define a recognition model run index.
 -   `--experiment-name`: Define a MLflow experiment name.
 
-Dataset
+#### Dataset
 
 -   `--source`: Define the source data (e.g., iam, rimes).
 -   `--text-level`: Define the text structure level (e.g., line, paragraph).
@@ -98,7 +98,7 @@ Dataset
 -   `--test-ratio`: Set the test partition ratio.
 -   `--lazy-mode`: Enable lazy loading mode.
 
-Augmentor
+#### Augmentor
 
 -   `--binarize`: Apply binarization thresholding (probability, method name).
 -   `--erode`: Apply erode transformation (probability, kernel size, iterations).
@@ -116,11 +116,11 @@ Augmentor
 -   `--gaussian-blur`: Apply Gaussian blur (probability, kernel size, iterations).
 -   `--disable-augmentation`: Disable data augmentation completely.
 
-Synthesis
+#### Synthesis
 
 -   `--synthesis-ratio`: Set the synthetic data ratio for synthesis and recognition workflow.
 
-Training
+#### Training
 
 -   `--training`: Perform training pipeline.
 -   `--epochs`: Maximum number of epochs.
@@ -131,13 +131,13 @@ Training
 -   `--plateau-patience`: Epochs without improvement before reducing the learning rate.
 -   `--patience`: Epochs without improvement before stopping training.
 
-Test
+#### Test
 
 -   `--test`: Perform test pipeline.
 -   `--top-paths`: Number of top paths for prediction.
 -   `--beam-width`: Beam width for CTC decoder.
 
-Inference
+#### Inference
 
 -   `--inference`: Perform inference pipeline.
 -   `--image`: Image path for handwriting recognition.
@@ -145,7 +145,7 @@ Inference
 -   `--text`: Text input for handwriting synthesis.
 -   `--output`: Inference output path.
 
-Others
+#### Others
 
 -   `--check`: Perform check pipeline.
 -   `--seed`: Seed value.
