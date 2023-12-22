@@ -197,7 +197,7 @@ By following the tutorial, you will be able to:
 -   Learn about data augmentation methods and applications.
 -   Gain insights into your own context problem.
 
-To access the tutorial, please refer to the [Tutorial Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project's repository. Follow the instructions within the notebook to run the code and explore the functionalities.
+To access the tutorial, see the [Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. Follow the notebook instructions to run the code and explore the features.
 
 ## Sponsor
 
