@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
-    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (w,h,c)')
+    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (w, h, c)')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable augmentation')
 
     # synthesis
-    parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Probability to use synthetic data')
+    parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Define the synthetic data ratio')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
@@ -65,14 +65,14 @@ if __name__ == '__main__':
 
     # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
-    parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths to prediction')
+    parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths for prediction')
     parser.add_argument('--beam-width', default=15, type=int, help='Beam width for CTC decoder')
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
-    parser.add_argument('--image', default=None, help='Image path')
-    parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x,y,w,h)')
-    parser.add_argument('--text', default=None, help='Text input')
+    parser.add_argument('--image', default=None, help='Define the image path for handwriting recognition')
+    parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x, y, w, h)')
+    parser.add_argument('--text', default=None, help='Define the text input for handwriting synthesis')
     parser.add_argument('--output', default='outputs', help='Inference output path')
 
     # others
