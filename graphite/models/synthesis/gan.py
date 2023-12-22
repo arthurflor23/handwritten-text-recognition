@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-from models.components.layers import ConditionalBatchNormalization
-from models.components.layers import ExtractPatches
-from models.components.layers import SpectralNormalization
-from models.components.layers import SpectralSelfAttention
-from models.components.models import SynthesisBaseModel
+from graphite.models.components.layers import ConditionalBatchNormalization
+from graphite.models.components.layers import ExtractPatches
+from graphite.models.components.layers import SpectralNormalization
+from graphite.models.components.layers import SpectralSelfAttention
+from graphite.models.components.models import SynthesisBaseModel
 
 
 class SynthesisModel(SynthesisBaseModel):

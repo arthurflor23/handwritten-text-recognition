@@ -4,8 +4,8 @@ import importlib
 import numpy as np
 import concurrent.futures
 
-from . import utils
-from .tokenizer import Tokenizer
+from graphite.data import utils
+from graphite.data.tokenizer import Tokenizer
 
 
 class Dataset():

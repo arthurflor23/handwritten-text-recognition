@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from models.components.models import RecognitionBaseModel
+from graphite.models.components.models import RecognitionBaseModel
 
 
 class RecognitionModel(RecognitionBaseModel):

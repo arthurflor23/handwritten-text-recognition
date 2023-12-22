@@ -6,12 +6,12 @@ import numpy as np
 import editdistance
 import tensorflow as tf
 
-from models.components.losses import CTCLoss
-from models.components.losses import CTXLoss
-from models.components.losses import L1Loss
-from models.components.metrics import EditDistance
-from models.components.metrics import KernelInceptionDistance
-from models.components.optimizers import NormalizedOptimizer
+from graphite.models.components.losses import CTCLoss
+from graphite.models.components.losses import CTXLoss
+from graphite.models.components.losses import L1Loss
+from graphite.models.components.metrics import EditDistance
+from graphite.models.components.metrics import KernelInceptionDistance
+from graphite.models.components.optimizers import NormalizedOptimizer
 
 
 class BaseModel(tf.keras.Model):

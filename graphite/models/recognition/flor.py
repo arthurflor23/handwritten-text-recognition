@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from models.components.layers import GatedConv2D
-from models.components.models import RecognitionBaseModel
+from graphite.models.components.layers import GatedConv2D
+from graphite.models.components.models import RecognitionBaseModel
 
 
 class RecognitionModel(RecognitionBaseModel):

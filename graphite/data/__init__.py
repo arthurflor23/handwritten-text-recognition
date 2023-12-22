@@ -1,3 +1,3 @@
-from .augmentor import Augmentor
-from .dataset import Dataset
-from .tokenizer import Tokenizer
+from graphite.data.augmentor import Augmentor
+from graphite.data.dataset import Dataset
+from graphite.data.tokenizer import Tokenizer
