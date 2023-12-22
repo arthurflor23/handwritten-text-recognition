@@ -17,9 +17,9 @@ def inference(args):
     """
 
     tokenizer, context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                  synthesis_index=args.synthesis_index,
+                                                  synthesis_run_index=args.synthesis_run_index,
                                                   recognition=args.recognition,
-                                                  recognition_index=args.recognition_index,
+                                                  recognition_run_index=args.recognition_run_index,
                                                   experiment_name=args.experiment_name)
 
     if tokenizer is None or context is None:
@@ -79,7 +79,8 @@ def inference(args):
                                                                       beam_width=args.beam_width,
                                                                       ctc_decode=True,
                                                                       token_decode=True,
-                                                                      corrections=config['corrections'])
+                                                                      corrections=config['corrections'],
+                                                                      verbose=1)
 
             content = []
             for x, p in zip(predictions, probabilities):
@@ -101,7 +102,7 @@ def inference(args):
         infer_gen, infer_steps = dataset.get_generator(data_partition='test',
                                                        batch_size=args.batch_size)
 
-        predictions = graphite.predict_synthesis(x=infer_gen, steps=infer_steps)
+        predictions = graphite.predict_synthesis(x=infer_gen, steps=infer_steps, verbose=1)
 
         style = 'guided_style' if args.image else 'random_style'
         filepath = f"{basename}_{style}".strip('_')
