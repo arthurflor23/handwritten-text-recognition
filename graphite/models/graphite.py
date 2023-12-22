@@ -27,7 +27,7 @@ class Graphite():
                  image_shape=None,
                  tokenizer=None,
                  synthesis_ratio=1.0,
-                 experiment_name='Default'):
+                 experiment_name=None):
         """
         Initializes the Graphite model with specified components.
 
@@ -58,7 +58,7 @@ class Graphite():
         self.image_shape = image_shape
         self.tokenizer = tokenizer
         self.synthesis_ratio = synthesis_ratio
-        self.experiment_name = experiment_name
+        self.experiment_name = experiment_name or 'Default'
 
         self.model = None
         self.spelling_model = None
@@ -69,7 +69,7 @@ class Graphite():
         self._spelling = None
 
         if workflow is not None:
-            mlflow.set_experiment(experiment_name)
+            mlflow.set_experiment(self.experiment_name)
 
             SynthesisModel = None
             RecognitionModel = None
@@ -590,7 +590,7 @@ class Graphite():
                       synthesis_index=None,
                       recognition=None,
                       recognition_index=None,
-                      experiment_name='Default'):
+                      experiment_name=None):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -617,7 +617,7 @@ class Graphite():
 
         def get_artifacts_path(tag_name, tag_value, run_index):
             if run_index is not None:
-                experiment = mlflow.set_experiment(experiment_name)
+                experiment = mlflow.set_experiment(experiment_name or 'Default')
                 experiment_ids = [experiment.experiment_id]
 
                 filter_string = f"status='FINISHED' AND tag.graphite.{tag_name}='{tag_value}'"
