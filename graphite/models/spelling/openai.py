@@ -30,14 +30,9 @@ class SpellingModel():
         self.model = 'gpt-3.5-turbo-1106'
         self.max_tokens = 8192
 
-        self.instruction = ('Correct easy misspellings in texts within format tags.')
-
-        # self.instruction = ('Correct misspellings output from a handwriting recognition system, '
-        #                     'preserving tags around text, slang, historical terms, and original meaning.')
-
-        # self.instruction = ('Correct spelling errors in text transcribed from handwriting,'
-        #                     ' while ensuring to preserve formatting tags, slang, historical language,'
-        #                     ' and the original structure of the text.')
+        self.instruction = ('Correct only evident spelling mistakes in texts inside tags while keeping '
+                            'the number of tags the same. Do not add extra text or alter correct texts. '
+                            'Retain the text\'s unique style and historical character.')
 
         openai.api_key = self._get_api_key()
 
@@ -80,7 +75,7 @@ class SpellingModel():
         for i, data in enumerate(batch):
             for j, top_path in enumerate(data):
                 for u, text in enumerate(top_path.split('\n')):
-                    pp_text = f'<{i}.{j}.{u}>{text}</{i}.{j}.{u}>'
+                    pp_text = f'<{i}.{j}.{u}> {text} </{i}.{j}.{u}>'
 
                     pp_text_tokens = re.sub(f'([{re.escape(string.punctuation)}])', r' \1 ', pp_text).split()
                     pp_text_tokens_length = len(pp_text_tokens)
@@ -116,8 +111,10 @@ class SpellingModel():
         if len(corrected_encoded_batch) != len(encoded_batch):
             return batch
 
+        if not isinstance(batch, list):
+            batch = batch.tolist()
+
         pattern = re.compile(r'<([0-9]+\.[0-9]+\.[0-9]+)>(.*?)<\/\1>', re.DOTALL)
-        batch = batch.tolist()
 
         for i, (corrected, fallback) in enumerate(zip(corrected_encoded_batch, encoded_batch)):
             corrected_encoded_batch_matches = pattern.findall(''.join(corrected))
@@ -125,6 +122,7 @@ class SpellingModel():
 
             if len(corrected_encoded_batch_matches) != len(fallback_encoded_matches):
                 corrected_encoded_batch[i] = fallback
+                print('fallbacking...')
 
             for match in corrected_encoded_batch_matches:
                 tags = tuple(map(int, match[0].split('.')))
