@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from datetime import datetime
-from .components.callbacks import GANMonitor
+from graphite.models.components.callbacks import GANMonitor
 
 
 class Graphite():
@@ -228,7 +228,8 @@ class Graphite():
             plateau_cooldown=0,
             plateau_patience=20,
             patience=30,
-            epochs=None):
+            epochs=None,
+            verbose=1):
         """
         Trains the model.
 
@@ -256,6 +257,8 @@ class Graphite():
             Epochs without improvement before stopping training.
         epochs : int, optional
             Number of training epochs.
+        verbose : int, optional
+            Verbosity level.
 
         Returns
         -------
@@ -291,7 +294,7 @@ class Graphite():
                     save_freq='epoch',
                     save_best_only=True,
                     save_weights_only=True,
-                    verbose=1,
+                    verbose=verbose,
                 ),
                 tf.keras.callbacks.TensorBoard(
                     log_dir=tensorboard_path,
@@ -311,7 +314,7 @@ class Graphite():
                     patience=patience,
                     start_from_epoch=0,
                     restore_best_weights=True,
-                    verbose=1,
+                    verbose=verbose,
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
                     mode='min',
@@ -321,7 +324,7 @@ class Graphite():
                     factor=plateau_factor,
                     cooldown=plateau_cooldown,
                     patience=plateau_patience,
-                    verbose=1,
+                    verbose=verbose,
                 ),
             ]
 
@@ -349,7 +352,7 @@ class Graphite():
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
                                      epochs=(epochs or 1000000),
-                                     verbose=1)
+                                     verbose=verbose)
             mlflow.end_run()
 
         if monitor in history.history:
@@ -371,7 +374,8 @@ class Graphite():
                             beam_width=15,
                             ctc_decode=True,
                             token_decode=True,
-                            corrections=False):
+                            corrections=False,
+                            verbose=1):
         """
         Make predictions on test data with CTC decoding and spelling correction.
 
@@ -391,6 +395,8 @@ class Graphite():
             Decode tokens during CTC decoding.
         corrections : str, optional
             Peform corrections using spelling model.
+        verbose : int, optional
+            Verbosity level.
 
         Returns
         -------
@@ -401,7 +407,7 @@ class Graphite():
         if x is None:
             return None, None
 
-        predictions = self.model.predict(x=x, steps=steps, verbose=1)
+        predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
         probabilities = None
 
         if ctc_decode:
@@ -411,14 +417,16 @@ class Graphite():
                                                                 top_paths=top_paths,
                                                                 beam_width=beam_width,
                                                                 tokenizer=tokenizer,
-                                                                verbose=1)
+                                                                verbose=verbose)
 
             if token_decode and corrections and self.spelling_model:
-                predictions = self.spelling_model.predict(x=predictions, steps=steps, verbose=1)
+                predictions = self.spelling_model.predict(x=predictions,
+                                                          steps=steps,
+                                                          verbose=verbose)
 
         return predictions, probabilities
 
-    def predict_synthesis(self, x, steps):
+    def predict_synthesis(self, x, steps, verbose=1):
         """
         Make image generations with synthesis model using test data.
 
@@ -428,6 +436,8 @@ class Graphite():
             Data for predictions.
         steps : int
             Number of steps for prediction.
+        verbose : int, optional
+            Verbosity level.
 
         Returns
         -------
@@ -438,12 +448,12 @@ class Graphite():
         if x is None:
             return None
 
-        predictions = self.model.predict(x=x, steps=steps, verbose=1)
+        predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
         predictions = np.transpose((predictions + 1.0) * 127.5, (0, 2, 1, 3))
 
         return predictions
 
-    def evaluate_recognition(self, x, y, steps, probabilities=None):
+    def evaluate_recognition(self, x, y, steps, probabilities=None, verbose=1):
         """
         Evaluate CTC predictions on the given source data.
 
@@ -457,6 +467,8 @@ class Graphite():
             Number of steps for evaluation.
         probabilities : numpy.ndarray, optional
             Corresponding probabilities of the predictions.
+        verbose : int, optional
+            Verbosity level.
 
         Returns
         -------
@@ -467,11 +479,15 @@ class Graphite():
         if y is None:
             return None, None
 
-        metrics, evaluations = self.model.ctc_evaluator(x=x, y=y, steps=steps, probabilities=probabilities, verbose=1)
+        metrics, evaluations = self.model.ctc_evaluator(x=x,
+                                                        y=y,
+                                                        steps=steps,
+                                                        probabilities=probabilities,
+                                                        verbose=verbose)
 
         return metrics, evaluations
 
-    def evaluate_synthesis(self, x, y, steps):
+    def evaluate_synthesis(self, x, y, steps, verbose=1):
         """
         Evaluate generator predictions on the given data.
 
@@ -483,6 +499,8 @@ class Graphite():
             Label data for evaluation.
         steps : int
             Number of steps for evaluation.
+        verbose : int, optional
+            Verbosity level.
 
         Returns
         -------
@@ -493,7 +511,10 @@ class Graphite():
         if y is None:
             return None, None
 
-        metrics, evaluations = self.model.image_evaluator(x=x, y=y, steps=steps, verbose=1)
+        metrics, evaluations = self.model.image_evaluator(x=x,
+                                                          y=y,
+                                                          steps=steps,
+                                                          verbose=verbose)
 
         return metrics, evaluations
 
@@ -590,9 +611,9 @@ class Graphite():
 
     @staticmethod
     def get_tokenizer(synthesis=None,
-                      synthesis_index=None,
+                      synthesis_run_index=None,
                       recognition=None,
-                      recognition_index=None,
+                      recognition_run_index=None,
                       experiment_name=None):
         """
         Retrieves a tokenizer from MLflow artifacts.
@@ -601,11 +622,11 @@ class Graphite():
         ----------
         synthesis : str, optional
             Identification for synthesis model.
-        synthesis_index : int, optional
+        synthesis_run_index : int, optional
             Run index for the synthesis model.
         recognition : str, optional
             Identification for recognition model.
-        recognition_index : int, optional
+        recognition_run_index : int, optional
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
@@ -636,8 +657,8 @@ class Graphite():
 
             return None, None
 
-        s_context, s_path = get_artifacts_path('synthesis', synthesis, synthesis_index)
-        r_context, r_path = get_artifacts_path('recognition', recognition, recognition_index)
+        s_context, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_index)
+        r_context, r_path = get_artifacts_path('recognition', recognition, recognition_run_index)
 
         tokenizer = None
         context = s_context or r_context
