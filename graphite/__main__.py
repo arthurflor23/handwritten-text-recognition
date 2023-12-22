@@ -1,9 +1,9 @@
 import os
 import sys
 import argparse
-import pipelines
 
-from models.graphite import Graphite
+sys.path.append(os.getcwd())
+import pipelines  # noqa: E402
 
 
 if __name__ == '__main__':
@@ -20,8 +20,8 @@ if __name__ == '__main__':
     parser.add_argument('--spelling', default=None, help='Define spelling model')
 
     # mlflow
-    parser.add_argument('--synthesis-index', default=None, type=int, help='Define a synthesis run index')
-    parser.add_argument('--recognition-index', default=None, type=int, help='Define a recognition run index')
+    parser.add_argument('--synthesis-run-index', default=None, type=int, help='Define a synthesis run index')
+    parser.add_argument('--recognition-run-index', default=None, type=int, help='Define a recognition run index')
     parser.add_argument('--experiment-name', default='Default', help='Define an experiment name')
 
     # dataset
@@ -81,13 +81,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # jupyter notebook compatibility
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-    # mlflow compatibility
-    Graphite().fix_mlflow_artifacts_path()
-
-    # required parameters
     if args.check or args.training or args.test:
         assert args.source, '--source must be defined'
 
@@ -106,7 +99,6 @@ if __name__ == '__main__':
     if args.training or args.test or args.inference:
         assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
 
-    # pipelines
     if args.check:
         pipelines.check(args)
 
@@ -115,3 +107,9 @@ if __name__ == '__main__':
 
     elif args.inference:
         pipelines.inference(args)
+
+    else:
+        # mlflow path compatibility
+        #   https://github.com/mlflow/mlflow/issues/3144
+        from models.graphite import Graphite
+        Graphite().fix_mlflow_artifacts_path()
