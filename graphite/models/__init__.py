@@ -1,1 +1,1 @@
-from models.graphite import Graphite
+from .graphite import Graphite

@@ -1,3 +1,3 @@
-from pipelines.check import check
-from pipelines.inference import inference
-from pipelines.run import run
+from .check import check
+from .inference import inference
+from .run import run
