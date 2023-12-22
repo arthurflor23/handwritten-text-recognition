@@ -233,7 +233,7 @@ class RecognitionBaseModel(BaseModel):
         super().compile(run_eagerly=False)
 
         self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
@@ -298,7 +298,7 @@ class RecognitionBaseModel(BaseModel):
 
         x_data, y_data = input_data
 
-        ctc_logits = self.call(x_data, training=False)
+        ctc_logits = self.call(x_data)
         ctc_loss = self.ctc_loss(y_data[1], ctc_logits)
 
         self.edit_distance.update_state(y_data[1], ctc_logits)
@@ -375,14 +375,14 @@ class RecognitionBaseModel(BaseModel):
             start = step * batch_size
             end = start + batch_size
 
-            batch_x = x[start:end, :, :, :]
-            batch_x = np.log(batch_x + 1e-8)
+            batch = x[start:end, :, :, :]
+            batch = np.log(batch + 1e-7)
 
             top_path_decoded, top_path_probabilities = [], []
-            sequence_length = [batch_x.shape[2]] * batch_x.shape[0]
+            sequence_length = [batch.shape[2]] * batch.shape[0]
 
-            for i in range(batch_x.shape[1]):
-                inputs = tf.transpose(batch_x[:, i, :, :], perm=[1, 0, 2])
+            for i in range(batch.shape[1]):
+                inputs = tf.transpose(batch[:, i, :, :], perm=[1, 0, 2])
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
@@ -391,7 +391,7 @@ class RecognitionBaseModel(BaseModel):
                 decoded_pads = []
                 for j in range(len(decoded)):
                     sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
-                    paddings = [[0, 0], [0, batch_x.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    paddings = [[0, 0], [0, batch.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
                     decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
 
                 top_path_decoded.append(decoded_pads)
@@ -579,25 +579,25 @@ class SynthesisBaseModel(BaseModel):
         super().compile(run_eagerly=False)
 
         self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.p_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.e_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.001))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
@@ -623,7 +623,7 @@ class SynthesisBaseModel(BaseModel):
 
         x_data, _ = input_data
 
-        generated_images = self.call(x_data, training=False)
+        generated_images = self.call(x_data)
         self.kid.update_state(x_data[0], generated_images)
 
         return {
