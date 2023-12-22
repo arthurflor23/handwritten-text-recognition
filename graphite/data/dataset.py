@@ -4,8 +4,8 @@ import importlib
 import numpy as np
 import concurrent.futures
 
-from data import utils
-from data.tokenizer import Tokenizer
+from . import utils
+from .tokenizer import Tokenizer
 
 
 class Dataset():
