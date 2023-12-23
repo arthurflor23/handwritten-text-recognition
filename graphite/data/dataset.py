@@ -24,7 +24,7 @@ class Dataset():
                  data=None,
                  tokenizer=None,
                  multigrams=False,
-                 artifact_path='datasets',
+                 input_path='datasets',
                  seed=None):
         """
         Initialize the Dataset instance.
@@ -51,7 +51,7 @@ class Dataset():
             Tokenizer used in input data.
         multigrams : bool, optional
             Enable multigrams process.
-        artifact_path : str, optional
+        input_path : str, optional
             Path name to fetch the data.
         seed : int, optional
             Seed for random shuffle.
@@ -68,15 +68,15 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
-        self.artifact_path = artifact_path
+        self.input_path = input_path
         self.seed = seed
 
         if data is None:
             self._source = self._import_source(self.source)
-            self._source = self._source(self.artifact_path)
+            self._source = self._source(self.input_path)
 
             if hasattr(self._source, 'base_path'):
-                self._extract_source_zip(self.artifact_path, self._source.base_path)
+                self._extract_source_zip(self.input_path, self._source.base_path)
 
             data = self._source.fetch_data(self.text_level)
 
@@ -146,22 +146,24 @@ class Dataset():
 
         return source
 
-    def _extract_source_zip(self, artifact_path, source):
+    def _extract_source_zip(self, input_path, source):
         """
         Extracts a .zip file into a directory if the directory doesn't exist yet.
 
         Parameters
         ----------
+        input_path : str, optional
+            Path name to fetch the data.
         source : str
             The base name of the .zip file and target directory.
         """
 
-        if not source.startswith(artifact_path):
-            source = os.path.join(artifact_path, source)
+        if not source.startswith(input_path):
+            source = os.path.join(input_path, source)
 
         if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
-                zip_ref.extractall(artifact_path)
+                zip_ref.extractall(input_path)
 
     def _partitioning(self, data):
         """
