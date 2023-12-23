@@ -22,7 +22,6 @@ class Graphite():
     """
 
     def __init__(self,
-                 workflow=None,
                  synthesis=None,
                  recognition=None,
                  spelling=None,
@@ -35,8 +34,6 @@ class Graphite():
 
         Parameters
         ----------
-        workflow : str, optional
-            Workflow to be used.
         synthesis : str, optional
             Identifier for the synthesis model.
         recognition : str, optional
@@ -53,7 +50,6 @@ class Graphite():
             Name of the MLflow experiment.
         """
 
-        self.workflow = workflow
         self.synthesis = synthesis
         self.recognition = recognition
         self.spelling = spelling
@@ -62,34 +58,29 @@ class Graphite():
         self.synthesis_ratio = synthesis_ratio
         self.experiment_name = experiment_name or 'Default'
 
+        self.run_context = None
+
         self.model = None
         self.spelling_model = None
 
-        self._context = None
-        self._synthesis = None
-        self._recognition = None
-        self._spelling = None
-
-        if workflow is not None:
+        if self.synthesis or self.recognition:
             mlflow.set_experiment(self.experiment_name)
 
             SynthesisModel = None
             RecognitionModel = None
             SpellingModel = None
 
-            if 'synthesis' in workflow:
-                if synthesis:
-                    self._synthesis = synthesis
-                    SynthesisModel = self._import_model(f"synthesis.{synthesis}", class_name='SynthesisModel')
+            if self.synthesis:
+                SynthesisModel = self._import_model(module=f"synthesis.{self.synthesis}",
+                                                    class_name='SynthesisModel')
 
-            if 'recognition' in workflow:
-                if recognition:
-                    self._recognition = recognition
-                    RecognitionModel = self._import_model(f"recognition.{recognition}", class_name='RecognitionModel')
+            if self.recognition:
+                RecognitionModel = self._import_model(module=f"recognition.{self.recognition}",
+                                                      class_name='RecognitionModel')
 
-                if spelling:
-                    self._spelling = spelling
-                    SpellingModel = self._import_model(f"spelling.{spelling}", class_name='SpellingModel')
+                if self.spelling:
+                    SpellingModel = self._import_model(module=f"spelling.{self.spelling}",
+                                                       class_name='SpellingModel')
 
             if SynthesisModel and not RecognitionModel:
                 self.model = SynthesisModel(image_shape=self.image_shape,
@@ -162,7 +153,7 @@ class Graphite():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=0.001, context=None):
+    def compile(self, learning_rate=0.001, run_context=None):
         """
         Compile the models.
 
@@ -170,54 +161,17 @@ class Graphite():
         ----------
         learning_rate : float, optional
             The learning rate for the optimizer.
-        context : mlflow.entities.Run object, optional
+        run_context : mlflow.entities.Run object, optional
             MLFlow run context.
         """
 
-        if context is not None:
-            run_info = self.get_run_info(context=context)
+        if run_context is not None:
+            run_info = self.get_run_info(run_context=run_context)
             artifact_path = os.path.join(run_info['artifact_path'], '<model>.h5')
 
             self.model.load_weights(filepath=artifact_path, skip_mismatch=True, by_name=True)
 
         self.model.compile(learning_rate=learning_rate)
-
-    def get_run_info(self, context=None, create_new=False):
-        """
-        Get information about the current MLflow run.
-
-        Parameters
-        ----------
-        run : MLflow Run, optional
-            MLflow Run object to set as the current run.
-        create_new : bool, optional
-            Create a new run context.
-
-        Returns
-        -------
-        dict
-            A dict containing the run ID, run name and artifacts path.
-        """
-
-        run_id = None
-        run_name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        artifact_path = None
-
-        if context is not None:
-            self._context = context
-
-        if self._context is not None and not create_new:
-            run_id = self._context.info.run_id
-            run_name = self._context.info.run_name
-            artifact_path = self._context.info.artifact_uri.replace('file://', '')
-
-        run_info = {
-            'id': run_id,
-            'name': run_name,
-            'artifact_path': artifact_path,
-        }
-
-        return run_info
 
     def fit(self,
             training_gen,
@@ -271,7 +225,7 @@ class Graphite():
         run_info = self.get_run_info(create_new=True)
 
         with mlflow.start_run(run_name=run_info['name']) as run:
-            run_info = self.get_run_info(context=run)
+            run_info = self.get_run_info(run_context=run)
 
             logs_path = os.path.join(run_info['artifact_path'], 'logs')
             os.makedirs(logs_path, exist_ok=True)
@@ -330,7 +284,7 @@ class Graphite():
                 ),
             ]
 
-            if 'synthesis' in self.workflow:
+            if self.synthesis and not self.recognition:
                 synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training_samples')
                 os.makedirs(synthesis_path, exist_ok=True)
 
@@ -341,9 +295,9 @@ class Graphite():
                                latent_dim=self.model.generator.latent_dim),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': str(self._synthesis)})
-            mlflow.set_tags({'graphite.recognition': str(self._recognition)})
-            mlflow.set_tags({'graphite.spelling': str(self._spelling)})
+            mlflow.set_tags({'graphite.synthesis': str(self.synthesis)})
+            mlflow.set_tags({'graphite.recognition': str(self.recognition)})
+            mlflow.set_tags({'graphite.spelling': str(self.spelling)})
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -520,6 +474,43 @@ class Graphite():
 
         return metrics, evaluations
 
+    def get_run_info(self, run_context=None, create_new=False):
+        """
+        Get information about the current MLflow run.
+
+        Parameters
+        ----------
+        run_context : MLflow run, optional
+            MLflow Run object to set as the current run.
+        create_new : bool, optional
+            Create a new run context.
+
+        Returns
+        -------
+        dict
+            A dict containing the run ID, run name and artifacts path.
+        """
+
+        run_id = None
+        run_name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        artifact_path = None
+
+        if run_context is not None:
+            self.run_context = run_context
+
+        if self.run_context is not None and not create_new:
+            run_id = self.run_context.info.run_id
+            run_name = self.run_context.info.run_name
+            artifact_path = self.run_context.info.artifact_uri.replace('file://', '')
+
+        info = {
+            'id': run_id,
+            'name': run_name,
+            'artifact_path': artifact_path,
+        }
+
+        return info
+
     def save_context(self,
                      params=None,
                      dataset=None,
@@ -594,7 +585,7 @@ class Graphite():
                     cv2.imwrite(generated_filepath, image[1])
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
-            run_info = self.get_run_info(context=run)
+            run_info = self.get_run_info(run_context=run)
 
             log_params(params)
             log_content('data', dataset)
@@ -636,7 +627,7 @@ class Graphite():
         Returns
         -------
         tuple
-            (tokenizer, context) or (None, None) if not found.
+            (tokenizer, run_context) or (None, None) if not found.
         """
 
         Graphite().fix_mlflow_artifacts_path()
@@ -653,17 +644,17 @@ class Graphite():
                                         order_by=['tags.mlflow.runName ASC'])
 
                 if not df.empty and run_index < len(df):
-                    context = mlflow.get_run(df.iloc[run_index]['run_id'])
-                    artifact_path = context.info.artifact_uri.replace('file://', '')
-                    return context, artifact_path
+                    run = mlflow.get_run(df.iloc[run_index]['run_id'])
+                    artifact_path = run.info.artifact_uri.replace('file://', '')
+                    return run, artifact_path
 
             return None, None
 
-        s_context, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_index)
-        r_context, r_path = get_artifacts_path('recognition', recognition, recognition_run_index)
+        s_run, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_index)
+        r_run, r_path = get_artifacts_path('recognition', recognition, recognition_run_index)
 
         tokenizer = None
-        context = s_context or r_context
+        run_context = s_run or r_run
         artifacts_path = s_path or r_path
 
         if artifacts_path:
@@ -676,15 +667,15 @@ class Graphite():
                 except Exception as e:
                     print(f"Error loading tokenizer: {e}")
 
-        if context:
+        if run_context:
             print('==================================================')
             print(f"{'Run context'.center(50)}")
             print('--------------------------------------------------')
-            print(f"{'experiment_id':<{25}}: {context.info.experiment_id[:23]}")
-            print(f"{'run_id':<{25}}: {context.info.run_id[:23]}")
-            print(f"{'run_name':<{25}}: {context.info.run_name[:23]}")
+            print(f"{'experiment_id':<{25}}: {run_context.info.experiment_id[:23]}")
+            print(f"{'run_id':<{25}}: {run_context.info.run_id[:23]}")
+            print(f"{'run_name':<{25}}: {run_context.info.run_name[:23]}")
 
-        return tokenizer, context
+        return tokenizer, run_context
 
     @staticmethod
     def fix_mlflow_artifacts_path():

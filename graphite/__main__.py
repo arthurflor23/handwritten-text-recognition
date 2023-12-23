@@ -14,7 +14,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # models
-    parser.add_argument('--workflow', default='recognition', help='Define workflow')
     parser.add_argument('--synthesis', default='gan', help='Define synthesis model')
     parser.add_argument('--recognition', default='flor', help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
@@ -27,7 +26,7 @@ if __name__ == '__main__':
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
-    parser.add_argument('--image-shape', default=[1024, 128, 1], nargs=3, type=int, help='Define image shape (w, h, c)')
+    parser.add_argument('--image-shape', default=[1024, 64, 1], nargs=3, type=int, help='Define image shape (w, h, c)')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -81,24 +80,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # required
     if args.check or args.training or args.test:
         assert args.source, '--source must be defined'
-
-    if 'synthesis' in args.workflow:
-        assert args.synthesis, '--synthesis must be defined'
-
-        if args.inference:
-            assert args.text, '--text must be defined'
-
-    if 'recognition' in args.workflow:
-        assert args.recognition, '--recognition must be defined'
-
-        if args.inference:
-            assert args.image, '--image must be defined'
 
     if args.training or args.test or args.inference:
         assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
 
+    if args.synthesis and args.inference:
+        assert args.text, '--text must be defined'
+
+    if args.recognition and args.inference:
+        assert args.image, '--image must be defined'
+
+    # pipelines
     if args.check:
         pipelines.check(args)
 
