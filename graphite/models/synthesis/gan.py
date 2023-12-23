@@ -52,28 +52,35 @@ class SynthesisModel(SynthesisBaseModel):
                                         lexical_shape=self.lexical_shape,
                                         latent_dim=latent_dim,
                                         embedding_dim=embedding_dim,
-                                        blocks=generator_blocks)
+                                        blocks=generator_blocks,
+                                        name='generator')
 
         self.style_backbone = StyleBackboneModel(image_shape=self.image_shape,
-                                                 blocks=backbone_blocks)
+                                                 blocks=backbone_blocks,
+                                                 name='style_backbone')
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_shape,
-                                               latent_dim=latent_dim)
+                                               latent_dim=latent_dim,
+                                               name='style_encoder')
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 patch_shape=None,
-                                                blocks=discriminator_blocks)
+                                                blocks=discriminator_blocks,
+                                                name='discriminator')
 
         self.patch_discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                       patch_shape=patch_shape,
-                                                      blocks=discriminator_blocks)
+                                                      blocks=discriminator_blocks,
+                                                      name='patch_discriminator')
 
         self.identification = IdentificationModel(features_shape=self.style_backbone.features_shape,
-                                                  writers_shape=self.writers_shape)
+                                                  writers_shape=self.writers_shape,
+                                                  name='identification')
 
         self.recognition = RecognitionModel(image_shape=self.image_shape,
                                             lexical_shape=self.lexical_shape,
-                                            blocks=backbone_blocks)
+                                            blocks=backbone_blocks,
+                                            name='recognition')
 
     def train_step(self, input_data):
         """
@@ -319,7 +326,7 @@ class GeneratorModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='generator', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -464,7 +471,7 @@ class DiscriminatorModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='discriminator', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
@@ -567,7 +574,7 @@ class StyleBackboneModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='style_backbone', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.features_shape = None
@@ -680,7 +687,7 @@ class StyleEncoderModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='style_encoder', **kwargs)
+        super().__init__(**kwargs)
 
         self.features_shape = features_shape
         self.latent_dim = latent_dim
@@ -763,7 +770,7 @@ class IdentificationModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='identification', **kwargs)
+        super().__init__(**kwargs)
 
         self.features_shape = features_shape
         self.writers_shape = writers_shape
@@ -841,7 +848,7 @@ class RecognitionModel(tf.keras.Model):
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(name='recognition', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
