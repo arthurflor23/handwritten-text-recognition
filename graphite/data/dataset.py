@@ -506,7 +506,7 @@ class Dataset():
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
 
-        steps = int(np.ceil(len(data) / batch_size)) or None
+        steps = int(np.ceil(len(data) / batch_size)) if batch_size else None
         generator = batch_generator(data, multigrams) if steps else None
 
         return generator, steps
