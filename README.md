@@ -90,6 +90,7 @@ The project has several command-line parameters that can be used to customize it
 #### Dataset
 
 -   `--source`: Define the source data (e.g., iam, rimes).
+-   `--source-input-path`: Source input path.
 -   `--text-level`: Define the text structure level (e.g., line, paragraph).
 -   `--image-shape`: Define the image shape (width, height, channels).
 -   `--training-ratio`: Set the training partition ratio.
@@ -139,10 +140,10 @@ The project has several command-line parameters that can be used to customize it
 #### Inference
 
 -   `--inference`: Perform inference pipeline.
+-   `--inference-output-path`: Inference output path.
 -   `--image`: Image path for handwriting recognition.
 -   `--bbox`: Bounding box values for image (x, y, width, height).
 -   `--text`: Text input for handwriting synthesis.
--   `--output`: Inference output path.
 
 #### Others
 
