@@ -296,12 +296,12 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        x_data, y_data = input_data
+        (image_inputs, text_inputs, _, _, _), _ = input_data
 
-        ctc_logits = self.call(x_data)
-        ctc_loss = self.ctc_loss(y_data[1], ctc_logits)
+        ctc_logits = self.recognition(image_inputs, training=False)
 
-        self.edit_distance.update_state(y_data[1], ctc_logits)
+        ctc_loss = self.ctc_loss(text_inputs, ctc_logits)
+        self.edit_distance.update_state(text_inputs, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
@@ -621,10 +621,13 @@ class SynthesisBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        x_data, _ = input_data
+        (image_inputs, text_inputs, _, _, _), _ = input_data
 
-        generated_images = self.call(x_data)
-        self.kid.update_state(x_data[0], generated_images)
+        features_inputs, _ = self.style_backbone(image_inputs, training=False)
+        latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
+        generated_images = self.generator([latent_inputs, text_inputs], training=False)
+
+        self.kid.update_state(image_inputs, generated_images)
 
         return {
             self.kid.name: self.kid.result(),
