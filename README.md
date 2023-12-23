@@ -77,7 +77,6 @@ The project has several command-line parameters that can be used to customize it
 
 #### Models
 
--   `--workflow`: Define applicaiton workflow (e.g., recognition, synthesis).
 -   `--synthesis`: Define the handwriting synthesis model to be used (e.g., gan).
 -   `--recognition`: Define the recognition model to be used (e.g., bluche, flor, puigcerver).
 -   `--spelling`: Define the spelling model to be used (e.g., openai).
@@ -157,7 +156,7 @@ The project offers a range of functionalities through command-line parameters; f
 **Example 1: Perform recognition model training**
 
 ```bash
-python graphite --workflow recognition --source iam --text-level line --recognition flor --batch-size 16 --training
+python graphite --source iam --text-level line --recognition flor --batch-size 16 --training
 ```
 
 This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 16.
@@ -165,7 +164,7 @@ This command will train the recognition model on IAM dataset at the line level, 
 **Example 2: Perform recognition model testing**
 
 ```bash
-python graphite --workflow recognition --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-index -1 --test
+python graphite --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-index -1 --test
 ```
 
 This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
@@ -173,14 +172,14 @@ This command will perform testing phase on IAM dataset using the Flor optical ne
 **Example 3: Perform recognition model inference**
 
 ```bash
-python graphite --workflow recognition --recognition flor --beam-width 30 --recognition-run-index -1 --inference --image path/to/image1.png
+python graphite --recognition flor --beam-width 30 --recognition-run-index -1 --inference --image path/to/image1.png
 ```
 
 This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
 
 ---
 
-Additionally, different `workflows` can be used, such as `synthesis` and `synthesis_recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
+Additionally, different workflows can be used, such as `--synthesis` and the combination of `--synthesis` with `--recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
 
 ## Tutorial Notebook
 
@@ -190,7 +189,7 @@ The tutorial is designed to be beginner-friendly and can be easily run on [Googl
 
 By following the tutorial, you'll be able to:
 
--   Understand the project's workflow.
+-   Understand the project's pipeline.
 -   Learn how to set up required dependencies and environment.
 -   Explore different parameters.
 -   Execute data training and testing pipelines.
