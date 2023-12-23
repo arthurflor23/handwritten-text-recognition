@@ -146,8 +146,7 @@ def run(args, training=None):
 
         source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size,
-                                                         batch_processing=False,
-                                                         verbose=1)
+                                                         batch_processing=False)
 
         metrics, evaluations = graphite.evaluate_synthesis(x=predictions,
                                                            y=source_gen,
