@@ -2,11 +2,11 @@
 
 This project aims to provide a comprehensive solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition, such as line and paragraph level. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
-Furthermore, the project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows users to log and compare experiments, track metrics, and store trained models for reproducibility and experimentation. Explore the [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) for tracking experiments with `mlflow ui`.
+Furthermore, the project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows you to log and compare experiments, track metrics, and store trained models for reproducibility and experimentation. Explore the [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) and track experiments with `mlflow ui`.
 
 ## Getting Started
 
-To get started with the Graphite project, follow the steps below:
+To get started with the Graphite project, follow the steps below.
 
 ### Prerequisites
 
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ### Datasets
 
-The project supports a wide range of datasets for handwritten text recognition. The following datasets are already integrated into the project and can be easily used for training and evaluation:
+The project supports a wide range of datasets for handwritten text recognition. The following datasets are already integrated into the project and can be easily used for training and evaluation.
 
 1. [Bentham](https://drive.google.com/file/d/1JTF7itNMavb81EUTDRkUAUbsJ1wQx_Mw/view?usp=drive_link) [[1]](https://doi.org/10.1109/DAS.2014.23)
 
@@ -73,7 +73,7 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 ## Parameters
 
-The project has various command-line parameters that can be used to customize its behavior. Here is a list of the available parameters along with their descriptions:
+The project has several command-line parameters that can be used to customize its behavior. The list of available parameters is outlined below, along with their descriptions.
 
 #### Models
 
@@ -152,7 +152,7 @@ The project has various command-line parameters that can be used to customize it
 
 ### Usage
 
-The project offers a range of functionalities through command-line parameters; feel free to experiment with these to find the ones that best suit your specific needs. Below are some examples of usage:
+The project offers a range of functionalities through command-line parameters; feel free to experiment with these to find the ones that best suit your specific needs. Below are some examples of usage.
 
 **Example 1: Perform recognition model training**
 
@@ -160,7 +160,7 @@ The project offers a range of functionalities through command-line parameters; f
 python graphite --workflow recognition --source iam --text-level line --recognition flor --batch-size 16 --training
 ```
 
-This command will train the optical model on IAM dataset at the line level, using the Flor optical network with batch size of 16.
+This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 16.
 
 **Example 2: Perform recognition model testing**
 
@@ -168,7 +168,7 @@ This command will train the optical model on IAM dataset at the line level, usin
 python graphite --workflow recognition --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-index -1 --test
 ```
 
-This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition index, which loads the last trained model.
+This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
 
 **Example 3: Perform recognition model inference**
 
@@ -176,11 +176,11 @@ This command will perform testing phase on IAM dataset using the Flor optical ne
 python graphite --workflow recognition --recognition flor --beam-width 30 --recognition-run-index -1 --inference --image path/to/image1.png
 ```
 
-This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition index, which loads the last trained model.
+This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
 
 ---
 
-Additionally, different `workflows` can be used, such as `synthesis` and `synthesis_recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models.
+Additionally, different `workflows` can be used, such as `synthesis` and `synthesis_recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
 
 ## Tutorial Notebook
 
@@ -188,34 +188,33 @@ To help you get started, a tutorial material has been created. This tutorial pro
 
 The tutorial is designed to be beginner-friendly and can be easily run on [Google Colab](https://research.google.com/colaboratory/), a cloud-based Jupyter notebook environment. It provides a hands-on experience of using the project's features and demonstrates the usage of various parameters and functionalities.
 
-By following the tutorial, you will be able to:
+By following the tutorial, you'll be able to:
 
--   Understand the project's workflow and architecture.
+-   Understand the project's workflow.
 -   Learn how to set up required dependencies and environment.
--   Explore the different parameters and their descriptions.
+-   Explore different parameters.
 -   Execute data training and testing pipelines.
--   Learn about data augmentation methods and applications.
 -   Gain insights into your own context problem.
 
-To access the tutorial, see the [Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. Follow the notebook instructions to run the code and explore the features.
+To access the material, see the [Tutorial Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. Follow the notebook instructions to run the code and explore the features.
 
 ## Sponsor
 
-This project is part of my PhD work and is currently in parallel development. Your support would greatly contribute to its progress. If you find this project valuable or if it has helped you in any way, please consider showing your support by sponsoring it. Your sponsorship will help me dedicate more time and resources to enhance the project and implement new features.
+This project is part of the PhD work and is currently in parallel development. Thus, your support would greatly contribute to its progress. If you find this project valuable or if it has helped you in any way, please consider showing your support by sponsoring it. The sponsorship will help me dedicate more time and resources to enhance the project and implement new features.
 
-You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Every contribution is greatly appreciated and motivates me to continue working on the project. Thank you for considering sponsorship.
+You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Thank you for considering sponsorship.
 
 ## References
 
 If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may be interested in the following references:
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models.](https://doi.org/10.1145/3395027.3419603) Proceedings of the ACM Symposium on Document Engineering, 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition.](https://doi.org/10.1109/SIBGRAPI51738.2020.00016) 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems.](https://doi.org/10.3390/app10217711) Applied Sciences, 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models.](https://doi.org/10.1145/3395027.3419603) Proceedings of the ACM Symposium on Document Engineering, 2020.
 
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H. [HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios.](https://doi.org/10.1109/ACCESS.2020.3039003) IEEE Access, 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition.](https://doi.org/10.1109/SIBGRAPI51738.2020.00016) 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems.](https://doi.org/10.3390/app10217711) Applied Sciences, 2020.
 
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios.](https://doi.org/10.1016/j.patrec.2022.04.009) Pattern Recognition Letters, 2022.
 
