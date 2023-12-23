@@ -123,7 +123,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
-    def __init__(self, scale=1.0, offset=0.0, name='kid', **kwargs):
+    def __init__(self, scale=1.0, offset=0.0, epsilon=1e-7, name='kid', **kwargs):
         """
         Initialize the KID metric instance.
 
@@ -131,6 +131,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         ----------
         name : str, optional
             Name of the metric instance.
+        epsilon : float, optional
+            Small constant to avoid log of zero.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -141,6 +143,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         self.scale = scale
         self.offset = offset
+        self.epsilon = epsilon
         self.kid_image_size = (299, 299, 3)
 
         self.encoder = tf.keras.Sequential([
@@ -171,7 +174,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         """
 
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
-        return (features_1 @ tf.transpose(features_2) / feature_dimensions + 1.0) ** 3.0
+        return (features_1 @ tf.transpose(features_2) / (feature_dimensions + self.epsilon) + 1.0) ** 3.0
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         """
@@ -201,10 +204,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / (batch_size * (batch_size - 1.0) + 1e-7)
+        mean_kernel_real = sum_kernel_real / ((batch_size * (batch_size - 1.0)) + self.epsilon)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / (batch_size * (batch_size - 1.0) + 1e-7)
+        mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + self.epsilon)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
