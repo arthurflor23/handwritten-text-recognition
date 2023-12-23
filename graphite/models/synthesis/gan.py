@@ -920,14 +920,11 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True))(bgru)
-        bgru = tf.keras.layers.Dense(units=256)(bgru)
+        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(lstm)
+        lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True))(bgru)
-        bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
-
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(bgru)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
