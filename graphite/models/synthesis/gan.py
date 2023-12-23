@@ -931,6 +931,3 @@ class RecognitionModel(tf.keras.Model):
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(bgru)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-
-        self.model.summary()
-        exit()
