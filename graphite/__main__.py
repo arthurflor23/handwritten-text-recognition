@@ -27,6 +27,7 @@ if __name__ == '__main__':
 
     # dataset
     parser.add_argument('--source', default=None, help='Define source data')
+    parser.add_argument('--source-input-path', default='datasets', help='Source input path')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
     parser.add_argument('--image-shape', default=[1024, 64, 1], nargs=3, type=int, help='Define image shape (w, h, c)')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
@@ -71,10 +72,10 @@ if __name__ == '__main__':
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
+    parser.add_argument('--inference-output-path', default='outputs', help='Inference output path')
     parser.add_argument('--image', default=None, help='Define the image path for handwriting recognition')
     parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box values for image (x, y, w, h)')
     parser.add_argument('--text', default=None, help='Define the text input for handwriting synthesis')
-    parser.add_argument('--output', default='outputs', help='Inference output path')
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
