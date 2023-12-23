@@ -29,6 +29,7 @@ def run(args, training=None):
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
+                      input_path=args.source_input_path,
                       seed=args.seed)
     print(dataset)
 

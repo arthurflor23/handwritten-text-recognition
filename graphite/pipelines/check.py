@@ -21,6 +21,7 @@ def check(args):
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
                       multigrams=True,
+                      input_path=args.source_input_path,
                       seed=args.seed)
     print(dataset)
 
