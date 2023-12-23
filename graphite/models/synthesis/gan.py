@@ -6,6 +6,8 @@ from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SpectralSelfAttention
 from graphite.models.components.models import SynthesisBaseModel
 
+from graphite.models.recognition.bluche import RecognitionModel
+
 
 class SynthesisModel(SynthesisBaseModel):
     """
@@ -71,9 +73,12 @@ class SynthesisModel(SynthesisBaseModel):
         self.identification = IdentificationModel(features_shape=self.style_backbone.features_shape,
                                                   writers_shape=self.writers_shape)
 
+        # self.recognition = RecognitionModel(image_shape=self.image_shape,
+        #                                     lexical_shape=self.lexical_shape,
+        #                                     blocks=backbone_blocks)
+
         self.recognition = RecognitionModel(image_shape=self.image_shape,
-                                            lexical_shape=self.lexical_shape,
-                                            blocks=backbone_blocks)
+                                            lexical_shape=self.lexical_shape)
 
     def train_step(self, input_data):
         """
@@ -813,118 +818,118 @@ class IdentificationModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class RecognitionModel(tf.keras.Model):
-    """
-    A recognition model that transcribes handwritten texts from images.
+# class RecognitionModel(tf.keras.Model):
+#     """
+#     A recognition model that transcribes handwritten texts from images.
 
-    This model is designed to extract textual information from images of handwriting,
-        facilitating tasks like optical character recognition and handwriting analysis.
-    """
+#     This model is designed to extract textual information from images of handwriting,
+#         facilitating tasks like optical character recognition and handwriting analysis.
+#     """
 
-    def __init__(self,
-                 image_shape,
-                 lexical_shape,
-                 blocks,
-                 **kwargs):
-        """
-        Initialize the handwriting recognition model with specified parameters.
+#     def __init__(self,
+#                  image_shape,
+#                  lexical_shape,
+#                  blocks,
+#                  **kwargs):
+#         """
+#         Initialize the handwriting recognition model with specified parameters.
 
-        Parameters
-        ----------
-        image_shape : list or tuple
-            Shape of the input image.
-        lexical_shape : list or tuple
-            Shape of the text sequences and vocabulary encoding.
-        blocks : list or tuple
-            Blocks of channels for the model's architecture.
-        **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
-        """
+#         Parameters
+#         ----------
+#         image_shape : list or tuple
+#             Shape of the input image.
+#         lexical_shape : list or tuple
+#             Shape of the text sequences and vocabulary encoding.
+#         blocks : list or tuple
+#             Blocks of channels for the model's architecture.
+#         **kwargs : dict
+#             Additional keyword arguments for `tf.keras.Model`.
+#         """
 
-        super().__init__(name='recognition', **kwargs)
+#         super().__init__(name='recognition', **kwargs)
 
-        self.image_shape = image_shape
-        self.lexical_shape = lexical_shape
-        self.blocks = blocks
+#         self.image_shape = image_shape
+#         self.lexical_shape = lexical_shape
+#         self.blocks = blocks
 
-        self.build_model()
+#         self.build_model()
 
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
+#         if hasattr(self, 'model'):
+#             self.summary = self.model.summary
+#             self.call = self.model.call
 
-    def get_config(self):
-        """
-        Retrieves the configuration of the model for serialization.
+#     def get_config(self):
+#         """
+#         Retrieves the configuration of the model for serialization.
 
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the model.
-        """
+#         Returns
+#         -------
+#         dict
+#             A dictionary containing the configuration of the model.
+#         """
 
-        config = super().get_config()
+#         config = super().get_config()
 
-        config.update({
-            'image_shape': self.image_shape,
-            'lexical_shape': self.lexical_shape,
-            'blocks': self.blocks,
-        })
+#         config.update({
+#             'image_shape': self.image_shape,
+#             'lexical_shape': self.lexical_shape,
+#             'blocks': self.blocks,
+#         })
 
-    def build_model(self):
-        """
-        Initializes and builds the neural network model.
+#     def build_model(self):
+#         """
+#         Initializes and builds the neural network model.
 
-        This method sets up the architecture of the model by defining layers, their connections,
-            and configurations. It is typically called in the constructor to create the model structure.
-        """
+#         This method sets up the architecture of the model by defining layers, their connections,
+#             and configurations. It is typically called in the constructor to create the model structure.
+#         """
 
-        image_inputs = tf.keras.layers.Input(shape=self.image_shape)
+#         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
-        blocks = list(self.blocks) + [self.blocks[-1] * 2]
+#         conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
+#         blocks = list(self.blocks) + [self.blocks[-1] * 2]
 
-        for i, filters in enumerate(blocks[:-1]):
-            block1 = tf.keras.layers.ReLU()(conv)
-            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+#         for i, filters in enumerate(blocks[:-1]):
+#             block1 = tf.keras.layers.ReLU()(conv)
+#             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+#             block1 = tf.keras.layers.BatchNormalization()(block1)
 
-            block1 = tf.keras.layers.ReLU()(block1)
-            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+#             block1 = tf.keras.layers.ReLU()(block1)
+#             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+#             block1 = tf.keras.layers.BatchNormalization()(block1)
 
-            conv = tf.keras.layers.Add()([conv, block1])
+#             conv = tf.keras.layers.Add()([conv, block1])
 
-            block2 = tf.keras.layers.ReLU()(conv)
-            block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+#             block2 = tf.keras.layers.ReLU()(conv)
+#             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
+#             block2 = tf.keras.layers.BatchNormalization()(block2)
 
-            block2 = tf.keras.layers.ReLU()(block2)
-            block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+#             block2 = tf.keras.layers.ReLU()(block2)
+#             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
+#             block2 = tf.keras.layers.BatchNormalization()(block2)
 
-            shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
-                                              kernel_size=1,
-                                              strides=1,
-                                              padding='valid',
-                                              use_bias=False)(conv)
+#             shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
+#                                               kernel_size=1,
+#                                               strides=1,
+#                                               padding='valid',
+#                                               use_bias=False)(conv)
 
-            conv = tf.keras.layers.Add()([shortcut, block2])
-            conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
+#             conv = tf.keras.layers.Add()([shortcut, block2])
+#             conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
 
-            strides = (2, 2) if i + 1 == len(blocks[:-1]) // 2 else (1, 2)
-            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
+#             strides = (2, 2) if i + 1 == len(blocks[:-1]) // 2 else (1, 2)
+#             conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
 
-        conv = tf.keras.layers.ReLU()(conv)
-        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
-        conv = tf.keras.layers.BatchNormalization()(conv)
-        conv = tf.keras.layers.ReLU()(conv)
+#         conv = tf.keras.layers.ReLU()(conv)
+#         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
+#         conv = tf.keras.layers.BatchNormalization()(conv)
+#         conv = tf.keras.layers.ReLU()(conv)
 
-        lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+#         lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(lstm)
-        lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
+#         lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(lstm)
+#         lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
 
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
+#         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
 
-        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+#         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
