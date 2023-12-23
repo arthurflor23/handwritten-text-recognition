@@ -93,20 +93,20 @@ class SynthesisModel(SynthesisBaseModel):
         (image_inputs, text_inputs, writer_inputs, aug_image_inputs, aug_text_inputs), _ = input_data
 
         batch_size = tf.shape(image_inputs)[0]
-        batch_quarter = tf.math.maximum(1, batch_size // 4)
+        half_batch = tf.math.maximum(1, batch_size // 2)
 
         # discriminator phase
-        for i in range(4):
-            q_start_index = i * batch_quarter
-            q_aug_text_inputs = aug_text_inputs[q_start_index:q_start_index + batch_quarter]
-            q_image_inputs = image_inputs[q_start_index:q_start_index + batch_quarter]
-            q_text_inputs = text_inputs[q_start_index:q_start_index + batch_quarter]
+        for i in range(2):
+            q_start_index = i * half_batch
+            q_aug_text_inputs = aug_text_inputs[q_start_index:q_start_index + half_batch]
+            q_image_inputs = image_inputs[q_start_index:q_start_index + half_batch]
+            q_text_inputs = text_inputs[q_start_index:q_start_index + half_batch]
 
-            m_start_index = (i // 2) * batch_quarter
-            m_image_inputs = image_inputs[m_start_index:m_start_index + (batch_quarter * 2)]
-            m_aug_image_inputs = aug_image_inputs[m_start_index:m_start_index + (batch_quarter * 2)]
+            m_start_index = (i // 2) * half_batch
+            m_image_inputs = image_inputs[m_start_index:m_start_index + (half_batch * 2)]
+            m_aug_image_inputs = aug_image_inputs[m_start_index:m_start_index + (half_batch * 2)]
 
-            fake_latent_inputs = tf.random.normal((batch_quarter, self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
+            fake_latent_inputs = tf.random.normal((half_batch, self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
 
             with tf.GradientTape() as d_tape, \
                     tf.GradientTape() as p_tape, \
@@ -171,12 +171,12 @@ class SynthesisModel(SynthesisBaseModel):
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
 
-        m_image_inputs = tf.gather(image_inputs, indices[:batch_quarter])
-        m_text_inputs = tf.gather(text_inputs, indices[:batch_quarter])
-        m_aug_text_inputs = tf.gather(aug_text_inputs, indices[:batch_quarter])
-        m_writer_inputs = tf.gather(writer_inputs, indices[:batch_quarter])
+        m_image_inputs = tf.gather(image_inputs, indices[:half_batch])
+        m_text_inputs = tf.gather(text_inputs, indices[:half_batch])
+        m_aug_text_inputs = tf.gather(aug_text_inputs, indices[:half_batch])
+        m_writer_inputs = tf.gather(writer_inputs, indices[:half_batch])
 
-        fake_latent_inputs = tf.random.normal((batch_quarter, self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
+        fake_latent_inputs = tf.random.normal((half_batch, self.style_encoder.latent_dim), mean=0.0, stddev=1.0)
 
         with tf.GradientTape() as g_tape, \
                 tf.GradientTape() as b_tape, \
@@ -920,14 +920,14 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
-        bgru = tf.keras.layers.Dense(units=256)(bgru)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
-        bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(bgru)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
