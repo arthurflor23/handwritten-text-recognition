@@ -3,6 +3,8 @@ import sys
 import argparse
 
 sys.path.append(os.getcwd())
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
 import pipelines  # noqa: E402
 
 
@@ -14,8 +16,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # models
-    parser.add_argument('--synthesis', default='gan', help='Define synthesis model')
-    parser.add_argument('--recognition', default='flor', help='Define recognition model')
+    parser.add_argument('--synthesis', default=None, help='Define synthesis model')
+    parser.add_argument('--recognition', default=None, help='Define recognition model')
     parser.add_argument('--spelling', default=None, help='Define spelling model')
 
     # mlflow

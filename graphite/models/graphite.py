@@ -12,8 +12,6 @@ import tensorflow as tf
 from datetime import datetime
 from graphite.models.components.callbacks import GANMonitor
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-
 
 class Graphite():
     """
