@@ -16,14 +16,14 @@ def inference(args):
         A namespace object containing all the arguments required.
     """
 
-    tokenizer, context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                  synthesis_run_index=args.synthesis_run_index,
-                                                  recognition=args.recognition,
-                                                  recognition_run_index=args.recognition_run_index,
-                                                  experiment_name=args.experiment_name)
+    tokenizer, run_context = Graphite().get_tokenizer(synthesis=args.synthesis,
+                                                      synthesis_run_index=args.synthesis_run_index,
+                                                      recognition=args.recognition,
+                                                      recognition_run_index=args.recognition_run_index,
+                                                      experiment_name=args.experiment_name)
 
-    if tokenizer is None or context is None:
-        print('Tokenizer or context not found to load.')
+    if tokenizer is None or run_context is None:
+        print('Tokenizer or run context not found to load.')
         return
 
     data = {
@@ -42,8 +42,7 @@ def inference(args):
                       seed=args.seed)
     print(dataset)
 
-    graphite = Graphite(workflow=args.workflow,
-                        synthesis=args.synthesis,
+    graphite = Graphite(synthesis=args.synthesis,
                         recognition=args.recognition,
                         spelling=args.spelling,
                         image_shape=args.image_shape,
@@ -52,12 +51,12 @@ def inference(args):
                         experiment_name=args.experiment_name)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate, context=context)
+    graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
 
     basename = os.path.splitext(os.path.basename(args.image or ''))[0]
     os.makedirs(args.output, exist_ok=True)
 
-    if 'recognition' in args.workflow:
+    if args.recognition:
         prediction_configs = [{
             'predict': True,
             'corrections': False,
@@ -98,7 +97,7 @@ def inference(args):
             with open(filepath, 'w') as f:
                 f.write(content)
 
-    elif 'synthesis' in args.workflow:
+    elif args.synthesis:
         infer_gen, infer_steps = dataset.get_generator(data_partition='test',
                                                        batch_size=args.batch_size)
 

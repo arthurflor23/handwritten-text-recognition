@@ -14,11 +14,11 @@ def run(args, training=None):
         Whether to execute training phase.
     """
 
-    tokenizer, context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                  synthesis_run_index=args.synthesis_run_index,
-                                                  recognition=args.recognition,
-                                                  recognition_run_index=args.recognition_run_index,
-                                                  experiment_name=args.experiment_name)
+    tokenizer, run_context = Graphite().get_tokenizer(synthesis=args.synthesis,
+                                                      synthesis_run_index=args.synthesis_run_index,
+                                                      recognition=args.recognition,
+                                                      recognition_run_index=args.recognition_run_index,
+                                                      experiment_name=args.experiment_name)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -28,7 +28,7 @@ def run(args, training=None):
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
-                      multigrams=('synthesis' in args.workflow),
+                      multigrams=bool(args.synthesis),
                       seed=args.seed)
     print(dataset)
 
@@ -51,8 +51,7 @@ def run(args, training=None):
                               seed=args.seed)
         print(augmentor)
 
-    graphite = Graphite(workflow=args.workflow,
-                        synthesis=args.synthesis,
+    graphite = Graphite(synthesis=args.synthesis,
                         recognition=args.recognition,
                         spelling=args.spelling,
                         image_shape=dataset.image_shape,
@@ -61,7 +60,7 @@ def run(args, training=None):
                         experiment_name=args.experiment_name)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate, context=context)
+    graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
 
     if training:
         training_gen, training_steps = dataset.get_generator(data_partition='training',
@@ -94,7 +93,7 @@ def run(args, training=None):
                               augmentor=augmentor,
                               model=graphite.model)
 
-    if 'recognition' in args.workflow:
+    if args.recognition:
         prediction_configs = [{
             'predict': True,
             'corrections': False,
@@ -138,7 +137,7 @@ def run(args, training=None):
             print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
             print('\n--------------------------------------------------')
 
-    elif 'synthesis' in args.workflow:
+    elif args.synthesis:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                      batch_size=args.batch_size)
 
