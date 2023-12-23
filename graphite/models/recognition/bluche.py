@@ -64,7 +64,7 @@ class RecognitionModel(RecognitionBaseModel):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 

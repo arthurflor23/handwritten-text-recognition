@@ -98,8 +98,6 @@ class RecognitionModel(RecognitionBaseModel):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
-
         bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
