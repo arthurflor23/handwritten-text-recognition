@@ -168,6 +168,9 @@ class SynthesisModel(SynthesisBaseModel):
                 aug_ctc_logits = self.recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
+            self.generator = False
+            self.style_backbone = False
+            self.style_encoder = False
             self.discriminator.trainable = True
             self.patch_discriminator.trainable = True
             self.identification.trainable = True
@@ -277,6 +280,9 @@ class SynthesisModel(SynthesisBaseModel):
             # generator loss
             g_loss = (info_loss + l1_loss + disc_loss + ctc_loss + wid_loss + (ctx_loss * 5.0) + (kl_loss * 1e-4))
 
+        self.generator = True
+        self.style_backbone = True
+        self.style_encoder = True
         self.discriminator.trainable = False
         self.patch_discriminator.trainable = False
         self.identification.trainable = False
