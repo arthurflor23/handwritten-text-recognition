@@ -190,10 +190,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
             Sample weights.
         """
 
-        if tf.shape(y_true)[0] == 1:
-            y_true = tf.tile(y_true, [2, 1, 1, 1])
-            y_pred = tf.tile(y_pred, [2, 1, 1, 1])
-
         real_features = self.encoder(y_true, training=False)
         generated_features = self.encoder(y_pred, training=False)
 
@@ -211,6 +207,9 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
+
+        if tf.math.is_nan(value):
+            return
 
         if sample_weight is not None:
             sample_weight = tf.cast(sample_weight, dtype=tf.float32)
