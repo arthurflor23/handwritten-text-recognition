@@ -589,9 +589,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         elif hasattr(self.layer, 'embeddings'):
             self.kernel = self.layer.embeddings
         else:
-            raise ValueError(
-                f"{type(self.layer).__name__} object has no attribute 'kernel' nor 'embeddings'"
-            )
+            raise ValueError('Object has no attribute "kernel" nor "embeddings"')
 
         self.kernel_shape = self.kernel.shape.as_list()
 
@@ -600,7 +598,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             initializer=tf.initializers.TruncatedNormal(stddev=0.02),
             trainable=False,
             dtype=self.kernel.dtype,
-            name=f"{self.name}_vector_u",
+            name=f"{self.name}_{self.layer.name}_vector_u",
         )
 
     def call(self, inputs, training=None):
