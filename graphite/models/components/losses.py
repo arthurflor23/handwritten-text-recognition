@@ -128,7 +128,7 @@ class CTXLoss(tf.keras.losses.Loss):
         cx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
         cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
 
-        cx_loss = tf.math.reduce_mean(-tf.math.log(cx))
+        cx_loss = tf.math.reduce_mean(-tf.math.log(cx) + self.epsilon)
 
         return cx_loss
 
