@@ -234,25 +234,25 @@ class SynthesisModel(SynthesisBaseModel):
             l1_loss = tf.reduce_mean(real_real_l1_loss)
 
             # patch and discriminator loss
-            fake_disc = self.discriminator(fake_image_inputs, training=False)
+            fake_disc = self.discriminator(fake_image_inputs, training=True)
             fake_disc_loss = -tf.reduce_mean(fake_disc)
 
-            fake_patch_disc = self.patch_discriminator(fake_image_inputs, training=False)
+            fake_patch_disc = self.patch_discriminator(fake_image_inputs, training=True)
             fake_patch_disc_loss = -tf.reduce_mean(fake_patch_disc)
 
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_ctc_logits = self.recognition(fake_image_inputs, training=False)
+            fake_ctc_logits = self.recognition(fake_image_inputs, training=True)
             ctc_loss = self.ctc_loss(fake_text_inputs, fake_ctc_logits)
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=False)
+            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=True)
             real_fake_wid_loss = self.cls_loss(q_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.identification(real_real_features_inputs, training=False)
+            real_real_wid_logits = self.identification(real_real_features_inputs, training=True)
             real_real_wid_loss = self.cls_loss(q_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
