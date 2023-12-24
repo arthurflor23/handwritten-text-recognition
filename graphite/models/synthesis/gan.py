@@ -120,13 +120,13 @@ class SynthesisModel(SynthesisBaseModel):
 
             fake_latent_inputs = tf.random.normal((q_batch, self.generator.latent_dim))
 
-            real_features_inputs, _ = self.style_backbone(q_image_inputs, training=False)
-            real_latent_inputs, _, _ = self.style_encoder(real_features_inputs, training=False)
+            real_features_inputs, _ = self.style_backbone(q_image_inputs, training=True)
+            real_latent_inputs, _, _ = self.style_encoder(real_features_inputs, training=True)
 
-            fake_fake_images = self.generator([fake_latent_inputs, q_aug_text_inputs], training=False)
-            real_fake_images = self.generator([real_latent_inputs, q_aug_text_inputs], training=False)
-            real_real_images = self.generator([real_latent_inputs, q_text_inputs], training=False)
-            fake_real_images = self.generator([fake_latent_inputs, q_text_inputs], training=False)
+            fake_fake_images = self.generator([fake_latent_inputs, q_aug_text_inputs], training=True)
+            real_fake_images = self.generator([real_latent_inputs, q_aug_text_inputs], training=True)
+            real_real_images = self.generator([real_latent_inputs, q_text_inputs], training=True)
+            fake_real_images = self.generator([fake_latent_inputs, q_text_inputs], training=True)
 
             fake_image_inputs = tf.random.shuffle(tf.concat([fake_fake_images,
                                                             real_fake_images,
