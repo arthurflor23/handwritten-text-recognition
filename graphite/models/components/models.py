@@ -137,6 +137,7 @@ class BaseModel(tf.keras.Model):
             modelpath = filepath.replace('<model>', name)
 
             if model is not None and os.path.isfile(modelpath):
+                model.built = True
                 model.load_weights(filepath=modelpath,
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch,
