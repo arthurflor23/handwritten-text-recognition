@@ -168,14 +168,6 @@ class SynthesisModel(SynthesisBaseModel):
                 aug_ctc_logits = self.recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
 
-            self.generator.trainable = False
-            self.style_backbone.trainable = False
-            self.style_encoder.trainable = False
-            self.discriminator.trainable = True
-            self.patch_discriminator.trainable = True
-            self.identification.trainable = True
-            self.recognition.trainable = True
-
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_weights))
 
@@ -279,14 +271,6 @@ class SynthesisModel(SynthesisBaseModel):
 
             # generator loss
             g_loss = (info_loss + l1_loss + disc_loss + ctc_loss + wid_loss + (ctx_loss * 5.0) + (kl_loss * 1e-4))
-
-        self.generator.trainable = True
-        self.style_backbone.trainable = True
-        self.style_encoder.trainable = True
-        self.discriminator.trainable = False
-        self.patch_discriminator.trainable = False
-        self.identification.trainable = False
-        self.recognition.trainable = False
 
         g_gradients = g_tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.generator.trainable_weights))
@@ -553,9 +537,7 @@ class DiscriminatorModel(tf.keras.Model):
             return tf.keras.layers.Add()([h, x])
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
-
-        block = image_inputs if self.patch_shape is None \
-            else ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+        block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
             if i > 0 and (i == len(self.blocks) - 1 or i % 2 == 0):
@@ -564,7 +546,7 @@ class DiscriminatorModel(tf.keras.Model):
             block = residual_block_down(block, filters, ops_early=(i > 0), downsample=(i < len(self.blocks) - 1))
 
         outputs = tf.keras.layers.ReLU()(block)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]))(outputs)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
