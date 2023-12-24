@@ -86,20 +86,20 @@ def check(args):
         print('\nChecking samples...\n')
 
         while True:
-            x_source_data, _ = next(source_gen)
-            image_source_data, text_source_data, writer_source_data, _, _ = x_source_data
+            _, y_source_data = next(source_gen)
+            image_source_data, text_source_data, writer_source_data = y_source_data
 
-            x_encoded_data, _ = next(encoded_gen)
-            image_encoded_data, text_encoded_data, writer_encoded_data, _, _ = x_encoded_data
+            _, y_encoded_data = next(encoded_gen)
+            image_encoded_data, text_encoded_data, writer_encoded_data = y_encoded_data
 
-            x_padded_data, _ = next(padded_gen)
-            image_padded_data, text_padded_data, _, _, _ = x_padded_data
+            _, y_padded_data = next(padded_gen)
+            image_padded_data, text_padded_data, _, = y_padded_data
 
             x_augmented_data, _ = next(augmented_gen)
-            _, _, _, image_augmented_data, _ = x_augmented_data
+            image_augmented_data, _ = x_augmented_data
 
             x_processed_data, _ = next(processed_gen)
-            _, _, _, image_processed_data, _ = x_processed_data
+            image_processed_data, _ = x_processed_data
 
             for i in range(len(image_source_data)):
                 # source
@@ -107,7 +107,7 @@ def check(args):
                 print('Path image')
                 print(image_source_data[i], '\n')
 
-                print('Source writer:', writer_source_data[i])
+                print('Source writer :', writer_source_data[i])
                 print('Encoded writer:', writer_encoded_data[i], '\n')
 
                 print('Source text')

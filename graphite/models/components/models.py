@@ -253,7 +253,7 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (image_data, text_data, _, aug_image_data, aug_text_data), _ = input_data
+        (aug_image_data, aug_text_data), (image_data, text_data, _) = input_data
 
         images = aug_image_data
         texts = text_data
@@ -296,7 +296,7 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_inputs, text_inputs, _, _, _), _ = input_data
+        (image_inputs, _), (_, text_inputs, _) = input_data
 
         ctc_logits = self.recognition(image_inputs, training=False)
 
@@ -325,7 +325,7 @@ class RecognitionBaseModel(BaseModel):
             The generated images.
         """
 
-        image_inputs, _, _, _, _ = x_data
+        image_inputs, _, = x_data
 
         ctc_logits = self.recognition(image_inputs, training=training)
 
@@ -579,25 +579,25 @@ class SynthesisBaseModel(BaseModel):
         super().compile(run_eagerly=False)
 
         self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.p_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.e_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.l1_loss = L1Loss()
         self.ctx_loss = CTXLoss()
@@ -621,7 +621,7 @@ class SynthesisBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_inputs, text_inputs, _, _, _), _ = input_data
+        (image_inputs, _), (_, text_inputs, _) = input_data
 
         features_inputs, _ = self.style_backbone(image_inputs, training=False)
         latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
@@ -651,7 +651,7 @@ class SynthesisBaseModel(BaseModel):
             The generated images.
         """
 
-        image_inputs, text_inputs, _, _, _ = x_data
+        image_inputs, text_inputs, = x_data
 
         if tf.math.reduce_all(tf.equal(image_inputs, -1.)):
             latent_inputs = tf.random.normal(shape=(len(text_inputs), self.generator.latent_dim))

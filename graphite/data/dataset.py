@@ -493,10 +493,7 @@ class Dataset():
                         image_data = utils.batch_image_processing(image_data)
                         aug_image_data = utils.batch_image_processing(aug_image_data)
 
-                x_data = (image_data, text_data, writer_data, aug_image_data, aug_text_data)
-                y_data = (image_data, text_data, writer_data)
-
-                yield (x_data, y_data)
+                yield (aug_image_data, aug_text_data), (image_data, text_data, writer_data)
 
         subset = 'encoded' if batch_encoded else 'source'
 
