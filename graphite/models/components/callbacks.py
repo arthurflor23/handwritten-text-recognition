@@ -17,7 +17,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                  sample_gen,
                  sample_steps,
                  latent_dim,
-                 save_freq=5):
+                 save_freq=3):
         """
         Initialize the GANMonitor callback with specified parameters.
 
