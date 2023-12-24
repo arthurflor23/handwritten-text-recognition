@@ -234,7 +234,7 @@ class RecognitionBaseModel(BaseModel):
         super().compile(run_eagerly=False)
 
         self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.01))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
 
         self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
