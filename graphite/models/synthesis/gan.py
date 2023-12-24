@@ -229,10 +229,10 @@ class SynthesisModel(SynthesisBaseModel):
                                                              real_real_images,
                                                              fake_real_images], axis=0))
 
-            fake_disc = self.discriminator(fake_image_inputs, training=False)
+            fake_disc = self.discriminator(fake_image_inputs, training=True)
             fake_disc_loss = -tf.reduce_mean(fake_disc)
 
-            fake_patch_disc = self.patch_discriminator(fake_image_inputs, training=False)
+            fake_patch_disc = self.patch_discriminator(fake_image_inputs, training=True)
             fake_patch_disc_loss = -tf.reduce_mean(fake_patch_disc)
 
             disc_loss = fake_disc_loss + fake_patch_disc_loss
@@ -241,24 +241,24 @@ class SynthesisModel(SynthesisBaseModel):
             fake_fake_image_inputs = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
             fake_fake_text_inputs = tf.concat([q_aug_text_inputs, q_aug_text_inputs], axis=0)
 
-            fake_fake_ctc_logits = self.recognition(fake_fake_image_inputs, training=False)
+            fake_fake_ctc_logits = self.recognition(fake_fake_image_inputs, training=True)
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_inputs, fake_fake_ctc_logits)
 
             fake_real_image_inputs = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
             fake_real_text_inputs = tf.concat([q_text_inputs, q_text_inputs], axis=0)
 
-            fake_real_ctc_logits = self.recognition(fake_real_image_inputs, training=False)
+            fake_real_ctc_logits = self.recognition(fake_real_image_inputs, training=True)
             fake_real_ctc_loss = self.ctc_loss(fake_real_text_inputs, fake_real_ctc_logits)
 
             ctc_loss = fake_fake_ctc_loss + fake_real_ctc_loss
 
             # writer identify loss
             real_fake_features_inputs, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=False)
+            real_fake_wid_logits = self.identification(real_fake_features_inputs, training=True)
             real_fake_wid_loss = self.cls_loss(q_writer_inputs, real_fake_wid_logits)
 
             real_real_features_inputs, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.identification(real_real_features_inputs, training=False)
+            real_real_wid_logits = self.identification(real_real_features_inputs, training=True)
             real_real_wid_loss = self.cls_loss(q_writer_inputs, real_real_wid_logits)
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
