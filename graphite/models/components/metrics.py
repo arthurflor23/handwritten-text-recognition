@@ -209,14 +209,14 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
 
         if tf.math.is_nan(value):
-            return
+            self.tracker.update_state(self.result())
+        else:
+            if sample_weight is not None:
+                sample_weight = tf.cast(sample_weight, dtype=tf.float32)
+                sample_weight /= tf.reduce_sum(sample_weight) / batch_size
+                value = tf.reduce_sum(value * sample_weight)
 
-        if sample_weight is not None:
-            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
-            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
-            value = tf.reduce_sum(value * sample_weight)
-
-        self.tracker.update_state(value)
+            self.tracker.update_state(value)
 
     def result(self):
         """
