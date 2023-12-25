@@ -207,7 +207,7 @@ class SynthesisModel(SynthesisBaseModel):
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
 
         # discriminator phase
-        for _ in range(1):
+        for _ in range(2):
             q_indices = tf.random.shuffle(tf.range(batch_size))[:q_batch]
             q_image_inputs = tf.gather(image_inputs, q_indices)
             q_text_inputs = tf.gather(text_inputs, q_indices)
@@ -232,12 +232,12 @@ class SynthesisModel(SynthesisBaseModel):
             fake_real_images = self.generator([fake_latent_inputs, q_text_inputs], training=True)
 
             fake_image_inputs = tf.random.shuffle(tf.concat([fake_fake_images,
-                                                            real_fake_images,
-                                                            real_real_images,
-                                                            fake_real_images], axis=0))
+                                                             real_fake_images,
+                                                             real_real_images,
+                                                             fake_real_images], axis=0))
 
             real_image_inputs = tf.random.shuffle(tf.concat([m_image_inputs,
-                                                            m_aug_image_inputs], axis=0))
+                                                             m_aug_image_inputs], axis=0))
 
             with tf.GradientTape() as d_tape, \
                     tf.GradientTape() as p_tape, \
@@ -263,7 +263,9 @@ class SynthesisModel(SynthesisBaseModel):
                 d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
 
                 # writer identification loss
-                aug_features_inputs, _ = self.style_backbone(aug_image_inputs, training=True)
+                with d_tape.stop_recording(), p_tape.stop_recording(), w_tape.stop_recording(), r_tape.stop_recording():
+                    aug_features_inputs, _ = self.style_backbone(aug_image_inputs, training=True)
+
                 wid_logits = self.identification(aug_features_inputs, training=True)
                 w_loss = self.cls_loss(writer_inputs, wid_logits)
 
