@@ -219,7 +219,7 @@ class RecognitionBaseModel(BaseModel):
 
         return config
 
-    def compile(self, learning_rate=0.001):
+    def compile(self, learning_rate=1e-3):
         """
         Configure the submodels.
 
@@ -565,7 +565,7 @@ class SynthesisBaseModel(BaseModel):
 
         return config
 
-    def compile(self, learning_rate=0.001):
+    def compile(self, learning_rate=1e-4):
         """
         Configure the submodels.
 
