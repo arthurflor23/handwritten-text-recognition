@@ -207,7 +207,7 @@ class SynthesisModel(SynthesisBaseModel):
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
 
         # discriminator phase
-        for _ in range(2):
+        for _ in range(1):
             q_indices = tf.random.shuffle(tf.range(batch_size))[:q_batch]
             q_image_inputs = tf.gather(image_inputs, q_indices)
             q_text_inputs = tf.gather(text_inputs, q_indices)
