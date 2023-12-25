@@ -195,11 +195,6 @@ class SynthesisModel(SynthesisBaseModel):
             # generator loss
             g_loss = (info_loss + l1_loss + disc_loss + ctc_loss + wid_loss + (ctx_loss * 5.0) + (kl_loss * 1e-4))
 
-        self.discriminator.trainable = False
-        self.patch_discriminator.trainable = False
-        self.identification.trainable = False
-        self.recognition.trainable = False
-
         g_gradients = g_tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.generator.trainable_weights))
 
@@ -273,11 +268,6 @@ class SynthesisModel(SynthesisBaseModel):
                 # recognition loss
                 aug_ctc_logits = self.recognition(aug_image_inputs, training=True)
                 r_loss = self.ctc_loss(text_inputs, aug_ctc_logits)
-
-            self.discriminator.trainable = True
-            self.patch_discriminator.trainable = True
-            self.identification.trainable = True
-            self.recognition.trainable = True
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_weights))
