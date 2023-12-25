@@ -270,27 +270,33 @@ class Graphite():
                     restore_best_weights=True,
                     verbose=verbose,
                 ),
-                tf.keras.callbacks.ReduceLROnPlateau(
-                    mode='min',
-                    monitor=monitor,
-                    min_lr=1e-4,
-                    min_delta=1e-7,
-                    factor=plateau_factor,
-                    cooldown=plateau_cooldown,
-                    patience=plateau_patience,
-                    verbose=verbose,
-                ),
             ]
 
-            if self.synthesis and not self.recognition:
+            if self.recognition:
+                callbacks.extend([
+                    tf.keras.callbacks.ReduceLROnPlateau(
+                        mode='min',
+                        monitor=monitor,
+                        min_lr=1e-4,
+                        min_delta=1e-7,
+                        factor=plateau_factor,
+                        cooldown=plateau_cooldown,
+                        patience=plateau_patience,
+                        verbose=verbose,
+                    ),
+                ])
+
+            elif self.synthesis:
                 synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training_samples')
                 os.makedirs(synthesis_path, exist_ok=True)
 
                 callbacks.extend([
-                    GANMonitor(filepath=synthesis_path,
-                               sample_gen=monitor_sample_gen,
-                               sample_steps=monitor_sample_steps,
-                               latent_dim=self.model.generator.latent_dim),
+                    GANMonitor(
+                        filepath=synthesis_path,
+                        sample_gen=monitor_sample_gen,
+                        sample_steps=monitor_sample_steps,
+                        latent_dim=self.model.generator.latent_dim,
+                    ),
                 ])
 
             mlflow.set_tags({'graphite.synthesis': str(self.synthesis)})
