@@ -295,6 +295,7 @@ class SynthesisModel(SynthesisBaseModel):
         return {
             'g_loss': g_loss,
             'd_loss': d_loss,
+            'p_loss': p_loss,
             'w_loss': w_loss,
             'r_loss': r_loss,
             self.kid.name: self.kid.result(),
