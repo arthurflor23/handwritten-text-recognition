@@ -254,7 +254,7 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (aug_image_data, aug_text_data), (image_data, text_data, _) = input_data
+        (aug_image_data, aug_text_data, _), (image_data, text_data, _) = input_data
 
         images = aug_image_data
         texts = text_data
@@ -297,12 +297,12 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_inputs, _), (_, text_inputs, _) = input_data
+        (image_data, _, _), (_, text_data, _) = input_data
 
-        ctc_logits = self.recognition(image_inputs, training=False)
+        ctc_logits = self.recognition(image_data, training=False)
 
-        ctc_loss = self.ctc_loss(text_inputs, ctc_logits)
-        self.edit_distance.update_state(text_inputs, ctc_logits)
+        ctc_loss = self.ctc_loss(text_data, ctc_logits)
+        self.edit_distance.update_state(text_data, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
@@ -326,9 +326,9 @@ class RecognitionBaseModel(BaseModel):
             The generated images.
         """
 
-        image_inputs, _, = x_data
+        image_data, _, _ = x_data
 
-        ctc_logits = self.recognition(image_inputs, training=training)
+        ctc_logits = self.recognition(image_data, training=training)
 
         return ctc_logits
 
@@ -622,13 +622,13 @@ class SynthesisBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_inputs, _), (_, text_inputs, _) = input_data
+        (image_data, _, _), (_, text_data, _) = input_data
 
-        features_inputs, _ = self.style_backbone(image_inputs, training=False)
-        latent_inputs, _, _ = self.style_encoder(features_inputs, training=False)
-        generated_images = self.generator([latent_inputs, text_inputs], training=False)
+        features_data, _ = self.style_backbone(image_data, training=False)
+        latent_data, _, _ = self.style_encoder(features_data, training=False)
+        generated_images = self.generator([latent_data, text_data], training=False)
 
-        self.kid.update_state(image_inputs, generated_images)
+        self.kid.update_state(image_data, generated_images)
 
         return {
             self.kid.name: self.kid.result(),
@@ -652,15 +652,15 @@ class SynthesisBaseModel(BaseModel):
             The generated images.
         """
 
-        image_inputs, text_inputs, = x_data
+        image_data, text_data, _ = x_data
 
-        if tf.math.reduce_all(tf.equal(image_inputs, -1.)):
-            latent_inputs = tf.random.normal(shape=(len(text_inputs), self.style_encoder.latent_dim))
+        if tf.math.reduce_all(tf.equal(image_data, -1.)):
+            latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            features_inputs, _ = self.style_backbone(image_inputs, training=training)
-            latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
+            features_data, _ = self.style_backbone(image_data, training=training)
+            latent_data, _, _ = self.style_encoder(features_data, training=training)
 
-        generated_images = self.generator([latent_inputs, text_inputs], training=training)
+        generated_images = self.generator([latent_data, text_data], training=training)
 
         return generated_images
 

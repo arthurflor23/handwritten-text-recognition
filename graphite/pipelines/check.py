@@ -96,10 +96,10 @@ def check(args):
             image_padded_data, text_padded_data, _, = y_padded_data
 
             x_augmented_data, _ = next(augmented_gen)
-            image_augmented_data, _ = x_augmented_data
+            image_augmented_data, _, _ = x_augmented_data
 
             x_processed_data, _ = next(processed_gen)
-            image_processed_data, _ = x_processed_data
+            image_processed_data, _, _ = x_processed_data
 
             for i in range(len(image_source_data)):
                 # source
