@@ -83,14 +83,16 @@ class Graphite():
             if SynthesisModel and not RecognitionModel:
                 self.model = SynthesisModel(image_shape=self.image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
-                                            writers_shape=self.tokenizer.writers_shape)
+                                            writers_shape=self.tokenizer.writers_shape,
+                                            name='synthesis')
             elif RecognitionModel:
                 synthesis_params = {}
 
                 if SynthesisModel:
                     synthesis = SynthesisModel(image_shape=self.image_shape,
                                                lexical_shape=self.tokenizer.lexical_shape,
-                                               writers_shape=self.tokenizer.writers_shape)
+                                               writers_shape=self.tokenizer.writers_shape,
+                                               name='synthesis')
                     synthesis_params = {
                         'style_backbone': synthesis.style_backbone,
                         'style_encoder': synthesis.style_encoder,
@@ -100,6 +102,7 @@ class Graphite():
 
                 self.model = RecognitionModel(image_shape=self.image_shape,
                                               lexical_shape=self.tokenizer.lexical_shape,
+                                              name='recognition',
                                               **synthesis_params)
 
                 if SpellingModel:

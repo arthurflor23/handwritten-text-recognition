@@ -153,9 +153,9 @@ class RecognitionBaseModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
-                 generator=None,
                  style_backbone=None,
                  style_encoder=None,
+                 generator=None,
                  synthesis_ratio=1.0,
                  **kwargs):
         """
@@ -167,33 +167,33 @@ class RecognitionBaseModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
-        generator : Generator instance
-            Generator model for image generation.
         style_backbone : StyleBackbone instance
             StyleBackbone model for extracting style patterns from images.
         style_encoder : StyleEncoder instance
             StyleEncoder model for encoding extracted style features.
+        generator : Generator instance
+            Generator model for image generation.
         synthesis_ratio : float, optional
             Probability to use synthetic data.
         **kwargs : dict
             Additional keyword arguments.
         """
 
-        super().__init__(name='recognition', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
 
-        self.generator = generator
         self.style_backbone = style_backbone
         self.style_encoder = style_encoder
+        self.generator = generator
         self.recognition = None
 
         self.names = [
-            'generator',
             'style_backbone',
             'style_encoder',
+            'generator',
             'recognition',
         ]
 
@@ -518,28 +518,30 @@ class SynthesisBaseModel(BaseModel):
             Additional keyword arguments.
         """
 
-        super().__init__(name='synthesis', **kwargs)
+        super().__init__(**kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
 
-        self.generator = None
-        self.style_backbone = None
-        self.style_encoder = None
         self.discriminator = None
         self.patch_discriminator = None
+        self.style_backbone = None
         self.identification = None
+        self.text_backbone = None
         self.recognition = None
+        self.style_encoder = None
+        self.generator = None
 
         self.names = [
-            'generator',
-            'style_backbone',
-            'style_encoder',
             'discriminator',
             'patch_discriminator',
+            'style_backbone',
             'identification',
+            'text_backbone',
             'recognition',
+            'style_encoder',
+            'generator',
         ]
 
         self.monitor = 'kid'
@@ -579,25 +581,28 @@ class SynthesisBaseModel(BaseModel):
 
         super().compile(run_eagerly=False)
 
-        self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
         self.d_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.p_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.e_optimizer = NormalizedOptimizer(
+        self.s_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
+        self.t_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
         self.r_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.g_optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+
+        self.e_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.l1_loss = L1Loss()
