@@ -53,6 +53,9 @@ class Source():
 
         data = {'training': [], 'validation': [], 'test': []}
 
+        if not os.path.isdir(self.base_path):
+            return data
+
         def process_file(file_path):
             base_name = os.path.basename(file_path)
             name_part = base_name.split('-')

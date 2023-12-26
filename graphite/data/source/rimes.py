@@ -56,6 +56,9 @@ class Source():
 
         data = {'training': [], 'validation': [], 'test': []}
 
+        if not os.path.isdir(self.base_path):
+            return data
+
         if text_level == 'line':
             data['training'] = self._load_lines_data(self.training_file_path, self.training_path)
             data['test'] = self._load_lines_data(self.test_file_path, self.test_path)

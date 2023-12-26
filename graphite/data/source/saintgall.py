@@ -57,6 +57,9 @@ class Source():
 
         data = {'training': [], 'validation': [], 'test': []}
 
+        if not os.path.isdir(self.base_path):
+            return data
+
         training_partition_data = self._load_partition_data(self.training_file_path)
         validation_partition_data = self._load_partition_data(self.validation_file_path)
         test_partition_data = self._load_partition_data(self.test_file_path)

@@ -55,6 +55,9 @@ class Source():
 
         data = {'training': [], 'validation': [], 'test': []}
 
+        if not os.path.isdir(self.base_path):
+            return data
+
         def process_row(row, file_path):
             row = row.strip().split('\t')
             path = os.path.join(file_path, row[0])
