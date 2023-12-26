@@ -295,7 +295,7 @@ class Graphite():
                         filepath=synthesis_path,
                         sample_gen=monitor_sample_gen,
                         sample_steps=monitor_sample_steps,
-                        latent_dim=self.model.generator.latent_dim,
+                        latent_dim=self.model.style_encoder.latent_dim,
                     ),
                 ])
 

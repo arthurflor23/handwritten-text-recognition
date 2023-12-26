@@ -655,7 +655,7 @@ class SynthesisBaseModel(BaseModel):
         image_inputs, text_inputs, = x_data
 
         if tf.math.reduce_all(tf.equal(image_inputs, -1.)):
-            latent_inputs = tf.random.normal(shape=(len(text_inputs), self.generator.latent_dim))
+            latent_inputs = tf.random.normal(shape=(len(text_inputs), self.style_encoder.latent_dim))
         else:
             features_inputs, _ = self.style_backbone(image_inputs, training=training)
             latent_inputs, _, _ = self.style_encoder(features_inputs, training=training)
