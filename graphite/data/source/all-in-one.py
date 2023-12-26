@@ -63,7 +63,7 @@ class Source():
         global_writer_id = 1
 
         for filename in filenames:
-            module = importlib.import_module(filename.rstrip('.py'))
+            module = importlib.import_module(filename[:-3])
             source = module.Source(self.artifact_path)
 
             source_data = source.fetch_data(text_level)
