@@ -63,12 +63,12 @@ if __name__ == '__main__':
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
     parser.add_argument('--plateau-cooldown', default=0, type=int, help='Cooldown after rate plateau')
     parser.add_argument('--plateau-patience', default=20, type=int, help='Epochs before recognizing a plateau')
-    parser.add_argument('--patience', default=40, type=int, help='Epochs without improvement to stop')
+    parser.add_argument('--patience', default=30, type=int, help='Epochs without improvement to stop')
 
     # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Number of top paths for prediction')
-    parser.add_argument('--beam-width', default=15, type=int, help='Beam width for CTC decoder')
+    parser.add_argument('--beam-width', default=30, type=int, help='Beam width for CTC decoder')
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
