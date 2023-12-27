@@ -103,7 +103,7 @@ class SynthesisModel(SynthesisBaseModel):
         q_batch = tf.math.maximum(1, batch_size // 4)
 
         # discriminator phase
-        for _ in range(2):
+        for _ in range(4):
             q_indices = tf.random.shuffle(tf.range(batch_size))[:q_batch]
             q_image_data = tf.gather(image_data, q_indices)
             q_text_data = tf.gather(text_data, q_indices)
@@ -113,13 +113,13 @@ class SynthesisModel(SynthesisBaseModel):
 
             fake_latent_data = tf.random.normal((q_batch, self.style_encoder.latent_dim))
 
-            real_features_data, _ = self.style_backbone(q_image_data, training=False)
-            real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
+            real_features_data, _ = self.style_backbone(q_image_data, training=True)
+            real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
-            fake_fake_images = self.generator([fake_latent_data, q_aug_text_data], training=False)
-            real_fake_images = self.generator([real_latent_data, q_aug_text_data], training=False)
-            real_real_images = self.generator([real_latent_data, q_text_data], training=False)
-            fake_real_images = self.generator([fake_latent_data, q_text_data], training=False)
+            fake_fake_images = self.generator([fake_latent_data, q_aug_text_data], training=True)
+            real_fake_images = self.generator([real_latent_data, q_aug_text_data], training=True)
+            real_real_images = self.generator([real_latent_data, q_text_data], training=True)
+            fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
             fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
                                                            real_fake_images,
@@ -178,7 +178,7 @@ class SynthesisModel(SynthesisBaseModel):
         q_writer_data = tf.gather(writer_data, indices[:q_batch])
 
         fake_latent_data = tf.random.normal((q_batch, self.style_encoder.latent_dim))
-        real_features_data, real_image_feats = self.style_backbone(q_image_data, training=False)
+        real_features_data, real_image_feats = self.style_backbone(q_image_data, training=True)
 
         with tf.GradientTape() as e_tape, tf.GradientTape() as g_tape:
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
@@ -193,8 +193,8 @@ class SynthesisModel(SynthesisBaseModel):
 
             # style reconstruction loss
             with e_tape.stop_recording(), g_tape.stop_recording():
-                fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=False)
-                fake_real_features_data, _ = self.style_backbone(fake_real_images, training=False)
+                fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
+                fake_real_features_data, _ = self.style_backbone(fake_real_images, training=True)
 
             fake_fake_latent_data, _, _ = self.style_encoder(fake_fake_features_data, training=True)
             fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_data - fake_latent_data))
