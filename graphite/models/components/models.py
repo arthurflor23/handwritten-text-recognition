@@ -326,8 +326,7 @@ class RecognitionBaseModel(BaseModel):
             The generated images.
         """
 
-        image_data, _, _ = x_data
-
+        image_data = x_data[0] if isinstance(x_data, tuple) else x_data
         ctc_logits = self.recognition(image_data, training=training)
 
         return ctc_logits

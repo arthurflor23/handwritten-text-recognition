@@ -168,7 +168,7 @@ class SynthesisModel(SynthesisBaseModel):
                 wid_logits = self.identification(features_data, training=True)
                 w_loss = self.cls_loss(writer_data, wid_logits)
 
-                ctc_logits = self.recognition((aug_image_data, None, None), training=True)
+                ctc_logits = self.recognition(aug_image_data, training=True)
                 r_loss = self.ctc_loss(text_data, ctc_logits)
 
             b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
@@ -205,11 +205,13 @@ class SynthesisModel(SynthesisBaseModel):
             kl_loss = self.kld_loss(mu, logvar)
 
             # style reconstruction loss
-            fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
+                fake_real_features_data, _ = self.style_backbone(fake_real_images, training=True)
+
             fake_fake_latent_data, _, _ = self.style_encoder(fake_fake_features_data, training=True)
             fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_data - fake_latent_data))
 
-            fake_real_features_data, _ = self.style_backbone(fake_real_images, training=True)
             fake_real_latent_data, _, _ = self.style_encoder(fake_real_features_data, training=True)
             fake_real_info_loss = tf.reduce_mean(tf.math.abs(fake_real_latent_data - fake_latent_data))
 
@@ -237,11 +239,11 @@ class SynthesisModel(SynthesisBaseModel):
             with e_tape.stop_recording(), g_tape.stop_recording():
                 fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
                 fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-                fake_fake_ctc_logits = self.recognition((fake_fake_image_data, None, None), training=True)
+                fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=True)
 
                 fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
                 fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
-                fake_real_ctc_logits = self.recognition((fake_real_image_data, None, None), training=True)
+                fake_real_ctc_logits = self.recognition(fake_real_image_data, training=True)
 
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
             fake_real_ctc_loss = self.ctc_loss(fake_real_text_data, fake_real_ctc_logits)
