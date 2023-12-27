@@ -65,7 +65,7 @@ class Source():
             return {
                 'image': path,
                 'bbox': [],
-                'text': ' '.join(list(row[1])),
+                'text': row[1],
                 'writer': '1',
             }
 

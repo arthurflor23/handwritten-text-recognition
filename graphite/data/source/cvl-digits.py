@@ -63,7 +63,7 @@ class Source():
             return {
                 'image': file_path,
                 'bbox': [],
-                'text': ' '.join(list(name_part[0])),
+                'text': name_part[0],
                 'writer': name_part[1],
             }
 
