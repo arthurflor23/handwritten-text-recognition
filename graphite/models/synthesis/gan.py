@@ -103,7 +103,7 @@ class SynthesisModel(SynthesisBaseModel):
         q_batch = tf.math.maximum(1, batch_size // 4)
 
         # discriminator phase
-        for _ in range(1):
+        for _ in range(2):
             q_indices = tf.random.shuffle(tf.range(batch_size))[:q_batch]
             q_image_data = tf.gather(image_data, q_indices)
             q_text_data = tf.gather(text_data, q_indices)
@@ -412,9 +412,6 @@ class GeneratorModel(tf.keras.Model):
         for i, filters in enumerate(self.blocks):
             upsample = None
 
-            if i == len(self.blocks[:-1]):
-                block = SpectralSelfAttention()(block)
-
             if i > 0 and (i % 2 == 0 or i == len(self.blocks) - 1):
                 height_upsample_required = block.shape[1] < self.image_shape[0]
                 width_upsample_required = block.shape[2] < self.image_shape[1]
@@ -425,6 +422,9 @@ class GeneratorModel(tf.keras.Model):
                     upsample = (upsample_height, upsample_width)
 
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
+
+            if i == (len(self.blocks[:-1]) // 2):
+                block = SpectralSelfAttention()(block)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.ReLU()(outputs)
@@ -529,10 +529,10 @@ class DiscriminatorModel(tf.keras.Model):
         block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            if i == len(self.blocks[:-1]):
-                block = SpectralSelfAttention()(block)
-
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
+
+            if i == (len(self.blocks[:-1]) // 2):
+                block = SpectralSelfAttention()(block)
 
         outputs = tf.keras.layers.ReLU()(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
@@ -648,7 +648,7 @@ class BackboneModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
