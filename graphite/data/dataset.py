@@ -266,8 +266,8 @@ class Dataset():
                 print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
                 return index
 
-            if item.get('image'):
-                if not os.path.exists(item['image']):
+            if item.get('image', None):
+                if not os.path.isfile(item['image']):
                     print(f"Image `{os.path.basename(item['image'])}` does not exist.")
                     return index
 

@@ -96,8 +96,10 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     padded = np.full((len(data_batch), max_height, max_width), fill_value=pad_value, dtype=dtype)
 
     for i, data in enumerate(data_batch):
-        height, width = np.asarray(data).shape
-        padded[i, :height, :width] = data
+        data = np.asarray(data)
+
+        if data.size > 0 and data.ndim == 2:
+            padded[i, :data.shape[0], :data.shape[1]] = data
 
     return padded
 
