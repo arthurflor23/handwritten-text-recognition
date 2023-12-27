@@ -81,7 +81,6 @@ class Dataset():
             data = self._source.fetch_data(self.text_level)
 
         data = self._partitioning(data)
-        data = self._validation(data)
 
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
@@ -244,59 +243,9 @@ class Dataset():
 
         return data
 
-    def _validation(self, data):
-        """
-        Validates and cleans the data by removing invalid entries.
-
-        Parameters
-        ----------
-        data : dict
-            The input data to be validated, organized in partitions.
-
-        Returns
-        -------
-        dict
-            The cleaned data with invalid entries removed.
-        """
-
-        def validate(index, item):
-            item['text'] = utils.format_text(item['text'] or '')
-
-            if not item['text'] and hasattr(self, '_source'):
-                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
-                return index
-
-            if item.get('image', None):
-                if not os.path.isfile(item['image']):
-                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
-                    return index
-
-                try:
-                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
-
-                    if image is None or image.size == 0:
-                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
-                        return index
-
-                except Exception:
-                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
-                    return index
-
-            return None
-
-        for partition in data:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(validate, i, x) for i, x in enumerate(data[partition])]
-                indices = [x for x in [future.result() for future in futures] if x is not None]
-
-            for index in indices:
-                del data[partition][index]
-
-        return data
-
     def _build_samples(self, data):
         """
-        Builds the samples from data partitions.
+        Validates and builds the samples from data partitions.
 
         Parameters
         ----------
@@ -306,37 +255,58 @@ class Dataset():
         Returns
         -------
         dict
-            A dictionary with raw and processed data.
+            A dictionary with source and encoded data.
         """
 
         samples = {'source': {}, 'encoded': {}}
         keepstats = hasattr(self, '_source')
 
-        def build(x):
-            source = x.copy()
-            encode = x.copy()
+        def validate_and_build(item):
+            item['text'] = utils.format_text(item['text'] or '')
+
+            if not item['text'] and hasattr(self, '_source'):
+                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
+                return None
+
+            if item.get('image', None):
+                if not os.path.isfile(item['image']):
+                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
+                    return None
+
+                try:
+                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
+
+                    if image is None or image.size == 0:
+                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
+                        return None
+
+                except Exception:
+                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
+                    return None
+
+            source = item.copy()
+            encode = item.copy()
 
             if not self.lazy_mode:
-                encode['image'] = utils.read_image(x['image'], x['bbox'], self.image_shape)
+                encode['image'] = image
 
-            encode['text'] = self.tokenizer.encode_text(x['text'], keepstats=keepstats)
-            encode['writer'] = self.tokenizer.encode_writer(x['writer'], keepstats=keepstats)
+            encode['text'] = self.tokenizer.encode_text(item['text'], keepstats=keepstats)
+            encode['writer'] = self.tokenizer.encode_writer(item['writer'], keepstats=keepstats)
 
             return source, encode
 
         for partition in data:
-            if not data[partition]:
-                samples['source'][partition] = []
-                samples['encoded'][partition] = []
-                continue
+            samples['source'][partition] = []
+            samples['encoded'][partition] = []
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(build, x) for x in data[partition]]
-                results = [future.result() for future in futures]
+                futures = [executor.submit(validate_and_build, item) for item in data[partition]]
+                results = [future.result() for future in futures if future.result() is not None]
 
-            source, encode = zip(*results)
-            samples['source'][partition] = np.array(source, dtype=object)
-            samples['encoded'][partition] = np.array(encode, dtype=object)
+            if results:
+                source, encode = zip(*results)
+                samples['source'][partition] = np.array(source, dtype=object)
+                samples['encoded'][partition] = np.array(encode, dtype=object)
 
         return samples
 
