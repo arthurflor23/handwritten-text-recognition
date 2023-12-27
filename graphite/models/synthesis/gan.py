@@ -5,7 +5,7 @@ from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SpectralSelfAttention
 from graphite.models.components.models import SynthesisBaseModel
-from graphite.models.recognition.bluche import RecognitionModel
+from graphite.models.recognition.bluche import RecognitionModel as BlucheModel
 
 
 class SynthesisModel(SynthesisBaseModel):
@@ -69,11 +69,12 @@ class SynthesisModel(SynthesisBaseModel):
 
         # self.recognition = RecognitionModel(image_shape=self.image_shape,
         #                                     lexical_shape=self.lexical_shape,
+        #                                     blocks=backbone_blocks,
         #                                     name='recognition')
 
-        self.recognition = RecognitionModel(image_shape=self.image_shape,
-                                            lexical_shape=self.lexical_shape,
-                                            name='recognition')
+        self.recognition = BlucheModel(image_shape=self.image_shape,
+                                       lexical_shape=self.lexical_shape,
+                                       name='recognition')
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_output_shape,
                                                latent_dim=latent_dim,
@@ -219,13 +220,13 @@ class SynthesisModel(SynthesisBaseModel):
             l1_loss = tf.reduce_mean(real_real_l1_loss)
 
             # patch and discriminator loss
-            # with e_tape.stop_recording(), g_tape.stop_recording():
-            fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
-                                                           real_fake_images,
-                                                           real_real_images,
-                                                           fake_real_images], axis=0))
-            fake_disc = self.discriminator(fake_image_data, training=True)
-            fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
+                                                               real_fake_images,
+                                                               real_real_images,
+                                                               fake_real_images], axis=0))
+                fake_disc = self.discriminator(fake_image_data, training=True)
+                fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
 
             fake_disc_loss = -tf.reduce_mean(fake_disc)
             fake_patch_disc_loss = -tf.reduce_mean(fake_patch_disc)
@@ -233,14 +234,14 @@ class SynthesisModel(SynthesisBaseModel):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            # with e_tape.stop_recording(), g_tape.stop_recording():
-            fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
-            fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-            fake_fake_ctc_logits = self.recognition((fake_fake_image_data, None, None), training=True)
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
+                fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
+                fake_fake_ctc_logits = self.recognition((fake_fake_image_data, None, None), training=True)
 
-            fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
-            fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
-            fake_real_ctc_logits = self.recognition((fake_real_image_data, None, None), training=True)
+                fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
+                fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
+                fake_real_ctc_logits = self.recognition((fake_real_image_data, None, None), training=True)
 
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
             fake_real_ctc_loss = self.ctc_loss(fake_real_text_data, fake_real_ctc_logits)
@@ -248,12 +249,12 @@ class SynthesisModel(SynthesisBaseModel):
             ctc_loss = fake_fake_ctc_loss + fake_real_ctc_loss
 
             # writer identify loss
-            # with e_tape.stop_recording(), g_tape.stop_recording():
-            real_fake_features_data, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
-            real_fake_wid_logits = self.identification(real_fake_features_data, training=True)
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                real_fake_features_data, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
+                real_fake_wid_logits = self.identification(real_fake_features_data, training=True)
 
-            real_real_features_data, real_real_image_feats = self.style_backbone(real_real_images, training=True)
-            real_real_wid_logits = self.identification(real_real_features_data, training=True)
+                real_real_features_data, real_real_image_feats = self.style_backbone(real_real_images, training=True)
+                real_real_wid_logits = self.identification(real_real_features_data, training=True)
 
             real_fake_wid_loss = self.cls_loss(q_writer_data, real_fake_wid_logits)
             real_real_wid_loss = self.cls_loss(q_writer_data, real_real_wid_logits)
@@ -821,7 +822,7 @@ class IdentificationModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class RecognitionModel2(tf.keras.Model):
+class RecognitionModel(tf.keras.Model):
     """
     A recognition model that transcribes handwritten texts from images.
 
@@ -832,6 +833,7 @@ class RecognitionModel2(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  lexical_shape,
+                 blocks,
                  **kwargs):
         """
         Initialize the handwriting recognition model with specified parameters.
@@ -842,6 +844,8 @@ class RecognitionModel2(tf.keras.Model):
             Shape of the image input.
         lexical_shape : list or tuple
             Shape of the text sequences and vocabulary encoding.
+        blocks : list or tuple
+            Blocks of channels for the model's architecture.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
@@ -850,6 +854,7 @@ class RecognitionModel2(tf.keras.Model):
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
+        self.blocks = blocks
 
         self.build_model()
 
@@ -872,6 +877,7 @@ class RecognitionModel2(tf.keras.Model):
         config.update({
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
+            'blocks': self.blocks,
         })
 
     def build_model(self):
