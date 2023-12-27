@@ -67,11 +67,7 @@ class SynthesisModel(SynthesisBaseModel):
                                                   writers_shape=self.writers_shape,
                                                   name='identification')
 
-        # self.text_backbone = BackboneModel(image_shape=self.image_shape,
-        #                                    blocks=backbone_blocks,
-        #                                    name='text_backbone')
-
-        # self.recognition = RecognitionModel(features_shape=self.text_backbone.features_output_shape,
+        # self.recognition = RecognitionModel(image_shape=self.image_shape,
         #                                     lexical_shape=self.lexical_shape,
         #                                     name='recognition')
 
@@ -163,7 +159,7 @@ class SynthesisModel(SynthesisBaseModel):
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
 
             # writer identification and recognition loss
-            with tf.GradientTape() as s_tape, \
+            with tf.GradientTape() as b_tape, \
                     tf.GradientTape() as w_tape, \
                     tf.GradientTape() as r_tape:
 
@@ -171,18 +167,14 @@ class SynthesisModel(SynthesisBaseModel):
                 wid_logits = self.identification(features_data, training=True)
                 w_loss = self.cls_loss(writer_data, wid_logits)
 
-                # features_data, _ = self.text_backbone(image_data, training=True)
                 ctc_logits = self.recognition((aug_image_data, None, None), training=True)
                 r_loss = self.ctc_loss(text_data, ctc_logits)
 
-            s_gradients = s_tape.gradient(w_loss, self.style_backbone.trainable_weights)
-            self.s_optimizer.apply_gradients(zip(s_gradients, self.style_backbone.trainable_weights))
+            b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
+            self.b_optimizer.apply_gradients(zip(b_gradients, self.style_backbone.trainable_weights))
 
             w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
             self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
-
-            # t_gradients = t_tape.gradient(r_loss, self.text_backbone.trainable_weights)
-            # self.t_optimizer.apply_gradients(zip(t_gradients, self.text_backbone.trainable_weights))
 
             r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
@@ -244,14 +236,10 @@ class SynthesisModel(SynthesisBaseModel):
             # with e_tape.stop_recording(), g_tape.stop_recording():
             fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
             fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-
-            # fake_fake_features_data, _ = self.text_backbone(fake_fake_image_data, training=True)
             fake_fake_ctc_logits = self.recognition((fake_fake_image_data, None, None), training=True)
 
             fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
             fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
-
-            # fake_real_features_data, _ = self.text_backbone(fake_real_image_data, training=True)
             fake_real_ctc_logits = self.recognition((fake_real_image_data, None, None), training=True)
 
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
@@ -668,8 +656,7 @@ class BackboneModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        # outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
@@ -834,72 +821,113 @@ class IdentificationModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-# class RecognitionModel(tf.keras.Model):
-#     """
-#     A recognition model that transcribes handwritten texts from images.
+class RecognitionModel2(tf.keras.Model):
+    """
+    A recognition model that transcribes handwritten texts from images.
 
-#     This model is designed to extract textual information from images of handwriting,
-#         facilitating tasks like optical character recognition and handwriting analysis.
-#     """
+    This model is designed to extract textual information from images of handwriting,
+        facilitating tasks like optical character recognition and handwriting analysis.
+    """
 
-#     def __init__(self,
-#                  features_shape,
-#                  lexical_shape,
-#                  **kwargs):
-#         """
-#         Initialize the handwriting recognition model with specified parameters.
+    def __init__(self,
+                 image_shape,
+                 lexical_shape,
+                 **kwargs):
+        """
+        Initialize the handwriting recognition model with specified parameters.
 
-#         Parameters
-#         ----------
-#         features_shape : list or tuple
-#             Shape of the input features.
-#         lexical_shape : list or tuple
-#             Shape of the text sequences and vocabulary encoding.
-#         **kwargs : dict
-#             Additional keyword arguments for `tf.keras.Model`.
-#         """
+        Parameters
+        ----------
+        image_shape : list or tuple
+            Shape of the image input.
+        lexical_shape : list or tuple
+            Shape of the text sequences and vocabulary encoding.
+        **kwargs : dict
+            Additional keyword arguments for `tf.keras.Model`.
+        """
 
-#         super().__init__(**kwargs)
+        super().__init__(**kwargs)
 
-#         self.features_shape = features_shape
-#         self.lexical_shape = lexical_shape
+        self.image_shape = image_shape
+        self.lexical_shape = lexical_shape
 
-#         self.build_model()
+        self.build_model()
 
-#         if hasattr(self, 'model'):
-#             self.summary = self.model.summary
-#             self.call = self.model.call
+        if hasattr(self, 'model'):
+            self.summary = self.model.summary
+            self.call = self.model.call
 
-#     def get_config(self):
-#         """
-#         Retrieves the configuration of the model for serialization.
+    def get_config(self):
+        """
+        Retrieves the configuration of the model for serialization.
 
-#         Returns
-#         -------
-#         dict
-#             A dictionary containing the configuration of the model.
-#         """
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the model.
+        """
 
-#         config = super().get_config()
+        config = super().get_config()
 
-#         config.update({
-#             'features_shape': self.features_shape,
-#             'lexical_shape': self.lexical_shape,
-#         })
+        config.update({
+            'image_shape': self.image_shape,
+            'lexical_shape': self.lexical_shape,
+        })
 
-#     def build_model(self):
-#         """
-#         Initializes and builds the neural network model.
+    def build_model(self):
+        """
+        Initializes and builds the neural network model.
 
-#         This method sets up the architecture of the model by defining layers, their connections,
-#             and configurations. It is typically called in the constructor to create the model structure.
-#         """
+        This method sets up the architecture of the model by defining layers, their connections,
+            and configurations. It is typically called in the constructor to create the model structure.
+        """
 
-#         image_inputs = tf.keras.layers.Input(shape=self.features_shape)
+        image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-#         lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(image_inputs)
-#         lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
+        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
+        blocks = list(self.blocks) + [self.blocks[-1] * 2]
 
-#         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
+        for i, filters in enumerate(blocks[:-1]):
+            block1 = tf.keras.layers.ReLU()(conv)
+            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+            block1 = tf.keras.layers.BatchNormalization()(block1)
 
-#         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+            block1 = tf.keras.layers.ReLU()(block1)
+            block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
+            block1 = tf.keras.layers.BatchNormalization()(block1)
+
+            conv = tf.keras.layers.Add()([conv, block1])
+
+            block2 = tf.keras.layers.ReLU()(conv)
+            block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
+            block2 = tf.keras.layers.BatchNormalization()(block2)
+
+            block2 = tf.keras.layers.ReLU()(block2)
+            block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
+            block2 = tf.keras.layers.BatchNormalization()(block2)
+
+            shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
+                                              kernel_size=1,
+                                              strides=1,
+                                              padding='valid',
+                                              use_bias=False)(conv)
+
+            conv = tf.keras.layers.Add()([shortcut, block2])
+            conv = tf.keras.layers.ZeroPadding2D(padding=1)(conv)
+
+            strides = (2, 2) if i + 1 == len(blocks[:-1]) // 2 else (1, 2)
+            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides)(conv)
+
+        conv = tf.keras.layers.ReLU()(conv)
+        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
+        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.ReLU()(conv)
+
+        lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+
+        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(lstm)
+        lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
+
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
+
+        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)

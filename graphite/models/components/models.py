@@ -528,7 +528,6 @@ class SynthesisBaseModel(BaseModel):
         self.patch_discriminator = None
         self.style_backbone = None
         self.identification = None
-        self.text_backbone = None
         self.recognition = None
         self.style_encoder = None
         self.generator = None
@@ -538,7 +537,6 @@ class SynthesisBaseModel(BaseModel):
             'patch_discriminator',
             'style_backbone',
             'identification',
-            'text_backbone',
             'recognition',
             'style_encoder',
             'generator',
@@ -587,13 +585,10 @@ class SynthesisBaseModel(BaseModel):
         self.p_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.s_optimizer = NormalizedOptimizer(
+        self.b_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.t_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
