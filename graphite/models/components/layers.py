@@ -547,7 +547,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             Additional keyword arguments for the wrapper.
         """
 
-        super().__init__(layer, **kwargs)
+        super().__init__(layer, name=layer.name, **kwargs)
 
         self.power_iterations = power_iterations
 
