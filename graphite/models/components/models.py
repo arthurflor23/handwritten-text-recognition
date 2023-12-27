@@ -201,7 +201,9 @@ class RecognitionBaseModel(BaseModel):
         self.edit_distance = EditDistance()
 
         self.monitor = f"val_{self.edit_distance.name}"
+
         self.build_model()
+        self.built = True
 
     def get_config(self):
         """
@@ -237,7 +239,7 @@ class RecognitionBaseModel(BaseModel):
         super().compile(run_eagerly=False)
 
         self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=2.5e-4))
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
 
     def train_step(self, input_data):
         """
@@ -299,7 +301,7 @@ class RecognitionBaseModel(BaseModel):
 
         (image_data, _, _), (_, text_data, _) = input_data
 
-        ctc_logits = self.recognition(image_data, training=False)
+        ctc_logits = self.recognition(image_data)
 
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
         self.edit_distance.update_state(text_data, ctc_logits)
@@ -309,7 +311,7 @@ class RecognitionBaseModel(BaseModel):
             self.edit_distance.name: self.edit_distance.result(),
         }
 
-    def call(self, x_data, training=None):
+    def call(self, x_data, training=None, mask=None):
         """
         Processes input images and transcribes handwritten texts from them.
 
@@ -319,6 +321,8 @@ class RecognitionBaseModel(BaseModel):
             A batch of data (x_data).
         training : bool, optional
             Indicates whether the call is for training or inference.
+        mask : mask or list of masks
+            A mask can be either a boolean tensor or None (no mask).
 
         Returns
         -------
@@ -327,7 +331,7 @@ class RecognitionBaseModel(BaseModel):
         """
 
         image_data = x_data[0] if isinstance(x_data, tuple) else x_data
-        ctc_logits = self.recognition(image_data, training=training)
+        ctc_logits = self.recognition(image_data, training=training, mask=mask)
 
         return ctc_logits
 
@@ -548,8 +552,10 @@ class SynthesisBaseModel(BaseModel):
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
-        self.monitor = self.kid.name
+        self.monitor = f"val_{self.kid.name}"
+
         self.build_model()
+        self.built = True
 
     def get_config(self):
         """
@@ -623,9 +629,9 @@ class SynthesisBaseModel(BaseModel):
 
         (image_data, _, _), (_, text_data, _) = input_data
 
-        features_data, _ = self.style_backbone(image_data, training=False)
-        latent_data, _, _ = self.style_encoder(features_data, training=False)
-        generated_images = self.generator([latent_data, text_data], training=False)
+        features_data, _ = self.style_backbone(image_data)
+        latent_data, _, _ = self.style_encoder(features_data)
+        generated_images = self.generator([latent_data, text_data])
 
         self.kid.update_state(image_data, generated_images)
 
@@ -633,7 +639,7 @@ class SynthesisBaseModel(BaseModel):
             self.kid.name: self.kid.result(),
         }
 
-    def call(self, x_data, training=None):
+    def call(self, x_data, training=None, mask=None):
         """
         Processes input images and text through the style backbone, encoder,
             and generator to produce generated images.
@@ -644,6 +650,8 @@ class SynthesisBaseModel(BaseModel):
             A batch of data (x_data).
         training : bool, optional
             Indicates whether the call is for training or inference.
+        mask : mask or list of masks
+            A mask can be either a boolean tensor or None (no mask).
 
         Returns
         -------
@@ -656,7 +664,7 @@ class SynthesisBaseModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            features_data, _ = self.style_backbone(image_data, training=training)
+            features_data, _ = self.style_backbone(image_data, training=training, mask=mask)
             latent_data, _, _ = self.style_encoder(features_data, training=training)
 
         generated_images = self.generator([latent_data, text_data], training=training)
