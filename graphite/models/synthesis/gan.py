@@ -5,7 +5,6 @@ from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SpectralSelfAttention
 from graphite.models.components.models import SynthesisBaseModel
-from graphite.models.recognition.bluche import RecognitionModel as BlucheModel
 
 
 class SynthesisModel(SynthesisBaseModel):
@@ -67,14 +66,10 @@ class SynthesisModel(SynthesisBaseModel):
                                                   writers_shape=self.writers_shape,
                                                   name='identification')
 
-        # self.recognition = RecognitionModel(image_shape=self.image_shape,
-        #                                     lexical_shape=self.lexical_shape,
-        #                                     blocks=backbone_blocks,
-        #                                     name='recognition')
-
-        self.recognition = BlucheModel(image_shape=self.image_shape,
-                                       lexical_shape=self.lexical_shape,
-                                       name='recognition')
+        self.recognition = RecognitionModel(image_shape=self.image_shape,
+                                            lexical_shape=self.lexical_shape,
+                                            blocks=backbone_blocks,
+                                            name='recognition')
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_output_shape,
                                                latent_dim=latent_dim,
@@ -417,9 +412,10 @@ class GeneratorModel(tf.keras.Model):
         for i, filters in enumerate(self.blocks):
             upsample = None
 
-            if i > 0 and (i == len(self.blocks) - 1 or i % 2 == 0):
+            if i == len(self.blocks[:-1]):
                 block = SpectralSelfAttention()(block)
 
+            if i > 0 and (i % 2 == 0 or i == len(self.blocks) - 1):
                 height_upsample_required = block.shape[1] < self.image_shape[0]
                 width_upsample_required = block.shape[2] < self.image_shape[1]
 
@@ -507,24 +503,24 @@ class DiscriminatorModel(tf.keras.Model):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        def residual_block_down(x, filters, ops_early=True, downsample=False):
+        def residual_block_down(x, filters, preactive=True, downsample=False):
             h = x
 
-            if ops_early:
+            if preactive:
                 h = tf.keras.layers.ReLU()(x)
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             h = tf.keras.layers.ReLU()(h)
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
-            if ops_early:
+            if preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             if downsample:
                 h = tf.keras.layers.AveragePooling2D()(h)
                 x = tf.keras.layers.AveragePooling2D()(x)
 
-            if not ops_early:
+            if not preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             return tf.keras.layers.Add()([h, x])
@@ -533,10 +529,10 @@ class DiscriminatorModel(tf.keras.Model):
         block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            if i > 0 and (i == len(self.blocks) - 1 or i % 2 == 0):
+            if i == len(self.blocks[:-1]):
                 block = SpectralSelfAttention()(block)
 
-            block = residual_block_down(block, filters, ops_early=(i > 0), downsample=(i < len(self.blocks) - 1))
+            block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
         outputs = tf.keras.layers.ReLU()(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
