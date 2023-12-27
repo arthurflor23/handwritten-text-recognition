@@ -197,7 +197,10 @@ class RecognitionBaseModel(BaseModel):
             'recognition',
         ]
 
-        self.monitor = 'val_cer'
+        self.ctc_loss = CTCLoss()
+        self.edit_distance = EditDistance()
+
+        self.monitor = f"val_{self.edit_distance.name}"
         self.build_model()
 
     def get_config(self):
@@ -235,9 +238,6 @@ class RecognitionBaseModel(BaseModel):
 
         self.optimizer = NormalizedOptimizer(
             tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=2.5e-4))
-
-        self.ctc_loss = CTCLoss()
-        self.edit_distance = EditDistance()
 
     def train_step(self, input_data):
         """
@@ -541,7 +541,14 @@ class SynthesisBaseModel(BaseModel):
             'generator',
         ]
 
-        self.monitor = 'kid'
+        self.l1_loss = L1Loss()
+        self.ctx_loss = CTXLoss()
+        self.ctc_loss = CTCLoss()
+        self.kld_loss = tf.keras.losses.KLDivergence()
+        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
+
+        self.monitor = self.kid.name
         self.build_model()
 
     def get_config(self):
@@ -598,13 +605,6 @@ class SynthesisBaseModel(BaseModel):
 
         self.e_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.l1_loss = L1Loss()
-        self.ctx_loss = CTXLoss()
-        self.ctc_loss = CTCLoss()
-        self.kld_loss = tf.keras.losses.KLDivergence()
-        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
     def test_step(self, input_data):
         """
