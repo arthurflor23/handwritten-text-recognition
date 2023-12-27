@@ -102,10 +102,7 @@ class SynthesisModel(SynthesisBaseModel):
             A dictionary containing metrics and losses.
         """
 
-        x_data, y_data = input_data
-
-        (aug_image_data, aug_text_data, _) = x_data
-        (image_data, text_data, writer_data) = y_data
+        (_, aug_text_data, _), (image_data, text_data, writer_data) = input_data
 
         batch_size = tf.shape(image_data)[0]
         q_batch = tf.math.maximum(1, batch_size // 4)
@@ -165,7 +162,7 @@ class SynthesisModel(SynthesisBaseModel):
                 wid_logits = self.identification(features_data, training=True)
                 w_loss = self.cls_loss(writer_data, wid_logits)
 
-                ctc_logits = self.recognition(aug_image_data, training=True)
+                ctc_logits = self.recognition(image_data, training=True)
                 r_loss = self.ctc_loss(text_data, ctc_logits)
 
             b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
