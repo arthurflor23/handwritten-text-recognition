@@ -500,7 +500,7 @@ class OctConv2D(tf.keras.layers.Layer):
 
         return [high_add, low_add]
 
-    def compute_output_shape(self, input_shapes):
+    def compute_output_shape(self, input_shape):
         """
         Compute the output shape of the layer.
 
@@ -515,11 +515,14 @@ class OctConv2D(tf.keras.layers.Layer):
             The computed shape of the output from the layer.
         """
 
-        high_in_shape, low_in_shape = input_shapes
+        if not self.built:
+            self.build(input_shape)
+
+        high_in_shape, low_in_shape = input_shape
         high_out_shape = (*high_in_shape[:3], self.high_channels)
         low_out_shape = (*low_in_shape[:3], self.low_channels)
 
-        return [high_out_shape, low_out_shape]
+        return tf.TensorShape([high_out_shape, low_out_shape])
 
 
 class SpectralNormalization(tf.keras.layers.Wrapper):
@@ -660,6 +663,9 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             The computed shape of the output from the wrapped layer.
         """
 
+        if not self.built:
+            self.build(input_shape)
+
         return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
 
 
@@ -747,3 +753,414 @@ class SpectralSelfAttention(tf.keras.layers.Layer):
         o = self.conv_o(o)
 
         return self.gamma * o + x
+
+
+class TemporalConvolutional(tf.keras.layers.Layer):
+    """
+    A Temporal Convolutional Layer for sequence modeling.
+
+    References
+    ----------
+    Temporal Convolutional Networks for Action Segmentation and Detection
+        https://arxiv.org/abs/1611.05267
+    An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
+        https://arxiv.org/abs/1803.01271
+    """
+
+    def __init__(self,
+                 filters=64,
+                 kernel_size=3,
+                 nb_stacks=1,
+                 dilations=(1, 2, 4, 8, 16, 32),
+                 padding='causal',
+                 dropout=0.0,
+                 use_skip_connections=True,
+                 return_sequences=False,
+                 activation='relu',
+                 kernel_initializer='glorot_uniform',
+                 use_batch_norm=False,
+                 use_layer_norm=False,
+                 go_backwards=False,
+                 **kwargs):
+        """
+        Initializes the temporal convolutional layer.
+
+        Parameters
+        ----------
+        filters : int or list
+            The dimensionality of the output space.
+        kernel_size : int
+            Length of the convolution window.
+        nb_stacks : int
+            Number of stacks of residual blocks.
+        dilations : tuple
+            The dilation rate to use for dilated convolution.
+        padding : str
+            One of 'causal' or 'same'.
+        dropout : float
+            Dropout rate.
+        use_skip_connections : bool
+            Whether to use skip connections.
+        return_sequences : bool
+            Whether to return the last output, or the full sequence.
+        activation : str
+            Activation function to use.
+        kernel_initializer : str
+            Initializer for the kernel weights matrix.
+        use_batch_norm : bool
+            Whether to use batch normalization.
+        use_layer_norm : bool
+            Whether to use layer normalization.
+        go_backwards : bool
+            Process the input sequence backwards and return the reversed sequence.
+        """
+
+        super().__init__(**kwargs)
+
+        if use_batch_norm and use_layer_norm:
+            raise ValueError('Only one of batch normalization or layer normalization can be used.')
+
+        if isinstance(filters, list) and len(filters) != len(dilations):
+            raise ValueError('Length of filters must match length of dilations.')
+
+        if use_skip_connections and isinstance(filters, list) and len(set(filters)) > 1:
+            raise ValueError('Skip connections require identical filter sizes for all layers.')
+
+        if padding not in ['causal', 'same']:
+            raise ValueError("Padding must be either 'causal' or 'same'.")
+
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.nb_stacks = nb_stacks
+        self.dilations = dilations
+        self.padding = padding
+        self.dropout = dropout
+        self.use_skip_connections = use_skip_connections
+        self.return_sequences = return_sequences
+        self.activation_name = activation
+        self.kernel_initializer = kernel_initializer
+        self.use_batch_norm = use_batch_norm
+        self.use_layer_norm = use_layer_norm
+        self.go_backwards = go_backwards
+
+        self.skip_connections = []
+        self.residual_blocks = []
+        self.layers_outputs = []
+        self.build_output_shape = None
+        self.slicer = None
+        self.output_slice_index = None
+        self.time_dim_unknown = False
+
+    def get_config(self):
+        """
+        Return the config of the wrapper.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the wrapper.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
+            'nb_stacks': self.nb_stacks,
+            'dilations': self.dilations,
+            'padding': self.padding,
+            'dropout': self.dropout,
+            'use_skip_connections': self.use_skip_connections,
+            'return_sequences': self.return_sequences,
+            'activation': self.activation_name,
+            'kernel_initializer': self.kernel_initializer,
+            'use_batch_norm': self.use_batch_norm,
+            'use_layer_norm': self.use_layer_norm,
+            'go_backwards': self.go_backwards,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Build the layer structure based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape tuple of the input tensor.
+        """
+
+        self.build_output_shape = input_shape
+        self.residual_blocks = []
+
+        for stack in range(self.nb_stacks):
+            for i, dilation in enumerate(self.dilations):
+                filters = self.filters[i] if isinstance(self.filters, list) else self.filters
+
+                res_block = TemporalResidualBlock(filters=filters,
+                                                  dilation_rate=dilation,
+                                                  kernel_size=self.kernel_size,
+                                                  padding=self.padding,
+                                                  activation=self.activation_name,
+                                                  dropout=self.dropout,
+                                                  use_batch_norm=self.use_batch_norm,
+                                                  use_layer_norm=self.use_layer_norm,
+                                                  kernel_initializer=self.kernel_initializer,
+                                                  name=f"residual_block_{stack}_{i}")
+
+                res_block.build(self.build_output_shape)
+                self.build_output_shape = res_block.res_output_shape
+                self.residual_blocks.append(res_block)
+
+        if self.padding == 'same':
+            if self.build_output_shape.as_list()[1] is None:
+                self.time_dim_unknown = True
+            else:
+                self.output_slice_index = int(self.build_output_shape.as_list()[1] / 2)
+        else:
+            self.output_slice_index = -1
+
+        self.slicer = tf.keras.layers.Lambda(lambda x: x[:, self.output_slice_index, :], name='output_slice')
+        self.slicer.build(self.build_output_shape.as_list())
+
+    def call(self, inputs, training=None):
+        """
+        Call the layer with the given inputs and training flag.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
+
+        Returns
+        -------
+        tensor
+            The output tensor of the layer.
+        """
+
+        x = tf.reverse(inputs, axis=[1]) if self.go_backwards else inputs
+
+        self.layers_outputs = [x]
+        self.skip_connections = []
+
+        for res_block in self.residual_blocks:
+            x, skip_out = res_block(x, training=training)
+
+            self.skip_connections.append(skip_out)
+            self.layers_outputs.append(x)
+
+        if self.use_skip_connections:
+            if len(self.skip_connections) > 1:
+                x = tf.keras.layers.Add()(self.skip_connections)
+            else:
+                x = self.skip_connections[0]
+
+            self.layers_outputs.append(x)
+
+        if not self.return_sequences:
+            if self.time_dim_unknown:
+                self.output_slice_index = tf.shape(self.layers_outputs[-1])[1] // 2
+
+            x = self.slicer(x)
+            self.layers_outputs.append(x)
+
+        return x
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        output_shape = None
+
+        if self.return_sequences:
+            output_shape = [x.value if hasattr(x, 'value') else x for x in self.build_output_shape]
+        else:
+            batch_size = self.build_output_shape[0]
+            batch_size = batch_size.value if hasattr(batch_size, 'value') else batch_size
+            output_shape = [batch_size, self.build_output_shape[-1]]
+
+        return tf.TensorShape(output_shape)
+
+
+class TemporalResidualBlock(tf.keras.layers.Layer):
+    """
+    A Residual Block within the Temporal Convolutional Network.
+    """
+
+    def __init__(self,
+                 filters,
+                 dilation_rate,
+                 kernel_size,
+                 padding,
+                 activation='relu',
+                 dropout=0.0,
+                 kernel_initializer='glorot_uniform',
+                 use_batch_norm=False,
+                 use_layer_norm=False,
+                 **kwargs):
+        """
+        Initializes the residual block layer.
+
+        Parameters
+        ----------
+        filters : int
+            The dimensionality of the output space.
+        dilation_rate : int
+            The dilation rate to use for dilated convolution.
+        kernel_size : int
+            Length of the convolution window.
+        padding : str
+            One of 'valid' or 'same'.
+        activation : str
+            Activation function to use.
+        dropout : float
+            Dropout rate.
+        kernel_initializer : str
+            Initializer for the kernel weights matrix.
+        use_batch_norm : bool
+            Whether to use batch normalization.
+        use_layer_norm : bool
+            Whether to use layer normalization.
+        """
+
+        super().__init__(**kwargs)
+
+        self.filters = filters
+        self.dilation_rate = dilation_rate
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.activation = activation
+        self.dropout = dropout
+        self.kernel_initializer = kernel_initializer
+        self.use_batch_norm = use_batch_norm
+        self.use_layer_norm = use_layer_norm
+
+        self.layers = []
+        self.shape_match_conv = None
+        self.res_output_shape = None
+        self.final_activation = None
+
+    def _build_layer(self, layer):
+        """
+        Helper function to build a layer and update the output shape.
+
+        Parameters
+        ----------
+        layer : tf.keras.layers.Layer
+            The layer to build and add to the block.
+        """
+
+        layer.build(self.res_output_shape)
+        self.res_output_shape = layer.compute_output_shape(self.res_output_shape)
+        self.layers.append(layer)
+
+    def build(self, input_shape):
+        """
+        Build the internal structure of the residual block based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape tuple of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        with tf.name_scope(self.name):
+            self.res_output_shape = input_shape
+            self.layers = []
+
+            for i in range(2):
+                with tf.name_scope(f"conv_block_{i}"):
+                    conv = tf.keras.layers.Conv1D(filters=self.filters,
+                                                  kernel_size=self.kernel_size,
+                                                  dilation_rate=self.dilation_rate,
+                                                  padding=self.padding,
+                                                  kernel_initializer=self.kernel_initializer)
+                    self._build_layer(conv)
+
+                    if self.use_batch_norm:
+                        self._build_layer(tf.keras.layers.BatchNormalization())
+                    elif self.use_layer_norm:
+                        self._build_layer(tf.keras.layers.LayerNormalization())
+
+                    self._build_layer(tf.keras.layers.Activation(self.activation))
+                    self._build_layer(tf.keras.layers.SpatialDropout1D(rate=self.dropout))
+
+            if self.filters != input_shape[-1]:
+                self.shape_match_conv = tf.keras.layers.Conv1D(filters=self.filters,
+                                                               kernel_size=1,
+                                                               padding='same',
+                                                               kernel_initializer=self.kernel_initializer,
+                                                               name='match_conv1D')
+            else:
+                self.shape_match_conv = tf.keras.layers.Lambda(lambda x: x, name='match_identity')
+
+            self.shape_match_conv.build(input_shape)
+            self.res_output_shape = self.shape_match_conv.compute_output_shape(input_shape)
+
+            self._build_layer(tf.keras.layers.Activation(self.activation))
+            self.final_activation = tf.keras.layers.Activation(self.activation)
+
+    def call(self, inputs, training=None):
+        """
+        Call the residual block with the given inputs.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
+
+        Returns
+        -------
+        list of tensors
+            A list containing the output tensor and the skip connection output.
+        """
+
+        x = inputs
+        for layer in self.layers:
+            x = layer(x, training=training)
+
+        x2 = self.shape_match_conv(inputs)
+        x1_x2 = self.final_activation(tf.keras.layers.Add()([x2, x]))
+
+        return [x1_x2, x]
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        return tf.TensorShape([self.res_output_shape, self.res_output_shape])
