@@ -763,6 +763,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
     ----------
     Temporal Convolutional Networks for Action Segmentation and Detection
         https://arxiv.org/abs/1611.05267
+
     An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
         https://arxiv.org/abs/1803.01271
     """
