@@ -772,13 +772,13 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                  filters=64,
                  kernel_size=3,
                  nb_stacks=1,
-                 dilations=(1, 2, 4, 8, 16, 32),
+                 dilations=(1, 2, 4, 8, 16),
                  padding='causal',
                  dropout=0.0,
                  use_skip_connections=True,
                  return_sequences=False,
-                 activation='relu',
-                 kernel_initializer='glorot_uniform',
+                 activation='tanh',
+                 kernel_initializer='he_normal',
                  use_batch_norm=False,
                  use_layer_norm=False,
                  go_backwards=False,
@@ -1010,9 +1010,9 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
                  dilation_rate,
                  kernel_size,
                  padding,
-                 activation='relu',
                  dropout=0.0,
-                 kernel_initializer='glorot_uniform',
+                 activation='tanh',
+                 kernel_initializer='he_normal',
                  use_batch_norm=False,
                  use_layer_norm=False,
                  **kwargs):
@@ -1029,10 +1029,10 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             Length of the convolution window.
         padding : str
             One of 'valid' or 'same'.
-        activation : str
-            Activation function to use.
         dropout : float
             Dropout rate.
+        activation : str
+            Activation function to use.
         kernel_initializer : str
             Initializer for the kernel weights matrix.
         use_batch_norm : bool
@@ -1047,8 +1047,8 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
         self.dilation_rate = dilation_rate
         self.kernel_size = kernel_size
         self.padding = padding
-        self.activation = activation
         self.dropout = dropout
+        self.activation = activation
         self.kernel_initializer = kernel_initializer
         self.use_batch_norm = use_batch_norm
         self.use_layer_norm = use_layer_norm
