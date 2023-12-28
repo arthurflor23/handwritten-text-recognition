@@ -14,6 +14,9 @@ class SynthesisModel(SynthesisBaseModel):
 
     References
     ----------
+    Adversarial Generation of Handwritten Text Images Conditioned on Sequences
+        https://arxiv.org/abs/1903.00277
+
     GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash Equilibrium
         https://arxiv.org/abs/1706.08500
 
@@ -28,6 +31,9 @@ class SynthesisModel(SynthesisBaseModel):
 
     ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation
         https://arxiv.org/abs/2003.10557
+
+    Geometric GAN
+        https://arxiv.org/abs/1705.02894
 
     Wasserstein GAN
         https://arxiv.org/abs/1701.07875
