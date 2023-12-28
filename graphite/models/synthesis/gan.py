@@ -20,6 +20,9 @@ class SynthesisModel(SynthesisBaseModel):
     GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash Equilibrium
         https://arxiv.org/abs/1706.08500
 
+    Geometric GAN
+        https://arxiv.org/abs/1705.02894
+
     HiGAN+: Handwriting Imitation GAN with Disentangled Representations
         https://dl.acm.org/doi/10.1145/3550070
 
@@ -31,9 +34,6 @@ class SynthesisModel(SynthesisBaseModel):
 
     ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation
         https://arxiv.org/abs/2003.10557
-
-    Geometric GAN
-        https://arxiv.org/abs/1705.02894
 
     Wasserstein GAN
         https://arxiv.org/abs/1701.07875
@@ -431,7 +431,7 @@ class GeneratorModel(tf.keras.Model):
 
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
-        outputs = tf.keras.layers.BatchNormalization()(block)
+        outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
         outputs = tf.keras.layers.ReLU()(outputs)
 
         outputs = tf.keras.layers.Reshape(target_shape=(self.image_shape[0], self.image_shape[1], -1))(outputs)
@@ -618,21 +618,21 @@ class BackboneModel(tf.keras.Model):
         for i, filters in enumerate(blocks[:-1]):
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+            block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             block1 = tf.keras.layers.ReLU()(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+            block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             conv = tf.keras.layers.Add()([conv, block1])
 
             block2 = tf.keras.layers.ReLU()(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+            block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+            block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
             shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
                                               kernel_size=1,
@@ -650,7 +650,7 @@ class BackboneModel(tf.keras.Model):
 
         conv = tf.keras.layers.ReLU()(conv)
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
-        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
         outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
@@ -892,21 +892,21 @@ class RecognitionModel(tf.keras.Model):
         for i, filters in enumerate(blocks[:-1]):
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+            block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             block1 = tf.keras.layers.ReLU()(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
-            block1 = tf.keras.layers.BatchNormalization()(block1)
+            block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             conv = tf.keras.layers.Add()([conv, block1])
 
             block2 = tf.keras.layers.ReLU()(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+            block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
-            block2 = tf.keras.layers.BatchNormalization()(block2)
+            block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
             shortcut = tf.keras.layers.Conv2D(blocks[i + 1],
                                               kernel_size=1,
@@ -922,7 +922,7 @@ class RecognitionModel(tf.keras.Model):
 
         conv = tf.keras.layers.ReLU()(conv)
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
-        conv = tf.keras.layers.BatchNormalization()(conv)
+        conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
         lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
