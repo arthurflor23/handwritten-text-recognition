@@ -1098,7 +1098,7 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
                     self._build_layer(conv)
 
                     if self.use_batch_norm:
-                        self._build_layer(tf.keras.layers.BatchNormalization())
+                        self._build_layer(tf.keras.layers.BatchNormalization(renorm=True))
                     elif self.use_layer_norm:
                         self._build_layer(tf.keras.layers.LayerNormalization())
 
