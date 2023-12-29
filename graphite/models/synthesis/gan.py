@@ -184,9 +184,9 @@ class SynthesisModel(SynthesisBaseModel):
         q_writer_data = tf.gather(writer_data, indices[:q_batch])
 
         fake_latent_data = tf.random.normal((q_batch, self.style_encoder.latent_dim))
-        real_features_data, real_image_feats = self.style_backbone(q_image_data, training=True)
 
         with tf.GradientTape() as e_tape, tf.GradientTape() as g_tape:
+            real_features_data, real_image_feats = self.style_backbone(q_image_data, training=True)
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
             fake_fake_images = self.generator([fake_latent_data, q_aug_text_data], training=True)
@@ -198,9 +198,8 @@ class SynthesisModel(SynthesisBaseModel):
             kl_loss = self.kld_loss(mu, logvar)
 
             # style reconstruction loss
-            with e_tape.stop_recording(), g_tape.stop_recording():
-                fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
-                fake_real_features_data, _ = self.style_backbone(fake_real_images, training=True)
+            fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
+            fake_real_features_data, _ = self.style_backbone(fake_real_images, training=True)
 
             fake_fake_latent_data, _, _ = self.style_encoder(fake_fake_features_data, training=True)
             fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_data - fake_latent_data))
@@ -215,14 +214,13 @@ class SynthesisModel(SynthesisBaseModel):
             l1_loss = tf.reduce_mean(real_real_l1_loss)
 
             # patch and discriminator loss
-            with e_tape.stop_recording(), g_tape.stop_recording():
-                fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
-                                                               real_fake_images,
-                                                               real_real_images,
-                                                               fake_real_images], axis=0))
+            fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
+                                                           real_fake_images,
+                                                           real_real_images,
+                                                           fake_real_images], axis=0))
 
-                fake_disc = self.discriminator(fake_image_data, training=False)
-                fake_patch_disc = self.patch_discriminator(fake_image_data, training=False)
+            fake_disc = self.discriminator(fake_image_data, training=True)
+            fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
 
             fake_disc_loss = -tf.reduce_mean(fake_disc)
             fake_patch_disc_loss = -tf.reduce_mean(fake_patch_disc)
@@ -230,14 +228,13 @@ class SynthesisModel(SynthesisBaseModel):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            with e_tape.stop_recording(), g_tape.stop_recording():
-                fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
-                fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-                fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=False)
+            fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
+            fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
+            fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=True)
 
-                fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
-                fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
-                fake_real_ctc_logits = self.recognition(fake_real_image_data, training=False)
+            fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
+            fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
+            fake_real_ctc_logits = self.recognition(fake_real_image_data, training=True)
 
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
             fake_real_ctc_loss = self.ctc_loss(fake_real_text_data, fake_real_ctc_logits)
@@ -245,12 +242,11 @@ class SynthesisModel(SynthesisBaseModel):
             ctc_loss = fake_fake_ctc_loss + fake_real_ctc_loss
 
             # writer identify loss
-            with e_tape.stop_recording(), g_tape.stop_recording():
-                real_fake_features_data, real_fake_image_feats = self.style_backbone(real_fake_images, training=False)
-                real_fake_wid_logits = self.identification(real_fake_features_data, training=False)
+            real_fake_features_data, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
+            real_fake_wid_logits = self.identification(real_fake_features_data, training=True)
 
-                real_real_features_data, real_real_image_feats = self.style_backbone(real_real_images, training=False)
-                real_real_wid_logits = self.identification(real_real_features_data, training=False)
+            real_real_features_data, real_real_image_feats = self.style_backbone(real_real_images, training=True)
+            real_real_wid_logits = self.identification(real_real_features_data, training=True)
 
             real_fake_wid_loss = self.cls_loss(q_writer_data, real_fake_wid_logits)
             real_real_wid_loss = self.cls_loss(q_writer_data, real_real_wid_logits)
