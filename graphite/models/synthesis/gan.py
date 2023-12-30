@@ -150,9 +150,11 @@ class SynthesisModel(SynthesisBaseModel):
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_weights))
+            del d_gradients, d_tape
 
             p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
+            del p_gradients, p_tape
 
             # writer identification and recognition loss
             with tf.GradientTape() as b_tape, \
@@ -168,12 +170,15 @@ class SynthesisModel(SynthesisBaseModel):
 
             b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
             self.b_optimizer.apply_gradients(zip(b_gradients, self.style_backbone.trainable_weights))
+            del b_gradients, b_tape
 
             w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
             self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
+            del w_gradients, w_tape
 
             r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
+            del r_gradients, r_tape
 
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
@@ -214,10 +219,11 @@ class SynthesisModel(SynthesisBaseModel):
             l1_loss = tf.reduce_mean(real_real_l1_loss)
 
             # patch and discriminator loss
-            fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
-                                                           real_fake_images,
-                                                           real_real_images,
-                                                           fake_real_images], axis=0))
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images,
+                                                               real_fake_images,
+                                                               real_real_images,
+                                                               fake_real_images], axis=0))
 
             fake_disc = self.discriminator(fake_image_data, training=True)
             fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
@@ -228,12 +234,14 @@ class SynthesisModel(SynthesisBaseModel):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
-            fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-            fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=True)
+            with e_tape.stop_recording(), g_tape.stop_recording():
+                fake_fake_image_data = tf.random.shuffle(tf.concat([fake_fake_images, real_fake_images], axis=0))
+                fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
 
-            fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
-            fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
+                fake_real_image_data = tf.random.shuffle(tf.concat([real_real_images, fake_real_images], axis=0))
+                fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
+
+            fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=True)
             fake_real_ctc_logits = self.recognition(fake_real_image_data, training=True)
 
             fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
@@ -266,9 +274,11 @@ class SynthesisModel(SynthesisBaseModel):
 
         e_gradients = e_tape.gradient(g_loss, self.style_encoder.trainable_weights)
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
+        del e_gradients, e_tape
 
         g_gradients = g_tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.generator.trainable_weights))
+        del g_gradients, g_tape
 
         # metric phase
         features_data, _ = self.style_backbone(image_data, training=False)
