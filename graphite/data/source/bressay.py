@@ -133,8 +133,8 @@ class Source():
             List of data entries from the page.
         """
 
-        data_path = os.path.join(data_path, page_id)
-        image_files = glob.glob(os.path.join(data_path, '**', '*.png'), recursive=True)
+        page_path = os.path.join(data_path, page_id)
+        image_files = glob.glob(os.path.join(page_path, '**', '*.png'), recursive=True)
 
         data = []
         for image_file in image_files:
