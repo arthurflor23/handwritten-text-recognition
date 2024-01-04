@@ -1119,11 +1119,16 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
 
             for i in range(2):
                 with tf.name_scope(f"conv_block_{i}"):
-                    self._build_layer(tf.keras.layers.Conv1D(filters=self.filters,
-                                                             kernel_size=self.kernel_size,
-                                                             dilation_rate=self.dilation_rate,
-                                                             padding=self.padding,
-                                                             kernel_initializer=self.kernel_initializer))
+                    conv = tf.keras.layers.Conv1D(filters=self.filters,
+                                                  kernel_size=self.kernel_size,
+                                                  dilation_rate=self.dilation_rate,
+                                                  padding=self.padding,
+                                                  kernel_initializer=self.kernel_initializer)
+
+                    if self.use_weight_norm:
+                        conv = WeightNormalization(conv)
+
+                    self._build_layer(conv)
                     self._build_layer(activation)
 
                     if self.use_batch_norm:
@@ -1131,9 +1136,6 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
 
                     elif self.use_layer_norm:
                         self._build_layer(tf.keras.layers.LayerNormalization())
-
-                    elif self.use_weight_norm:
-                        self._build_layer(WeightNormalization())
 
                     self._build_layer(tf.keras.layers.Dropout(rate=self.dropout))
 
