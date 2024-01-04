@@ -622,31 +622,24 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         """
 
         if training:
-            self.normalize_weights()
+            kernel_matrix = tf.reshape(self.kernel, [-1, self.kernel_shape[-1]])
+            vector_u = self.vector_u
+
+            if not tf.reduce_all(tf.equal(kernel_matrix, 0.0)):
+                for _ in range(self.power_iterations):
+                    vector_v = tf.math.l2_normalize(tf.matmul(vector_u, kernel_matrix, transpose_b=True))
+                    vector_u = tf.math.l2_normalize(tf.matmul(vector_v, kernel_matrix))
+
+                vector_u = tf.stop_gradient(vector_u)
+                vector_v = tf.stop_gradient(vector_v)
+
+                sigma = tf.matmul(tf.matmul(vector_v, kernel_matrix), vector_u, transpose_b=True)
+
+                self.vector_u.assign(tf.cast(vector_u, self.vector_u.dtype))
+                self.kernel.assign(tf.cast(tf.reshape(self.kernel / sigma, self.kernel_shape), self.kernel.dtype))
 
         output = self.layer(inputs)
         return output
-
-    def normalize_weights(self):
-        """
-        Normalizes the layer's weights using the power iteration method.
-        """
-
-        weights = tf.reshape(self.kernel, [-1, self.kernel_shape[-1]])
-        vector_u = self.vector_u
-
-        if not tf.reduce_all(tf.equal(weights, 0.0)):
-            for _ in range(self.power_iterations):
-                vector_v = tf.math.l2_normalize(tf.matmul(vector_u, weights, transpose_b=True))
-                vector_u = tf.math.l2_normalize(tf.matmul(vector_v, weights))
-
-            vector_u = tf.stop_gradient(vector_u)
-            vector_v = tf.stop_gradient(vector_v)
-
-            sigma = tf.matmul(tf.matmul(vector_v, weights), vector_u, transpose_b=True)
-
-            self.vector_u.assign(tf.cast(vector_u, self.vector_u.dtype))
-            self.kernel.assign(tf.cast(tf.reshape(self.kernel / sigma, self.kernel_shape), self.kernel.dtype))
 
     def compute_output_shape(self, input_shape):
         """
@@ -772,7 +765,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                  filters,
                  kernel_size,
                  nb_stacks=1,
-                 dilations=(1, 2, 4, 8, 16, 32),
+                 dilations=(1, 2, 4),
                  padding='causal',
                  dropout=0.0,
                  use_skip_connections=True,
@@ -781,6 +774,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                  kernel_initializer='glorot_normal',
                  use_batch_norm=False,
                  use_layer_norm=False,
+                 use_weight_norm=False,
                  go_backwards=False,
                  **kwargs):
         """
@@ -812,14 +806,18 @@ class TemporalConvolutional(tf.keras.layers.Layer):
             Whether to use batch normalization.
         use_layer_norm : bool
             Whether to use layer normalization.
+        use_weight_norm : bool
+            Whether to use weight normalization.
         go_backwards : bool
             Process the input sequence backwards and return the reversed sequence.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
 
-        if use_batch_norm and use_layer_norm:
-            raise ValueError('Only one of batch normalization or layer normalization can be used.')
+        if sum([use_batch_norm, use_layer_norm, use_weight_norm]) > 1:
+            raise ValueError('Only one normalization can be used.')
 
         if isinstance(filters, list) and len(filters) != len(dilations):
             raise ValueError('Length of filters must match length of dilations.')
@@ -842,6 +840,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.use_batch_norm = use_batch_norm
         self.use_layer_norm = use_layer_norm
+        self.use_weight_norm = use_weight_norm
         self.go_backwards = go_backwards
 
         self.skip_connections = []
@@ -907,6 +906,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                                                   dropout=self.dropout,
                                                   use_batch_norm=self.use_batch_norm,
                                                   use_layer_norm=self.use_layer_norm,
+                                                  use_weight_norm=self.use_weight_norm,
                                                   kernel_initializer=self.kernel_initializer,
                                                   name=f"residual_block_{stack}_{i}")
 
@@ -1010,11 +1010,12 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
                  dilation_rate,
                  kernel_size,
                  padding,
-                 dropout=0.0,
-                 activation='relu',
-                 kernel_initializer='glorot_normal',
-                 use_batch_norm=False,
-                 use_layer_norm=False,
+                 dropout,
+                 activation,
+                 kernel_initializer,
+                 use_batch_norm,
+                 use_layer_norm,
+                 use_weight_norm,
                  **kwargs):
         """
         Initializes the residual block layer.
@@ -1039,6 +1040,10 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             Whether to use batch normalization.
         use_layer_norm : bool
             Whether to use layer normalization.
+        use_weight_norm : bool
+            Whether to use weight normalization.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
@@ -1052,6 +1057,7 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.use_batch_norm = use_batch_norm
         self.use_layer_norm = use_layer_norm
+        self.use_weight_norm = use_weight_norm
 
         self.layers = []
         self.shape_match_conv = None
@@ -1072,6 +1078,24 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
         self.res_output_shape = layer.compute_output_shape(self.res_output_shape)
         self.layers.append(layer)
 
+    def get_config(self):
+        """
+        Return the config of the wrapper.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the wrapper.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'data_init': self.data_init,
+        })
+
+        return config
+
     def build(self, input_shape):
         """
         Build the internal structure of the residual block based on the input shape.
@@ -1088,22 +1112,30 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             self.res_output_shape = input_shape
             self.layers = []
 
+            if self.activation == 'prelu':
+                activation = tf.keras.layers.PReLU()
+            else:
+                activation = tf.keras.layers.Activation(self.activation)
+
             for i in range(2):
                 with tf.name_scope(f"conv_block_{i}"):
-                    conv = tf.keras.layers.Conv1D(filters=self.filters,
-                                                  kernel_size=self.kernel_size,
-                                                  dilation_rate=self.dilation_rate,
-                                                  padding=self.padding,
-                                                  kernel_initializer=self.kernel_initializer)
-                    self._build_layer(conv)
+                    self._build_layer(tf.keras.layers.Conv1D(filters=self.filters,
+                                                             kernel_size=self.kernel_size,
+                                                             dilation_rate=self.dilation_rate,
+                                                             padding=self.padding,
+                                                             kernel_initializer=self.kernel_initializer))
+                    self._build_layer(activation)
 
                     if self.use_batch_norm:
                         self._build_layer(tf.keras.layers.BatchNormalization(renorm=True))
+
                     elif self.use_layer_norm:
                         self._build_layer(tf.keras.layers.LayerNormalization())
 
-                    self._build_layer(tf.keras.layers.Activation(self.activation))
-                    self._build_layer(tf.keras.layers.SpatialDropout1D(rate=self.dropout))
+                    elif self.use_weight_norm:
+                        self._build_layer(WeightNormalization())
+
+                    self._build_layer(tf.keras.layers.Dropout(rate=self.dropout))
 
             if self.filters != input_shape[-1]:
                 self.shape_match_conv = tf.keras.layers.Conv1D(filters=self.filters,
@@ -1117,8 +1149,8 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             self.shape_match_conv.build(input_shape)
             self.res_output_shape = self.shape_match_conv.compute_output_shape(input_shape)
 
-            self._build_layer(tf.keras.layers.Activation(self.activation))
-            self.final_activation = tf.keras.layers.Activation(self.activation)
+            self._build_layer(activation)
+            self.final_activation = activation
 
     def call(self, inputs, training=None):
         """
