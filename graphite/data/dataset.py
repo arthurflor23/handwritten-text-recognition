@@ -16,7 +16,7 @@ class Dataset():
     def __init__(self,
                  source=None,
                  text_level='line',
-                 image_shape=(512, 64, 1),
+                 image_shape=(1024, 64, 1),
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,

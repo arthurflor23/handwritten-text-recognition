@@ -25,11 +25,14 @@ class RecognitionModel(RecognitionBaseModel):
 
         inputs = tf.keras.Input(shape=self.image_shape)
 
+        target_shape = (self.image_shape[0] // 2, self.image_shape[1] // 2, self.image_shape[2] * 4)
+        conv = tf.keras.layers.Reshape(target_shape=target_shape)(inputs)
+
         conv = tf.keras.layers.Conv2D(filters=8,
                                       kernel_size=(3, 3),
                                       strides=(1, 1),
                                       padding='same',
-                                      activation='tanh')(inputs)
+                                      activation='tanh')(conv)
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(2, 4),
@@ -61,7 +64,7 @@ class RecognitionModel(RecognitionBaseModel):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 

@@ -621,7 +621,7 @@ class BackboneModel(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=(1, 2), padding='same')(image_inputs)
+        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
         blocks = list(self.blocks) + [self.blocks[-1] * 2]
         feats = []
 
@@ -896,7 +896,7 @@ class RecognitionModel(tf.keras.Model):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=(1, 2), padding='same')(image_inputs)
+        conv = tf.keras.layers.Conv2D(self.blocks[0], kernel_size=5, strides=2, padding='same')(image_inputs)
         blocks = list(self.blocks) + [self.blocks[-1] * 2]
 
         for i, filters in enumerate(blocks[:-1]):
