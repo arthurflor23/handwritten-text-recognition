@@ -224,12 +224,18 @@ class SynthesisModel(SynthesisBaseModel):
             real_real_l1_loss = self.l1_loss(q_image_data, real_real_images)
             l1_loss = tf.reduce_mean(real_real_l1_loss)
 
-            # patch and discriminator loss
+            # data batch
             fake_image_data = tf.concat([fake_fake_images,
                                          real_fake_images,
                                          real_real_images,
                                          fake_real_images], axis=0)
 
+            real_text_data = tf.concat([q_aug_text_data,
+                                        q_aug_text_data,
+                                        q_text_data,
+                                        q_text_data], axis=0)
+
+            # patch and discriminator loss
             fake_disc = self.discriminator(fake_image_data, training=True)
             fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
 
@@ -239,19 +245,8 @@ class SynthesisModel(SynthesisBaseModel):
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # ctc loss
-            fake_fake_image_data = tf.concat([fake_fake_images, real_fake_images], axis=0)
-            fake_fake_text_data = tf.concat([q_aug_text_data, q_aug_text_data], axis=0)
-
-            fake_real_image_data = tf.concat([real_real_images, fake_real_images], axis=0)
-            fake_real_text_data = tf.concat([q_text_data, q_text_data], axis=0)
-
-            fake_fake_ctc_logits = self.recognition(fake_fake_image_data, training=True)
-            fake_real_ctc_logits = self.recognition(fake_real_image_data, training=True)
-
-            fake_fake_ctc_loss = self.ctc_loss(fake_fake_text_data, fake_fake_ctc_logits)
-            fake_real_ctc_loss = self.ctc_loss(fake_real_text_data, fake_real_ctc_logits)
-
-            ctc_loss = fake_fake_ctc_loss + fake_real_ctc_loss
+            fake_ctc_logits = self.recognition(fake_image_data, training=True)
+            ctc_loss = self.ctc_loss(real_text_data, fake_ctc_logits)
 
             # writer identify loss
             real_fake_features_data, real_fake_image_feats = self.style_backbone(real_fake_images, training=True)
