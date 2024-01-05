@@ -30,7 +30,7 @@ class RecognitionModel(RecognitionBaseModel):
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
-                                      strides=(2, 2),
+                                      strides=(1, 2),
                                       padding='same',
                                       kernel_initializer='he_uniform')(inputs)
 

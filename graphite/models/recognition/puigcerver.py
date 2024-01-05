@@ -31,7 +31,7 @@ class RecognitionModel(RecognitionBaseModel):
 
         conv = tf.keras.layers.BatchNormalization()(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
-        conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
 
         conv = tf.keras.layers.Conv2D(filters=32,
                                       kernel_size=(3, 3),
