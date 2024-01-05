@@ -153,9 +153,11 @@ class SynthesisModel(SynthesisBaseModel):
 
             d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_weights))
+            del d_gradients, d_tape
 
             p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
             self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
+            del p_gradients, p_tape
 
             # writer identification loss
             with tf.GradientTape() as b_tape, \
@@ -167,9 +169,11 @@ class SynthesisModel(SynthesisBaseModel):
 
             b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
             self.b_optimizer.apply_gradients(zip(b_gradients, self.style_backbone.trainable_weights))
+            del b_gradients, b_tape
 
             w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
             self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
+            del w_gradients, w_tape
 
             # recognition loss
             with tf.GradientTape() as r_tape:
@@ -178,6 +182,7 @@ class SynthesisModel(SynthesisBaseModel):
 
             r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
+            del r_gradients, r_tape
 
         # generator phase
         indices = tf.random.shuffle(tf.range(batch_size))
@@ -273,9 +278,11 @@ class SynthesisModel(SynthesisBaseModel):
 
         e_gradients = e_tape.gradient(g_loss, self.style_encoder.trainable_weights)
         self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
+        del e_gradients, e_tape
 
         g_gradients = g_tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(g_gradients, self.generator.trainable_weights))
+        del g_gradients, g_tape
 
         # metric phase
         features_data, _ = self.style_backbone(image_data, training=False)
