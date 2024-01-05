@@ -344,7 +344,7 @@ class Dataset():
                         last_line = multigram.split('\n')[-1]
                         next_line_length = len(last_line) + len(words[u])
 
-                        br = '\n' if u < j and next_line_length >= max_line_length - 2 else ' '
+                        br = '\n' if u < j and next_line_length > max_line_length else ' '
                         multigram += f"{br}{words[u]}"
 
                     multigrams.append(multigram.strip())
