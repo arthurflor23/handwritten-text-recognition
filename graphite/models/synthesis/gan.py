@@ -47,8 +47,8 @@ class SynthesisModel(SynthesisBaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 128
-        embedding_dim = 128
+        latent_dim = 64
+        embedding_dim = 64
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
@@ -663,7 +663,7 @@ class BackboneModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
