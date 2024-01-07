@@ -6,17 +6,19 @@ class CTCLoss(tf.keras.losses.Loss):
     Connectionist Temporal Classification (CTC) loss for sequence recognition task.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(name='ctc_loss', **kwargs)
+        super().__init__(name=name, **kwargs)
 
     def call(self, y_true, y_pred):
         """
@@ -41,11 +43,8 @@ class CTCLoss(tf.keras.losses.Loss):
         label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
-        if tf.reduce_any(logit_length == 0):
-            ctc_loss = tf.constant(1.0, dtype=tf.float32)
-        else:
-            ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
-            ctc_loss = tf.reduce_mean(ctc_loss)
+        ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
@@ -58,7 +57,13 @@ class CTXLoss(tf.keras.losses.Loss):
         function measures the feature similarities between two tensors.
     """
 
-    def __init__(self, sigma=0.5, alpha=1.0, epsilon=1e-7, loss_type='l2', **kwargs):
+    def __init__(self,
+                 sigma=0.5,
+                 alpha=1.0,
+                 loss_type='l2',
+                 epsilon=1e-7,
+                 name='ctx_loss',
+                 **kwargs):
         """
         Initialize the CTXLoss instance.
 
@@ -68,15 +73,17 @@ class CTXLoss(tf.keras.losses.Loss):
             Sharpness parameter of the similarity function.
         alpha : float, optional
             Scaling factor for weighting the distances.
-        epsilon : float, optional
-            Small constant to avoid division by zero.
         loss_type : str, optional
             Type of loss to be used, can be 'cosine', 'l1', or 'l2'.
+        epsilon : float, optional
+            Small constant to avoid division by zero.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(name='ctx_loss', **kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.sigma = sigma
         self.alpha = alpha
@@ -233,17 +240,19 @@ class L1Loss(tf.keras.losses.Loss):
         average magnitude of differences between predictions and actual observations.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, name='l1_loss', **kwargs):
         """
         Initialize the L1Loss instance.
 
         Parameters
         ----------
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for the loss function.
         """
 
-        super().__init__(name='l1_loss', **kwargs)
+        super().__init__(name=name, **kwargs)
 
     def call(self, y_true, y_pred):
         """
