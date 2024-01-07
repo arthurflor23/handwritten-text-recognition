@@ -646,6 +646,7 @@ class BackboneModel(tf.keras.Model):
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
+            block1 = tf.keras.layers.Dropout(rate=0.2)(block1)
 
             block1 = tf.keras.layers.ReLU()(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
@@ -656,6 +657,7 @@ class BackboneModel(tf.keras.Model):
             block2 = tf.keras.layers.ReLU()(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
+            block2 = tf.keras.layers.Dropout(rate=0.2)(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
@@ -929,6 +931,7 @@ class RecognitionModel(tf.keras.Model):
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
+            block1 = tf.keras.layers.Dropout(rate=0.2)(block1)
 
             block1 = tf.keras.layers.ReLU()(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
@@ -939,6 +942,7 @@ class RecognitionModel(tf.keras.Model):
             block2 = tf.keras.layers.ReLU()(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
+            block2 = tf.keras.layers.Dropout(rate=0.2)(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
