@@ -42,23 +42,35 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        labels = tf.sparse.from_dense(y_true)
-        logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + self.epsilon)
-
-        label_length = tf.math.count_nonzero(y_true, axis=-1)
-        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
         if tf.reduce_any(logit_length == 0):
             ctc_loss = tf.constant(1.0, dtype=tf.float32)
         else:
-            ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                      logits=tf.cast(logits, dtype=tf.float32),
-                                      label_length=tf.cast(label_length, dtype=tf.int32),
-                                      logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                      logits_time_major=True,
-                                      blank_index=-1)
-
+            ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
             ctc_loss = tf.reduce_mean(ctc_loss)
+
+        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+
+        # label_length = tf.math.count_nonzero(y_true, axis=-1)
+        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+
+        # if tf.reduce_any(logit_length == 0):
+        #     ctc_loss = tf.constant(1.0, dtype=tf.float32)
+        # else:
+        #     labels = tf.sparse.from_dense(y_true)
+        #     logits = tf.math.log(y_pred + self.epsilon)
+
+        #     ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+        #                               logits=tf.cast(logits, dtype=tf.float32),
+        #                               label_length=tf.cast(label_length, dtype=tf.int32),
+        #                               logit_length=tf.cast(logit_length, dtype=tf.int32),
+        #                               logits_time_major=False,
+        #                               blank_index=0)
+
+        #     ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
@@ -131,7 +143,7 @@ class CTXLoss(tf.keras.losses.Loss):
         cx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
         cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
 
-        cx_loss = tf.math.reduce_mean(-tf.math.log(cx) + self.epsilon)
+        cx_loss = tf.math.reduce_mean(-tf.math.log(cx + self.epsilon))
 
         return cx_loss
 
