@@ -22,7 +22,7 @@ class EditDistance(tf.keras.metrics.Metric):
         epsilon : float, optional
             Small constant to avoid log of zero.
         name : str, optional
-            The name of the metric.
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -129,10 +129,14 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         Parameters
         ----------
-        name : str, optional
-            Name of the metric instance.
+        scale : float, optional
+            Scaling factor for preprocessing.
+        offset : float, optional
+            Offset value for preprocessing.
         epsilon : float, optional
             Small constant to avoid log of zero.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments.
         """
