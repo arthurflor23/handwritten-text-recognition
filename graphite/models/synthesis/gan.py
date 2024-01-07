@@ -310,6 +310,7 @@ class GeneratorModel(tf.keras.Model):
                  lexical_shape,
                  embedding_dim,
                  blocks,
+                 name='generator',
                  **kwargs):
         """
         Initialize the generator model with specified parameters.
@@ -326,11 +327,13 @@ class GeneratorModel(tf.keras.Model):
             Dimension of the embedding space.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.features_shape = features_shape
         self.image_shape = image_shape
@@ -459,6 +462,7 @@ class DiscriminatorModel(tf.keras.Model):
                  image_shape,
                  patch_shape,
                  blocks,
+                 name='discriminator',
                  **kwargs):
         """
         Initialize the discriminator model with specified parameters.
@@ -471,11 +475,13 @@ class DiscriminatorModel(tf.keras.Model):
             Defines whether to apply patches for processing.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
         self.patch_shape = patch_shape
@@ -562,6 +568,7 @@ class BackboneModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  blocks,
+                 name='backbone',
                  **kwargs):
         """
         Initialize the backbone model with specified parameters.
@@ -572,11 +579,13 @@ class BackboneModel(tf.keras.Model):
             Shape of the input image.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
         self.features_shape = None
@@ -675,6 +684,7 @@ class StyleEncoderModel(tf.keras.Model):
     def __init__(self,
                  features_shape,
                  latent_dim,
+                 name='style_encoder',
                  **kwargs):
         """
         Initialize the style encoder model with specified parameters.
@@ -685,11 +695,13 @@ class StyleEncoderModel(tf.keras.Model):
             Shape of the input features.
         latent_dim : int
             Dimension of the latent space.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.features_shape = features_shape
         self.latent_dim = latent_dim
@@ -759,6 +771,7 @@ class IdentificationModel(tf.keras.Model):
     def __init__(self,
                  features_shape,
                  writers_shape,
+                 name='identification',
                  **kwargs):
         """
         Initialize the writer identification model with specified parameters.
@@ -769,11 +782,13 @@ class IdentificationModel(tf.keras.Model):
             Shape of the input features.
         writers_shape : int
             Number of writers to classify.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.features_shape = features_shape
         self.writers_shape = writers_shape
@@ -835,6 +850,7 @@ class RecognitionModel(tf.keras.Model):
                  image_shape,
                  lexical_shape,
                  blocks,
+                 name='recognition',
                  **kwargs):
         """
         Initialize the handwriting recognition model with specified parameters.
@@ -847,11 +863,13 @@ class RecognitionModel(tf.keras.Model):
             Shape of the text sequences and vocabulary encoding.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional keyword arguments for `tf.keras.Model`.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
