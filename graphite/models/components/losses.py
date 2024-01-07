@@ -57,6 +57,7 @@ class CTCLoss(tf.keras.losses.Loss):
                                       logit_length=tf.cast(logit_length, dtype=tf.int32),
                                       logits_time_major=True,
                                       blank_index=-1)
+
             ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
