@@ -49,14 +49,14 @@ class CTCLoss(tf.keras.losses.Loss):
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
 
         if tf.reduce_any(logit_length == 0):
-            return tf.constant(1.0, dtype=tf.float32)
-
-        ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                  logits=tf.cast(logits, dtype=tf.float32),
-                                  label_length=tf.cast(label_length, dtype=tf.int32),
-                                  logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                  logits_time_major=True,
-                                  blank_index=-1)
+            ctc_loss = tf.constant(1.0, dtype=tf.float32)
+        else:
+            ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                      logits=tf.cast(logits, dtype=tf.float32),
+                                      label_length=tf.cast(label_length, dtype=tf.int32),
+                                      logit_length=tf.cast(logit_length, dtype=tf.int32),
+                                      logits_time_major=True,
+                                      blank_index=-1)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
 
