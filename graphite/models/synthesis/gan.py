@@ -146,8 +146,7 @@ class SynthesisModel(SynthesisBaseModel):
                 real_disc = self.discriminator(image_data, training=True)
                 real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
 
-                p_loss = fake_patch_disc_loss + real_patch_disc_loss
-                d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
+                d_loss = fake_patch_disc_loss + real_patch_disc_loss + fake_disc_loss + real_disc_loss
 
             d_gradients = tape.gradient(d_loss, self.discriminator.trainable_variables +
                                         self.patch_discriminator.trainable_weights)
