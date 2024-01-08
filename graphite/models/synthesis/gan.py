@@ -109,7 +109,7 @@ class SynthesisModel(SynthesisBaseModel):
         q_batch = tf.math.maximum(1, batch_size // 4)
 
         # discriminator phase
-        for _ in range(1):
+        for _ in range(2):
             q_indices = tf.random.shuffle(tf.range(batch_size))[:q_batch]
             q_image_data = tf.gather(image_data, q_indices)
             q_text_data = tf.gather(text_data, q_indices)
