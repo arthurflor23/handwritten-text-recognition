@@ -198,7 +198,7 @@ class SynthesisModel(SynthesisBaseModel):
             fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
             # kl-divergency loss
-            kl_loss = self.kl_loss(real_latent_data, gaussian_params=(mu, logvar))
+            kl_loss = self.kl_loss(real_latent_data, (mu, logvar))
 
             # content restruction loss
             l1_loss = self.l1_loss(q_image_data, real_real_images)

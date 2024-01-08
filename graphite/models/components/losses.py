@@ -253,15 +253,15 @@ class KLLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-    def call(self, z, gaussian_params):
+    def call(self, y_true, y_pred):
         """
         Compute the KL divergence loss for VAEs.
 
         Parameters
         ----------
-        z : tf.Tensor
+        y_true : tf.Tensor
             Latent tensor encoded.
-        gaussian_params : tuple
+        y_pred : tuple
             Tuple containing mean and logarithm of the variance of the latent distribution.
 
         Returns
@@ -270,10 +270,10 @@ class KLLoss(tf.keras.losses.Loss):
             Computed KL divergence loss.
         """
 
-        mu, logvar = gaussian_params
+        mu, logvar = y_pred
 
-        log_prob_std_normal = self.log_normal_pdf(z, 0., 0.)
-        log_prob_posterior = self.log_normal_pdf(z, mu, logvar)
+        log_prob_std_normal = self.log_normal_pdf(y_true, 0., 0.)
+        log_prob_posterior = self.log_normal_pdf(y_true, mu, logvar)
 
         return -tf.reduce_mean(log_prob_std_normal - log_prob_posterior)
 
