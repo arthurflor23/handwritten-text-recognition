@@ -4,6 +4,11 @@ import tensorflow as tf
 class CTCLoss(tf.keras.losses.Loss):
     """
     Connectionist Temporal Classification (CTC) loss for sequence recognition task.
+
+    References
+    ----------
+    Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with Recurrent Neural Networks
+        https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
     def __init__(self, name='ctc_loss', **kwargs):
@@ -58,6 +63,11 @@ class CTXLoss(tf.keras.losses.Loss):
 
     Useful in tasks like style transfer and feature alignment. This loss
         function measures the feature similarities between two tensors.
+
+    References
+    ----------
+    The Contextual Loss for Image Transformation with Non-Aligned Data
+        https://arxiv.org/abs/1803.02077
     """
 
     def __init__(self,
