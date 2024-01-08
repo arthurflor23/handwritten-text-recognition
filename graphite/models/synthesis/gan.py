@@ -751,27 +751,25 @@ class StyleEncoderModel(tf.keras.Model):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
+        inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
-            name='reduce')(feature_inputs)
+            lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(inputs)
 
-        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
-        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+        style = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
-        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style_dense)
-        style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
+        style = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
-        mu = tf.keras.layers.Dense(self.latent_dim)(style_dense)
-        logvar = tf.keras.layers.Dense(self.latent_dim)(style_dense)
+        mu = tf.keras.layers.Dense(self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(self.latent_dim)(style)
 
         outputs = tf.keras.layers.Lambda(
-            lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])),
-            name='reparameterize')([mu, logvar])
+            lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
 
         self.features_output_shape = outputs.get_shape()[1:]
-        self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
+        self.model = tf.keras.Model(inputs=inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
 class IdentificationModel(tf.keras.Model):
