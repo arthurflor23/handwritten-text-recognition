@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 
@@ -44,8 +43,11 @@ class CTCLoss(tf.keras.losses.Loss):
         label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
-        ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
-        ctc_loss = tf.reduce_mean(ctc_loss)
+        if tf.reduce_any(logit_length == 0):
+            ctc_loss = tf.constant(1.0, dtype=tf.float32)
+        else:
+            ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
+            ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
@@ -235,7 +237,7 @@ class CTXLoss(tf.keras.losses.Loss):
 
 class KLLoss(tf.keras.losses.Loss):
     """
-    KL Divergence Loss for Variational Autoencoders (VAEs).
+    Compute combined reconstruction and KL divergence loss for a VAE.
     It encourages the latent space distribution to approximate a standard normal distribution.
     """
 
@@ -260,22 +262,24 @@ class KLLoss(tf.keras.losses.Loss):
         Parameters
         ----------
         y_true : tf.Tensor
-            Latent tensor encoded.
+            Original input images.
         y_pred : tuple
-            Tuple containing mean and logarithm of the variance of the latent distribution.
+            Tuple containing generated images, latent tensor z, mean (mu), and log-variance (logvar).
 
         Returns
         -------
         tf.Tensor
-            Computed KL divergence loss.
+            Total loss combining reconstruction error and KL divergence.
         """
 
-        mu, logvar = y_pred
+        generated_images, z, mu, logvar = y_pred
+        reconstruction_loss = tf.reduce_mean(tf.square(y_true - generated_images))
 
-        log_prob_std_normal = self.log_normal_pdf(y_true, 0., 0.)
-        log_prob_posterior = self.log_normal_pdf(y_true, mu, logvar)
+        log_prob_prior = self.log_normal_pdf(z, 0., 0.)
+        log_prob_posterior = self.log_normal_pdf(z, mu, logvar)
+        kl_divergence = tf.reduce_mean(log_prob_prior - log_prob_posterior)
 
-        return -tf.reduce_mean(log_prob_std_normal - log_prob_posterior)
+        return reconstruction_loss - kl_divergence
 
     def log_normal_pdf(self, z, mu, logvar, axis=1):
         """
@@ -298,8 +302,7 @@ class KLLoss(tf.keras.losses.Loss):
             The computed log probability of `z` under the Gaussian distribution.
         """
 
-        log2pi = tf.math.log(2.0 * np.pi)
-        return tf.reduce_mean(-0.5 * ((z - mu) ** 2.0 * tf.exp(-logvar) + logvar + log2pi), axis=axis)
+        return -0.5 * tf.reduce_sum(1 + logvar - tf.square(z - mu) - tf.exp(logvar), axis=axis)
 
 
 class L1Loss(tf.keras.losses.Loss):
