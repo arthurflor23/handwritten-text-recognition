@@ -198,7 +198,7 @@ class SynthesisModel(SynthesisBaseModel):
             fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
             # kl-divergency loss
-            kl_loss = self.kl_loss(mu, logvar)
+            kl_loss = self.kl_loss(real_latent_data, gaussian_params=(mu, logvar))
 
             # content restruction loss
             l1_loss = self.l1_loss(q_image_data, real_real_images)
@@ -762,8 +762,8 @@ class StyleEncoderModel(tf.keras.Model):
         style = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
-        mu = tf.keras.layers.Dense(self.latent_dim)(style)
-        logvar = tf.keras.layers.Dense(self.latent_dim)(style)
+        encode = tf.keras.layers.Dense(self.latent_dim + self.latent_dim)(style)
+        mu, logvar = tf.split(encode, num_or_size_splits=2, axis=1)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
