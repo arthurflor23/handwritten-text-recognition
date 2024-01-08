@@ -197,13 +197,10 @@ class SynthesisModel(SynthesisBaseModel):
             real_real_images = self.generator([real_latent_data, q_text_data], training=True)
             fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
-            # kl-divergency loss
-            kl_loss = self.kl_loss(q_image_data, (real_real_images, real_latent_data, mu, logvar))
+            # beta vae loss
+            bv_loss = self.beta_vae_loss(q_image_data, (real_real_images, real_latent_data, mu, logvar))
 
-            # content restruction loss
-            l1_loss = self.l1_loss(q_image_data, real_real_images)
-
-            # style reconstruction loss
+            # latent style reconstruction loss
             fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
             fake_fake_features_data = tf.stop_gradient(fake_fake_features_data)
 
@@ -213,10 +210,10 @@ class SynthesisModel(SynthesisBaseModel):
             fake_fake_latent_data, _, _ = self.style_encoder(fake_fake_features_data, training=True)
             fake_real_latent_data, _, _ = self.style_encoder(fake_real_features_data, training=True)
 
-            fake_fake_info_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_data - fake_latent_data))
-            fake_real_info_loss = tf.reduce_mean(tf.math.abs(fake_real_latent_data - fake_latent_data))
+            fake_fake_latent_style_loss = tf.reduce_mean(tf.square(fake_fake_latent_data - fake_latent_data))
+            fake_real_latent_style_loss = tf.reduce_mean(tf.square(fake_real_latent_data - fake_latent_data))
 
-            info_loss = tf.reduce_mean([fake_fake_info_loss, fake_real_info_loss])
+            ls_loss = tf.reduce_mean([fake_fake_latent_style_loss, fake_real_latent_style_loss])
 
             # data batch
             fake_image_data = tf.concat([fake_fake_images,
@@ -277,7 +274,7 @@ class SynthesisModel(SynthesisBaseModel):
                 ctx_loss += self.ctx_loss(real_feature_feat, real_real_feature_feat)
 
             # encoder and generator loss
-            g_loss = (kl_loss * 1e-4) + l1_loss + info_loss + disc_loss + wid_loss + ctc_loss + (ctx_loss * 2.0)
+            g_loss = bv_loss + ls_loss + disc_loss + wid_loss + ctc_loss + (ctx_loss * 2.0)
 
         g_gradients = tape.gradient(g_loss, self.style_encoder.trainable_weights +
                                     self.generator.trainable_weights)
@@ -296,12 +293,11 @@ class SynthesisModel(SynthesisBaseModel):
             'd_loss': d_loss,
             'w_loss': w_loss,
             'r_loss': r_loss,
-            'g_kl_loss': kl_loss,
-            'g_l1_loss': l1_loss,
-            'g_info_loss': info_loss,
-            'g_d_loss': disc_loss,
-            'g_w_loss': wid_loss,
-            'g_r_loss': ctc_loss,
+            'g_bv_loss': bv_loss,
+            'g_ls_loss': ls_loss,
+            'g_disc_loss': disc_loss,
+            'g_wid_loss': wid_loss,
+            'g_ctc_loss': ctc_loss,
             'g_ctx_loss': ctx_loss,
             'g_loss': g_loss,
             self.kid.name: self.kid.result(),
