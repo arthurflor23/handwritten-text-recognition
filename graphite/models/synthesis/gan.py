@@ -747,25 +747,44 @@ class StyleEncoderModel(tf.keras.Model):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        inputs = tf.keras.layers.Input(shape=self.features_shape)
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(inputs)
+        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
 
-        style = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+
+        # style = tf.keras.layers.Flatten()(style)
+
+        # style = tf.keras.layers.Dense(256, activation='relu')(style)
+        # style = tf.keras.layers.Dense(256, activation='relu')(style)
+
+        # mu = tf.keras.layers.Dense(self.latent_dim)(style)
+        # logvar = tf.keras.layers.Dense(self.latent_dim, activation='relu')(style)
+
+        # outputs = tf.keras.layers.Lambda(
+        #     lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
+
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(feature_inputs)
+
+        style = tf.keras.layers.Dense(256)(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
-        style = tf.keras.layers.Dense(self.features_shape[-1])(style)
+        style = tf.keras.layers.Dense(256)(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
-        encode = tf.keras.layers.Dense(self.latent_dim + self.latent_dim)(style)
-        mu, logvar = tf.split(encode, num_or_size_splits=2, axis=1)
+        mu = tf.keras.layers.Dense(self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(self.latent_dim, activation='relu')(style)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
 
         self.features_output_shape = outputs.get_shape()[1:]
-        self.model = tf.keras.Model(inputs=inputs, outputs=[outputs, mu, logvar], name=self.name)
+        self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
 class IdentificationModel(tf.keras.Model):
@@ -834,9 +853,7 @@ class IdentificationModel(tf.keras.Model):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.Lambda(
-            lambda x: tf.reduce_sum(x, axis=-2) / tf.cast(tf.shape(x)[-2], tf.float32) + 1e-7,
-            name='reduce')(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(feature_inputs)
 
         style_dense = tf.keras.layers.Dense(self.features_shape[-1])(style)
         style_dense = tf.keras.layers.LeakyReLU(alpha=0.01)(style_dense)
