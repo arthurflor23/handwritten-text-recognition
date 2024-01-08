@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -252,16 +253,16 @@ class KLLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-    def call(self, mu, logvar):
+    def call(self, z, gaussian_params):
         """
         Compute the KL divergence loss for VAEs.
 
         Parameters
         ----------
-        mu : tf.Tensor
-            Mean of the latent distribution.
-        logvar : tf.Tensor
-            Logarithm of the variance of the latent distribution.
+        z : tf.Tensor
+            Latent tensor encoded.
+        gaussian_params : tuple
+            Tuple containing mean and logarithm of the variance of the latent distribution.
 
         Returns
         -------
@@ -269,7 +270,36 @@ class KLLoss(tf.keras.losses.Loss):
             Computed KL divergence loss.
         """
 
-        return tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1), axis=0)
+        mu, logvar = gaussian_params
+
+        log_prob_std_normal = self.log_normal_pdf(z, 0., 0.)
+        log_prob_posterior = self.log_normal_pdf(z, mu, logvar)
+
+        return -tf.reduce_mean(log_prob_std_normal - log_prob_posterior)
+
+    def log_normal_pdf(self, z, mu, logvar, axis=1):
+        """
+        Compute the log probability of `z` under a Gaussian distribution.
+
+        Parameters
+        ----------
+        z : tf.Tensor
+            The tensor for which the log probability needs to be computed.
+        mu : tf.Tensor
+            Mean of the Gaussian distribution.
+        logvar : tf.Tensor
+            Logarithm of the variance of the Gaussian distribution.
+        axis : int, optional
+            The axis over which to perform the summation.
+
+        Returns
+        -------
+        tf.Tensor
+            The computed log probability of `z` under the Gaussian distribution.
+        """
+
+        log2pi = tf.math.log(2. * np.pi)
+        return tf.reduce_sum(-.5 * ((z - mu) ** 2. * tf.exp(-logvar) + logvar + log2pi), axis=axis)
 
 
 class L1Loss(tf.keras.losses.Loss):
