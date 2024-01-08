@@ -232,6 +232,46 @@ class CTXLoss(tf.keras.losses.Loss):
         return dist
 
 
+class KLLoss(tf.keras.losses.Loss):
+    """
+    KL Divergence Loss for Variational Autoencoders (VAEs).
+    It encourages the latent space distribution to approximate a standard normal distribution.
+    """
+
+    def __init__(self, name='kl_loss', **kwargs):
+        """
+        Initialize the KLLoss instance.
+
+        Parameters
+        ----------
+        name : str, optional
+            A name for the instance.
+        **kwargs : dict
+            Additional keyword arguments for the loss function.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+    def call(self, mu, logvar):
+        """
+        Compute the KL divergence loss for VAEs.
+
+        Parameters
+        ----------
+        mu : tf.Tensor
+            Mean of the latent distribution.
+        logvar : tf.Tensor
+            Logarithm of the variance of the latent distribution.
+
+        Returns
+        -------
+        tf.Tensor
+            Computed KL divergence loss.
+        """
+
+        return tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1), axis=0)
+
+
 class L1Loss(tf.keras.losses.Loss):
     """
     L1 loss for image reconstruction tasks.
@@ -271,11 +311,4 @@ class L1Loss(tf.keras.losses.Loss):
             The computed L1 loss.
         """
 
-        y_diff = tf.math.abs(y_pred - y_true)
-
-        sum_diff = tf.cast(tf.reduce_sum(y_diff), tf.float32)
-        num_elements = tf.cast(tf.reduce_prod(tf.shape(y_diff)[1:]), tf.float32)
-
-        l1_loss = sum_diff / num_elements
-
-        return l1_loss
+        return tf.reduce_mean(tf.abs(y_pred - y_true))
