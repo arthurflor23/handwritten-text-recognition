@@ -298,8 +298,8 @@ class KLLoss(tf.keras.losses.Loss):
             The computed log probability of `z` under the Gaussian distribution.
         """
 
-        log2pi = tf.math.log(2. * np.pi)
-        return tf.reduce_sum(-.5 * ((z - mu) ** 2. * tf.exp(-logvar) + logvar + log2pi), axis=axis)
+        log2pi = tf.math.log(2.0 * np.pi)
+        return tf.reduce_mean(-0.5 * ((z - mu) ** 2.0 * tf.exp(-logvar) + logvar + log2pi), axis=axis)
 
 
 class L1Loss(tf.keras.losses.Loss):
