@@ -545,7 +545,7 @@ class SynthesisBaseModel(BaseModel):
             'generator',
         ]
 
-        self.beta_vae_loss = BetaVAELoss()
+        self.bv_loss = BetaVAELoss()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()

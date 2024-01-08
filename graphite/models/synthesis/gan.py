@@ -198,7 +198,7 @@ class SynthesisModel(SynthesisBaseModel):
             fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
             # beta vae loss
-            bv_loss = self.beta_vae_loss(q_image_data, (real_real_images, real_latent_data, mu, logvar))
+            bv_loss = self.bv_loss(q_image_data, (real_real_images, real_latent_data, mu, logvar))
 
             # latent style reconstruction loss
             fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)
