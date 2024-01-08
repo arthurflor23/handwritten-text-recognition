@@ -198,11 +198,10 @@ class SynthesisModel(SynthesisBaseModel):
             fake_real_images = self.generator([fake_latent_data, q_text_data], training=True)
 
             # kl-divergency loss
-            kl_loss = self.kld_loss(mu, logvar)
+            kl_loss = self.kl_loss(mu, logvar)
 
             # content restruction loss
-            real_real_l1_loss = self.l1_loss(q_image_data, real_real_images)
-            l1_loss = tf.reduce_mean(real_real_l1_loss)
+            l1_loss = self.l1_loss(q_image_data, real_real_images)
 
             # style reconstruction loss
             fake_fake_features_data, _ = self.style_backbone(fake_fake_images, training=True)

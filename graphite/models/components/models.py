@@ -8,6 +8,7 @@ import tensorflow as tf
 
 from graphite.models.components.losses import CTCLoss
 from graphite.models.components.losses import CTXLoss
+from graphite.models.components.losses import KLLoss
 from graphite.models.components.losses import L1Loss
 from graphite.models.components.metrics import EditDistance
 from graphite.models.components.metrics import KernelInceptionDistance
@@ -545,10 +546,10 @@ class SynthesisBaseModel(BaseModel):
             'generator',
         ]
 
-        self.l1_loss = L1Loss()
-        self.ctx_loss = CTXLoss()
         self.ctc_loss = CTCLoss()
-        self.kld_loss = tf.keras.losses.KLDivergence()
+        self.ctx_loss = CTXLoss()
+        self.kl_loss = KLLoss()
+        self.l1_loss = L1Loss()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
