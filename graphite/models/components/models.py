@@ -594,23 +594,14 @@ class SynthesisBaseModel(BaseModel):
         self.d_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
-        self.p_optimizer = NormalizedOptimizer(
+        self.g_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.b_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
-
-        self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.e_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
     def test_step(self, input_data):
         """

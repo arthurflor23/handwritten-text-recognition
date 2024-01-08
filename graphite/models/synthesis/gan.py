@@ -133,9 +133,7 @@ class SynthesisModel(SynthesisBaseModel):
                                          fake_real_images], axis=0)
 
             # patch and discriminator loss
-            with tf.GradientTape() as p_tape, \
-                    tf.GradientTape() as d_tape:
-
+            with tf.GradientTape() as tape:
                 fake_patch_disc = self.patch_discriminator(fake_image_data, training=True)
                 fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
 
@@ -151,32 +149,31 @@ class SynthesisModel(SynthesisBaseModel):
                 p_loss = fake_patch_disc_loss + real_patch_disc_loss
                 d_loss = fake_disc_loss + fake_patch_disc_loss + real_disc_loss + real_patch_disc_loss
 
-            p_gradients = p_tape.gradient(p_loss, self.patch_discriminator.trainable_weights)
-            self.p_optimizer.apply_gradients(zip(p_gradients, self.patch_discriminator.trainable_weights))
+            d_gradients = tape.gradient(d_loss, self.discriminator.trainable_variables +
+                                        self.patch_discriminator.trainable_weights)
 
-            d_gradients = d_tape.gradient(d_loss, self.discriminator.trainable_weights)
-            self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_weights))
+            self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_variables +
+                                                 self.patch_discriminator.trainable_weights))
 
             # writer identification loss
-            with tf.GradientTape() as b_tape, \
-                    tf.GradientTape() as w_tape:
-
+            with tf.GradientTape() as tape:
                 features_data, _ = self.style_backbone(image_data, training=True)
                 wid_logits = self.identification(features_data, training=True)
                 w_loss = self.cls_loss(writer_data, wid_logits)
 
-            b_gradients = b_tape.gradient(w_loss, self.style_backbone.trainable_weights)
-            self.b_optimizer.apply_gradients(zip(b_gradients, self.style_backbone.trainable_weights))
+            w_gradients = tape.gradient(w_loss, self.style_backbone.trainable_weights +
+                                        self.identification.trainable_weights)
 
-            w_gradients = w_tape.gradient(w_loss, self.identification.trainable_weights)
-            self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
+            self.w_optimizer.apply_gradients(zip(w_gradients, self.style_backbone.trainable_weights +
+                                                 self.identification.trainable_weights))
 
             # recognition loss
-            with tf.GradientTape() as r_tape:
+            with tf.GradientTape() as tape:
                 ctc_logits = self.recognition(image_data, training=True)
                 r_loss = self.ctc_loss(text_data, ctc_logits)
 
-            r_gradients = r_tape.gradient(r_loss, self.recognition.trainable_weights)
+            r_gradients = tape.gradient(r_loss, self.recognition.trainable_weights)
+
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
         # generator phase
@@ -189,9 +186,7 @@ class SynthesisModel(SynthesisBaseModel):
 
         fake_latent_data = tf.random.normal((q_batch, self.style_encoder.latent_dim))
 
-        with tf.GradientTape() as e_tape, \
-                tf.GradientTape() as g_tape:
-
+        with tf.GradientTape() as tape:
             real_features_data, real_feature_feats = self.style_backbone(q_image_data, training=True)
             real_features_data = tf.stop_gradient(real_features_data)
             real_feature_feats = [tf.stop_gradient(feat) for feat in real_feature_feats]
@@ -248,12 +243,6 @@ class SynthesisModel(SynthesisBaseModel):
 
             disc_loss = fake_disc_loss + fake_patch_disc_loss
 
-            # ctc loss
-            fake_ctc_logits = self.recognition(fake_image_data, training=True)
-            fake_ctc_logits = tf.stop_gradient(fake_ctc_logits)
-
-            ctc_loss = self.ctc_loss(real_text_data, fake_ctc_logits)
-
             # writer identify loss
             real_fake_features_data, real_fake_feature_feats = self.style_backbone(real_fake_images, training=True)
             real_fake_features_data = tf.stop_gradient(real_fake_features_data)
@@ -274,6 +263,12 @@ class SynthesisModel(SynthesisBaseModel):
 
             wid_loss = tf.reduce_mean([real_fake_wid_loss, real_real_wid_loss])
 
+            # ctc loss
+            fake_ctc_logits = self.recognition(fake_image_data, training=True)
+            fake_ctc_logits = tf.stop_gradient(fake_ctc_logits)
+
+            ctc_loss = self.ctc_loss(real_text_data, fake_ctc_logits)
+
             # contextual loss
             ctx_loss = tf.constant(0.0)
 
@@ -284,13 +279,13 @@ class SynthesisModel(SynthesisBaseModel):
                 ctx_loss += self.ctx_loss(real_feature_feat, real_real_feature_feat)
 
             # encoder and generator loss
-            g_loss = (kl_loss * 1e-4) + l1_loss + info_loss + disc_loss + ctc_loss + wid_loss + (ctx_loss * 2.0)
+            g_loss = (kl_loss * 1e-4) + l1_loss + info_loss + disc_loss + wid_loss + ctc_loss + (ctx_loss * 2.0)
 
-        e_gradients = e_tape.gradient(g_loss, self.style_encoder.trainable_weights)
-        self.e_optimizer.apply_gradients(zip(e_gradients, self.style_encoder.trainable_weights))
+        g_gradients = tape.gradient(g_loss, self.style_encoder.trainable_weights +
+                                    self.generator.trainable_weights)
 
-        g_gradients = g_tape.gradient(g_loss, self.generator.trainable_weights)
-        self.g_optimizer.apply_gradients(zip(g_gradients, self.generator.trainable_weights))
+        self.g_optimizer.apply_gradients(zip(g_gradients, self.style_encoder.trainable_weights +
+                                             self.generator.trainable_weights))
 
         # metric phase
         features_data, _ = self.style_backbone(image_data, training=False)
@@ -300,11 +295,17 @@ class SynthesisModel(SynthesisBaseModel):
         self.kid.update_state(image_data, generated_images)
 
         return {
-            'g_loss': g_loss,
             'd_loss': d_loss,
-            'p_loss': p_loss,
             'w_loss': w_loss,
             'r_loss': r_loss,
+            'g_kl_loss': kl_loss,
+            'g_l1_loss': l1_loss,
+            'g_info_loss': info_loss,
+            'g_d_loss': disc_loss,
+            'g_w_loss': wid_loss,
+            'g_r_loss': ctc_loss,
+            'g_ctx_loss': ctx_loss,
+            'g_loss': g_loss,
             self.kid.name: self.kid.result(),
         }
 
