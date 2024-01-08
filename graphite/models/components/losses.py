@@ -245,18 +245,30 @@ class CTXLoss(tf.keras.losses.Loss):
         return dist
 
 
-class KLLoss(tf.keras.losses.Loss):
+class BetaVAELoss(tf.keras.losses.Loss):
     """
-    Compute combined reconstruction and KL divergence loss for a VAE.
-    It encourages the latent space distribution to approximate a standard normal distribution.
+    Loss function for beta-VAE, combining normalized reconstruction error and KL divergence.
+
+    This loss function is particularly useful for training Variational Autoencoders, where it
+        balances the reconstruction accuracy and the regularization of the latent space.
+
+    References
+    ----------
+    Auto-Encoding Variational Bayes
+        https://arxiv.org/abs/1312.6114
+
+    Understanding disentangling in β-VAE
+        https://arxiv.org/abs/1804.03599
     """
 
-    def __init__(self, name='kl_loss', **kwargs):
+    def __init__(self, beta=1e-4, name='beta_vae_loss', **kwargs):
         """
-        Initialize the KLLoss instance.
+        Initialize the BetaVAELoss instance.
 
         Parameters
         ----------
+        beta : float, optional
+            Weight for the KL divergence term.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -265,9 +277,11 @@ class KLLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
+        self.beta = beta
+
     def call(self, y_true, y_pred):
         """
-        Compute the KL divergence loss for VAEs.
+        Compute the loss given the original and reconstructed images.
 
         Parameters
         ----------
@@ -283,75 +297,13 @@ class KLLoss(tf.keras.losses.Loss):
         """
 
         generated_images, z, mu, logvar = y_pred
-        reconstruction_loss = tf.reduce_mean(tf.square(y_true - generated_images))
 
-        log_prob_prior = self.log_normal_pdf(z, 0., 0.)
-        log_prob_posterior = self.log_normal_pdf(z, mu, logvar)
-        kl_divergence = tf.reduce_mean(log_prob_prior - log_prob_posterior)
+        N = tf.cast(tf.reduce_prod(tf.shape(y_true)[1:]), tf.float32)
 
-        return reconstruction_loss - kl_divergence
+        b = tf.cast(tf.shape(z)[0], tf.float32)
+        m = tf.cast(tf.shape(z)[1], tf.float32)
 
-    def log_normal_pdf(self, z, mu, logvar, axis=1):
-        """
-        Compute the log probability of `z` under a Gaussian distribution.
+        reconstruction_loss = (tf.reduce_sum(tf.square(y_true - generated_images)) / N) / b
+        kld_loss = ((-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1)) / m) / b
 
-        Parameters
-        ----------
-        z : tf.Tensor
-            The tensor for which the log probability needs to be computed.
-        mu : tf.Tensor
-            Mean of the Gaussian distribution.
-        logvar : tf.Tensor
-            Logarithm of the variance of the Gaussian distribution.
-        axis : int, optional
-            The axis over which to perform the summation.
-
-        Returns
-        -------
-        tf.Tensor
-            The computed log probability of `z` under the Gaussian distribution.
-        """
-
-        return -0.5 * tf.reduce_sum(1 + logvar - tf.square(z - mu) - tf.exp(logvar), axis=axis)
-
-
-class L1Loss(tf.keras.losses.Loss):
-    """
-    L1 loss for image reconstruction tasks.
-
-    The L1 loss, also known as mean absolute error (MAE), measures the
-        average magnitude of differences between predictions and actual observations.
-    """
-
-    def __init__(self, name='l1_loss', **kwargs):
-        """
-        Initialize the L1Loss instance.
-
-        Parameters
-        ----------
-        name : str, optional
-            A name for the instance.
-        **kwargs : dict
-            Additional keyword arguments for the loss function.
-        """
-
-        super().__init__(name=name, **kwargs)
-
-    def call(self, y_true, y_pred):
-        """
-        Compute the L1 loss between the true and predicted values.
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            Tensor of true values.
-        y_pred : tf.Tensor
-            Tensor of predicted values.
-
-        Returns
-        -------
-        tf.Tensor
-            The computed L1 loss.
-        """
-
-        return tf.reduce_mean(tf.abs(y_pred - y_true))
+        return tf.reduce_mean(reconstruction_loss + self.beta * kld_loss)
