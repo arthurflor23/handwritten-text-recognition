@@ -334,7 +334,7 @@ class Graphite():
                             x,
                             steps,
                             top_paths=1,
-                            beam_width=15,
+                            beam_width=32,
                             ctc_decode=True,
                             token_decode=True,
                             corrections=False,
