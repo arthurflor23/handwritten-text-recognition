@@ -290,7 +290,7 @@ class Graphite():
                 ])
 
             elif self.synthesis:
-                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training_samples')
+                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'step_samples')
                 os.makedirs(synthesis_path, exist_ok=True)
 
                 callbacks.extend([
