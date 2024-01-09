@@ -442,8 +442,7 @@ class GeneratorModel(tf.keras.Model):
 
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
-            # if filters == 256:
-            if filters == 64:
+            if i == 0:
                 block = SelfAttentionGan()(block)
 
         outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
@@ -552,8 +551,7 @@ class DiscriminatorModel(tf.keras.Model):
         for i, filters in enumerate(self.blocks):
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
-            # if filters == 256:
-            if filters == 64:
+            if i == len(self.blocks) - 2:
                 block = SelfAttentionGan()(block)
 
         outputs = tf.keras.layers.ReLU()(block)
