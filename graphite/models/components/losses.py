@@ -11,12 +11,14 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, name='ctc_loss', **kwargs):
+    def __init__(self, epsilon=1e-7, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
+        epsilon : float, optional
+            Small constant to avoid log of zero.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -24,6 +26,8 @@ class CTCLoss(tf.keras.losses.Loss):
         """
 
         super().__init__(name=name, **kwargs)
+
+        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -45,14 +49,20 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
-        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
+        label_length = tf.math.count_nonzero(y_true, axis=-1)
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
 
-        if tf.reduce_any(logit_length == 0):
-            ctc_loss = tf.constant(1.0, dtype=tf.float32)
-        else:
-            ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
-            ctc_loss = tf.reduce_mean(ctc_loss)
+        labels = tf.sparse.from_dense(y_true)
+        logits = tf.math.log(y_pred + self.epsilon)
+
+        ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                  logits=tf.cast(logits, dtype=tf.float32),
+                                  label_length=tf.cast(label_length, dtype=tf.int32),
+                                  logit_length=tf.cast(logit_length, dtype=tf.int32),
+                                  logits_time_major=False,
+                                  blank_index=0)
+
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
