@@ -974,9 +974,6 @@ class RecognitionModel(tf.keras.Model):
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(blstm)
-        blstm = tf.keras.layers.Dense(units=256)(blstm)
-
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
