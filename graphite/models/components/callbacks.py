@@ -40,6 +40,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         self.sample_steps = sample_steps
         self.latent_dim = latent_dim
         self.save_freq = save_freq
+        self.global_step = 0
 
     def _save_images(self, step, images, name):
         """
@@ -79,21 +80,23 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Currently available log data.
         """
 
-        if step > 0 and step % self.save_freq == 0:
+        if self.global_step > 0 and self.global_step % self.save_freq == 0:
             for _ in range(self.sample_steps):
                 _, sample_data = next(self.sample_gen)
                 image_data, text_data, _ = sample_data
 
                 # original images
-                self._save_images(step, image_data, name='authentic')
+                self._save_images(self.global_step, image_data, name='authentic')
 
                 # guided latent images
                 guided_features_inputs, _ = self.model.style_backbone(image_data, training=False)
                 guided_latent_inputs, _, _ = self.model.style_encoder(guided_features_inputs, training=False)
                 guided_latent_images = self.model.generator([guided_latent_inputs, text_data], training=False)
-                self._save_images(step, guided_latent_images, name='guided_style')
+                self._save_images(self.global_step, guided_latent_images, name='guided_style')
 
                 # random latent images
                 random_latent_inputs = tf.random.normal(shape=(len(image_data), self.latent_dim))
                 random_latent_images = self.model.generator([random_latent_inputs, text_data], training=False)
-                self._save_images(step, random_latent_images, name='random_style')
+                self._save_images(self.global_step, random_latent_images, name='random_style')
+
+        self.global_step += 1
