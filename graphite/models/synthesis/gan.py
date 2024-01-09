@@ -188,7 +188,7 @@ class SynthesisModel(SynthesisBaseModel):
         with tf.GradientTape() as tape:
             real_features_data, real_feature_feats = self.style_backbone(q_image_data, training=True)
             real_features_data = tf.stop_gradient(real_features_data)
-            # real_feature_feats = [tf.stop_gradient(feat) for feat in real_feature_feats]
+            real_feature_feats = [tf.stop_gradient(feat) for feat in real_feature_feats]
 
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
@@ -241,11 +241,11 @@ class SynthesisModel(SynthesisBaseModel):
             # writer identify loss
             real_fake_features_data, real_fake_feature_feats = self.style_backbone(real_fake_images, training=True)
             real_fake_features_data = tf.stop_gradient(real_fake_features_data)
-            # real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
+            real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
 
             real_real_features_data, real_real_feature_feats = self.style_backbone(real_real_images, training=True)
             real_real_features_data = tf.stop_gradient(real_real_features_data)
-            # real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
+            real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
 
             real_fake_wid_logits = self.identification(real_fake_features_data, training=True)
             real_fake_wid_logits = tf.stop_gradient(real_fake_wid_logits)
@@ -673,7 +673,7 @@ class BackboneModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
@@ -745,39 +745,39 @@ class StyleEncoderModel(tf.keras.Model):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
 
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same', activation='relu')(style)
 
-        # style = tf.keras.layers.Flatten()(style)
+        style = tf.keras.layers.Flatten()(style)
 
-        # style = tf.keras.layers.Dense(256, activation='relu')(style)
-        # style = tf.keras.layers.Dense(256, activation='relu')(style)
-
-        # mu = tf.keras.layers.Dense(self.latent_dim)(style)
-        # logvar = tf.keras.layers.Dense(self.latent_dim, activation='relu')(style)
-
-        # outputs = tf.keras.layers.Lambda(
-        #     lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
-
-        style = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(feature_inputs)
-
-        style = tf.keras.layers.Dense(256)(style)
-        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
-
-        style = tf.keras.layers.Dense(256)(style)
-        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
+        style = tf.keras.layers.Dense(256, activation='relu')(style)
+        style = tf.keras.layers.Dense(256, activation='relu')(style)
 
         mu = tf.keras.layers.Dense(self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(self.latent_dim, activation='relu')(style)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
+
+        # style = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, axis=-2), name='reduce')(feature_inputs)
+
+        # style = tf.keras.layers.Dense(256)(style)
+        # style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
+
+        # style = tf.keras.layers.Dense(256)(style)
+        # style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
+
+        # mu = tf.keras.layers.Dense(self.latent_dim)(style)
+        # logvar = tf.keras.layers.Dense(self.latent_dim, activation='relu')(style)
+
+        # outputs = tf.keras.layers.Lambda(
+        #     lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
@@ -971,11 +971,14 @@ class RecognitionModel(tf.keras.Model):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.ReLU()(conv)
 
-        lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(lstm)
-        lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Dense(units=256)(blstm)
 
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
