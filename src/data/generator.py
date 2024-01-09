@@ -3,12 +3,9 @@ Uses generator functions to supply train/test with data.
 Image renderings and text are created on the fly each time.
 """
 
-from itertools import groupby
-
-import data.preproc as pp
 import h5py
 import numpy as np
-import unicodedata
+import data.preproc as pp
 
 
 class DataGenerator():
@@ -67,9 +64,7 @@ class DataGenerator():
                                       rotation_range=1.5,
                                       scale_range=0.05,
                                       height_shift_range=0.025,
-                                      width_shift_range=0.05,
-                                      erode_range=5,
-                                      dilate_range=3)
+                                      width_shift_range=0.05)
             x_train = pp.normalization(x_train)
 
             y_train = [self.tokenizer.encode(y) for y in self.dataset['train']['gt'][index:until]]
@@ -139,14 +134,8 @@ class Tokenizer():
         if isinstance(text, bytes):
             text = text.decode()
 
-        text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
-        text = " ".join(text.split())
-
-        groups = ["".join(group) for _, group in groupby(text)]
-        text = "".join([self.UNK_TK.join(list(x)) if len(x) > 1 else x for x in groups])
         encoded = []
-
-        for item in text:
+        for item in " ".join(text.split()):
             index = self.chars.find(item)
             index = self.UNK if index == -1 else index
             encoded.append(index)

@@ -7,19 +7,19 @@ Provides options via the command line to perform project tasks.
 * `--kaldi_assets`: save all assets for use with kaldi
 * `--image`: predict a single image with the source parameter
 * `--train`: train model with the source argument
-* `--test`: evaluate and predict model with the source argument
+* `--test`: evaluate the predict model with the source argument
+* `--evaluate`: evaluate the model outputs with an arbitrary directory
 * `--norm_accentuation`: discard accentuation marks in the evaluation
 * `--norm_punctuation`: discard punctuation marks in the evaluation
 * `--epochs`: number of epochs
 * `--batch_size`: number of batches
 """
 
-import argparse
+import os
 import cv2
 import h5py
-import os
-import string
 import datetime
+import argparse
 
 from data import preproc as pp, evaluation
 from data.generator import DataGenerator, Tokenizer
@@ -41,6 +41,9 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
 
+    parser.add_argument("--evaluate", action="store_true", default=False)
+    parser.add_argument("--predictions_path", default=None)
+
     parser.add_argument("--kaldi_assets", action="store_true", default=False)
     parser.add_argument("--lm", action="store_true", default=False)
     parser.add_argument("--N", type=int, default=2)
@@ -48,8 +51,8 @@ if __name__ == "__main__":
     parser.add_argument("--norm_accentuation", action="store_true", default=False)
     parser.add_argument("--norm_punctuation", action="store_true", default=False)
 
-    parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--epochs", type=int, default=10000)
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
 
     raw_path = os.path.join("..", "raw", args.source)
@@ -58,8 +61,12 @@ if __name__ == "__main__":
     target_path = os.path.join(output_path, "checkpoint_weights.hdf5")
 
     input_size = (1024, 128, 1)
-    max_text_length = 128
-    charset_base = string.printable[:95]
+    max_text_length = 256
+
+    charset_base = (" !\"#$%'(),-.0123456789:;?@\\]"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXZ"
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "ªºÀÁÉÚàáâãçèéêíóôõú")
 
     if args.transform:
         print(f"{args.source} dataset will be transformed...")
@@ -96,7 +103,7 @@ if __name__ == "__main__":
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
                          vocab_size=tokenizer.vocab_size,
-                         beam_width=10,
+                         beam_width=30,
                          top_paths=10)
 
         model.compile(learning_rate=0.001)
@@ -129,9 +136,9 @@ if __name__ == "__main__":
         model = HTRModel(architecture=args.arch,
                          input_size=input_size,
                          vocab_size=dtgen.tokenizer.vocab_size,
-                         beam_width=10,
-                         stop_tolerance=20,
-                         reduce_tolerance=15)
+                         beam_width=30,
+                         reduce_tolerance=20,
+                         stop_tolerance=30)
 
         model.compile(learning_rate=0.001)
         model.load_checkpoint(target=target_path)
@@ -153,7 +160,6 @@ if __name__ == "__main__":
 
             lm.kaldi(predict=False)
             predicts = lm.kaldi(predict=True)
-            predicts = [pp.text_standardize(x) for x in predicts]
 
             total_time = datetime.datetime.now() - start_time
 
@@ -170,7 +176,7 @@ if __name__ == "__main__":
                 f"Total test images:    {dtgen.size['test']}",
                 f"Total time:           {total_time}",
                 f"Time per item:        {total_time / dtgen.size['test']}\n",
-                f"Metrics:",
+                "Metrics:",
                 f"Character Error Rate: {evaluate[0]:.8f}",
                 f"Word Error Rate:      {evaluate[1]:.8f}",
                 f"Sequence Error Rate:  {evaluate[2]:.8f}"
@@ -253,7 +259,7 @@ if __name__ == "__main__":
                 f"Total test images:    {dtgen.size['test']}",
                 f"Total time:           {total_time}",
                 f"Time per item:        {total_time / dtgen.size['test']}\n",
-                f"Metrics:",
+                "Metrics:",
                 f"Character Error Rate: {evaluate[0]:.8f}",
                 f"Word Error Rate:      {evaluate[1]:.8f}",
                 f"Sequence Error Rate:  {evaluate[2]:.8f}"
@@ -265,4 +271,51 @@ if __name__ == "__main__":
 
             with open(os.path.join(output_path, f"evaluate{sufix}.txt"), "w") as lg:
                 lg.write(e_corpus)
+                print(e_corpus)
+
+            #####################################################
+
+            ds = Dataset(source=raw_path, name=args.source)
+            ds.read_partitions()
+
+            preds_path = os.path.join(output_path, 'predictions')
+            os.makedirs(preds_path, exist_ok=True)
+
+            for i in range(len(ds.dataset['test']['path'])):
+                filename = os.path.basename(ds.dataset['test']['path'][i]).split('.')[0]
+                with open(os.path.join(preds_path, f"{filename}.txt"), "w") as lg:
+                    lg.write(predicts[i])
+
+        elif args.evaluate:
+            start_time = datetime.datetime.now()
+
+            ds = Dataset(source=raw_path, name=args.source)
+            ds.read_partitions()
+
+            if 'path' in ds.dataset['test']:
+                preds_path = args.predictions_path or os.path.join(output_path, 'predictions')
+
+                predicts = []
+                ground_truth = []
+
+                for i in range(len(ds.dataset['test']['path'])):
+                    pred_path = os.path.join(preds_path, os.path.basename(ds.dataset['test']['path'][i]))
+
+                    if os.path.isfile(pred_path):
+                        predicts.append(' '.join(open(pred_path).read().splitlines()))
+                    else:
+                        predicts.append('')
+
+                    ground_truth.append(' '.join(open(ds.dataset['test']['path'][i]).read().splitlines()))
+
+                evaluate = evaluation.ocr_metrics(predicts=predicts, ground_truth=ground_truth)
+
+                e_corpus = "\n".join([
+                    f"Total test images:    {dtgen.size['test']}",
+                    "Metrics:",
+                    f"Character Error Rate: {evaluate[0]:.8f}",
+                    f"Word Error Rate:      {evaluate[1]:.8f}",
+                    f"Sequence Error Rate:  {evaluate[2]:.8f}"
+                ])
+
                 print(e_corpus)

@@ -3,7 +3,6 @@
 import os
 import html
 import h5py
-import string
 import random
 import numpy as np
 import multiprocessing
@@ -33,6 +32,7 @@ class Dataset():
             self.dataset = self._init_dataset()
 
         for y in self.partitions:
+            self.dataset[y]['path'] += dataset[y]['path']
             self.dataset[y]['dt'] += dataset[y]['dt']
             self.dataset[y]['gt'] += dataset[y]['gt']
 
@@ -44,7 +44,6 @@ class Dataset():
 
         with h5py.File(target, "w") as hf:
             for pt in self.partitions:
-                self.dataset[pt] = self.check_text(self.dataset[pt], max_text_length)
                 size = (len(self.dataset[pt]['dt']),) + image_input_size[:2]
                 total += size[0]
 
@@ -78,7 +77,7 @@ class Dataset():
         dataset = dict()
 
         for i in self.partitions:
-            dataset[i] = {"dt": [], "gt": []}
+            dataset[i] = {"dt": [], "gt": [], "path": []}
 
         return dataset
 
@@ -93,6 +92,30 @@ class Dataset():
         li = list(zip(*ls))
         random.shuffle(li)
         return zip(*li)
+
+    def _bressay(self):
+
+        dataset = self._init_dataset()
+        img_path = os.path.join(self.source, "data", "lines")
+
+        paths = {"train": open(os.path.join(self.source, "sets", "training.txt")).read().splitlines(),
+                 "valid": open(os.path.join(self.source, "sets", "validation.txt")).read().splitlines(),
+                 "test": open(os.path.join(self.source, "sets", "test.txt")).read().splitlines()}
+
+        for pt in self.partitions:
+            for item in paths[pt]:
+                glob_filter = os.path.join(img_path, item, "**", "*.png")
+                data_list = [x for x in glob(glob_filter, recursive=True)]
+
+                for image_path in data_list:
+                    text_path = image_path.replace('.png', '.txt')
+
+                    if os.path.isfile(image_path) and os.path.isfile(text_path):
+                        dataset[pt]['path'].append(text_path)
+                        dataset[pt]['dt'].append(image_path)
+                        dataset[pt]['gt'].append(' '.join(open(text_path).read().splitlines()))
+
+        return dataset
 
     def _hdsr14_car_a(self):
         """ICFHR 2014 Competition on Handwritten Digit String Recognition in Challenging Datasets dataset reader"""
@@ -337,24 +360,3 @@ class Dataset():
                 dataset[i]['gt'].append(gt_dict[line])
 
         return dataset
-
-    @staticmethod
-    def check_text(data, max_text_length=128):
-        """Checks if the text has more characters instead of punctuation marks"""
-
-        dt = {'gt': list(data['gt']), 'dt': list(data['dt'])}
-
-        for i in reversed(range(len(dt['gt']))):
-            text = pp.text_standardize(dt['gt'][i])
-            strip_punc = text.strip(string.punctuation).strip()
-            no_punc = text.translate(str.maketrans("", "", string.punctuation)).strip()
-
-            length_valid = (len(text) > 1) and (len(text) < max_text_length)
-            text_valid = (len(strip_punc) > 1) and (len(no_punc) > 1)
-
-            if (not length_valid) or (not text_valid):
-                dt['gt'].pop(i)
-                dt['dt'].pop(i)
-                continue
-
-        return dt

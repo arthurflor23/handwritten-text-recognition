@@ -18,8 +18,6 @@ def ocr_metrics(predicts, ground_truth, norm_accentuation=False, norm_punctuatio
     cer, wer, ser = [], [], []
 
     for (pd, gt) in zip(predicts, ground_truth):
-        pd, gt = pd.lower(), gt.lower()
-
         if norm_accentuation:
             pd = unicodedata.normalize("NFKD", pd).encode("ASCII", "ignore").decode("ASCII")
             gt = unicodedata.normalize("NFKD", gt).encode("ASCII", "ignore").decode("ASCII")

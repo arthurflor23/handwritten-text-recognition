@@ -104,7 +104,7 @@ class HTRModel:
         callbacks = [
             CSVLogger(
                 filename=os.path.join(logdir, "epochs.log"),
-                separator=";",
+                separator=",",
                 append=True),
             TensorBoard(
                 log_dir=logdir,
@@ -127,6 +127,7 @@ class HTRModel:
                 verbose=verbose),
             ReduceLROnPlateau(
                 monitor=monitor,
+                min_lr=1e-4,
                 min_delta=1e-8,
                 factor=self.reduce_factor,
                 patience=self.reduce_tolerance,
@@ -152,7 +153,8 @@ class HTRModel:
         else:
             self.learning_schedule = False
 
-        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
 
         # create and compile
         self.model = Model(inputs=inputs, outputs=outputs)
@@ -255,9 +257,9 @@ class HTRModel:
                                        beam_width=self.beam_width,
                                        top_paths=self.top_paths)
 
+            decode = np.swapaxes(decode, 0, 1)
+            predicts.extend([[[int(p) for p in x if p != -1] for x in y] for y in decode])
             probabilities.extend([np.exp(x) for x in log])
-            decode = [[[int(p) for p in x if p != -1] for x in y] for y in decode]
-            predicts.extend(np.swapaxes(decode, 0, 1))
 
             steps_done += 1
             if verbose == 1:
@@ -269,26 +271,16 @@ class HTRModel:
     def ctc_loss_lambda_func(y_true, y_pred):
         """Function for computing the CTC loss"""
 
-        if len(y_true.shape) > 2:
-            y_true = tf.squeeze(y_true)
+        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        # y_pred.shape = (batch_size, string_length, alphabet_size_1_hot_encoded)
-        # output of every model is softmax
-        # so sum across alphabet_size_1_hot_encoded give 1
-        #               string_length give string length
-        input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
-        input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype=tf.int32)
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1, keepdims=True)
 
-        # y_true strings are padded with 0
-        # so sum of non-zero gives number of characters in this string
-        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype="int64")
+        ctc_loss = tf.keras.backend.ctc_batch_cost(y_true, y_pred, logit_length, label_length)
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
-        loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length)
-
-        # average loss across all entries in the batch
-        loss = tf.reduce_mean(loss)
-
-        return loss
+        return ctc_loss
 
 
 """
@@ -358,7 +350,7 @@ def bluche(input_size, d_model):
     cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same", activation="tanh")(cnn)
     cnn = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
 
-    cnn = Conv2D(filters=64, kernel_size=(2, 4), strides=(2, 4), padding="same", activation="tanh")(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(2, 4), strides=(1, 4), padding="same", activation="tanh")(cnn)
     cnn = GatedConv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
 
     cnn = Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding="same", activation="tanh")(cnn)
@@ -407,7 +399,7 @@ def puigcerver(input_size, d_model):
     cnn = Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
     cnn = BatchNormalization()(cnn)
     cnn = LeakyReLU(alpha=0.01)(cnn)
-    cnn = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(cnn)
+    cnn = MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding="valid")(cnn)
 
     cnn = Dropout(rate=0.2)(cnn)
     cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")(cnn)
@@ -441,7 +433,8 @@ def flor(input_size, d_model):
 
     input_data = Input(name="input", shape=input_size)
 
-    cnn = Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), padding="same", kernel_initializer="he_uniform")(input_data)
+    cnn = Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2),
+                 padding="same", kernel_initializer="he_uniform")(input_data)
     cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
     cnn = FullGatedConv2D(filters=16, kernel_size=(3, 3), padding="same")(cnn)
@@ -463,7 +456,7 @@ def flor(input_size, d_model):
     cnn = FullGatedConv2D(filters=48, kernel_size=(3, 3), padding="same", kernel_constraint=MaxNorm(4, [0, 1, 2]))(cnn)
     cnn = Dropout(rate=0.2)(cnn)
 
-    cnn = Conv2D(filters=56, kernel_size=(2, 4), strides=(2, 4), padding="same", kernel_initializer="he_uniform")(cnn)
+    cnn = Conv2D(filters=56, kernel_size=(2, 4), strides=(1, 4), padding="same", kernel_initializer="he_uniform")(cnn)
     cnn = PReLU(shared_axes=[1, 2])(cnn)
     cnn = BatchNormalization(renorm=True)(cnn)
     cnn = FullGatedConv2D(filters=56, kernel_size=(3, 3), padding="same", kernel_constraint=MaxNorm(4, [0, 1, 2]))(cnn)
@@ -521,8 +514,8 @@ def puigcerver_octconv(input_size, d_model):
     low = BatchNormalization()(low)
     high = LeakyReLU(alpha=0.01)(high)
     low = LeakyReLU(alpha=0.01)(low)
-    high = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(high)
-    low = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="valid")(low)
+    high = MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding="valid")(high)
+    low = MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding="valid")(low)
 
     high = Dropout(rate=0.2)(high)
     low = Dropout(rate=0.2)(low)
@@ -578,3 +571,29 @@ def _create_octconv_last_block(inputs, ch, alpha):
     x = Activation("relu")(x)
 
     return x
+
+
+class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
+
+    def __init__(self, optimizer, name='normalized_optimizer', **kwargs):
+        super().__init__(name, **kwargs)
+        self.optimizer = optimizer
+        self._learning_rate = optimizer.learning_rate
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'optimizer': tf.keras.optimizers.serialize(self.optimizer)})
+        return config
+
+    def apply_gradients(self, grads_and_vars, name=None, skip_gradients_aggregation=False):
+
+        if not skip_gradients_aggregation:
+            grads_and_vars = [(grad / (tf.sqrt(tf.reduce_sum(tf.square(grad))) + 1e-7), var)
+                              for grad, var in grads_and_vars if grad is not None]
+
+        return self.optimizer.apply_gradients(grads_and_vars, name=name)
+
+    @classmethod
+    def from_config(cls, config):
+        optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
+        return cls(optimizer, **config)
