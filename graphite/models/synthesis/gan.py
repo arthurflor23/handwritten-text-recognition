@@ -210,8 +210,8 @@ class SynthesisModel(SynthesisBaseModel):
             fake_fake_latent_data, _, _ = self.style_encoder(fake_fake_features_data, training=True)
             fake_real_latent_data, _, _ = self.style_encoder(fake_real_features_data, training=True)
 
-            fake_fake_latent_style_loss = tf.reduce_mean(tf.square(fake_fake_latent_data - fake_latent_data))
-            fake_real_latent_style_loss = tf.reduce_mean(tf.square(fake_real_latent_data - fake_latent_data))
+            fake_fake_latent_style_loss = tf.reduce_mean(tf.math.abs(fake_fake_latent_data - fake_latent_data))
+            fake_real_latent_style_loss = tf.reduce_mean(tf.math.abs(fake_real_latent_data - fake_latent_data))
 
             ls_loss = tf.reduce_mean([fake_fake_latent_style_loss, fake_real_latent_style_loss])
 
