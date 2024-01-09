@@ -49,18 +49,26 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        label_length = tf.math.count_nonzero(y_true, axis=-1)
-        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
-
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.math.log(y_pred + self.epsilon)
+        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
 
-        ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                  logits=tf.cast(logits, dtype=tf.float32),
-                                  label_length=tf.cast(label_length, dtype=tf.int32),
-                                  logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                  logits_time_major=False,
-                                  blank_index=0)
+        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+        # label_length = tf.math.count_nonzero(y_true, axis=-1)
+
+        # ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+        #                           logits=tf.cast(logits, dtype=tf.float32),
+        #                           label_length=tf.cast(label_length, dtype=tf.int32),
+        #                           logit_length=tf.cast(logit_length, dtype=tf.int32),
+        #                           logits_time_major=True,
+        #                           blank_index=0)
+
+        ctc_loss = tf.compat.v1.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                            inputs=tf.cast(logits, dtype=tf.float32),
+                                            sequence_length=tf.cast(logit_length, dtype=tf.int32),
+                                            preprocess_collapse_repeated=False,
+                                            ctc_merge_repeated=True,
+                                            ignore_longer_outputs_than_inputs=True,
+                                            time_major=True)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
 
