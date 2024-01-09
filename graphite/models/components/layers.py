@@ -525,6 +525,99 @@ class OctConv2D(tf.keras.layers.Layer):
         return tf.TensorShape([high_out_shape, low_out_shape])
 
 
+class SelfAttentionGan(tf.keras.layers.Layer):
+    """
+    Self-Attention GAN layer with spectral normalization on convolutional layers.
+
+    References
+    ----------
+    Attention Is All You Need
+        https://arxiv.org/abs/1706.03762
+
+    Self-Attention Generative Adversarial Networks
+        https://arxiv.org/abs/1805.08318
+
+    Spectral Normalization for GANs
+        https://arxiv.org/abs/1802.05957
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initialize the self-attention gan layer.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+    def build(self, input_shape):
+        """
+        Build the layer structure based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : TensorShape
+            Shape of the input tensor.
+        """
+
+        self.shape = input_shape
+
+        self.q_filters = self.shape[-1] // 8
+        self.k_filters = self.shape[-1] // 8
+        self.v_filters = self.shape[-1]
+
+        self.query_conv = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='same', use_bias=False))
+
+        self.key_conv = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.k_filters, kernel_size=1, padding='same', use_bias=False))
+
+        self.value_conv = SpectralNormalization(
+            tf.keras.layers.Conv2D(self.v_filters, kernel_size=1, padding='same', use_bias=False))
+
+        self.gamma = self.add_weight(shape=(1,), initializer='zeros', name=f"{self.name}_gamma", trainable=True)
+
+    def call(self, x):
+        """
+        Processes the input tensors through the layer.
+
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input tensor to the layer.
+
+        Returns
+        -------
+        tf.Tensor
+            Output tensor after applying self-attention.
+        """
+
+        _, height, width, channels = self.shape
+
+        proj_query = self.query_conv(x)
+        proj_query = tf.nn.relu(proj_query)
+        proj_query = tf.reshape(proj_query, [-1, self.q_filters, height * width])
+        proj_query = tf.transpose(proj_query, [0, 2, 1])
+
+        proj_key = self.key_conv(x)
+        proj_key = tf.nn.relu(proj_key)
+        proj_key = tf.reshape(proj_key, [-1, self.k_filters, height * width])
+
+        energy = tf.matmul(proj_query, proj_key)
+        attention = tf.nn.softmax(energy, axis=-1)
+
+        proj_value = self.value_conv(x)
+        proj_value = tf.reshape(proj_value, [-1, self.v_filters, height * width])
+
+        out = tf.matmul(proj_value, attention, transpose_b=True)
+        out = tf.reshape(out, [-1, height, width, channels])
+
+        return self.gamma * out + x
+
+
 class SpectralNormalization(tf.keras.layers.Wrapper):
     """
     Spectral Normalization for TensorFlow models.
@@ -660,92 +753,6 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             self.build(input_shape)
 
         return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
-
-
-class SpectralSelfAttention(tf.keras.layers.Layer):
-    """
-    Spectral Self-Attention layer for TensorFlow models.
-
-    Implements a self-attention mechanism with spectral normalization, suitable for tasks like
-        image generation. The layer applies self-attention to the input tensor, enhancing feature
-        representations for better model performance.
-
-    References
-    ----------
-    Attention Is All You Need
-        https://arxiv.org/abs/1706.03762
-
-    Spectral Normalization for GANs
-        https://arxiv.org/abs/1802.05957
-    """
-
-    def __init__(self, **kwargs):
-        """
-        Initialize the SpectralSelfAttention layer.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Additional keyword arguments for the layer.
-        """
-
-        super().__init__(**kwargs)
-
-    def build(self, input_shape):
-        """
-        Build the layer with spectral normalization on convolutional layers.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensor.
-        """
-
-        self.shape = input_shape
-        self.num_channels = input_shape[-1]
-        self.hw = input_shape[1] * input_shape[2]
-
-        self.conv_f = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, 1))
-        self.conv_g = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 8, 1))
-        self.conv_h = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels // 2, 1))
-        self.conv_o = SpectralNormalization(tf.keras.layers.Conv2D(self.num_channels, 1))
-
-        self.gamma = self.add_weight(shape=(1,),
-                                     initializer='zeros',
-                                     trainable=True,
-                                     name=f"{self.name}_gamma")
-
-    def call(self, x):
-        """
-        Apply self-attention to the input tensor.
-
-        Parameters
-        ----------
-        x : tf.Tensor
-            Input tensor to the layer.
-
-        Returns
-        -------
-        tf.Tensor
-            Processed tensor with self-attention applied.
-        """
-
-        f = self.conv_f(x)
-        g = self.conv_g(x)
-        h = self.conv_h(x)
-
-        f = tf.reshape(tensor=f, shape=[-1, self.hw, f.shape[-1]])
-        g = tf.reshape(tensor=g, shape=[-1, self.hw, g.shape[-1]])
-        h = tf.reshape(tensor=h, shape=[-1, self.hw, h.shape[-1]])
-
-        s = tf.matmul(g, f, transpose_b=True)
-        beta = tf.nn.softmax(logits=s)
-
-        o = tf.matmul(beta, h)
-        o = tf.reshape(tensor=o, shape=[-1, self.shape[1], self.shape[2], self.num_channels // 2])
-        o = self.conv_o(o)
-
-        return self.gamma * o + x
 
 
 class TemporalConvolutional(tf.keras.layers.Layer):
