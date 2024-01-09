@@ -188,7 +188,7 @@ class SynthesisModel(SynthesisBaseModel):
         with tf.GradientTape() as tape:
             real_features_data, real_feature_feats = self.style_backbone(q_image_data, training=True)
             real_features_data = tf.stop_gradient(real_features_data)
-            real_feature_feats = [tf.stop_gradient(feat) for feat in real_feature_feats]
+            # real_feature_feats = [tf.stop_gradient(feat) for feat in real_feature_feats]
 
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
@@ -241,11 +241,11 @@ class SynthesisModel(SynthesisBaseModel):
             # writer identify loss
             real_fake_features_data, real_fake_feature_feats = self.style_backbone(real_fake_images, training=True)
             real_fake_features_data = tf.stop_gradient(real_fake_features_data)
-            real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
+            # real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
 
             real_real_features_data, real_real_feature_feats = self.style_backbone(real_real_images, training=True)
             real_real_features_data = tf.stop_gradient(real_real_features_data)
-            real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
+            # real_fake_feature_feats = [tf.stop_gradient(feat) for feat in real_fake_feature_feats]
 
             real_fake_wid_logits = self.identification(real_fake_features_data, training=True)
             real_fake_wid_logits = tf.stop_gradient(real_fake_wid_logits)
@@ -260,7 +260,7 @@ class SynthesisModel(SynthesisBaseModel):
 
             # ctc loss
             fake_ctc_logits = self.recognition(fake_image_data, training=True)
-            fake_ctc_logits = tf.stop_gradient(fake_ctc_logits)
+            # fake_ctc_logits = tf.stop_gradient(fake_ctc_logits)
 
             ctc_loss = self.ctc_loss(real_text_data, fake_ctc_logits)
 
