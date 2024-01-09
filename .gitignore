@@ -10,8 +10,9 @@
 /src/language/kaldi/
 
 # Hidden files
-.vscode
 .directory
+.DS_Store
+.vscode
 
 # Compact files
 *.tar.gz
