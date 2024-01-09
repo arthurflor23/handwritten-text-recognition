@@ -17,7 +17,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                  sample_gen,
                  sample_steps,
                  latent_dim,
-                 save_freq=200):
+                 save_freq=1000):
         """
         Initialize the GANMonitor callback with specified parameters.
 
@@ -55,14 +55,14 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Base name for saved image files.
         """
 
-        filepath = os.path.join(self.filepath, f"step{step + 1}")
+        filepath = os.path.join(self.filepath, f"step{step}")
         os.makedirs(filepath, exist_ok=True)
 
         images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
 
         for j, image in enumerate(images):
             filename = os.path.join(filepath, f"{j + 1}_{name}.png")
-            cv2.imwrite(filename, image)
+            cv2.imwrite(filename, image.astype(np.uint8))
 
     def on_train_batch_end(self, step, logs=None):
         """
