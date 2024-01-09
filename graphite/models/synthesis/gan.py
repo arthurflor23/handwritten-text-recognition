@@ -3,7 +3,7 @@ import tensorflow as tf
 from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
-from graphite.models.components.layers import SpectralSelfAttention
+from graphite.models.components.layers import SelfAttentionGan
 from graphite.models.components.models import SynthesisBaseModel
 
 
@@ -404,18 +404,18 @@ class GeneratorModel(tf.keras.Model):
             return tf.keras.layers.Add()([h, x])
 
         latent_inputs = tf.keras.layers.Input(shape=self.features_shape)
+        text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
+
+        latent_expanded = tf. keras.layers.Lambda(
+            lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
+
+        text_flattened = tf.keras.layers.Flatten()(text_inputs)
 
         latent_dense = SpectralNormalization(
             tf.keras.layers.Dense(units=self.features_shape[0] * len(self.blocks)))(latent_inputs)
 
         chunks = tf.keras.layers.Lambda(
-            lambda x: tf.convert_to_tensor(tf.split(x, len(self.blocks), axis=-1)), name='split')(latent_dense)
-
-        latent_expanded = tf. keras.layers.Lambda(
-            lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
-
-        text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-        text_flattened = tf.keras.layers.Flatten()(text_inputs)
+            lambda x: tf.convert_to_tensor(tf.split(x, len(self.blocks), axis=1)), name='split')(latent_dense)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
@@ -426,31 +426,28 @@ class GeneratorModel(tf.keras.Model):
 
         latent_text = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
         latent_text = SpectralNormalization(tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0]))(latent_text)
-        latent_text = tf.keras.layers.Reshape(target_shape=(latent_text.get_shape()[1] * 4, 4, -1))(latent_text)
 
-        block = tf.keras.layers.Lambda(
-            lambda x: tf.transpose(x, perm=[0, 3, 2, 1]), name='transpose')(latent_text)
+        block = tf.keras.layers.Reshape(target_shape=(latent_text.get_shape()[1] * 4, 4, -1))(latent_text)
 
         for i, filters in enumerate(self.blocks):
-            if i == 1:
-                block = SpectralSelfAttention()(block)
-
             upsample = None
-            if i > 0 and (i % 2 == 0 or i == len(self.blocks) - 1):
-                height_upsample_required = block.shape[1] < self.image_shape[0]
-                width_upsample_required = block.shape[2] < self.image_shape[1]
 
-                if height_upsample_required or width_upsample_required:
-                    upsample_height = 2 if height_upsample_required else 1
-                    upsample_width = 2 if width_upsample_required else 1
-                    upsample = (upsample_height, upsample_width)
+            height_upsample_required = block.shape[1] < self.image_shape[0]
+            width_upsample_required = block.shape[2] < self.image_shape[1]
+
+            if height_upsample_required or width_upsample_required:
+                upsample_height = 2 if height_upsample_required else 1
+                upsample_width = 2 if width_upsample_required else 1
+                upsample = (upsample_height, upsample_width)
 
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
+            # if filters == 256:
+            if filters == 64:
+                block = SelfAttentionGan()(block)
+
         outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
         outputs = tf.keras.layers.ReLU()(outputs)
-
-        outputs = tf.keras.layers.Reshape(target_shape=(self.image_shape[0], self.image_shape[1], -1))(outputs)
 
         outputs = SpectralNormalization(
             tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
@@ -553,10 +550,11 @@ class DiscriminatorModel(tf.keras.Model):
         block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            if i == len(self.blocks) - 1:
-                block = SpectralSelfAttention()(block)
-
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
+
+            # if filters == 256:
+            if filters == 64:
+                block = SelfAttentionGan()(block)
 
         outputs = tf.keras.layers.ReLU()(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
@@ -977,7 +975,7 @@ class RecognitionModel(tf.keras.Model):
 
         lstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True, dropout=0.5))(lstm)
+        lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(lstm)
         lstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(lstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(lstm)
