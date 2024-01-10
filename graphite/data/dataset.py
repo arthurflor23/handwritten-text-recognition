@@ -265,23 +265,23 @@ class Dataset():
             item['text'] = utils.format_text(item['text'] or '')
 
             if not item['text'] and hasattr(self, '_source'):
-                print(f"Image `{os.path.basename(item['image'])}` has an invalid label.")
+                print(f"Image `{item['image']}` has an invalid label.")
                 return None
 
             if item.get('image', None):
                 if not os.path.isfile(item['image']):
-                    print(f"Image `{os.path.basename(item['image'])}` does not exist.")
+                    print(f"Image `{item['image']}` does not exist.")
                     return None
 
                 try:
                     image = utils.read_image(item['image'], item['bbox'], self.image_shape)
 
-                    if image is None or image.size == 0:
-                        print(f"Image `{os.path.basename(item['image'])}` has an invalid size.")
+                    if image is None or image.size <= 1:
+                        print(f"Image `{item['image']}` has an invalid size.")
                         return None
 
                 except Exception:
-                    print(f"Image `{os.path.basename(item['image'])}` cannot be read.")
+                    print(f"Image `{item['image']}` cannot be read.")
                     return None
 
             source = item.copy()
