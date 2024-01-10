@@ -154,7 +154,7 @@ class Graphite():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=1e-3, run_context=None):
+    def compile(self, learning_rate=None, run_context=None):
         """
         Compile the models.
 
