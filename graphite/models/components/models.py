@@ -156,7 +156,7 @@ class RecognitionBaseModel(BaseModel):
                  style_backbone=None,
                  style_encoder=None,
                  generator=None,
-                 synthesis_ratio=1.0,
+                 generator_ratio=1.0,
                  **kwargs):
         """
         Initializes the synthesis and recognition model.
@@ -173,7 +173,7 @@ class RecognitionBaseModel(BaseModel):
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
             Generator model for image generation.
-        synthesis_ratio : float, optional
+        generator_ratio : float, optional
             Probability to use synthetic data.
         **kwargs : dict
             Additional keyword arguments.
@@ -183,7 +183,7 @@ class RecognitionBaseModel(BaseModel):
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
-        self.synthesis_ratio = synthesis_ratio
+        self.generator_ratio = generator_ratio
 
         self.style_backbone = style_backbone
         self.style_encoder = style_encoder
@@ -245,7 +245,7 @@ class RecognitionBaseModel(BaseModel):
         texts = text_data
 
         if self.generator and self.style_backbone and self.style_encoder:
-            if random.random() <= self.synthesis_ratio:
+            if random.random() <= self.generator_ratio:
                 images = image_data
                 texts = aug_text_data
 
@@ -488,6 +488,7 @@ class SynthesisBaseModel(BaseModel):
                  image_shape,
                  lexical_shape,
                  writers_shape,
+                 generator_steps=1,
                  **kwargs):
         """
         Initialize the synthesis model with specified parameters for each submodel.
@@ -500,6 +501,8 @@ class SynthesisBaseModel(BaseModel):
             The shape of the lexical input.
         writers_shape : int
             The dimension for the writer identification.
+        generator_steps : int, optional
+            Generator training frequency.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -517,6 +520,9 @@ class SynthesisBaseModel(BaseModel):
         self.recognition = None
         self.style_encoder = None
         self.generator = None
+
+        self.global_step = 0
+        self.generator_steps = generator_steps
 
         self.names = [
             'discriminator',
