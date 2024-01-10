@@ -111,6 +111,7 @@ class BaseModel(tf.keras.Model):
             modelpath = filepath.replace('<model>', name)
 
             if model is not None:
+                model.trainable = True
                 model.save_weights(filepath=modelpath,
                                    overwrite=overwrite,
                                    save_format=save_format,
