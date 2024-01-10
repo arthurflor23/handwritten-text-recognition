@@ -11,7 +11,6 @@ from graphite.models.components.losses import CTXLoss
 from graphite.models.components.losses import BetaVAELoss
 from graphite.models.components.metrics import EditDistance
 from graphite.models.components.metrics import KernelInceptionDistance
-from graphite.models.components.optimizers import NormalizedOptimizer
 
 
 class BaseModel(tf.keras.Model):
@@ -224,23 +223,6 @@ class RecognitionBaseModel(BaseModel):
         })
 
         return config
-
-    def compile(self, learning_rate=1e-3):
-        """
-        Configure the submodels.
-
-        This method sets up the optimizers, loss functions, and metrics for the model.
-
-        Parameters
-        ----------
-        learning_rate : float, optional
-            The learning rate for the optimizer.
-        """
-
-        super().compile(run_eagerly=False)
-
-        self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
 
     def train_step(self, input_data):
         """
@@ -576,32 +558,6 @@ class SynthesisBaseModel(BaseModel):
         })
 
         return config
-
-    def compile(self, learning_rate=1e-4):
-        """
-        Configure the submodels.
-
-        This method sets up the optimizers, loss functions, and metrics for the model.
-
-        Parameters
-        ----------
-        learning_rate : float, optional
-            The learning rate for the optimizer.
-        """
-
-        super().compile(run_eagerly=False)
-
-        self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
-
-        self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
     def test_step(self, input_data):
         """
