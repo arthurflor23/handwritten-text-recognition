@@ -56,7 +56,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Base name for saved image files.
         """
 
-        filepath = os.path.join(self.filepath, f"step{step}")
+        filepath = os.path.join(self.filepath, step)
         os.makedirs(filepath, exist_ok=True)
 
         images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
