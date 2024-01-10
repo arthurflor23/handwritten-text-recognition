@@ -275,11 +275,14 @@ class BetaVAELoss(tf.keras.losses.Loss):
     Auto-Encoding Variational Bayes
         https://arxiv.org/abs/1312.6114
 
+    beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework
+        https://openreview.net/forum?id=Sy2fzU9gl
+
     Understanding disentangling in β-VAE
         https://arxiv.org/abs/1804.03599
     """
 
-    def __init__(self, beta=1e-4, name='beta_vae_loss', **kwargs):
+    def __init__(self, beta=1.0, name='beta_vae_loss', **kwargs):
         """
         Initialize the BetaVAELoss instance.
 
