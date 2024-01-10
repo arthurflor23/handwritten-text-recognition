@@ -2,6 +2,7 @@ import tensorflow as tf
 
 from graphite.models.components.layers import OctConv2D
 from graphite.models.components.models import RecognitionBaseModel
+from graphite.models.components.optimizers import NormalizedOptimizer
 
 
 class RecognitionModel(RecognitionBaseModel):
@@ -18,9 +19,27 @@ class RecognitionModel(RecognitionBaseModel):
         https://arxiv.org/abs/1904.05049
     """
 
+    def compile(self, learning_rate=None):
+        """
+        Compiles neural network model.
+
+        Parameters
+        ----------
+        learning_rate : float, optional
+            The learning rate for the optimizer.
+        """
+
+        super().compile(run_eagerly=False)
+
+        if learning_rate is None:
+            learning_rate = 3e-4
+
+        self.optimizer = NormalizedOptimizer(
+            tf.keras.optimizers.RMSProp(learning_rate=learning_rate))
+
     def build_model(self):
         """
-        Initializes and builds the neural network model.
+        Builds the neural network model.
 
         This method sets up the architecture of the model by defining layers, their connections,
             and configurations. It is typically called in the constructor to create the model structure.
