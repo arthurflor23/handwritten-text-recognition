@@ -118,7 +118,8 @@ The project has several command-line parameters that can be used to customize it
 
 #### Synthesis
 
--   `--synthesis-ratio`: Set the synthetic data ratio for synthesis and recognition workflow.
+-   `--generator-steps`: Set the generator training frequency for synthesis workflow.
+-   `--generator-ratio`: Set the synthetic data ratio for synthesis and recognition workflow.
 
 #### Training
 
