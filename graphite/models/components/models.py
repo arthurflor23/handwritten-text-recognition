@@ -143,6 +143,41 @@ class BaseModel(tf.keras.Model):
                                    skip_mismatch=skip_mismatch,
                                    options=options)
 
+    def get_batch_lengths(self, batch, pad_value=None):
+        """
+        Calculate tensor lengths in batch.
+
+        Parameters
+        ----------
+        batch : tf.Tensor
+            A batch of tensors.
+        pad_value : float, optional
+            Value used for padding.
+
+        Returns
+        -------
+        tf.Tensor
+            Batch of lengths for each tensor.
+        """
+
+        shape = tf.shape(batch)
+
+        if pad_value is None:
+            batch_lengths = tf.fill((shape[0],), shape[1])
+        else:
+            reduce_axis = list(range(2, len(batch.shape)))
+            batch_mean = tf.reduce_mean(batch, axis=reduce_axis)
+
+            data_reversed = tf.reverse(batch_mean, axis=[1])
+            padding_mask = tf.equal(data_reversed, tf.cast(pad_value, dtype=data_reversed.dtype))
+
+            lengths = tf.argmax(tf.cast(~padding_mask, dtype=tf.int32), axis=1, output_type=shape.dtype)
+            batch_lengths = tf.where(tf.equal(lengths, 0), shape[1], shape[1] - lengths)
+
+        batch_lengths = tf.stop_gradient(batch_lengths, name='lengths')
+
+        return batch_lengths
+
 
 class RecognitionBaseModel(BaseModel):
     """
