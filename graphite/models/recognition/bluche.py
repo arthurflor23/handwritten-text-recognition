@@ -32,7 +32,7 @@ class RecognitionModel(RecognitionBaseModel):
             learning_rate = 4e-4
 
         self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.RMSProp(learning_rate=learning_rate))
+            tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
 
     def build_model(self):
         """
@@ -93,6 +93,6 @@ class RecognitionModel(RecognitionBaseModel):
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(blstm)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
 
         self.recognition = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
