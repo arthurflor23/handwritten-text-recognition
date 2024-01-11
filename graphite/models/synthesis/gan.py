@@ -131,7 +131,7 @@ class SynthesisModel(SynthesisBaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (aug_image_data, aug_text_data, _), (image_data, text_data, writer_data) = input_data
+        (aug_image_data, aug_text_data), (image_data, text_data, writer_data) = input_data
 
         batch_size = tf.shape(image_data)[0]
 

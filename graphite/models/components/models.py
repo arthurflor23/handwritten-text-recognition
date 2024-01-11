@@ -274,7 +274,7 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (aug_image_data, aug_text_data, _), (image_data, text_data, _) = input_data
+        (aug_image_data, aug_text_data), (image_data, text_data, _) = input_data
 
         images = aug_image_data
         texts = text_data
@@ -317,7 +317,7 @@ class RecognitionBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_data, _, _), (_, text_data, _) = input_data
+        _, (image_data, text_data, _) = input_data
 
         ctc_logits = self.recognition(image_data)
 
@@ -614,7 +614,7 @@ class SynthesisBaseModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        (image_data, _, _), (_, text_data, _) = input_data
+        _, (image_data, text_data, _) = input_data
 
         features_data, _ = self.style_backbone(image_data)
         latent_data, _, _ = self.style_encoder(features_data)
@@ -646,7 +646,7 @@ class SynthesisBaseModel(BaseModel):
             The generated images.
         """
 
-        image_data, text_data, _ = x_data
+        image_data, text_data = x_data
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
