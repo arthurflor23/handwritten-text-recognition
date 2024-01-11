@@ -57,8 +57,8 @@ def run(args, training=None):
                         spelling=args.spelling,
                         image_shape=dataset.image_shape,
                         tokenizer=dataset.tokenizer,
-                        generator_steps=args.generator_steps,
-                        generator_ratio=args.generator_ratio,
+                        discriminator_steps=args.discriminator_steps,
+                        synthesis_ratio=args.synthesis_ratio,
                         experiment_name=args.experiment_name)
     print(graphite)
 

@@ -25,8 +25,8 @@ class Graphite():
                  spelling=None,
                  image_shape=None,
                  tokenizer=None,
-                 generator_steps=1,
-                 generator_ratio=1.0,
+                 discriminator_steps=1,
+                 synthesis_ratio=1.0,
                  experiment_name=None):
         """
         Initializes the Graphite model with specified components.
@@ -43,9 +43,9 @@ class Graphite():
             Shape of the input images.
         tokenizer : Tokenizer, optional
             Tokenizer for processing text data.
-        generator_steps : int, optional
-            Generator training frequency.
-        generator_ratio : float, optional
+        discriminator_steps : int, optional
+            Frequency of discriminator training step
+        synthesis_ratio : float, optional
             Ratio determining the synthesis influence.
         experiment_name : str, optional
             Name of the MLflow experiment.
@@ -56,8 +56,8 @@ class Graphite():
         self.spelling = spelling
         self.image_shape = image_shape
         self.tokenizer = tokenizer
-        self.generator_steps = generator_steps
-        self.generator_ratio = generator_ratio
+        self.discriminator_steps = discriminator_steps
+        self.synthesis_ratio = synthesis_ratio
         self.experiment_name = experiment_name or 'Default'
 
         self.run_context = None
@@ -88,7 +88,7 @@ class Graphite():
                 self.model = SynthesisModel(image_shape=self.image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
                                             writers_shape=self.tokenizer.writers_shape,
-                                            generator_steps=self.generator_steps,
+                                            discriminator_steps=self.discriminator_steps,
                                             name='synthesis')
             elif RecognitionModel:
                 synthesis_params = {}
@@ -97,13 +97,13 @@ class Graphite():
                     synthesis = SynthesisModel(image_shape=self.image_shape,
                                                lexical_shape=self.tokenizer.lexical_shape,
                                                writers_shape=self.tokenizer.writers_shape,
-                                               generator_steps=self.generator_steps,
+                                               discriminator_steps=self.discriminator_steps,
                                                name='synthesis')
                     synthesis_params = {
                         'style_backbone': synthesis.style_backbone,
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
-                        'generator_ratio': self.generator_ratio,
+                        'synthesis_ratio': self.synthesis_ratio,
                     }
 
                 self.model = RecognitionModel(image_shape=self.image_shape,
