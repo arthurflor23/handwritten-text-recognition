@@ -466,7 +466,7 @@ class Dataset():
                         text_data = utils.batch_processing(text_data, image_processing=False)
                         aug_text_data = utils.batch_processing(aug_text_data, image_processing=False)
 
-                yield (aug_image_data, aug_text_data, writer_data), (image_data, text_data, writer_data)
+                yield (aug_image_data, aug_text_data), (image_data, text_data, writer_data)
 
         subset = 'encoded' if batch_encoded else 'source'
 
