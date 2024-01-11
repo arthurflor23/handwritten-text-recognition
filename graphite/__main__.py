@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable augmentation')
 
     # synthesis
-    parser.add_argument('--discriminator-steps', default=1, type=int, help='Define the discriminator step frequency')
+    parser.add_argument('--discriminator-steps', default=2, type=int, help='Define the discriminator step frequency')
     parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Define the synthetic data ratio')
 
     # training
