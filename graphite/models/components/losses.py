@@ -282,7 +282,7 @@ class BetaVAELoss(tf.keras.losses.Loss):
         https://arxiv.org/abs/1804.03599
     """
 
-    def __init__(self, beta=1.0, name='beta_vae_loss', **kwargs):
+    def __init__(self, beta=1e-4, name='beta_vae_loss', **kwargs):
         """
         Initialize the BetaVAELoss instance.
 
