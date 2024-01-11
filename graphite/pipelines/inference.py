@@ -47,7 +47,6 @@ def inference(args):
                         spelling=args.spelling,
                         image_shape=dataset.image_shape,
                         tokenizer=dataset.tokenizer,
-                        generator_ratio=args.generator_ratio,
                         experiment_name=args.experiment_name)
     print(graphite)
 
