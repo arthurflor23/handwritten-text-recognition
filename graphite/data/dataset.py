@@ -460,8 +460,11 @@ class Dataset():
                         aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
 
                     if batch_processing:
-                        image_data = utils.batch_image_processing(image_data)
-                        aug_image_data = utils.batch_image_processing(aug_image_data)
+                        image_data = utils.batch_processing(image_data, image_processing=True)
+                        aug_image_data = utils.batch_processing(aug_image_data, image_processing=True)
+
+                        text_data = utils.batch_processing(text_data, image_processing=False)
+                        aug_text_data = utils.batch_processing(aug_text_data, image_processing=False)
 
                 yield (aug_image_data, aug_text_data, writer_data), (image_data, text_data, writer_data)
 

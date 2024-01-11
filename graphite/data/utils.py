@@ -104,24 +104,28 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     return padded
 
 
-def batch_image_processing(data_batch):
+def batch_processing(data_batch, image_processing=False):
     """
-    Processes a batch of image data for model input .
+    Processes a data batch for model input .
 
     Parameters
     ----------
     data_batch : list
-        List of image arrays.
+        List of arrays.
+    image_processing : bool, optional
+        Whether to apply image processing or not.
 
     Returns
     -------
     numpy.ndarray
-        Processed image data.
+        Processed data.
     """
 
     data_batch = data_batch.transpose((0, 2, 1))
-    data_batch = np.expand_dims(data_batch, axis=-1)
-    data_batch = (data_batch.astype(np.float32) / 127.5) - 1
+
+    if image_processing:
+        data_batch = np.expand_dims(data_batch, axis=-1)
+        data_batch = (data_batch.astype(np.float32) / 127.5) - 1
 
     return data_batch
 
