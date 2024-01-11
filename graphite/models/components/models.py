@@ -364,7 +364,6 @@ class RecognitionBaseModel(BaseModel):
             end = start + batch_size
 
             batch = x[start:end, :, :, :]
-            batch = np.log(batch + 1e-7)
 
             top_path_decoded, top_path_probabilities = [], []
             sequence_length = [batch.shape[2]] * batch.shape[0]
