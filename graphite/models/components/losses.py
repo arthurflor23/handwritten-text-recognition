@@ -145,21 +145,21 @@ class CXLoss(tf.keras.losses.Loss):
         y_pred = tf.transpose(y_pred, perm=[0, 3, 1, 2])
 
         if self.similarity == 'cosine':
-            dist = self.compute_cosine_distance(y_true, y_pred)
+            distance = self.compute_cosine_distance(y_true, y_pred)
 
         elif self.similarity == 'l1':
-            dist = self.compute_l1_distance(y_true, y_pred)
+            distance = self.compute_l1_distance(y_true, y_pred)
 
         elif self.similarity == 'l2':
-            dist = self.compute_l2_distance(y_true, y_pred)
+            distance = self.compute_l2_distance(y_true, y_pred)
 
-        d_min = tf.math.reduce_min(dist, axis=1, keepdims=True)
-        d_tilde = dist / (d_min + self.epsilon)
+        d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
+        d_tilde = distance / (d_min + self.epsilon)
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
         cx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
-        cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
+        cx = tf.reduce_mean(tf.reduce_max(cx_ij, axis=1), axis=1)
 
         cx_loss = tf.math.reduce_mean(-tf.math.log(cx + self.epsilon))
 
@@ -182,8 +182,6 @@ class CXLoss(tf.keras.losses.Loss):
             Tensor representing the cosine distance between y and x.
         """
 
-        N, C, _, _ = tf.unstack(tf.shape(x))
-
         y_mu = tf.reduce_mean(y, axis=[0, 2, 3], keepdims=True)
 
         x_centered = x - y_mu
@@ -192,13 +190,24 @@ class CXLoss(tf.keras.losses.Loss):
         x_normalized = x_centered / tf.norm(x_centered, ord=2, axis=1, keepdims=True)
         y_normalized = y_centered / tf.norm(y_centered, ord=2, axis=1, keepdims=True)
 
-        x_normalized = tf.reshape(x_normalized, [N, C, -1])
-        y_normalized = tf.reshape(y_normalized, [N, C, -1])
+        dist = tf.TensorArray(dtype=x_normalized.dtype, size=tf.shape(x)[0])
 
-        x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
+        for i in range(tf.shape(x)[0]):
+            y_feature = tf.expand_dims(y_normalized[i, :, :, :], 0)
+            x_feature = tf.expand_dims(x_normalized[i, :, :, :], 0)
 
-        cosine_sim = tf.matmul(x_normalized, y_normalized)
-        dist = (1 - cosine_sim) / 2
+            N, C, _, _ = tf.unstack(tf.shape(y_feature))
+
+            x_feature = tf.reshape(x_feature, [N, C, -1])
+            y_feature = tf.reshape(y_feature, [N, C, -1])
+
+            x_feature = tf.transpose(x_feature, perm=[0, 2, 1])
+            d = tf.matmul(x_feature, y_feature)
+
+            dist = dist.write(i, d)
+
+        dist = dist.concat()
+        dist = (1. - dist) / 2.
 
         return dist
 
@@ -219,16 +228,26 @@ class CXLoss(tf.keras.losses.Loss):
             Tensor representing the L1 distance between y and x.
         """
 
-        N, C, _, _ = tf.unstack(tf.shape(x))
+        dist = tf.TensorArray(dtype=x.dtype, size=tf.shape(x)[0])
 
-        x_vec = tf.reshape(x, [N, C, -1])
-        y_vec = tf.reshape(y, [N, C, -1])
+        for i in range(tf.shape(x)[0]):
+            y_feature = tf.expand_dims(y[i, :, :, :], 0)
+            x_feature = tf.expand_dims(x[i, :, :, :], 0)
 
-        dist = tf.expand_dims(x_vec, axis=2) - tf.expand_dims(y_vec, axis=3)
-        dist = tf.math.reduce_sum(tf.math.abs(dist), axis=1)
-        dist = tf.transpose(dist, perm=[0, 2, 1])
+            N, C, _, _ = tf.unstack(tf.shape(y_feature))
 
-        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
+            x_feature = tf.reshape(x_feature, [N, C, -1])
+            y_feature = tf.reshape(y_feature, [N, C, -1])
+
+            d = tf.expand_dims(x_feature, axis=2) - tf.expand_dims(y_feature, axis=3)
+            d = tf.math.reduce_sum(tf.math.abs(d), axis=1)
+
+            d = tf.transpose(d, perm=[0, 2, 1])
+            d = tf.clip_by_value(d, clip_value_min=0., clip_value_max=100000.)
+
+            dist = dist.write(i, d)
+
+        dist = dist.concat()
 
         return dist
 
@@ -249,21 +268,29 @@ class CXLoss(tf.keras.losses.Loss):
             Tensor representing the L2 distance between y and x.
         """
 
-        N, C, _, _ = tf.unstack(tf.shape(x))
+        dist = tf.TensorArray(dtype=x.dtype, size=tf.shape(x)[0])
 
-        x_vec = tf.reshape(x, [N, C, -1])
-        y_vec = tf.reshape(y, [N, C, -1])
+        for i in range(tf.shape(x)[0]):
+            y_feature = tf.expand_dims(y[i, :, :, :], 0)
+            x_feature = tf.expand_dims(x[i, :, :, :], 0)
 
-        x_s = tf.math.reduce_sum(x_vec ** 2, axis=1, keepdims=True)
-        y_s = tf.math.reduce_sum(y_vec ** 2, axis=1, keepdims=True)
+            N, C, _, _ = tf.unstack(tf.shape(y_feature))
 
-        A = tf.transpose(y_vec, perm=[0, 2, 1]) @ x_vec
-        B = tf.transpose(x_s, perm=[0, 2, 1])
+            x_feature = tf.reshape(x_feature, [N, C, -1])
+            y_feature = tf.reshape(y_feature, [N, C, -1])
 
-        dist = y_s - 2 * A + B
-        dist = tf.transpose(dist, perm=[0, 2, 1])
+            x_s = tf.math.reduce_sum(x_feature ** 2, axis=1, keepdims=True)
+            y_s = tf.math.reduce_sum(y_feature ** 2, axis=1, keepdims=True)
 
-        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
+            A = tf.transpose(y_feature, perm=[0, 2, 1]) @ x_feature
+            B = tf.transpose(x_s, perm=[0, 2, 1])
+
+            d = tf.transpose(y_s - 2 * A + B, perm=[0, 2, 1])
+            d = tf.clip_by_value(d, clip_value_min=0., clip_value_max=100000.)
+
+            dist = dist.write(i, d)
+
+        dist = dist.concat()
 
         return dist
 
