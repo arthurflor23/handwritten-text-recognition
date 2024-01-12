@@ -58,6 +58,7 @@ def run(args, training=None):
                         image_shape=dataset.image_shape,
                         tokenizer=dataset.tokenizer,
                         discriminator_steps=args.discriminator_steps,
+                        generator_steps=args.generator_steps,
                         synthesis_ratio=args.synthesis_ratio,
                         experiment_name=args.experiment_name)
     print(graphite)
