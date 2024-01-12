@@ -214,7 +214,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_size=(3, 3),
                  strides=(1, 1),
                  padding='same',
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='glorot_normal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  fullgate=True,
@@ -346,7 +346,7 @@ class OctConv2D(tf.keras.layers.Layer):
                  kernel_size=(3, 3),
                  strides=(1, 1),
                  padding='same',
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='glorot_normal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  **kwargs):
