@@ -523,7 +523,8 @@ class SynthesisBaseModel(BaseModel):
                  image_shape,
                  lexical_shape,
                  writers_shape,
-                 discriminator_steps=1,
+                 discriminator_steps,
+                 generator_steps,
                  **kwargs):
         """
         Initialize the synthesis model with specified parameters for each submodel.
@@ -537,7 +538,9 @@ class SynthesisBaseModel(BaseModel):
         writers_shape : int
             The dimension for the writer identification.
         discriminator_steps : int, optional
-            Frequency of discriminator training step.
+            The repetition of steps for discriminator training.
+        generator_steps : int, optional
+            The skipping steps for generator training.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -557,6 +560,8 @@ class SynthesisBaseModel(BaseModel):
         self.generator = None
 
         self.discriminator_steps = discriminator_steps
+        self.generator_steps = generator_steps
+        self.global_steps = tf.Variable(0, dtype=tf.int64)
 
         self.names = [
             'discriminator',
