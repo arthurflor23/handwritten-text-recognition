@@ -15,13 +15,15 @@ Data partitioning (train, validation, test) was performed following the methodol
 
 a. [Bentham](http://www.transcriptorium.eu/~tsdata/)
 
-b. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
+b. BRESSAY
 
-c. [Rimes](http://www.a2ialab.com/doku.php?id=rimes_database:start)
+c. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
 
-d. [Saint Gall](https://fki.tic.heia-fr.ch/databases/saint-gall-database)
+d. [Rimes](http://www.a2ialab.com/doku.php?id=rimes_database:start)
 
-e. [Washington](https://fki.tic.heia-fr.ch/databases/washington-database)
+e. [Saint Gall](https://fki.tic.heia-fr.ch/databases/saint-gall-database)
+
+f. [Washington](https://fki.tic.heia-fr.ch/databases/washington-database)
 
 ## Requirements
 
