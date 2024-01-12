@@ -15,7 +15,7 @@ Data partitioning (train, validation, test) was performed following the methodol
 
 a. [Bentham](http://www.transcriptorium.eu/~tsdata/)
 
-b. BRESSAY
+b. [BRESSAY](https://drive.google.com/file/d/1ZKdyVU_k1tnLd3Db1w-vaJnrKuR7WVKe/view)
 
 c. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
 
