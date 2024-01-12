@@ -7,7 +7,7 @@ import editdistance
 import tensorflow as tf
 
 from graphite.models.components.losses import CTCLoss
-from graphite.models.components.losses import CTXLoss
+from graphite.models.components.losses import CXLoss
 from graphite.models.components.losses import BetaVAELoss
 from graphite.models.components.metrics import EditDistance
 from graphite.models.components.metrics import KernelInceptionDistance
@@ -571,7 +571,7 @@ class SynthesisBaseModel(BaseModel):
         self.bv_loss = BetaVAELoss()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
-        self.ctx_loss = CTXLoss()
+        self.cx_loss = CXLoss()
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
         self.monitor = self.kid.name
