@@ -84,6 +84,9 @@ class CTXLoss(tf.keras.losses.Loss):
 
     References
     ----------
+    Maintaining Natural Image Statistics with the Contextual Loss
+        https://arxiv.org/pdf/1803.04626.pdf
+
     The Contextual Loss for Image Transformation with Non-Aligned Data
         https://arxiv.org/abs/1803.02077
     """
@@ -91,7 +94,7 @@ class CTXLoss(tf.keras.losses.Loss):
     def __init__(self,
                  sigma=0.5,
                  alpha=1.0,
-                 loss_type='l2',
+                 loss_type='cosine',
                  epsilon=1e-7,
                  name='ctx_loss',
                  **kwargs):
@@ -105,7 +108,7 @@ class CTXLoss(tf.keras.losses.Loss):
         alpha : float, optional
             Scaling factor for weighting the distances.
         loss_type : str, optional
-            Type of loss to be used, can be 'cosine', 'l1', or 'l2'.
+            Type of loss to be used.
         epsilon : float, optional
             Small constant to avoid division by zero.
         name : str, optional
@@ -143,8 +146,10 @@ class CTXLoss(tf.keras.losses.Loss):
 
         if self.loss_type == 'cosine':
             dist = self.compute_cosine_distance(y_true, y_pred)
+
         elif self.loss_type == 'l1':
             dist = self.compute_l1_distance(y_true, y_pred)
+
         elif self.loss_type == 'l2':
             dist = self.compute_l2_distance(y_true, y_pred)
 
@@ -153,12 +158,12 @@ class CTXLoss(tf.keras.losses.Loss):
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
-        cx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
-        cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
+        ctx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
+        ctx = tf.math.reduce_mean(tf.math.reduce_max(ctx_ij, axis=1), axis=1)
 
-        cx_loss = tf.math.reduce_mean(-tf.math.log(cx + self.epsilon))
+        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
 
-        return cx_loss
+        return ctx_loss
 
     def compute_cosine_distance(self, y, x):
         """
@@ -177,7 +182,7 @@ class CTXLoss(tf.keras.losses.Loss):
             Tensor representing the cosine distance between y and x.
         """
 
-        N, C, H, W = tf.unstack(tf.shape(x))
+        N, C, _, _ = tf.unstack(tf.shape(x))
 
         y_mu = tf.reduce_mean(y, axis=[0, 2, 3], keepdims=True)
 
@@ -214,7 +219,7 @@ class CTXLoss(tf.keras.losses.Loss):
             Tensor representing the L1 distance between y and x.
         """
 
-        N, C, H, W = tf.unstack(tf.shape(x))
+        N, C, _, _ = tf.unstack(tf.shape(x))
 
         x_vec = tf.reshape(x, [N, C, -1])
         y_vec = tf.reshape(y, [N, C, -1])
@@ -244,7 +249,7 @@ class CTXLoss(tf.keras.losses.Loss):
             Tensor representing the L2 distance between y and x.
         """
 
-        N, C, H, W = tf.unstack(tf.shape(x))
+        N, C, _, _ = tf.unstack(tf.shape(x))
 
         x_vec = tf.reshape(x, [N, C, -1])
         y_vec = tf.reshape(y, [N, C, -1])
