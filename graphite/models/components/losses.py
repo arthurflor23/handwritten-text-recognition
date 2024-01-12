@@ -75,7 +75,7 @@ class CTCLoss(tf.keras.losses.Loss):
         return ctc_loss
 
 
-class CTXLoss(tf.keras.losses.Loss):
+class CXLoss(tf.keras.losses.Loss):
     """
     Contextual loss for comparing high-level features between two tensors.
 
@@ -85,7 +85,7 @@ class CTXLoss(tf.keras.losses.Loss):
     References
     ----------
     Maintaining Natural Image Statistics with the Contextual Loss
-        https://arxiv.org/pdf/1803.04626.pdf
+        https://arxiv.org/abs/1803.04626
 
     The Contextual Loss for Image Transformation with Non-Aligned Data
         https://arxiv.org/abs/1803.02077
@@ -94,12 +94,12 @@ class CTXLoss(tf.keras.losses.Loss):
     def __init__(self,
                  sigma=0.5,
                  alpha=1.0,
-                 loss_type='cosine',
-                 epsilon=1e-7,
-                 name='ctx_loss',
+                 similarity='cosine',
+                 epsilon=1e-5,
+                 name='cx_loss',
                  **kwargs):
         """
-        Initialize the CTXLoss instance.
+        Initialize the CXLoss instance.
 
         Parameters
         ----------
@@ -107,7 +107,7 @@ class CTXLoss(tf.keras.losses.Loss):
             Sharpness parameter of the similarity function.
         alpha : float, optional
             Scaling factor for weighting the distances.
-        loss_type : str, optional
+        similarity : str, optional
             Type of loss to be used.
         epsilon : float, optional
             Small constant to avoid division by zero.
@@ -122,7 +122,7 @@ class CTXLoss(tf.keras.losses.Loss):
         self.sigma = sigma
         self.alpha = alpha
         self.epsilon = epsilon
-        self.loss_type = loss_type
+        self.similarity = similarity
 
     def call(self, y_true, y_pred):
         """
@@ -144,26 +144,26 @@ class CTXLoss(tf.keras.losses.Loss):
         y_true = tf.transpose(y_true, perm=[0, 3, 1, 2])
         y_pred = tf.transpose(y_pred, perm=[0, 3, 1, 2])
 
-        if self.loss_type == 'cosine':
+        if self.similarity == 'cosine':
             dist = self.compute_cosine_distance(y_true, y_pred)
 
-        elif self.loss_type == 'l1':
+        elif self.similarity == 'l1':
             dist = self.compute_l1_distance(y_true, y_pred)
 
-        elif self.loss_type == 'l2':
+        elif self.similarity == 'l2':
             dist = self.compute_l2_distance(y_true, y_pred)
 
-        d_min = tf.math.reduce_min(dist, axis=2, keepdims=True)
+        d_min = tf.math.reduce_min(dist, axis=1, keepdims=True)
         d_tilde = dist / (d_min + self.epsilon)
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
-        ctx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
-        ctx = tf.math.reduce_mean(tf.math.reduce_max(ctx_ij, axis=1), axis=1)
+        cx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
+        cx = tf.math.reduce_mean(tf.math.reduce_max(cx_ij, axis=1), axis=1)
 
-        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
+        cx_loss = tf.math.reduce_mean(-tf.math.log(cx + self.epsilon))
 
-        return ctx_loss
+        return cx_loss
 
     def compute_cosine_distance(self, y, x):
         """
@@ -198,7 +198,7 @@ class CTXLoss(tf.keras.losses.Loss):
         x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
 
         cosine_sim = tf.matmul(x_normalized, y_normalized)
-        dist = 1 - cosine_sim
+        dist = (1 - cosine_sim) / 2
 
         return dist
 
