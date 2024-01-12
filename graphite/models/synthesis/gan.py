@@ -5,8 +5,8 @@ from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SelfAttentionGan
 from graphite.models.components.models import BaseSynthesisModel
+from graphite.models.components.models import MetricsTracker
 from graphite.models.components.optimizers import NormalizedOptimizer
-from graphite.models.components.utils import MetricsTracker
 from graphite.models.recognition.bluche import RecognitionModel as RecognitionModel2
 
 
