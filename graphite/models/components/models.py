@@ -179,9 +179,9 @@ class BaseModel(tf.keras.Model):
         return batch_lengths
 
 
-class RecognitionBaseModel(BaseModel):
+class BaseRecognitionModel(BaseModel):
     """
-    RecognitionBaseModel extends BaseModel to provide additional
+    BaseRecognitionModel extends BaseModel to provide additional
         functionalities to synthesis and recognition models.
     """
 
@@ -513,9 +513,9 @@ class RecognitionBaseModel(BaseModel):
         return metrics, evaluations
 
 
-class SynthesisBaseModel(BaseModel):
+class BaseSynthesisModel(BaseModel):
     """
-    SynthesisBaseModel extends BaseModel to provide additional
+    BaseSynthesisModel extends BaseModel to provide additional
         functionalities to synthesis models.
     """
 

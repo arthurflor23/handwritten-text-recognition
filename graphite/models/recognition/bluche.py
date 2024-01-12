@@ -1,11 +1,11 @@
 import tensorflow as tf
 
 from graphite.models.components.layers import GatedConv2D
-from graphite.models.components.models import RecognitionBaseModel
+from graphite.models.components.models import BaseRecognitionModel
 from graphite.models.components.optimizers import NormalizedOptimizer
 
 
-class RecognitionModel(RecognitionBaseModel):
+class RecognitionModel(BaseRecognitionModel):
     """
     TensorFlow model for multilingual handwriting recognition using CNNs and BiLSTMs.
     Features gated convolutional layers for enhanced feature extraction.
