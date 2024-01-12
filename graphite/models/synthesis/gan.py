@@ -1,11 +1,11 @@
 import tensorflow as tf
 
+from graphite.models.components.common import BaseSynthesisModel
+from graphite.models.components.common import MetricsTracker
 from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SelfAttentionGan
-from graphite.models.components.models import BaseSynthesisModel
-from graphite.models.components.models import MetricsTracker
 from graphite.models.components.optimizers import NormalizedOptimizer
 from graphite.models.recognition.bluche import RecognitionModel as RecognitionModel2
 

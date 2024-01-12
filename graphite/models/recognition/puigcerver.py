@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from graphite.models.components.models import BaseRecognitionModel
+from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.optimizers import NormalizedOptimizer
 
 
