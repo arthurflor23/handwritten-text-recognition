@@ -118,7 +118,8 @@ The project has several command-line parameters that can be used to customize it
 
 #### Synthesis
 
--   `--discriminator-steps`: Set the discriminator step frequency for the synthesis workflow.
+-   `--discriminator-steps`: Set the repetition of steps for discriminator training in synthesis workflow.
+-   `--generator-steps`: Set the skipping steps for generator training in synthesis workflow.
 -   `--synthesis-ratio`: Set the synthetic data ratio for synthesis and recognition workflow.
 
 #### Training
