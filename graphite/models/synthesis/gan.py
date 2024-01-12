@@ -670,8 +670,7 @@ class BackboneModel(tf.keras.Model):
             strides = (2, 2) if i + 1 == len(self.blocks) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-            if i > 0:
-                feats.append(conv)
+            feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
