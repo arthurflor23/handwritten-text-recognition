@@ -82,7 +82,7 @@ class SynthesisModel(BaseSynthesisModel):
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
-        discriminator_blocks = [64, 128, 256, 256]
+        discriminator_blocks = [64, 64, 128, 256]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 patch_shape=None,
@@ -102,14 +102,14 @@ class SynthesisModel(BaseSynthesisModel):
                                                   writers_shape=self.writers_shape,
                                                   name='identification')
 
-        # self.recognition = RecognitionModel(image_shape=self.image_shape,
-        #                                     lexical_shape=self.lexical_shape,
-        #                                     blocks=backbone_blocks,
-        #                                     name='recognition')
+        self.recognition = RecognitionModel(image_shape=self.image_shape,
+                                            lexical_shape=self.lexical_shape,
+                                            blocks=backbone_blocks,
+                                            name='recognition')
 
-        self.recognition = RecognitionModel2(image_shape=self.image_shape,
-                                             lexical_shape=self.lexical_shape,
-                                             name='recognition')
+        # self.recognition = RecognitionModel2(image_shape=self.image_shape,
+        #                                      lexical_shape=self.lexical_shape,
+        #                                      name='recognition')
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_output_shape,
                                                latent_dim=latent_dim,
@@ -689,10 +689,12 @@ class BackboneModel(tf.keras.Model):
         feats = []
 
         for i, filters in enumerate(self.blocks):
+            dropout_rate = 0.1 if i <= (len(self.blocks) - 1) // 2 else 0.2
+
             block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
-            block1 = tf.keras.layers.Dropout(rate=0.2)(block1)
+            block1 = tf.keras.layers.Dropout(rate=dropout_rate)(block1)
 
             block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
@@ -703,7 +705,7 @@ class BackboneModel(tf.keras.Model):
             block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
-            block2 = tf.keras.layers.Dropout(rate=0.2)(block2)
+            block2 = tf.keras.layers.Dropout(rate=dropout_rate)(block2)
 
             block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
@@ -717,18 +719,18 @@ class BackboneModel(tf.keras.Model):
 
             conv = tf.keras.layers.Add()([shortcut, block2])
 
-            strides = (2, 2) if i + 1 == len(self.blocks) // 2 else (1, 2)
+            strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-            if i > 0:
+            if i >= len(self.blocks[:-2]):
                 feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
-        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
+        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
 
-        outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        outputs = tf.keras.layers.Reshape(target_shape=(-1, conv.get_shape()[-1]))(conv)
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
@@ -979,10 +981,12 @@ class RecognitionModel(tf.keras.Model):
         blocks = list(self.blocks) + [self.blocks[-1] * 2]
 
         for i, filters in enumerate(self.blocks):
+            dropout_rate = 0.1 if i <= (len(self.blocks) - 1) // 2 else 0.2
+
             block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
-            block1 = tf.keras.layers.Dropout(rate=0.2)(block1)
+            block1 = tf.keras.layers.Dropout(rate=dropout_rate)(block1)
 
             block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
@@ -993,7 +997,7 @@ class RecognitionModel(tf.keras.Model):
             block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
-            block2 = tf.keras.layers.Dropout(rate=0.2)(block2)
+            block2 = tf.keras.layers.Dropout(rate=dropout_rate)(block2)
 
             block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
@@ -1007,17 +1011,17 @@ class RecognitionModel(tf.keras.Model):
 
             conv = tf.keras.layers.Add()([shortcut, block2])
 
-            strides = (2, 2) if i + 1 == len(self.blocks) // 2 else (1, 2)
+            strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
-        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
+        conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=1, padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(blstm)
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
