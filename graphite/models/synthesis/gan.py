@@ -6,6 +6,7 @@ from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.layers import SelfAttentionGan
 from graphite.models.components.models import SynthesisBaseModel
 from graphite.models.components.optimizers import NormalizedOptimizer
+from graphite.models.components.utils import MetricsTracker
 from graphite.models.recognition.bluche import RecognitionModel as RecognitionModel2
 
 
@@ -121,26 +122,33 @@ class SynthesisModel(SynthesisBaseModel):
                                         blocks=generator_blocks,
                                         name='generator')
 
-    def train_step(self, input_data):
+        self.metrics_tracker = MetricsTracker(['d_disc_loss',
+                                               'd_wid_loss',
+                                               'd_ctc_loss',
+                                               'g_disc_loss',
+                                               'g_wid_loss',
+                                               'g_ctc_loss',
+                                               'g_sty_loss',
+                                               'g_cnt_loss',
+                                               'g_cx_loss',
+                                               'g_loss',
+                                               self.kid.name])
+
+    def _discriminator_step(self, input_data):
         """
-        Perform the training step on the provided batch of data.
+        Update the discriminator model using the provided batch of input data.
 
         Parameters
         ----------
         input_data : list or tuple
             A batch of data (x_data, y_data).
-
-        Returns
-        -------
-        dict
-            A dictionary containing metrics and losses.
         """
 
         (aug_image_data, aug_text_data), (image_data, text_data, writer_data) = input_data
 
         batch_size = tf.shape(image_data)[0]
+        latent_dim = self.style_encoder.latent_dim
 
-        # discriminator
         self.discriminator.trainable = True
         self.patch_discriminator.trainable = True
         self.style_backbone.trainable = True
@@ -156,7 +164,7 @@ class SynthesisModel(SynthesisBaseModel):
             real_s_real_t_images = self.generator([real_latent_data, text_data], training=True)
             real_s_fake_t_images = self.generator([real_latent_data, aug_text_data], training=True)
 
-            random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, self.style_encoder.latent_dim)))
+            random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
             fake_images = tf.stop_gradient(tf.concat([real_s_real_t_images,
@@ -211,7 +219,27 @@ class SynthesisModel(SynthesisBaseModel):
             r_gradients = tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
-        # generator
+        self.metrics_tracker.update({
+            'd_disc_loss': d_disc_loss,
+            'd_wid_loss': d_wid_loss,
+            'd_ctc_loss': d_ctc_loss,
+        })
+
+    def _generator_step(self, input_data):
+        """
+        Update the generator model using the provided batch of input data.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data, y_data).
+        """
+
+        (_, aug_text_data), (image_data, text_data, writer_data) = input_data
+
+        batch_size = tf.shape(image_data)[0]
+        latent_dim = self.style_encoder.latent_dim
+
         self.discriminator.trainable = False
         self.patch_discriminator.trainable = False
         self.style_backbone.trainable = False
@@ -227,12 +255,12 @@ class SynthesisModel(SynthesisBaseModel):
             real_s_real_t_images = self.generator([real_latent_data, text_data], training=True)
             real_s_fake_t_images = self.generator([real_latent_data, aug_text_data], training=True)
 
-            random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, self.style_encoder.latent_dim)))
+            random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
             fake_images = tf.concat([real_s_real_t_images,
-                                     real_s_fake_t_images,
-                                     fake_s_fake_t_images], axis=0)
+                                    real_s_fake_t_images,
+                                    fake_s_fake_t_images], axis=0)
 
             real_texts = tf.concat([text_data,
                                     aug_text_data,
@@ -286,17 +314,7 @@ class SynthesisModel(SynthesisBaseModel):
         self.g_optimizer.apply_gradients(zip(g_gradients, self.style_encoder.trainable_weights +
                                              self.generator.trainable_weights))
 
-        # kid metric
-        features_data, _ = self.style_backbone(image_data, training=False)
-        latent_data, _, _ = self.style_encoder(features_data, training=False)
-        generated_images = self.generator([latent_data, text_data], training=False)
-
-        self.kid.update_state(image_data, generated_images)
-
-        return {
-            'd_disc_loss': d_disc_loss,
-            'd_wid_loss': d_wid_loss,
-            'd_ctc_loss': d_ctc_loss,
+        self.metrics_tracker.update({
             'g_disc_loss': g_disc_loss,
             'g_wid_loss': g_wid_loss,
             'g_ctc_loss': g_ctc_loss,
@@ -304,8 +322,40 @@ class SynthesisModel(SynthesisBaseModel):
             'g_cnt_loss': g_cnt_loss,
             'g_cx_loss': g_cx_loss,
             'g_loss': g_loss,
-            self.kid.name: self.kid.result(),
-        }
+        })
+
+    def train_step(self, input_data):
+        """
+        Perform the training step on the provided batch of data.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            A batch of data (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            A dictionary containing metrics and losses.
+        """
+
+        tf.cond(pred=tf.math.equal(tf.math.mod(self.global_steps, self.generator_steps), 0),
+                true_fn=lambda: (self._discriminator_step(input_data), self._generator_step(input_data)),
+                false_fn=lambda: (self._discriminator_step(input_data), None))
+
+        self.global_steps.assign_add(delta=1)
+
+        # kid metric
+        _, (image_data, text_data, _) = input_data
+
+        features_data, _ = self.style_backbone(image_data, training=False)
+        latent_data, _, _ = self.style_encoder(features_data, training=False)
+        generated_images = self.generator([latent_data, text_data], training=False)
+
+        self.kid.update_state(image_data, generated_images)
+        self.metrics_tracker.update({self.kid.name: self.kid.result()})
+
+        return self.metrics_tracker.result()
 
 
 class GeneratorModel(tf.keras.Model):
