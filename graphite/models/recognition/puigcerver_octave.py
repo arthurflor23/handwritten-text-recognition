@@ -51,8 +51,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
-        high = tf.keras.layers.LeakyReLU(alpha=0.2)(high)
-        low = tf.keras.layers.LeakyReLU(alpha=0.2)(low)
+        high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
+        low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
         low = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(low)
 
@@ -60,8 +60,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
-        high = tf.keras.layers.LeakyReLU(alpha=0.2)(high)
-        low = tf.keras.layers.LeakyReLU(alpha=0.2)(low)
+        high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
+        low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
         low = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(low)
 
@@ -73,8 +73,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
-        high = tf.keras.layers.LeakyReLU(alpha=0.2)(high)
-        low = tf.keras.layers.LeakyReLU(alpha=0.2)(low)
+        high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
+        low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
 
         high = tf.keras.layers.Dropout(rate=0.2)(high)
         low = tf.keras.layers.Dropout(rate=0.2)(low)
@@ -84,8 +84,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
-        high = tf.keras.layers.LeakyReLU(alpha=0.2)(high)
-        low = tf.keras.layers.LeakyReLU(alpha=0.2)(low)
+        high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
+        low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
 
         high = tf.keras.layers.Dropout(rate=0.2)(high)
         low = tf.keras.layers.Dropout(rate=0.2)(low)
@@ -95,8 +95,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
-        high = tf.keras.layers.LeakyReLU(alpha=0.2)(high)
-        low = tf.keras.layers.LeakyReLU(alpha=0.2)(low)
+        high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
+        low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
 
         high, low = OctConv2D(alpha=0.25, filters=80)([high, low])
 

@@ -49,7 +49,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same')(inputs)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
         conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
 
         conv = tf.keras.layers.Conv2D(filters=32,
@@ -58,7 +58,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same')(conv)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
         conv = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(conv)
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 
@@ -68,7 +68,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same')(conv)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=64,
@@ -77,7 +77,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same')(conv)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
         conv = tf.keras.layers.Dropout(rate=0.2)(conv)
 
         conv = tf.keras.layers.Conv2D(filters=80,
@@ -86,7 +86,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same')(conv)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
