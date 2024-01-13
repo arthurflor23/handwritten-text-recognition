@@ -122,21 +122,21 @@ class ExtractPatches(tf.keras.layers.Layer):
     A Tensorflow Keras layer to extract patches from input images.
     """
 
-    def __init__(self, patch_dim=None, **kwargs):
+    def __init__(self, patch_shape=None, **kwargs):
         """
         Initializes Patches layer.
 
         Parameters
         ----------
-        patch_dim : int or None
-            The target patch size.
+        patch_shape : list, tuple or None
+            The target patch size to create.
         **kwargs
             Additional keyword arguments for the Layer.
         """
 
         super().__init__(**kwargs)
 
-        self.patch_dim = patch_dim
+        self.patch_shape = patch_shape
 
     def get_config(self):
         """
@@ -151,7 +151,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'patch_dim': self.patch_dim,
+            'patch_shape': self.patch_shape,
         })
 
         return config
@@ -171,14 +171,22 @@ class ExtractPatches(tf.keras.layers.Layer):
             A tensor containing the extracted patches.
         """
 
-        if self.patch_dim is not None:
+        if self.patch_shape is not None:
+            sizes = [1] + self.patch_shape
+            strides = [1, self.patch_shape[0] // 2, self.patch_shape[1] // 2, 1]
+
             patches = tf.image.extract_patches(images=inputs,
-                                               sizes=[1, self.patch_dim, self.patch_dim, 1],
-                                               strides=[1, 8, 8, 1],
+                                               sizes=sizes,
+                                               strides=strides,
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
-            inputs = tf.reshape(patches, [-1, self.patch_dim, self.patch_dim, tf.shape(inputs)[-1]])
+            inputs = tf.reshape(patches, shape=[-1] + self.patch_shape)
+
+            patch_means = tf.reduce_mean(inputs, axis=[1, 2, 3])
+            mask = tf.not_equal(patch_means, 1.0)
+
+            inputs = tf.boolean_mask(inputs, mask)
             inputs = tf.stop_gradient(inputs)
 
         return inputs
