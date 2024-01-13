@@ -77,21 +77,20 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 128
-        embedding_dim = 128
-        patch_shape = [32, 32, 1]
+        patch_dim = 32
+        latent_dim = 64
+        embedding_dim = 64
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
         discriminator_blocks = [64, 64, 128, 256]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
-                                                patch_shape=None,
                                                 blocks=discriminator_blocks,
                                                 name='discriminator')
 
         self.patch_discriminator = DiscriminatorModel(image_shape=self.image_shape,
-                                                      patch_shape=patch_shape,
                                                       blocks=discriminator_blocks,
+                                                      patch_dim=patch_dim,
                                                       name='patch_discriminator')
 
         self.style_backbone = BackboneModel(image_shape=self.image_shape,
@@ -519,8 +518,8 @@ class DiscriminatorModel(tf.keras.Model):
 
     def __init__(self,
                  image_shape,
-                 patch_shape,
                  blocks,
+                 patch_dim=None,
                  name='discriminator',
                  **kwargs):
         """
@@ -530,10 +529,10 @@ class DiscriminatorModel(tf.keras.Model):
         ----------
         image_shape : list or tuple
             Shape of the input image.
-        patch_shape : list, tuple or None
-            Defines whether to apply patches for processing.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
+        patch_dim : int or None
+            List of patch size and stride.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -543,8 +542,8 @@ class DiscriminatorModel(tf.keras.Model):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-        self.patch_shape = patch_shape
         self.blocks = blocks
+        self.patch_dim = patch_dim
 
         self.build_model()
 
@@ -566,8 +565,8 @@ class DiscriminatorModel(tf.keras.Model):
 
         config.update({
             'image_shape': self.image_shape,
-            'patch_shape': self.patch_shape,
             'blocks': self.blocks,
+            'patch_dim': self.patch_dim,
         })
 
     def build_model(self):
@@ -603,7 +602,7 @@ class DiscriminatorModel(tf.keras.Model):
             return tf.keras.layers.Add()([h, x])
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
-        block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
+        block = ExtractPatches(patch_dim=self.patch_dim)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
