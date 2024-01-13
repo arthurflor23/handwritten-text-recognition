@@ -77,12 +77,12 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 64
+        latent_dim = 128
         embedding_dim = 16
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
-        discriminator_blocks = [64, 64, 128, 256]
+        discriminator_blocks = [64, 128, 256, 256]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 blocks=discriminator_blocks,
@@ -166,17 +166,17 @@ class SynthesisModel(BaseSynthesisModel):
             # patch and discriminator
             with tf.GradientTape() as tape:
                 # fake images
-                fake_disc = self.discriminator(tf.stop_gradient(d_fake_images), training=True)
+                fake_disc = self.discriminator(d_fake_images, training=True)
                 fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
-                fake_patch_disc = self.patch_discriminator(tf.stop_gradient(d_fake_images), training=True)
+                fake_patch_disc = self.patch_discriminator(d_fake_images, training=True)
                 fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
 
                 # real images
-                real_disc = self.discriminator(tf.stop_gradient(d_real_images), training=True)
+                real_disc = self.discriminator(d_real_images, training=True)
                 real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
 
-                real_patch_disc = self.patch_discriminator(tf.stop_gradient(d_real_images), training=True)
+                real_patch_disc = self.patch_discriminator(d_real_images, training=True)
                 real_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_disc))
 
                 # discriminator loss
@@ -247,11 +247,15 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
-            # patch and discriminator (adversarial)
             g_fake_images = tf.concat([real_s_real_t_images,
                                        real_s_fake_t_images,
                                        fake_s_fake_t_images], axis=0)
 
+            g_real_texts = tf.concat([text_data,
+                                      aug_text_data,
+                                      aug_text_data], axis=0)
+
+            # patch and discriminator (adversarial)
             fake_adv = self.discriminator(g_fake_images, training=True)
             fake_adv_loss = -tf.reduce_mean(fake_adv)
 
@@ -261,16 +265,8 @@ class SynthesisModel(BaseSynthesisModel):
             g_disc_loss = fake_adv_loss + fake_patch_adv_loss
 
             # handwriting recognition
-            real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
-            real_s_real_t_ctc_loss = self.ctc_loss(text_data, real_s_real_t_ctc)
-
-            real_s_fake_t_ctc = self.recognition(real_s_fake_t_images, training=True)
-            real_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, real_s_fake_t_ctc)
-
-            fake_s_fake_t_ctc = self.recognition(fake_s_fake_t_images, training=True)
-            fake_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, fake_s_fake_t_ctc)
-
-            g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
+            g_fake_ctc = self.recognition(g_fake_images, training=True)
+            g_ctc_loss = self.ctc_loss(g_real_texts, g_fake_ctc)
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
@@ -718,7 +714,7 @@ class BackboneModel(tf.keras.Model):
             strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-            if i >= len(self.blocks[:-2]):
+            if i >= len(self.blocks[:-3]):
                 feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
