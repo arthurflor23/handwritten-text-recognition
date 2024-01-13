@@ -77,9 +77,9 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        patch_dim = 32
         latent_dim = 64
         embedding_dim = 64
+        patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
         discriminator_blocks = [64, 64, 128, 256]
@@ -90,7 +90,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.patch_discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                       blocks=discriminator_blocks,
-                                                      patch_dim=patch_dim,
+                                                      patch_shape=patch_shape,
                                                       name='patch_discriminator')
 
         self.style_backbone = BackboneModel(image_shape=self.image_shape,
@@ -519,7 +519,7 @@ class DiscriminatorModel(tf.keras.Model):
     def __init__(self,
                  image_shape,
                  blocks,
-                 patch_dim=None,
+                 patch_shape=None,
                  name='discriminator',
                  **kwargs):
         """
@@ -531,8 +531,8 @@ class DiscriminatorModel(tf.keras.Model):
             Shape of the input image.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
-        patch_dim : int or None
-            List of patch size and stride.
+        patch_shape : list, tuple or None
+            Patch shape values.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -543,7 +543,7 @@ class DiscriminatorModel(tf.keras.Model):
 
         self.image_shape = image_shape
         self.blocks = blocks
-        self.patch_dim = patch_dim
+        self.patch_shape = patch_shape
 
         self.build_model()
 
@@ -566,7 +566,7 @@ class DiscriminatorModel(tf.keras.Model):
         config.update({
             'image_shape': self.image_shape,
             'blocks': self.blocks,
-            'patch_dim': self.patch_dim,
+            'patch_shape': self.patch_shape,
         })
 
     def build_model(self):
@@ -602,7 +602,7 @@ class DiscriminatorModel(tf.keras.Model):
             return tf.keras.layers.Add()([h, x])
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
-        block = ExtractPatches(patch_dim=self.patch_dim)(image_inputs)
+        block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
