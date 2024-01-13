@@ -172,6 +172,8 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
 
         if self.patch_shape is not None:
+            batch_size = tf.shape(inputs)[0]
+
             patches = tf.image.extract_patches(images=inputs,
                                                sizes=[1] + self.patch_shape,
                                                strides=[1] + self.patch_shape,
@@ -181,9 +183,10 @@ class ExtractPatches(tf.keras.layers.Layer):
             inputs = tf.reshape(patches, shape=[-1] + self.patch_shape)
 
             patch_means = tf.reduce_mean(inputs, axis=[1, 2, 3])
-            mask = tf.not_equal(patch_means, 1.0)
+            inputs = tf.boolean_mask(inputs, tf.not_equal(patch_means, 1.0))
 
-            inputs = tf.boolean_mask(inputs, mask)
+            indices = tf.random.shuffle(tf.range(tf.shape(inputs)[0]))
+            inputs = tf.gather(inputs, indices[:batch_size])
             inputs = tf.stop_gradient(inputs)
 
         return inputs
