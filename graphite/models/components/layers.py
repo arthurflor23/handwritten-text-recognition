@@ -176,14 +176,18 @@ class ExtractPatches(tf.keras.layers.Layer):
 
             patches = tf.image.extract_patches(images=inputs,
                                                sizes=[1] + self.patch_shape,
-                                               strides=[1] + self.patch_shape,
+                                               strides=[1, 8, 8, 1],
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
             inputs = tf.reshape(patches, shape=[-1] + self.patch_shape)
 
             patch_means = tf.reduce_mean(inputs, axis=[1, 2, 3])
-            inputs = tf.boolean_mask(inputs, tf.not_equal(patch_means, 1.0))
+            mask = tf.not_equal(patch_means, 1.0)
+
+            inputs = tf.cond(pred=tf.reduce_any(mask),
+                             true_fn=lambda: tf.boolean_mask(inputs, mask),
+                             false_fn=lambda: inputs)
 
             indices = tf.random.shuffle(tf.range(tf.shape(inputs)[0]))
             inputs = tf.gather(inputs, indices[:batch_size])
