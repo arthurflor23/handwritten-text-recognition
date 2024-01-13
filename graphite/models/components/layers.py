@@ -172,12 +172,9 @@ class ExtractPatches(tf.keras.layers.Layer):
         """
 
         if self.patch_shape is not None:
-            sizes = [1] + self.patch_shape
-            strides = [1, self.patch_shape[0] // 2, self.patch_shape[1] // 2, 1]
-
             patches = tf.image.extract_patches(images=inputs,
-                                               sizes=sizes,
-                                               strides=strides,
+                                               sizes=[1] + self.patch_shape,
+                                               strides=[1] + self.patch_shape,
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
