@@ -750,19 +750,21 @@ class MetricsTracker:
             if name not in self.metrics:
                 self.metrics[name] = tf.keras.metrics.Mean()
 
-    def update(self, values):
+    def update(self, metrics):
         """
         Update the metrics with new values.
 
         Parameters
         ----------
-        values : dict
+        metrics : dict
             Dictionary with metric names as keys and their new values.
         """
 
-        for name, value in values.items():
-            if name in self.metrics:
-                self.metrics[name].update_state(value)
+        for name, value in metrics.items():
+            if name not in self.metrics:
+                self.add([name])
+
+            self.metrics[name].update_state(value)
 
     def result(self):
         """
