@@ -191,7 +191,7 @@ class Graphite():
             plateau_factor=0.1,
             plateau_cooldown=0,
             plateau_patience=20,
-            patience=30,
+            patience=40,
             epochs=None,
             verbose=1):
         """
