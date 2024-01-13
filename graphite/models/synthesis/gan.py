@@ -77,8 +77,8 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 128
-        embedding_dim = 128
+        latent_dim = 64
+        embedding_dim = 64
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
@@ -102,14 +102,14 @@ class SynthesisModel(BaseSynthesisModel):
                                                   writers_shape=self.writers_shape,
                                                   name='identification')
 
-        self.recognition = RecognitionModel(image_shape=self.image_shape,
-                                            lexical_shape=self.lexical_shape,
-                                            blocks=backbone_blocks,
-                                            name='recognition')
+        # self.recognition = RecognitionModel(image_shape=self.image_shape,
+        #                                     lexical_shape=self.lexical_shape,
+        #                                     blocks=backbone_blocks,
+        #                                     name='recognition')
 
-        # self.recognition = RecognitionModel2(image_shape=self.image_shape,
-        #                                      lexical_shape=self.lexical_shape,
-        #                                      name='recognition')
+        self.recognition = RecognitionModel2(image_shape=self.image_shape,
+                                             lexical_shape=self.lexical_shape,
+                                             name='recognition')
 
         self.style_encoder = StyleEncoderModel(features_shape=self.style_backbone.features_output_shape,
                                                latent_dim=latent_dim,
@@ -443,18 +443,18 @@ class GeneratorModel(tf.keras.Model):
             h = ConditionalBatchNormalization()([x, y])
             h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
 
-            if upsample is None:
-                h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
-                x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
-            else:
+            if upsample is not None:
                 h = SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=3, strides=upsample, padding='same'))(h)
+                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=2, strides=upsample, padding='same'))(h)
                 x = SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=1, strides=upsample, padding='same'))(x)
+                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=2, strides=upsample, padding='same'))(x)
 
+            h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             h = ConditionalBatchNormalization()([h, y])
             h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
+
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
+            x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -592,8 +592,10 @@ class DiscriminatorModel(tf.keras.Model):
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             if downsample:
-                h = tf.keras.layers.AveragePooling2D()(h)
-                x = tf.keras.layers.AveragePooling2D()(x)
+                h = SpectralNormalization(
+                    tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(h)
+                x = SpectralNormalization(
+                    tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(x)
 
             if not preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
@@ -604,10 +606,10 @@ class DiscriminatorModel(tf.keras.Model):
         block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
-
-            if i == len(self.blocks) - 2:
+            if i == len(self.blocks) - 1:
                 block = SelfAttentionGan()(block)
+
+            block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
         outputs = tf.keras.layers.LeakyReLU(alpha=0.2)(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
