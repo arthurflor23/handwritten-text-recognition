@@ -52,7 +52,7 @@ class SynthesisModel(BaseSynthesisModel):
             The learning rate for the optimizer.
         """
 
-        super().compile(run_eagerly=True)
+        super().compile(run_eagerly=False)
 
         if learning_rate is None:
             learning_rate = 1e-4

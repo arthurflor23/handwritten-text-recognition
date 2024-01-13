@@ -171,7 +171,7 @@ class ExtractPatches(tf.keras.layers.Layer):
             A tensor containing the extracted patches.
         """
 
-        x = tf.identity(inputs)
+        x = inputs
 
         if self.patch_shape is not None:
             patches = tf.image.extract_patches(images=x,
@@ -191,8 +191,8 @@ class ExtractPatches(tf.keras.layers.Layer):
 
             indices = tf.random.shuffle(tf.range(tf.shape(x)[0]))
             x = tf.gather(x, indices[:tf.shape(inputs)[0]])
+            x = tf.stop_gradient(x)
 
-        x = tf.stop_gradient(x)
         return x
 
 
