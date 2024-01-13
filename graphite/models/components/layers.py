@@ -189,9 +189,8 @@ class ExtractPatches(tf.keras.layers.Layer):
                         true_fn=lambda: tf.boolean_mask(x, mask),
                         false_fn=lambda: x)
 
-            indices = tf.random.shuffle(tf.range(tf.shape(x)[0]))
+            indices = tf.stop_gradient(tf.random.shuffle(tf.range(tf.shape(x)[0])))
             x = tf.gather(x, indices[:tf.shape(inputs)[0]])
-            x = tf.stop_gradient(x)
 
         return x
 
