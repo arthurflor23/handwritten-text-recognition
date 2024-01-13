@@ -52,7 +52,7 @@ class SynthesisModel(BaseSynthesisModel):
             The learning rate for the optimizer.
         """
 
-        super().compile(run_eagerly=False)
+        super().compile(run_eagerly=True)
 
         if learning_rate is None:
             learning_rate = 1e-4
@@ -78,7 +78,7 @@ class SynthesisModel(BaseSynthesisModel):
         """
 
         latent_dim = 64
-        embedding_dim = 64
+        embedding_dim = 16
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
@@ -121,17 +121,7 @@ class SynthesisModel(BaseSynthesisModel):
                                         blocks=generator_blocks,
                                         name='generator')
 
-        self.metrics_tracker = MetricsTracker(['d_disc_loss',
-                                               'd_wid_loss',
-                                               'd_ctc_loss',
-                                               'g_disc_loss',
-                                               'g_wid_loss',
-                                               'g_ctc_loss',
-                                               'g_sty_loss',
-                                               'g_cnt_loss',
-                                               'g_cx_loss',
-                                               'g_loss',
-                                               self.kid.name])
+        self.metrics_tracker = MetricsTracker()
 
     def _discriminator_step(self, input_data):
         """
@@ -257,15 +247,11 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
-            fake_images = tf.concat([real_s_real_t_images,
-                                    real_s_fake_t_images,
-                                    fake_s_fake_t_images], axis=0)
-
-            real_texts = tf.concat([text_data,
-                                    aug_text_data,
-                                    aug_text_data], axis=0)
-
             # patch and discriminator (adversarial)
+            fake_images = tf.concat([real_s_real_t_images,
+                                     real_s_fake_t_images,
+                                     fake_s_fake_t_images], axis=0)
+
             fake_disc = self.discriminator(fake_images, training=True)
             fake_disc_loss = -tf.reduce_mean(fake_disc)
 
@@ -275,8 +261,16 @@ class SynthesisModel(BaseSynthesisModel):
             g_disc_loss = fake_disc_loss + fake_patch_disc_loss
 
             # handwriting recognition
-            fake_ctc_logits = self.recognition(fake_images, training=True)
-            g_ctc_loss = self.ctc_loss(real_texts, fake_ctc_logits)
+            real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
+            real_s_real_t_ctc_loss = self.ctc_loss(text_data, real_s_real_t_ctc)
+
+            real_s_fake_t_ctc = self.recognition(real_s_fake_t_images, training=True)
+            real_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, real_s_fake_t_ctc)
+
+            fake_s_fake_t_ctc = self.recognition(fake_s_fake_t_images, training=True)
+            fake_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, fake_s_fake_t_ctc)
+
+            g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
@@ -288,7 +282,8 @@ class SynthesisModel(BaseSynthesisModel):
             g_cnt_loss = self.bv_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
 
             # writer identifier
-            fake_real_s_images = tf.concat([real_s_real_t_images, real_s_fake_t_images], axis=0)
+            fake_real_s_images = tf.concat([real_s_real_t_images,
+                                            real_s_fake_t_images], axis=0)
 
             fake_real_s_features_data, fake_image_feats = self.style_backbone(fake_real_s_images, training=True)
             fake_real_s_wid_logits = self.identification(fake_real_s_features_data, training=True)
@@ -581,7 +576,7 @@ class DiscriminatorModel(tf.keras.Model):
             h = x
 
             if preactive:
-                h = tf.keras.layers.LeakyReLU(alpha=0.2)(x)
+                h = tf.keras.layers.ReLU()(x)
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
@@ -723,7 +718,7 @@ class BackboneModel(tf.keras.Model):
             strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-            if i > 0:
+            if i >= len(self.blocks[:-2]):
                 feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
