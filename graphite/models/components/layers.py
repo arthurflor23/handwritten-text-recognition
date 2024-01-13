@@ -171,29 +171,29 @@ class ExtractPatches(tf.keras.layers.Layer):
             A tensor containing the extracted patches.
         """
 
-        if self.patch_shape is not None:
-            batch_size = tf.shape(inputs)[0]
+        x = tf.identity(inputs)
 
-            patches = tf.image.extract_patches(images=inputs,
+        if self.patch_shape is not None:
+            patches = tf.image.extract_patches(images=x,
                                                sizes=[1] + self.patch_shape,
                                                strides=[1, 8, 8, 1],
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
-            inputs = tf.reshape(patches, shape=[-1] + self.patch_shape)
+            x = tf.reshape(patches, shape=[-1] + self.patch_shape)
 
-            patch_means = tf.reduce_mean(inputs, axis=[1, 2, 3])
+            patch_means = tf.reduce_mean(x, axis=[1, 2, 3])
             mask = tf.not_equal(patch_means, 1.0)
 
-            inputs = tf.cond(pred=tf.reduce_any(mask),
-                             true_fn=lambda: tf.boolean_mask(inputs, mask),
-                             false_fn=lambda: inputs)
+            x = tf.cond(pred=tf.reduce_any(mask),
+                        true_fn=lambda: tf.boolean_mask(x, mask),
+                        false_fn=lambda: x)
 
-            indices = tf.random.shuffle(tf.range(tf.shape(inputs)[0]))
-            inputs = tf.gather(inputs, indices[:batch_size])
-            inputs = tf.stop_gradient(inputs)
+            indices = tf.random.shuffle(tf.range(tf.shape(x)[0]))
+            x = tf.gather(x, indices[:tf.shape(inputs)[0]])
 
-        return inputs
+        x = tf.stop_gradient(x)
+        return x
 
 
 class GatedConv2D(tf.keras.layers.Layer):
