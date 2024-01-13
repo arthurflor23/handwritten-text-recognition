@@ -77,8 +77,8 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 64
-        embedding_dim = 64
+        latent_dim = 128
+        embedding_dim = 128
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
         generator_blocks = [256, 128, 64, 64]
@@ -603,7 +603,7 @@ class DiscriminatorModel(tf.keras.Model):
             return tf.keras.layers.Add()([h, x])
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
-        block = ExtractPatches(patch_shape=self.patch_shape or self.image_shape)(image_inputs)
+        block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
@@ -724,7 +724,7 @@ class BackboneModel(tf.keras.Model):
             strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-            if i > 1:
+            if i > 0:
                 feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)

@@ -122,13 +122,13 @@ class ExtractPatches(tf.keras.layers.Layer):
     A Tensorflow Keras layer to extract patches from input images.
     """
 
-    def __init__(self, patch_shape, **kwargs):
+    def __init__(self, patch_shape=None, **kwargs):
         """
         Initializes Patches layer.
 
         Parameters
         ----------
-        patch_shape : list or tuple
+        patch_shape : list, tuple, or None
             The target patch size to create.
         **kwargs
             Additional keyword arguments for the Layer.
@@ -136,7 +136,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.patch_shape = list(patch_shape)
+        self.patch_shape = patch_shape
 
     def get_config(self):
         """
@@ -156,19 +156,6 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         return config
 
-    def build(self, input_shape):
-        """
-        Builds the layer with patches ratio values.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensor.
-        """
-
-        self.patch_height_ratio = input_shape[1] // self.patch_shape[0]
-        self.patch_width_ratio = input_shape[2] // self.patch_shape[1]
-
     def call(self, inputs):
         """
         Splits the input image into patches.
@@ -184,15 +171,17 @@ class ExtractPatches(tf.keras.layers.Layer):
             A tensor containing the extracted patches.
         """
 
-        patches = tf.image.extract_patches(
-            images=inputs,
-            sizes=[1, self.patch_height_ratio, self.patch_width_ratio, 1],
-            strides=[1, self.patch_height_ratio, self.patch_width_ratio, 1],
-            rates=[1, 1, 1, 1],
-            padding='VALID',
-        )
+        if self.patch_shape is not None:
+            patches = tf.image.extract_patches(images=inputs,
+                                               sizes=[1] + self.patch_shape,
+                                               strides=[1] + self.patch_shape,
+                                               rates=[1, 1, 1, 1],
+                                               padding='VALID')
 
-        return patches
+            inputs = tf.reshape(patches, shape=[-1] + self.patch_shape)
+            inputs = tf.stop_gradient(inputs)
+
+        return inputs
 
 
 class GatedConv2D(tf.keras.layers.Layer):
