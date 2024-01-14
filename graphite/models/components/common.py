@@ -143,7 +143,7 @@ class BaseModel(tf.keras.Model):
                                    skip_mismatch=skip_mismatch,
                                    options=options)
 
-    def get_lens(self, batch, pad_value=None):
+    def get_batch_lens(self, batch, pad_value=None):
         """
         Calculate tensor lengths in batch.
 
@@ -178,7 +178,7 @@ class BaseModel(tf.keras.Model):
 
         return batch_lens
 
-    def set_mask(self, batch, batch_lens=None, reduce_scale=None, reduce_norm=False):
+    def set_batch_mask(self, batch, batch_lens=None, reduce_scale=None, reduce_norm=False):
         """
         Apply a mask to a batch of tensors based on their lengths.
 
@@ -327,10 +327,10 @@ class BaseRecognitionModel(BaseModel):
         if self.generator and self.style_backbone and self.style_encoder:
             if random.random() <= self.synthesis_ratio:
                 images, texts = image_data, aug_text_data
-                image_lens = self.get_lens(image_data, pad_value=1)
+                image_lens = self.get_batch_lens(image_data, pad_value=1)
 
                 features_data, _ = self.style_backbone(images, training=False)
-                features_data = self.set_mask(features_data, image_lens, self.style_backbone.reduce_scale)
+                features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
                 latent_inputs, _, _ = self.style_encoder(features_data, training=False)
                 images = self.generator([latent_inputs, texts], training=False)
@@ -668,10 +668,10 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _) = input_data
 
-        image_lens = self.get_lens(image_data, pad_value=1)
+        image_lens = self.get_batch_lens(image_data, pad_value=1)
 
         features_data, _ = self.style_backbone(image_data)
-        features_data = self.set_mask(features_data, image_lens, self.style_backbone.reduce_scale)
+        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
         latent_data, _, _ = self.style_encoder(features_data)
         generated_images = self.generator([latent_data, text_data])
@@ -707,10 +707,10 @@ class BaseSynthesisModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            image_lens = self.get_lens(image_data, pad_value=1)
+            image_lens = self.get_batch_lens(image_data, pad_value=1)
 
             features_data, _ = self.style_backbone(image_data, training=training, mask=mask)
-            features_data = self.set_mask(features_data, image_lens, self.style_backbone.reduce_scale)
+            features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
             latent_data, _, _ = self.style_encoder(features_data, training=training)
 

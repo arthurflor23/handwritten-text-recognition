@@ -81,8 +81,8 @@ class SynthesisModel(BaseSynthesisModel):
         embedding_dim = 16
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
-        discriminator_blocks = [64, 64, 128, 256]
-        generator_blocks = [256, 128, 64, 64]
+        discriminator_blocks = [32, 64, 128, 256]
+        generator_blocks = [256, 128, 64, 32]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 blocks=discriminator_blocks,
@@ -137,8 +137,8 @@ class SynthesisModel(BaseSynthesisModel):
 
         batch_size = tf.shape(image_data)[0]
 
-        image_lens = self.get_lens(image_data, pad_value=1)
-        aug_image_lens = self.get_lens(aug_image_data, pad_value=1)
+        image_lens = self.get_batch_lens(image_data, pad_value=1)
+        aug_image_lens = self.get_batch_lens(aug_image_data, pad_value=1)
 
         latent_dim = self.style_encoder.latent_dim
         reduce_scale = self.style_backbone.reduce_scale
@@ -153,7 +153,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         for _ in range(self.discriminator_steps):
             real_features_data, _ = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_mask(real_features_data, image_lens, reduce_scale)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
 
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
@@ -207,7 +207,7 @@ class SynthesisModel(BaseSynthesisModel):
             # writer identifier
             with tf.GradientTape() as tape:
                 wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
-                wid_features_data = self.set_mask(wid_features_data, aug_image_lens, reduce_scale, True)
+                wid_features_data = self.set_batch_mask(wid_features_data, aug_image_lens, reduce_scale, True)
 
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
@@ -246,9 +246,9 @@ class SynthesisModel(BaseSynthesisModel):
 
         batch_size = tf.shape(image_data)[0]
 
-        text_lens = self.get_lens(text_data, pad_value=0)
-        image_lens = self.get_lens(image_data, pad_value=1)
-        aug_text_lens = self.get_lens(aug_text_data, pad_value=0)
+        text_lens = self.get_batch_lens(text_data, pad_value=0)
+        image_lens = self.get_batch_lens(image_data, pad_value=1)
+        aug_text_lens = self.get_batch_lens(aug_text_data, pad_value=0)
 
         aug_image_lens = aug_text_lens * tf.math.floordiv(image_lens, text_lens)
         aug_image_lens = tf.minimum(tf.shape(image_data)[1], aug_image_lens)
@@ -266,7 +266,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         with tf.GradientTape() as tape:
             real_features_data, real_image_feats = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_mask(real_features_data, image_lens, reduce_scale)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
 
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
@@ -311,7 +311,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
-            fake_features_data = self.set_mask(fake_features_data, aug_image_lens, reduce_scale)
+            fake_features_data = self.set_batch_mask(fake_features_data, aug_image_lens, reduce_scale)
 
             fake_latent_data, _, _ = self.style_encoder(fake_features_data, training=True)
 
@@ -322,12 +322,12 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identifier
             real_t_features_data, real_t_image_feats = self.style_backbone(real_s_real_t_images, training=True)
-            real_t_features_data = self.set_mask(real_t_features_data, image_lens, reduce_scale, True)
+            real_t_features_data = self.set_batch_mask(real_t_features_data, image_lens, reduce_scale, True)
 
             real_t_wid_logits = self.identification(real_t_features_data, training=True)
 
             fake_t_features_data, fake_t_image_feats = self.style_backbone(real_s_fake_t_images, training=True)
-            fake_t_features_data = self.set_mask(fake_t_features_data, image_lens, reduce_scale, True)
+            fake_t_features_data = self.set_batch_mask(fake_t_features_data, image_lens, reduce_scale, True)
 
             fake_t_wid_logits = self.identification(fake_t_features_data, training=True)
 
@@ -386,10 +386,10 @@ class SynthesisModel(BaseSynthesisModel):
         # kid metric
         _, (image_data, text_data, _) = input_data
 
-        image_lens = self.get_lens(image_data, pad_value=1)
+        image_lens = self.get_batch_lens(image_data, pad_value=1)
 
         features_data, _ = self.style_backbone(image_data, training=False)
-        features_data = self.set_mask(features_data, image_lens, self.style_backbone.reduce_scale)
+        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
         latent_data, _, _ = self.style_encoder(features_data, training=False)
         generated_images = self.generator([latent_data, text_data], training=False)
@@ -944,10 +944,10 @@ class IdentificationModel(tf.keras.Model):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape[:-1])
 
-        style_dense = tf.keras.layers.Dense(self.features_shape[-1])(feature_inputs)
-        style_dense = tf.keras.layers.LeakyReLU(alpha=0.2)(style_dense)
+        style = tf.keras.layers.Dense(self.features_shape[-1])(feature_inputs)
+        style = tf.keras.layers.LeakyReLU(alpha=0.2)(style)
 
-        outputs = tf.keras.layers.Dense(self.writers_shape[0])(style_dense)
+        outputs = tf.keras.layers.Dense(self.writers_shape[0])(style)
 
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
