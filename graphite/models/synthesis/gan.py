@@ -80,7 +80,7 @@ class SynthesisModel(BaseSynthesisModel):
         latent_dim = 128
         embedding_dim = 32
         patch_shape = [32, 32, 1]
-        backbone_blocks = [16, 32, 64, 128]
+        backbone_blocks = [32, 32, 64, 128]
         discriminator_blocks = [64, 128, 256, 256]
         generator_blocks = [256, 128, 64, 64]
 
@@ -770,9 +770,10 @@ class BackboneModel(tf.keras.Model):
                 feats.append(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
 
         outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
@@ -1060,6 +1061,7 @@ class RecognitionModel(tf.keras.Model):
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
