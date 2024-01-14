@@ -182,6 +182,13 @@ class ExtractPatches(tf.keras.layers.Layer):
 
             x = tf.reshape(patches, shape=[-1] + self.patch_shape)
 
+            patch_means = tf.reduce_mean(x, axis=[1, 2, 3])
+            mask = tf.not_equal(patch_means, 1.0)
+
+            x = tf.cond(pred=tf.reduce_any(mask),
+                        true_fn=lambda: tf.boolean_mask(x, mask),
+                        false_fn=lambda: x)
+
         return x
 
 
