@@ -64,10 +64,10 @@ class SynthesisModel(BaseSynthesisModel):
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
     def build_model(self):
         """
@@ -80,9 +80,9 @@ class SynthesisModel(BaseSynthesisModel):
         latent_dim = 128
         embedding_dim = 32
         patch_shape = [32, 32, 1]
-        backbone_blocks = [32, 64, 64, 128]
-        discriminator_blocks = [64, 128, 128, 256]
-        generator_blocks = [256, 128, 128, 64]
+        backbone_blocks = [16, 32, 64, 128]
+        discriminator_blocks = [64, 128, 256, 256]
+        generator_blocks = [256, 128, 64, 64]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 blocks=discriminator_blocks,
@@ -156,27 +156,34 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
-            d_fake_images = tf.stop_gradient(tf.concat([real_s_real_t_images,
-                                                        real_s_fake_t_images,
-                                                        fake_s_fake_t_images], axis=0))
-
-            d_real_images = tf.stop_gradient(tf.concat([image_data,
-                                                        aug_image_data], axis=0))
+            real_s_real_t_images = tf.stop_gradient(real_s_real_t_images)
+            real_s_fake_t_images = tf.stop_gradient(real_s_fake_t_images)
+            fake_s_fake_t_images = tf.stop_gradient(fake_s_fake_t_images)
 
             # patch and discriminator
             with tf.GradientTape() as tape:
                 # fake images
-                fake_disc = self.discriminator(d_fake_images, training=True)
-                fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
+                real_s_real_t_disc = self.discriminator(real_s_real_t_images, training=True)
+                real_s_fake_t_disc = self.discriminator(real_s_fake_t_images, training=True)
+                fake_s_fake_t_disc = self.discriminator(fake_s_fake_t_images, training=True)
 
-                fake_patch_disc = self.patch_discriminator(d_fake_images, training=True)
-                fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
+                fake_disc_loss = (tf.reduce_mean(tf.nn.relu(1.0 + real_s_real_t_disc)) +
+                                  tf.reduce_mean(tf.nn.relu(1.0 + real_s_fake_t_disc)) +
+                                  tf.reduce_mean(tf.nn.relu(1.0 + fake_s_fake_t_disc)))
+
+                real_s_real_t_patch_disc = self.patch_discriminator(real_s_real_t_images, training=True)
+                real_s_fake_t_patch_disc = self.patch_discriminator(real_s_fake_t_images, training=True)
+                fake_s_fake_t_patch_disc = self.patch_discriminator(fake_s_fake_t_images, training=True)
+
+                fake_patch_disc_loss = (tf.reduce_mean(tf.nn.relu(1.0 + real_s_real_t_patch_disc)) +
+                                        tf.reduce_mean(tf.nn.relu(1.0 + real_s_fake_t_patch_disc)) +
+                                        tf.reduce_mean(tf.nn.relu(1.0 + fake_s_fake_t_patch_disc)))
 
                 # real images
-                real_disc = self.discriminator(d_real_images, training=True)
+                real_disc = self.discriminator(image_data, training=True)
                 real_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_disc))
 
-                real_patch_disc = self.patch_discriminator(d_real_images, training=True)
+                real_patch_disc = self.patch_discriminator(image_data, training=True)
                 real_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_disc))
 
                 # discriminator loss
@@ -247,26 +254,36 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_data = tf.stop_gradient(tf.random.normal((batch_size, latent_dim)))
             fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data], training=True)
 
-            g_fake_images = tf.concat([real_s_real_t_images,
-                                       real_s_fake_t_images,
-                                       fake_s_fake_t_images], axis=0)
-
-            g_real_texts = tf.concat([text_data,
-                                      aug_text_data,
-                                      aug_text_data], axis=0)
-
             # patch and discriminator (adversarial)
-            fake_adv = self.discriminator(g_fake_images, training=True)
-            fake_adv_loss = -tf.reduce_mean(fake_adv)
+            real_s_real_t_adv = self.discriminator(real_s_real_t_images, training=True)
+            real_s_fake_t_adv = self.discriminator(real_s_fake_t_images, training=True)
+            fake_s_fake_t_adv = self.discriminator(fake_s_fake_t_images, training=True)
 
-            fake_patch_adv = self.patch_discriminator(g_fake_images, training=True)
-            fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv)
+            fake_adv_loss = (-tf.reduce_mean(real_s_real_t_adv) +
+                             -tf.reduce_mean(real_s_fake_t_adv) +
+                             -tf.reduce_mean(fake_s_fake_t_adv))
+
+            real_s_real_t_patch_adv = self.patch_discriminator(real_s_real_t_images, training=True)
+            real_s_fake_t_patch_adv = self.patch_discriminator(real_s_fake_t_images, training=True)
+            fake_s_fake_t_patch_adv = self.patch_discriminator(fake_s_fake_t_images, training=True)
+
+            fake_patch_adv_loss = (-tf.reduce_mean(real_s_real_t_patch_adv) +
+                                   -tf.reduce_mean(real_s_fake_t_patch_adv) +
+                                   -tf.reduce_mean(fake_s_fake_t_patch_adv))
 
             g_disc_loss = fake_adv_loss + fake_patch_adv_loss
 
             # handwriting recognition
-            g_fake_ctc = self.recognition(g_fake_images, training=True)
-            g_ctc_loss = self.ctc_loss(g_real_texts, g_fake_ctc)
+            real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
+            real_s_real_t_ctc_loss = self.ctc_loss(text_data, real_s_real_t_ctc)
+
+            real_s_fake_t_ctc = self.recognition(real_s_fake_t_images, training=True)
+            real_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, real_s_fake_t_ctc)
+
+            fake_s_fake_t_ctc = self.recognition(fake_s_fake_t_images, training=True)
+            fake_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, fake_s_fake_t_ctc)
+
+            g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
@@ -278,22 +295,24 @@ class SynthesisModel(BaseSynthesisModel):
             g_cnt_loss = self.bv_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
 
             # writer identifier
-            fake_real_s_images = tf.concat([real_s_real_t_images,
-                                            real_s_fake_t_images], axis=0)
+            real_t_features_data, real_t_image_feats = self.style_backbone(real_s_real_t_images, training=True)
+            real_t_wid_logits = self.identification(real_t_features_data, training=True)
+            real_t_wid_loss = self.cls_loss(writer_data, real_t_wid_logits)
 
-            fake_real_s_features_data, fake_image_feats = self.style_backbone(fake_real_s_images, training=True)
-            fake_real_s_wid_logits = self.identification(fake_real_s_features_data, training=True)
+            fake_t_features_data, fake_t_image_feats = self.style_backbone(real_s_fake_t_images, training=True)
+            fake_t_wid_logits = self.identification(fake_t_features_data, training=True)
+            fake_t_wid_loss = self.cls_loss(writer_data, fake_t_wid_logits)
 
-            g_wid_loss = self.cls_loss(tf.repeat(writer_data, repeats=2, axis=0), fake_real_s_wid_logits)
+            g_wid_loss = real_t_wid_loss + fake_t_wid_loss
 
             # contextual
             g_cx_loss = tf.constant(0.0)
 
-            for real_image_feat, fake_image_feat in zip(real_image_feats, fake_image_feats):
-                fake_feat = tf.split(fake_image_feat, num_or_size_splits=2, axis=0)
+            for real_image_feat, real_t_image_feat, fake_t_image_feat in \
+                    zip(real_image_feats, real_t_image_feats, fake_t_image_feats):
 
-                g_cx_loss += self.cx_loss(real_image_feat, fake_feat[0])
-                g_cx_loss += self.cx_loss(real_image_feat, fake_feat[1])
+                g_cx_loss += self.cx_loss(real_image_feat, real_t_image_feat)
+                g_cx_loss += self.cx_loss(real_image_feat, fake_t_image_feat)
 
             # generator loss
             g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + (g_cx_loss * 2.0)
