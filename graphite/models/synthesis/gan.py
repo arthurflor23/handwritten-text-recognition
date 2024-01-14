@@ -64,10 +64,10 @@ class SynthesisModel(BaseSynthesisModel):
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
 
     def build_model(self):
         """
@@ -167,17 +167,19 @@ class SynthesisModel(BaseSynthesisModel):
                 real_s_fake_t_disc = self.discriminator(real_s_fake_t_images, training=True)
                 fake_s_fake_t_disc = self.discriminator(fake_s_fake_t_images, training=True)
 
-                fake_disc_loss = (tf.reduce_mean(tf.nn.relu(1.0 + real_s_real_t_disc)) +
-                                  tf.reduce_mean(tf.nn.relu(1.0 + real_s_fake_t_disc)) +
-                                  tf.reduce_mean(tf.nn.relu(1.0 + fake_s_fake_t_disc)))
+                fake_disc = tf.concat([real_s_real_t_disc,
+                                       real_s_fake_t_disc,
+                                       fake_s_fake_t_disc], axis=0)
+                fake_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_disc))
 
                 real_s_real_t_patch_disc = self.patch_discriminator(real_s_real_t_images, training=True)
                 real_s_fake_t_patch_disc = self.patch_discriminator(real_s_fake_t_images, training=True)
                 fake_s_fake_t_patch_disc = self.patch_discriminator(fake_s_fake_t_images, training=True)
 
-                fake_patch_disc_loss = (tf.reduce_mean(tf.nn.relu(1.0 + real_s_real_t_patch_disc)) +
-                                        tf.reduce_mean(tf.nn.relu(1.0 + real_s_fake_t_patch_disc)) +
-                                        tf.reduce_mean(tf.nn.relu(1.0 + fake_s_fake_t_patch_disc)))
+                fake_patch_disc = tf.concat([real_s_real_t_patch_disc,
+                                             real_s_fake_t_patch_disc,
+                                             fake_s_fake_t_patch_disc], axis=0)
+                fake_patch_disc_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_disc))
 
                 # real images
                 real_disc = self.discriminator(image_data, training=True)
@@ -259,17 +261,19 @@ class SynthesisModel(BaseSynthesisModel):
             real_s_fake_t_adv = self.discriminator(real_s_fake_t_images, training=True)
             fake_s_fake_t_adv = self.discriminator(fake_s_fake_t_images, training=True)
 
-            fake_adv_loss = (-tf.reduce_mean(real_s_real_t_adv) +
-                             -tf.reduce_mean(real_s_fake_t_adv) +
-                             -tf.reduce_mean(fake_s_fake_t_adv))
+            fake_adv_disc = tf.concat([real_s_real_t_adv,
+                                       real_s_fake_t_adv,
+                                       fake_s_fake_t_adv], axis=0)
+            fake_adv_loss = -tf.reduce_mean(fake_adv_disc)
 
             real_s_real_t_patch_adv = self.patch_discriminator(real_s_real_t_images, training=True)
             real_s_fake_t_patch_adv = self.patch_discriminator(real_s_fake_t_images, training=True)
             fake_s_fake_t_patch_adv = self.patch_discriminator(fake_s_fake_t_images, training=True)
 
-            fake_patch_adv_loss = (-tf.reduce_mean(real_s_real_t_patch_adv) +
-                                   -tf.reduce_mean(real_s_fake_t_patch_adv) +
-                                   -tf.reduce_mean(fake_s_fake_t_patch_adv))
+            fake_patch_adv_disc = tf.concat([real_s_real_t_patch_adv,
+                                             real_s_fake_t_patch_adv,
+                                             fake_s_fake_t_patch_adv], axis=0)
+            fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv_disc)
 
             g_disc_loss = fake_adv_loss + fake_patch_adv_loss
 
@@ -297,13 +301,12 @@ class SynthesisModel(BaseSynthesisModel):
             # writer identifier
             real_t_features_data, real_t_image_feats = self.style_backbone(real_s_real_t_images, training=True)
             real_t_wid_logits = self.identification(real_t_features_data, training=True)
-            real_t_wid_loss = self.cls_loss(writer_data, real_t_wid_logits)
 
             fake_t_features_data, fake_t_image_feats = self.style_backbone(real_s_fake_t_images, training=True)
             fake_t_wid_logits = self.identification(fake_t_features_data, training=True)
-            fake_t_wid_loss = self.cls_loss(writer_data, fake_t_wid_logits)
 
-            g_wid_loss = real_t_wid_loss + fake_t_wid_loss
+            real_fake_t_wid_logits = tf.concat([real_t_wid_logits, fake_t_wid_logits], axis=0)
+            g_wid_loss = self.cls_loss(tf.repeat(writer_data, repeats=2, axis=0), real_fake_t_wid_logits)
 
             # contextual
             g_cx_loss = tf.constant(0.0)
