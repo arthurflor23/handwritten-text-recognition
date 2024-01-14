@@ -81,7 +81,7 @@ class SynthesisModel(BaseSynthesisModel):
         embedding_dim = 32
         patch_shape = [32, 32, 1]
         backbone_blocks = [32, 32, 64, 128]
-        discriminator_blocks = [64, 128, 256, 256]
+        discriminator_blocks = [64, 64, 128, 256]
         generator_blocks = [256, 128, 64, 64]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
