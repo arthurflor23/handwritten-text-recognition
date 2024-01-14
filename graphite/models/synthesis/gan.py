@@ -55,7 +55,7 @@ class SynthesisModel(BaseSynthesisModel):
         super().compile(run_eagerly=False)
 
         if learning_rate is None:
-            learning_rate = 1e-4
+            learning_rate = 2e-4
 
         self.d_optimizer = NormalizedOptimizer(
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
@@ -64,10 +64,10 @@ class SynthesisModel(BaseSynthesisModel):
             tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
 
         self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
         self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999))
+            tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.9, beta_2=0.999))
 
     def build_model(self):
         """
@@ -78,9 +78,9 @@ class SynthesisModel(BaseSynthesisModel):
         """
 
         latent_dim = 128
-        embedding_dim = 32
+        embedding_dim = 16
         patch_shape = [32, 32, 1]
-        backbone_blocks = [32, 32, 64, 128]
+        backbone_blocks = [16, 32, 64, 128]
         discriminator_blocks = [64, 64, 128, 256]
         generator_blocks = [256, 128, 64, 64]
 
