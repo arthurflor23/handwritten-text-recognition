@@ -12,7 +12,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
+    def __init__(self, momentum=0.1, epsilon=1e-5, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -30,6 +30,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.momentum = momentum
         self.epsilon = epsilon
+        self.mean = None
+        self.variance = None
 
     def get_config(self):
         """
@@ -67,15 +69,17 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.beta_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
         self.gamma_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
 
-        self.mean = self.add_weight(shape=(self.num_channels,),
+        self.mean = self.add_weight(name=f"{self.name}_mean",
+                                    shape=(1,),
                                     initializer='zeros',
                                     trainable=False,
-                                    name=f"{self.name}_mean")
+                                    dtype=tf.float32)
 
-        self.variance = self.add_weight(shape=(self.num_channels,),
+        self.variance = self.add_weight(name=f"{self.name}_variance",
+                                        shape=(1,),
                                         initializer='ones',
                                         trainable=False,
-                                        name=f"{self.name}_variance")
+                                        dtype=tf.float32)
 
     def call(self, inputs, training=None):
         """
