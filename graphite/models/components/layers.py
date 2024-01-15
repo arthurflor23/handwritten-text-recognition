@@ -524,9 +524,9 @@ class OctConv2D(tf.keras.layers.Layer):
         return tf.TensorShape([high_out_shape, low_out_shape])
 
 
-class SelfAttentionGan(tf.keras.layers.Layer):
+class SelfAttention(tf.keras.layers.Layer):
     """
-    Self-Attention GAN layer with spectral normalization on convolutional layers.
+    Self-Attention layer.
 
     References
     ----------
@@ -540,7 +540,7 @@ class SelfAttentionGan(tf.keras.layers.Layer):
         https://arxiv.org/abs/1802.05957
     """
 
-    def __init__(self, filters, **kwargs):
+    def __init__(self, filters, spectral_norm=False, **kwargs):
         """
         Initialize the self-attention gan layer.
 
@@ -548,6 +548,8 @@ class SelfAttentionGan(tf.keras.layers.Layer):
         ----------
         filters : int
             Number of output filters.
+        spectral_norm : bool, optional
+            Wheter apply spectral normalization or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -555,6 +557,7 @@ class SelfAttentionGan(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.filters = filters
+        self.spectral_norm = spectral_norm
 
     def get_config(self):
         """
@@ -570,6 +573,7 @@ class SelfAttentionGan(tf.keras.layers.Layer):
 
         config.update({
             'filters': self.filters,
+            'spectral_norm': self.spectral_norm,
         })
 
         return config
@@ -589,15 +593,21 @@ class SelfAttentionGan(tf.keras.layers.Layer):
         self.q_filters = self.filters // 8
         self.m_filters = self.filters // 2
 
-        self.f_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid'))
+        self.f_conv = tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid')
         self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
 
-        self.g_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid'))
+        self.g_conv = tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid')
 
-        self.h_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.m_filters, kernel_size=1, padding='valid'))
+        self.h_conv = tf.keras.layers.Conv2D(self.m_filters, kernel_size=1, padding='valid')
         self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
 
-        self.o_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.filters, kernel_size=1, padding='valid'))
+        self.o_conv = tf.keras.layers.Conv2D(self.filters, kernel_size=1, padding='valid')
+
+        if self.spectral_norm:
+            self.f_conv = SpectralNormalization(self.f_conv)
+            self.g_conv = SpectralNormalization(self.g_conv)
+            self.h_conv = SpectralNormalization(self.h_conv)
+            self.o_conv = SpectralNormalization(self.o_conv)
 
         self.gamma = self.add_weight(shape=(1,), initializer='zeros', name=f"{self.name}_gamma", trainable=True)
 
@@ -799,9 +809,9 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                  return_sequences=False,
                  activation='relu',
                  kernel_initializer='glorot_uniform',
-                 use_batch_norm=False,
-                 use_layer_norm=False,
-                 use_weight_norm=False,
+                 batch_norm=False,
+                 layer_norm=False,
+                 weight_norm=False,
                  go_backwards=False,
                  **kwargs):
         """
@@ -829,11 +839,11 @@ class TemporalConvolutional(tf.keras.layers.Layer):
             Activation function to use.
         kernel_initializer : str
             Initializer for the kernel weights matrix.
-        use_batch_norm : bool
+        batch_norm : bool
             Whether to use batch normalization.
-        use_layer_norm : bool
+        layer_norm : bool
             Whether to use layer normalization.
-        use_weight_norm : bool
+        weight_norm : bool
             Whether to use weight normalization.
         go_backwards : bool
             Process the input sequence backwards and return the reversed sequence.
@@ -843,7 +853,7 @@ class TemporalConvolutional(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        if sum([use_batch_norm, use_layer_norm, use_weight_norm]) > 1:
+        if sum([batch_norm, layer_norm, weight_norm]) > 1:
             raise ValueError('Only one normalization can be used.')
 
         if isinstance(filters, list) and len(filters) != len(dilations):
@@ -865,9 +875,9 @@ class TemporalConvolutional(tf.keras.layers.Layer):
         self.return_sequences = return_sequences
         self.activation_name = activation
         self.kernel_initializer = kernel_initializer
-        self.use_batch_norm = use_batch_norm
-        self.use_layer_norm = use_layer_norm
-        self.use_weight_norm = use_weight_norm
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        self.weight_norm = weight_norm
         self.go_backwards = go_backwards
 
         self.skip_connections = []
@@ -901,8 +911,8 @@ class TemporalConvolutional(tf.keras.layers.Layer):
             'return_sequences': self.return_sequences,
             'activation': self.activation_name,
             'kernel_initializer': self.kernel_initializer,
-            'use_batch_norm': self.use_batch_norm,
-            'use_layer_norm': self.use_layer_norm,
+            'batch_norm': self.batch_norm,
+            'layer_norm': self.layer_norm,
             'go_backwards': self.go_backwards,
         })
 
@@ -931,9 +941,9 @@ class TemporalConvolutional(tf.keras.layers.Layer):
                                                   padding=self.padding,
                                                   activation=self.activation_name,
                                                   dropout=self.dropout,
-                                                  use_batch_norm=self.use_batch_norm,
-                                                  use_layer_norm=self.use_layer_norm,
-                                                  use_weight_norm=self.use_weight_norm,
+                                                  batch_norm=self.batch_norm,
+                                                  layer_norm=self.layer_norm,
+                                                  weight_norm=self.weight_norm,
                                                   kernel_initializer=self.kernel_initializer,
                                                   name=f"residual_block_{stack}_{i}")
 
@@ -1040,9 +1050,9 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
                  dropout,
                  activation,
                  kernel_initializer,
-                 use_batch_norm,
-                 use_layer_norm,
-                 use_weight_norm,
+                 batch_norm,
+                 layer_norm,
+                 weight_norm,
                  **kwargs):
         """
         Initializes the residual block layer.
@@ -1063,11 +1073,11 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             Activation function to use.
         kernel_initializer : str
             Initializer for the kernel weights matrix.
-        use_batch_norm : bool
+        batch_norm : bool
             Whether to use batch normalization.
-        use_layer_norm : bool
+        layer_norm : bool
             Whether to use layer normalization.
-        use_weight_norm : bool
+        weight_norm : bool
             Whether to use weight normalization.
         **kwargs : dict
             Additional keyword arguments for the layer.
@@ -1082,9 +1092,9 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
         self.dropout = dropout
         self.activation = activation
         self.kernel_initializer = kernel_initializer
-        self.use_batch_norm = use_batch_norm
-        self.use_layer_norm = use_layer_norm
-        self.use_weight_norm = use_weight_norm
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        self.weight_norm = weight_norm
 
         self.layers = []
         self.shape_match_conv = None
@@ -1152,16 +1162,16 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
                                                   padding=self.padding,
                                                   kernel_initializer=self.kernel_initializer)
 
-                    if self.use_weight_norm:
+                    if self.weight_norm:
                         conv = WeightNormalization(conv)
 
                     self._build_layer(conv)
                     self._build_layer(activation)
 
-                    if self.use_batch_norm:
+                    if self.batch_norm:
                         self._build_layer(tf.keras.layers.BatchNormalization(renorm=True))
 
-                    elif self.use_layer_norm:
+                    elif self.layer_norm:
                         self._build_layer(tf.keras.layers.LayerNormalization())
 
                     self._build_layer(tf.keras.layers.Dropout(rate=self.dropout))
