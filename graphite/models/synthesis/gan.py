@@ -6,7 +6,7 @@ from graphite.models.components.common import MetricsTracker
 from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SpectralNormalization
-from graphite.models.components.layers import SelfAttentionGan
+from graphite.models.components.layers import SelfAttention
 from graphite.models.components.optimizers import NormalizedOptimizer
 from graphite.models.recognition.bluche import RecognitionModel as RecognitionModel2
 
@@ -539,7 +539,7 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
             if i == 0:
-                block = SelfAttentionGan(filters)(block)
+                block = SelfAttention(filters, spectral_norm=True)(block)
 
         outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
         outputs = tf.keras.layers.LeakyReLU(alpha=0.01)(outputs)
@@ -646,7 +646,7 @@ class DiscriminatorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
-                block = SelfAttentionGan(filters)(block)
+                block = SelfAttention(filters, spectral_norm=True)(block)
 
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
