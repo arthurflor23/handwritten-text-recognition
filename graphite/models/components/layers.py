@@ -538,17 +538,39 @@ class SelfAttentionGan(tf.keras.layers.Layer):
         https://arxiv.org/abs/1802.05957
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, filters, **kwargs):
         """
         Initialize the self-attention gan layer.
 
         Parameters
         ----------
+        filters : int
+            Number of output filters.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
+
+        self.filters = filters
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'filters': self.filters,
+        })
+
+        return config
 
     def build(self, input_shape):
         """
@@ -560,20 +582,20 @@ class SelfAttentionGan(tf.keras.layers.Layer):
             Shape of the input tensor.
         """
 
-        self.shape = input_shape
+        super().build(input_shape)
 
-        self.q_filters = self.shape[-1] // 8
-        self.k_filters = self.shape[-1] // 8
-        self.v_filters = self.shape[-1]
+        self.q_filters = self.filters // 8
+        self.m_filters = self.filters // 2
 
-        self.query_conv = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='same', use_bias=False))
+        self.f_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid'))
+        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
 
-        self.key_conv = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.k_filters, kernel_size=1, padding='same', use_bias=False))
+        self.g_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid'))
 
-        self.value_conv = SpectralNormalization(
-            tf.keras.layers.Conv2D(self.v_filters, kernel_size=1, padding='same', use_bias=False))
+        self.h_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.m_filters, kernel_size=1, padding='valid'))
+        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
+
+        self.o_conv = SpectralNormalization(tf.keras.layers.Conv2D(self.filters, kernel_size=1, padding='valid'))
 
         self.gamma = self.add_weight(shape=(1,), initializer='zeros', name=f"{self.name}_gamma", trainable=True)
 
@@ -592,27 +614,26 @@ class SelfAttentionGan(tf.keras.layers.Layer):
             Output tensor after applying self-attention.
         """
 
-        _, height, width, channels = self.shape
+        batch_size, height, width, channels = tf.unstack(tf.shape(x))
 
-        proj_query = self.query_conv(x)
-        proj_query = tf.nn.relu(proj_query)
-        proj_query = tf.reshape(proj_query, [-1, self.q_filters, height * width])
-        proj_query = tf.transpose(proj_query, [0, 2, 1])
+        f = self.f_pooling(self.f_conv(x))
+        f = tf.reshape(f, shape=(batch_size, -1, f.shape[-1]))
 
-        proj_key = self.key_conv(x)
-        proj_key = tf.nn.relu(proj_key)
-        proj_key = tf.reshape(proj_key, [-1, self.k_filters, height * width])
+        g = self.g_conv(x)
+        g = tf.reshape(g, shape=(batch_size, -1, g.shape[-1]))
 
-        energy = tf.matmul(proj_query, proj_key)
-        attention = tf.nn.softmax(energy, axis=-1)
+        s = tf.matmul(g, f, transpose_b=True)
+        beta = tf.nn.softmax(s, axis=-1)
 
-        proj_value = self.value_conv(x)
-        proj_value = tf.reshape(proj_value, [-1, self.v_filters, height * width])
+        h = self.h_pooling(self.h_conv(x))
+        h = tf.reshape(h, shape=(batch_size, -1, h.shape[-1]))
 
-        out = tf.matmul(proj_value, attention, transpose_b=True)
-        out = tf.reshape(out, [-1, height, width, channels])
+        o = tf.matmul(beta, h)
+        o = tf.reshape(o, shape=[batch_size, height, width, channels // 2])
 
-        return self.gamma * out + x
+        o = self.o_conv(o)
+
+        return self.gamma * o + x
 
 
 class SpectralNormalization(tf.keras.layers.Wrapper):
