@@ -84,6 +84,8 @@ class SynthesisModel(BaseSynthesisModel):
         backbone_blocks = [16, 32, 64, 128]
         discriminator_blocks = [32, 64, 128, 256]
         generator_blocks = [256, 128, 64, 32]
+        # discriminator_blocks = [64, 128, 256, 256]
+        # generator_blocks = [256, 128, 64, 64]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 blocks=discriminator_blocks,
@@ -154,7 +156,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         for _ in range(self.discriminator_steps):
             real_features_data, _ = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale, True)
 
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
@@ -267,7 +269,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         with tf.GradientTape() as tape:
             real_features_data, real_image_feats = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale, True)
 
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
@@ -312,7 +314,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
-            fake_features_data = self.set_batch_mask(fake_features_data, aug_image_lens, reduce_scale)
+            fake_features_data = self.set_batch_mask(fake_features_data, aug_image_lens, reduce_scale, True)
 
             fake_latent_data, _, _ = self.style_encoder(fake_features_data, training=True)
 
@@ -390,7 +392,7 @@ class SynthesisModel(BaseSynthesisModel):
         image_lens = self.get_batch_lens(image_data, pad_value=1)
 
         features_data, _ = self.style_backbone(image_data, training=False)
-        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
+        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale, True)
 
         latent_data, _, _ = self.style_encoder(features_data, training=False)
         generated_images = self.generator([latent_data, text_data], training=False)
@@ -848,28 +850,27 @@ class StyleEncoderModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape[:-1])
 
-        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
+        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
 
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Flatten()(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Flatten()(style)
+
+        style = tf.keras.layers.Dense(256)(feature_inputs)
+        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         style = tf.keras.layers.Dense(256)(style)
-        style = tf.keras.layers.LeakyReLU(alpha=0.2)(style)
-
-        style = tf.keras.layers.Dense(256)(style)
-        style = tf.keras.layers.LeakyReLU(alpha=0.2)(style)
+        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         mu = tf.keras.layers.Dense(self.latent_dim)(style)
-
         logvar = tf.keras.layers.Dense(self.latent_dim)(style)
-        logvar = tf.keras.layers.LeakyReLU(alpha=0.2)(logvar)
+        # logvar = tf.keras.layers.LeakyReLU(alpha=0.01)(logvar)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
