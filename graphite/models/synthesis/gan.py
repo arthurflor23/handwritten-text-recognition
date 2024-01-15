@@ -539,7 +539,7 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, chunks[i], filters, upsample=upsample)
 
             if i == 0:
-                block = SelfAttentionGan()(block)
+                block = SelfAttentionGan(filters)(block)
 
         outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
         outputs = tf.keras.layers.LeakyReLU(alpha=0.01)(outputs)
@@ -646,7 +646,7 @@ class DiscriminatorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
-                block = SelfAttentionGan()(block)
+                block = SelfAttentionGan(filters)(block)
 
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
