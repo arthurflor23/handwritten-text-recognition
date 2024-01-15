@@ -79,13 +79,11 @@ class SynthesisModel(BaseSynthesisModel):
         """
 
         latent_dim = 128
-        embedding_dim = 16
+        embedding_dim = 32
         patch_shape = [32, 32, 1]
         backbone_blocks = [16, 32, 64, 128]
-        discriminator_blocks = [32, 64, 128, 256]
-        generator_blocks = [256, 128, 64, 32]
-        # discriminator_blocks = [64, 128, 256, 256]
-        # generator_blocks = [256, 128, 64, 64]
+        discriminator_blocks = [64, 128, 256, 256]
+        generator_blocks = [256, 128, 64, 64]
 
         self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
                                                 blocks=discriminator_blocks,
@@ -488,11 +486,9 @@ class GeneratorModel(BaseModel):
             h = ConditionalBatchNormalization()([x, y])
             h = tf.keras.layers.LeakyReLU(alpha=0.01)(h)
 
-            if upsample is not None:
-                h = SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=2, strides=upsample, padding='same'))(h)
-                x = SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters, kernel_size=2, strides=upsample, padding='same'))(x)
+            if upsample:
+                h = tf.keras.layers.UpSampling2D(size=upsample)(h)
+                x = tf.keras.layers.UpSampling2D(size=upsample)(x)
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             h = ConditionalBatchNormalization()([h, y])
@@ -637,10 +633,8 @@ class DiscriminatorModel(BaseModel):
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
 
             if downsample:
-                h = SpectralNormalization(
-                    tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(h)
-                x = SpectralNormalization(
-                    tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(x)
+                h = tf.keras.layers.AveragePooling2D()(h)
+                x = tf.keras.layers.AveragePooling2D()(x)
 
             if not preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
@@ -869,7 +863,6 @@ class StyleEncoderModel(BaseModel):
 
         mu = tf.keras.layers.Dense(self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(self.latent_dim)(style)
-        # logvar = tf.keras.layers.LeakyReLU(alpha=0.01)(logvar)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
