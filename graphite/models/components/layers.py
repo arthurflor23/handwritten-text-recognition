@@ -70,16 +70,14 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.gamma_mapping = SpectralNormalization(tf.keras.layers.Dense(self.num_channels))
 
         self.mean = self.add_weight(name=f"{self.name}_mean",
-                                    shape=(1,),
+                                    shape=(self.num_channels,),
                                     initializer='zeros',
-                                    trainable=False,
-                                    dtype=tf.float32)
+                                    trainable=False)
 
         self.variance = self.add_weight(name=f"{self.name}_variance",
-                                        shape=(1,),
+                                        shape=(self.num_channels,),
                                         initializer='ones',
-                                        trainable=False,
-                                        dtype=tf.float32)
+                                        trainable=False)
 
     def call(self, inputs, training=None):
         """
