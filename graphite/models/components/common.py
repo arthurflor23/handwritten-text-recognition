@@ -330,7 +330,7 @@ class BaseRecognitionModel(BaseModel):
                 image_lens = self.get_batch_lens(image_data, pad_value=1)
 
                 features_data, _ = self.style_backbone(images, training=False)
-                features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale, True)
+                features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
                 latent_inputs, _, _ = self.style_encoder(features_data, training=False)
                 images = self.generator([latent_inputs, texts], training=False)
@@ -671,7 +671,7 @@ class BaseSynthesisModel(BaseModel):
         image_lens = self.get_batch_lens(image_data, pad_value=1)
 
         features_data, _ = self.style_backbone(image_data)
-        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale, True)
+        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
         latent_data, _, _ = self.style_encoder(features_data)
         generated_images = self.generator([latent_data, text_data])
@@ -710,7 +710,7 @@ class BaseSynthesisModel(BaseModel):
             image_lens = self.get_batch_lens(image_data, pad_value=1)
 
             features_data, _ = self.style_backbone(image_data, training=training, mask=mask)
-            features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale, True)
+            features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
             latent_data, _, _ = self.style_encoder(features_data, training=training)
 

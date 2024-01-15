@@ -156,7 +156,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         for _ in range(self.discriminator_steps):
             real_features_data, _ = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale, True)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
 
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
@@ -269,7 +269,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         with tf.GradientTape() as tape:
             real_features_data, real_image_feats = self.style_backbone(image_data, training=True)
-            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale, True)
+            real_features_data = self.set_batch_mask(real_features_data, image_lens, reduce_scale)
 
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
@@ -314,7 +314,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
-            fake_features_data = self.set_batch_mask(fake_features_data, aug_image_lens, reduce_scale, True)
+            fake_features_data = self.set_batch_mask(fake_features_data, aug_image_lens, reduce_scale)
 
             fake_latent_data, _, _ = self.style_encoder(fake_features_data, training=True)
 
@@ -392,7 +392,7 @@ class SynthesisModel(BaseSynthesisModel):
         image_lens = self.get_batch_lens(image_data, pad_value=1)
 
         features_data, _ = self.style_backbone(image_data, training=False)
-        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale, True)
+        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
 
         latent_data, _, _ = self.style_encoder(features_data, training=False)
         generated_images = self.generator([latent_data, text_data], training=False)
@@ -486,7 +486,7 @@ class GeneratorModel(BaseModel):
 
         def residual_block_up(x, y, filters, upsample=None):
             h = ConditionalBatchNormalization()([x, y])
-            h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
+            h = tf.keras.layers.LeakyReLU(alpha=0.01)(h)
 
             if upsample is not None:
                 h = SpectralNormalization(
@@ -496,7 +496,7 @@ class GeneratorModel(BaseModel):
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             h = ConditionalBatchNormalization()([h, y])
-            h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
+            h = tf.keras.layers.LeakyReLU(alpha=0.01)(h)
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
             x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
@@ -546,7 +546,7 @@ class GeneratorModel(BaseModel):
                 block = SelfAttentionGan()(block)
 
         outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
-        outputs = tf.keras.layers.LeakyReLU(alpha=0.2)(outputs)
+        outputs = tf.keras.layers.LeakyReLU(alpha=0.01)(outputs)
 
         outputs = SpectralNormalization(
             tf.keras.layers.Conv2D(1, kernel_size=3, padding='same', activation='tanh'))(outputs)
@@ -630,7 +630,7 @@ class DiscriminatorModel(BaseModel):
                 h = tf.keras.layers.ReLU()(x)
 
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
-            h = tf.keras.layers.LeakyReLU(alpha=0.2)(h)
+            h = tf.keras.layers.LeakyReLU(alpha=0.01)(h)
             h = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=3, padding='same'))(h)
 
             if preactive:
@@ -656,7 +656,7 @@ class DiscriminatorModel(BaseModel):
 
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
 
-        outputs = tf.keras.layers.LeakyReLU(alpha=0.2)(block)
+        outputs = tf.keras.layers.LeakyReLU(alpha=0.01)(block)
         outputs = tf.keras.layers.Flatten()(outputs)
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
@@ -738,23 +738,23 @@ class BackboneModel(BaseModel):
         for i, filters in enumerate(self.blocks):
             dropout_rate = 0.1 if i <= (len(self.blocks) - 1) // 2 else 0.2
 
-            block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+            block1 = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
             block1 = tf.keras.layers.Dropout(rate=dropout_rate)(block1)
 
-            block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(block1)
+            block1 = tf.keras.layers.LeakyReLU(alpha=0.01)(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             conv = tf.keras.layers.Add()([conv, block1])
 
-            block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+            block2 = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
             block2 = tf.keras.layers.Dropout(rate=dropout_rate)(block2)
 
-            block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(block2)
+            block2 = tf.keras.layers.LeakyReLU(alpha=0.01)(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
@@ -772,11 +772,11 @@ class BackboneModel(BaseModel):
             if i >= len(self.blocks[:-3]):
                 feats.append(conv)
 
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         outputs = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
@@ -850,19 +850,18 @@ class StyleEncoderModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feature_inputs = tf.keras.layers.Input(shape=self.features_shape[:-1])
+        feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
 
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Flatten()(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Flatten()(style)
 
-        style = tf.keras.layers.Dense(256)(feature_inputs)
+        style = tf.keras.layers.Dense(256)(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         style = tf.keras.layers.Dense(256)(style)
@@ -947,7 +946,7 @@ class IdentificationModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape[:-1])
 
         style = tf.keras.layers.Dense(self.features_shape[-1])(feature_inputs)
-        style = tf.keras.layers.LeakyReLU(alpha=0.2)(style)
+        style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         outputs = tf.keras.layers.Dense(self.writers_shape[0])(style)
 
@@ -1031,23 +1030,23 @@ class RecognitionModel(BaseModel):
         for i, filters in enumerate(self.blocks):
             dropout_rate = 0.1 if i <= (len(self.blocks) - 1) // 2 else 0.2
 
-            block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+            block1 = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
             block1 = tf.keras.layers.Dropout(rate=dropout_rate)(block1)
 
-            block1 = tf.keras.layers.LeakyReLU(alpha=0.2)(block1)
+            block1 = tf.keras.layers.LeakyReLU(alpha=0.01)(block1)
             block1 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
 
             conv = tf.keras.layers.Add()([conv, block1])
 
-            block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+            block2 = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
             block2 = tf.keras.layers.Conv2D(filters, kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
             block2 = tf.keras.layers.Dropout(rate=dropout_rate)(block2)
 
-            block2 = tf.keras.layers.LeakyReLU(alpha=0.2)(block2)
+            block2 = tf.keras.layers.LeakyReLU(alpha=0.01)(block2)
             block2 = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=1, padding='same')(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
 
@@ -1062,11 +1061,11 @@ class RecognitionModel(BaseModel):
             strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
             conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Conv2D(blocks[-1], kernel_size=3, strides=(1, 2), padding='same')(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.LeakyReLU(alpha=0.2)(conv)
+        conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
