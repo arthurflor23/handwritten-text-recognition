@@ -32,7 +32,7 @@ class BaseModel(tf.keras.Model):
         info = "=================================================="
         info += f"\n{self.__class__.__name__.center(50)}"
 
-        for name in self.names:
+        for name in getattr(self, 'names', ['model']):
             model = getattr(self, name, None)
 
             if model is None:
@@ -65,7 +65,7 @@ class BaseModel(tf.keras.Model):
         with self.distribute_strategy.scope():
             weights = {}
 
-            for name in self.names:
+            for name in getattr(self, 'names', ['model']):
                 model = getattr(self, name, None)
 
                 if model is not None:
@@ -83,7 +83,7 @@ class BaseModel(tf.keras.Model):
             A dictionary with submodel names as keys and their weights as values.
         """
 
-        for name in self.names:
+        for name in getattr(self, 'names', ['model']):
             model = getattr(self, name, None)
 
             if model is not None:
@@ -105,7 +105,7 @@ class BaseModel(tf.keras.Model):
             Optional arguments to pass to tf.train.Checkpoint.save.
         """
 
-        for name in self.names:
+        for name in getattr(self, 'names', ['model']):
             model = getattr(self, name, None)
             modelpath = filepath.replace('<model>', name)
 
@@ -132,7 +132,7 @@ class BaseModel(tf.keras.Model):
             Optional arguments to pass to tf.train.Checkpoint.load.
         """
 
-        for name in self.names:
+        for name in getattr(self, 'names', ['model']):
             model = getattr(self, name, None)
             modelpath = filepath.replace('<model>', name)
 

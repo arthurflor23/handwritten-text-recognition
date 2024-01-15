@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from graphite.models.components.common import BaseModel
 from graphite.models.components.common import BaseSynthesisModel
 from graphite.models.components.common import MetricsTracker
 from graphite.models.components.layers import ConditionalBatchNormalization
@@ -400,7 +401,7 @@ class SynthesisModel(BaseSynthesisModel):
         return self.metrics_tracker.result()
 
 
-class GeneratorModel(tf.keras.Model):
+class GeneratorModel(BaseModel):
     """
     A generator model that combines latent and vocabulary data for generative tasks.
 
@@ -434,7 +435,7 @@ class GeneratorModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -551,7 +552,7 @@ class GeneratorModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=[latent_inputs, text_inputs], outputs=outputs, name=self.name)
 
 
-class DiscriminatorModel(tf.keras.Model):
+class DiscriminatorModel(BaseModel):
     """
     A discriminator model that evaluates the authenticity of generated images.
 
@@ -579,7 +580,7 @@ class DiscriminatorModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -660,7 +661,7 @@ class DiscriminatorModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
 
 
-class BackboneModel(tf.keras.Model):
+class BackboneModel(BaseModel):
     """
     A backbone model that extracts style patterns from images.
 
@@ -685,7 +686,7 @@ class BackboneModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -783,7 +784,7 @@ class BackboneModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
 
 
-class StyleEncoderModel(tf.keras.Model):
+class StyleEncoderModel(BaseModel):
     """
     An encoder model that encodes extracted style features from images into a representative style vector.
 
@@ -808,7 +809,7 @@ class StyleEncoderModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -878,7 +879,7 @@ class StyleEncoderModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=[outputs, mu, logvar], name=self.name)
 
 
-class IdentificationModel(tf.keras.Model):
+class IdentificationModel(BaseModel):
     """
     A writer identification model that classifies handwriting images based on extracted style features.
 
@@ -903,7 +904,7 @@ class IdentificationModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -952,7 +953,7 @@ class IdentificationModel(tf.keras.Model):
         self.model = tf.keras.Model(inputs=feature_inputs, outputs=outputs, name=self.name)
 
 
-class RecognitionModel(tf.keras.Model):
+class RecognitionModel(BaseModel):
     """
     A recognition model that transcribes handwritten texts from images.
 
@@ -980,7 +981,7 @@ class RecognitionModel(tf.keras.Model):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for `tf.keras.Model`.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
