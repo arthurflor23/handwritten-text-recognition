@@ -540,14 +540,12 @@ class SelfAttention(tf.keras.layers.Layer):
         https://arxiv.org/abs/1802.05957
     """
 
-    def __init__(self, filters, spectral_norm=False, **kwargs):
+    def __init__(self, spectral_norm=False, **kwargs):
         """
         Initialize the self-attention gan layer.
 
         Parameters
         ----------
-        filters : int
-            Number of output filters.
         spectral_norm : bool, optional
             Wheter apply spectral normalization or not.
         **kwargs : dict
@@ -556,7 +554,6 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.filters = filters
         self.spectral_norm = spectral_norm
 
     def get_config(self):
@@ -572,7 +569,6 @@ class SelfAttention(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'filters': self.filters,
             'spectral_norm': self.spectral_norm,
         })
 
@@ -590,18 +586,17 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.q_filters = self.filters // 8
-        self.m_filters = self.filters // 2
+        filters = input_shape[-1]
 
-        self.f_conv = tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid')
+        self.f_conv = tf.keras.layers.Conv2D(filters // 8, kernel_size=1, padding='valid')
         self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
 
-        self.g_conv = tf.keras.layers.Conv2D(self.q_filters, kernel_size=1, padding='valid')
+        self.g_conv = tf.keras.layers.Conv2D(filters // 8, kernel_size=1, padding='valid')
 
-        self.h_conv = tf.keras.layers.Conv2D(self.m_filters, kernel_size=1, padding='valid')
+        self.h_conv = tf.keras.layers.Conv2D(filters // 2, kernel_size=1, padding='valid')
         self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
 
-        self.o_conv = tf.keras.layers.Conv2D(self.filters, kernel_size=1, padding='valid')
+        self.o_conv = tf.keras.layers.Conv2D(filters, kernel_size=1, padding='valid')
 
         if self.spectral_norm:
             self.f_conv = SpectralNormalization(self.f_conv)
