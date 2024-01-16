@@ -203,7 +203,10 @@ class BaseModel(tf.keras.Model):
             return batch
 
         if reduce_scale is not None:
-            batch_lens = tf.math.ceil(tf.math.divide(batch_lens, reduce_scale))
+            batch_lens = tf.cast(reduce_scale, dtype=tf.float32)
+            reduce_scale = tf.cast(reduce_scale, dtype=tf.float32)
+
+            batch_lens = tf.math.ceil(tf.math.divide(batch_lens, reduce_scale + 1e-7))
             batch_lens = tf.cast(batch_lens, dtype=batch_lens.dtype)
 
         batch_shape = batch.get_shape()

@@ -534,7 +534,7 @@ class GeneratorModel(BaseModel):
         for i, filters in enumerate(self.blocks):
             upsample = None
 
-            height_upsample_required = block.shape[1] < self.image_shape[0]
+            height_upsample_required = i > 0 and block.shape[1] < self.image_shape[0]
             width_upsample_required = block.shape[2] < self.image_shape[1]
 
             if height_upsample_required or width_upsample_required:
