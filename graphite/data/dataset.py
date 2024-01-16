@@ -276,8 +276,8 @@ class Dataset():
                 try:
                     image = utils.read_image(item['image'], item['bbox'], self.image_shape)
 
-                    if image is None or image.size <= 1:
-                        print(f"Image `{item['image']}` has an invalid size.")
+                    if image is None or image.size <= (32 * 32):
+                        print(f"Image `{item['image']}` has an invalid size ({image.size}).")
                         return None
 
                 except Exception:
