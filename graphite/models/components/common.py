@@ -331,11 +331,8 @@ class BaseRecognitionModel(BaseModel):
         if self.generator and self.style_backbone and self.style_encoder:
             if random.random() <= self.synthesis_ratio:
                 images, texts = image_data, aug_text_data
-                image_lens = self.get_batch_lens(image_data, pad_value=1)
 
                 features_data, _ = self.style_backbone(images, training=False)
-                features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
-
                 latent_inputs, _, _ = self.style_encoder(features_data, training=False)
                 images = self.generator([latent_inputs, texts], training=False)
 
@@ -380,7 +377,7 @@ class BaseRecognitionModel(BaseModel):
             self.edit_distance.name: self.edit_distance.result(),
         }
 
-    def call(self, x_data, training=None, mask=None):
+    def call(self, x_data, training=None):
         """
         Processes input images and transcribes handwritten texts from them.
 
@@ -390,8 +387,6 @@ class BaseRecognitionModel(BaseModel):
             A batch of data (x_data).
         training : bool, optional
             Indicates whether the call is for training or inference.
-        mask : mask or list of masks
-            A mask can be either a boolean tensor or None (no mask).
 
         Returns
         -------
@@ -400,7 +395,7 @@ class BaseRecognitionModel(BaseModel):
         """
 
         image_data = x_data[0] if isinstance(x_data, tuple) else x_data
-        ctc_logits = self.recognition(image_data, training=training, mask=mask)
+        ctc_logits = self.recognition(image_data, training=training)
 
         return ctc_logits
 
@@ -672,11 +667,7 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _) = input_data
 
-        image_lens = self.get_batch_lens(image_data, pad_value=1)
-
         features_data, _ = self.style_backbone(image_data)
-        features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
-
         latent_data, _, _ = self.style_encoder(features_data)
         generated_images = self.generator([latent_data, text_data])
 
@@ -686,7 +677,7 @@ class BaseSynthesisModel(BaseModel):
             self.kid.name: self.kid.result(),
         }
 
-    def call(self, x_data, training=None, mask=None):
+    def call(self, x_data, training=None):
         """
         Processes input images and text through the style backbone, encoder,
             and generator to produce generated images.
@@ -697,8 +688,6 @@ class BaseSynthesisModel(BaseModel):
             A batch of data (x_data).
         training : bool, optional
             Indicates whether the call is for training or inference.
-        mask : mask or list of masks
-            A mask can be either a boolean tensor or None (no mask).
 
         Returns
         -------
@@ -711,11 +700,7 @@ class BaseSynthesisModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            image_lens = self.get_batch_lens(image_data, pad_value=1)
-
-            features_data, _ = self.style_backbone(image_data, training=training, mask=mask)
-            features_data = self.set_batch_mask(features_data, image_lens, self.style_backbone.reduce_scale)
-
+            features_data, _ = self.style_backbone(image_data, training=training)
             latent_data, _, _ = self.style_encoder(features_data, training=training)
 
         generated_images = self.generator([latent_data, text_data], training=training)
