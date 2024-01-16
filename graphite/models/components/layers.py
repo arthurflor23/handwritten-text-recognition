@@ -426,7 +426,7 @@ class MaskingPadding(tf.keras.layers.Layer):
 
         if self.reduce_norm:
             reduce_axis = list(range(2, len(self.target_shape)))
-            target = tf.reduce_sum(target, axis=reduce_axis) / (input_lens + 1e-7)
+            target = tf.reduce_sum(target, axis=reduce_axis) / tf.expand_dims(input_lens + 1e-7, axis=-1)
 
         return target
 
