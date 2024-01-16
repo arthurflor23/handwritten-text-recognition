@@ -204,7 +204,7 @@ class BaseModel(tf.keras.Model):
 
         if reduce_scale is not None:
             batch_lens_dtype = batch_lens.dtype
-            batch_lens = tf.cast(reduce_scale, dtype=tf.float32)
+            batch_lens = tf.cast(batch_lens, dtype=tf.float32)
             reduce_scale = tf.cast(reduce_scale, dtype=tf.float32)
 
             batch_lens = tf.math.ceil(tf.math.divide(batch_lens, reduce_scale + 1e-7))
