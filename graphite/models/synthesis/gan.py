@@ -616,8 +616,8 @@ class DiscriminatorModel(BaseModel):
             #         tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(x)
 
             if downsample:
-                h = tf.keras.layers.AveragePooling2D(pool_size=2, padding='valid')(h)
-                x = tf.keras.layers.AveragePooling2D(pool_size=2, padding='valid')(x)
+                h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(h)
+                x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(x)
 
             if not preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
@@ -628,18 +628,18 @@ class DiscriminatorModel(BaseModel):
         block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            block = residual_block_down(block, filters, preactive=(i > 0), downsample=True)
+            downsample = (2, 2) if (i < len(self.blocks) - 1) else (1, 2)
+            block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
             # if i == len(self.blocks) - 2:
             #     block = SelfAttention(spectral_norm=True)(block)
 
         block = tf.keras.layers.LeakyReLU(alpha=0.01)(block)
 
-        if self.patch_shape:
-            block = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[2, 3]))(block)
-        else:
-            block = MaskingPadding(padding_value=1, reduce_norm=True)([image_inputs, block])
+        if self.patch_shape is None:
+            block = MaskingPadding()([image_inputs, block])
 
+        block = tf.keras.layers.Flatten()(block)
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(block)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
@@ -762,7 +762,7 @@ class BackboneModel(BaseModel):
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        outputs = MaskingPadding(padding_value=1, reduce_norm=True)([image_inputs, conv])
+        outputs = MaskingPadding()([image_inputs, conv])
 
         self.features_output_shape = outputs.get_shape()[1:]
         self.model = tf.keras.Model(inputs=image_inputs, outputs=[outputs, feats], name=self.name)
@@ -833,16 +833,15 @@ class StyleEncoderModel(BaseModel):
         """
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
-        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand_dims')(feature_inputs)
 
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Flatten()(style)
+        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Flatten()(style)
 
-        style = tf.keras.layers.Dense(256)(feature_inputs)
+        style = tf.keras.layers.Dense(256)(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         style = tf.keras.layers.Dense(256)(style)
@@ -923,16 +922,15 @@ class IdentificationModel(BaseModel):
         """
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
-        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand_dims')(feature_inputs)
 
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        # style = tf.keras.layers.Flatten()(style)
+        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Flatten()(style)
 
-        style = tf.keras.layers.Dense(256)(feature_inputs)
+        style = tf.keras.layers.Dense(256)(style)
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         outputs = tf.keras.layers.Dense(self.writers_shape[0])(style)
@@ -1055,7 +1053,7 @@ class RecognitionModel(BaseModel):
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
+        conv = MaskingPadding()([image_inputs, conv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(conv)
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
