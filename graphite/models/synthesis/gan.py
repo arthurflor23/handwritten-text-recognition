@@ -836,9 +836,11 @@ class StyleEncoderModel(BaseModel):
 
         style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
         style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
         style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
         style = tf.keras.layers.Flatten()(style)
 
         style = tf.keras.layers.Dense(256)(style)
@@ -848,7 +850,9 @@ class StyleEncoderModel(BaseModel):
         style = tf.keras.layers.LeakyReLU(alpha=0.01)(style)
 
         mu = tf.keras.layers.Dense(self.latent_dim)(style)
+
         logvar = tf.keras.layers.Dense(self.latent_dim)(style)
+        logvar = tf.keras.layers.LeakyReLU(alpha=0.01)(logvar)
 
         outputs = tf.keras.layers.Lambda(
             lambda x: x[0] + tf.exp(0.5 * x[1]) * tf.random.normal(tf.shape(x[1])), name='reparam')([mu, logvar])
@@ -925,9 +929,11 @@ class IdentificationModel(BaseModel):
 
         style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(feature_inputs)
         style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
         style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=4, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
+        style = tf.keras.layers.Conv2D(32, kernel_size=4, strides=2, padding='same')(style)
         style = tf.keras.layers.Flatten()(style)
 
         style = tf.keras.layers.Dense(256)(style)
