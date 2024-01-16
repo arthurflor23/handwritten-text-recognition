@@ -2,6 +2,7 @@ import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import GatedConv2D
+from graphite.models.components.layers import MaskingPadding
 from graphite.models.components.optimizers import NormalizedOptimizer
 
 
@@ -45,13 +46,13 @@ class RecognitionModel(BaseRecognitionModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        inputs = tf.keras.Input(shape=self.image_shape)
+        image_inputs = tf.keras.Input(shape=self.image_shape)
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
                                       strides=(2, 2),
                                       padding='same',
-                                      kernel_initializer='he_uniform')(inputs)
+                                      kernel_initializer='he_uniform')(image_inputs)
 
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
@@ -117,9 +118,10 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
-        bgru = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
 
-        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
+        bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(conv)
         bgru = tf.keras.layers.Dense(units=256)(bgru)
 
         bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(bgru)
@@ -127,4 +129,4 @@ class RecognitionModel(BaseRecognitionModel):
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(bgru)
 
-        self.recognition = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
+        self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)

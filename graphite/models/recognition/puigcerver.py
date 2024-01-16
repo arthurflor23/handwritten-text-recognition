@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
+from graphite.models.components.layers import MaskingPadding
 from graphite.models.components.optimizers import NormalizedOptimizer
 
 
@@ -41,12 +42,12 @@ class RecognitionModel(BaseRecognitionModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        inputs = tf.keras.Input(shape=self.image_shape)
+        image_inputs = tf.keras.Input(shape=self.image_shape)
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
                                       strides=(1, 1),
-                                      padding='same')(inputs)
+                                      padding='same')(image_inputs)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
@@ -88,9 +89,10 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
-        blstm = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
@@ -101,4 +103,4 @@ class RecognitionModel(BaseRecognitionModel):
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
 
-        self.recognition = tf.keras.Model(inputs=inputs, outputs=outputs, name=self.name)
+        self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
