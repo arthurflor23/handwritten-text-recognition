@@ -506,22 +506,23 @@ class GeneratorModel(BaseModel):
             return tf.keras.layers.Add()([h, x])
 
         latent_inputs = tf.keras.layers.Input(shape=self.features_shape)
+
         text_inputs = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-
-        latent_expanded = tf. keras.layers.Lambda(
-            lambda x: tf.expand_dims(x, axis=1), name='expand_dims')(latent_inputs)
-
         text_flattened = tf.keras.layers.Flatten()(text_inputs)
 
         latent_dense = SpectralNormalization(
             tf.keras.layers.Dense(units=self.features_shape[0] * len(self.blocks)))(latent_inputs)
 
-        chunks = tf.keras.layers.Lambda(
-            lambda x: tf.convert_to_tensor(tf.split(x, len(self.blocks), axis=1)), name='split')(latent_dense)
+        latent_chunks = tf.keras.layers.Lambda(
+            lambda x: tf.transpose(
+                tf.split(x, self.features_shape[0], axis=1), perm=[2, 1, 0]), name='chunks')(latent_dense)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
                                                    mask_zero=True)(text_flattened)
+
+        latent_expanded = tf. keras.layers.Lambda(
+            lambda x: tf.expand_dims(x, axis=1), name='expand')(latent_inputs)
 
         latent_tiled = tf.keras.layers.Lambda(
             lambda x: tf.tile(x[0], [1, tf.shape(x[1])[1], 1]), name='tile')([latent_expanded, text_embedding])
@@ -542,7 +543,7 @@ class GeneratorModel(BaseModel):
                 upsample_width = 2 if width_upsample_required else 1
                 upsample = (upsample_height, upsample_width)
 
-            block = residual_block_up(block, chunks[i], filters, upsample=upsample)
+            block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
             # if i == 0:
             #     block = SelfAttention(spectral_norm=True)(block)
