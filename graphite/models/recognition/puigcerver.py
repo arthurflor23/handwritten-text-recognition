@@ -90,7 +90,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
+        conv = MaskingPadding()([image_inputs, conv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)

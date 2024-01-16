@@ -117,7 +117,7 @@ class RecognitionModel(BaseRecognitionModel):
         octconv = tf.keras.layers.Activation('relu')(octconv)
 
         octconv = tf.keras.layers.Reshape(target_shape=(octconv.get_shape()[1], -1))(octconv)
-        octconv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, octconv])
+        octconv = MaskingPadding()([image_inputs, octconv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(octconv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)

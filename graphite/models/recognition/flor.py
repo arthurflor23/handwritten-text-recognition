@@ -119,7 +119,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
+        conv = MaskingPadding()([image_inputs, conv])
 
         bgru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(128, return_sequences=True, dropout=0.5))(conv)
         bgru = tf.keras.layers.Dense(units=256)(bgru)

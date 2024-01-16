@@ -87,7 +87,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding(padding_value=1, reduce_norm=False)([image_inputs, conv])
+        conv = MaskingPadding()([image_inputs, conv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(conv)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
