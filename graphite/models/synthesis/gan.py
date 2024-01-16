@@ -646,8 +646,8 @@ class DiscriminatorModel(BaseModel):
             #         tf.keras.layers.Conv2D(filters, kernel_size=2, strides=2, padding='same'))(x)
 
             if downsample:
-                h = tf.keras.layers.AveragePooling2D()(h)
-                x = tf.keras.layers.AveragePooling2D()(x)
+                h = tf.keras.layers.AveragePooling2D(pool_size=2, padding='valid')(h)
+                x = tf.keras.layers.AveragePooling2D(pool_size=2, padding='valid')(x)
 
             if not preactive:
                 x = SpectralNormalization(tf.keras.layers.Conv2D(filters, kernel_size=1))(x)
@@ -658,7 +658,7 @@ class DiscriminatorModel(BaseModel):
         block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
-            block = residual_block_down(block, filters, preactive=(i > 0), downsample=(i < len(self.blocks) - 1))
+            block = residual_block_down(block, filters, preactive=(i > 0), downsample=True)
 
             # if i == len(self.blocks) - 2:
             #     block = SelfAttention(spectral_norm=True)(block)
@@ -668,6 +668,8 @@ class DiscriminatorModel(BaseModel):
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+        self.model.summary()
+        # exit()
 
 
 class BackboneModel(BaseModel):
@@ -774,7 +776,8 @@ class BackboneModel(BaseModel):
             conv = tf.keras.layers.Add()([shortcut, block2])
 
             strides = (2, 2) if i < (len(self.blocks) - 1) // 2 else (1, 2)
-            conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
+            conv = tf.keras.layers.MaxPool2D(pool_size=3, strides=strides, padding='same')(conv)
+            # conv = tf.keras.layers.Conv2D(blocks[i + 1], kernel_size=3, strides=strides, padding='same')(conv)
 
             if i >= len(self.blocks[:-3]):
                 feats.append(conv)
