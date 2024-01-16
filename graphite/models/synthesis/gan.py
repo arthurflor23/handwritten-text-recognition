@@ -668,8 +668,6 @@ class DiscriminatorModel(BaseModel):
         outputs = SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
-        self.model.summary()
-        # exit()
 
 
 class BackboneModel(BaseModel):
