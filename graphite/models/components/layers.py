@@ -333,14 +333,12 @@ class MaskingPadding(tf.keras.layers.Layer):
     Layer to mask padding in tensors and optionally reduce norm.
     """
 
-    def __init__(self, padding_value=1, reduce_norm=False, **kwargs):
+    def __init__(self, padding_value=1, **kwargs):
         """
         Parameters
         ----------
         padding_value : float
             Value for identifying padding.
-        reduce_norm : bool, optional
-            Flag to reduce norm of masked tensor.
         **kwargs : dict
             Additional keyword arguments for Layer.
         """
@@ -348,7 +346,6 @@ class MaskingPadding(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.padding_value = padding_value
-        self.reduce_norm = reduce_norm
 
     def get_config(self):
         """
@@ -364,7 +361,6 @@ class MaskingPadding(tf.keras.layers.Layer):
 
         config.update({
             'padding_value': self.padding_value,
-            'reduce_norm': self.reduce_norm,
         })
 
         return config
@@ -423,10 +419,6 @@ class MaskingPadding(tf.keras.layers.Layer):
             mask = tf.expand_dims(mask, axis=-1)
 
         target = tf.math.multiply(target_data, mask)
-
-        if self.reduce_norm:
-            reduce_axis = list(range(2, len(self.target_shape)))
-            target = tf.reduce_sum(target, axis=reduce_axis) / tf.expand_dims(input_lens + 1e-7, axis=-1)
 
         return target
 
