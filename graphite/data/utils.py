@@ -66,13 +66,13 @@ def format_text(text):
     return text
 
 
-def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
+def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     """
     Pads a batch of data to a uniform shape.
 
     Parameters
     ----------
-    data_batch : list
+    batch_data : list
         List of data.
     target_shape : tuple, optional
         Target shape for padding.
@@ -90,12 +90,12 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     if target_shape:
         max_height, max_width = target_shape[:2]
     else:
-        max_height = max(len(height) for height in data_batch)
-        max_width = max(len(width) for height in data_batch for width in height)
+        max_height = max(len(height) for height in batch_data)
+        max_width = max(len(width) for height in batch_data for width in height)
 
-    padded = np.full((len(data_batch), max_height, max_width), fill_value=pad_value, dtype=dtype)
+    padded = np.full((len(batch_data), max_height, max_width), fill_value=pad_value, dtype=dtype)
 
-    for i, data in enumerate(data_batch):
+    for i, data in enumerate(batch_data):
         data = np.asarray(data)
 
         if data.size > 0 and data.ndim == 2:
@@ -104,7 +104,7 @@ def batch_padding(data_batch, target_shape=None, pad_value=0, dtype=np.int64):
     return padded
 
 
-def batch_processing(data_batch, image_processing=False):
+def batch_processing(batch_data, image_processing=False):
     """
     Processes a data batch for model input .
 
@@ -121,13 +121,11 @@ def batch_processing(data_batch, image_processing=False):
         Processed data.
     """
 
-    data_batch = data_batch.transpose((0, 2, 1))
-
     if image_processing:
-        data_batch = np.expand_dims(data_batch, axis=-1)
-        data_batch = (data_batch.astype(np.float32) / 127.5) - 1
+        batch_data = np.expand_dims(batch_data, axis=-1)
+        batch_data = (batch_data.astype(np.float32) / 127.5) - 1
 
-    return data_batch
+    return batch_data
 
 
 def read_image(image_path, bbox=None, image_shape=None):
@@ -219,7 +217,7 @@ def resize_image(image, target_shape):
         return image
 
     h, w = image.shape
-    target_w, target_h = target_shape[:2]
+    target_h, target_w = target_shape[:2]
 
     if h > target_h or w > target_w:
         aspect_ratio = w / h

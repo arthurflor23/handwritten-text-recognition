@@ -16,7 +16,7 @@ class Dataset():
     def __init__(self,
                  source=None,
                  text_level='line',
-                 image_shape=(1024, 64, 1),
+                 image_shape=(64, 1024, 1),
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -453,8 +453,8 @@ class Dataset():
                         aug_image_data = [utils.resize_image(x, self.image_shape) for x in aug_image_data]
 
                     if batch_padding:
-                        image_data = utils.batch_padding(image_data, self.image_shape[:2][::-1], 255, np.uint8)
-                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape[:2][::-1], 255, np.uint8)
+                        image_data = utils.batch_padding(image_data, self.image_shape, 255, np.uint8)
+                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape, 255, np.uint8)
 
                         text_data = utils.batch_padding(text_data, self.tokenizer.lexical_shape, 0, np.int64)
                         aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
@@ -462,9 +462,6 @@ class Dataset():
                     if batch_processing:
                         image_data = utils.batch_processing(image_data, image_processing=True)
                         aug_image_data = utils.batch_processing(aug_image_data, image_processing=True)
-
-                        text_data = utils.batch_processing(text_data, image_processing=False)
-                        aug_text_data = utils.batch_processing(aug_text_data, image_processing=False)
 
                 yield (aug_image_data, aug_text_data), (image_data, text_data, writer_data)
 
