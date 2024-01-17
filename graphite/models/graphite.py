@@ -419,7 +419,7 @@ class Graphite():
             return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
-        predictions = ((predictions + 1.0) * 127.5).astype(np.uint8)
+        predictions = np.asarray((predictions + 1.0) * 127.5, dtype=np.uint8)
 
         return predictions
 
