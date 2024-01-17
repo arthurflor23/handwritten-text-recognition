@@ -43,11 +43,12 @@ class RecognitionModel(BaseRecognitionModel):
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
+        inputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='input_transpose')(image_inputs)
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
                                       strides=(1, 1),
-                                      padding='same')(image_inputs)
+                                      padding='same')(inputs)
 
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
@@ -90,7 +91,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.LeakyReLU(alpha=0.01)(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding()([image_inputs, conv])
+        # conv = MaskingPadding()([image_inputs, conv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
@@ -102,5 +103,6 @@ class RecognitionModel(BaseRecognitionModel):
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='output_transpose')(outputs)
 
         self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)

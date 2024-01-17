@@ -44,9 +44,10 @@ class RecognitionModel(BaseRecognitionModel):
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
+        inputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='input_transpose')(image_inputs)
 
-        target_shape = (self.image_shape[0] // 2, self.image_shape[1] // 2, self.image_shape[2] * 4)
-        conv = tf.keras.layers.Reshape(target_shape=target_shape)(image_inputs)
+        target_shape = (self.image_shape[1] // 2, self.image_shape[0] // 2, self.image_shape[2] * 4)
+        conv = tf.keras.layers.Reshape(target_shape=target_shape)(inputs)
 
         conv = tf.keras.layers.Conv2D(filters=8,
                                       kernel_size=(3, 3),
@@ -87,7 +88,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
-        conv = MaskingPadding()([image_inputs, conv])
+        # conv = MaskingPadding()([image_inputs, conv])
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128, return_sequences=True))(conv)
         blstm = tf.keras.layers.Dense(units=128, activation='tanh')(blstm)
@@ -96,5 +97,6 @@ class RecognitionModel(BaseRecognitionModel):
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='output_transpose')(outputs)
 
         self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
