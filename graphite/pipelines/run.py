@@ -66,6 +66,11 @@ def run(args, training=None):
     graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
 
     if training:
+        graphite.save_context(params=args,
+                              dataset=dataset,
+                              augmentor=augmentor,
+                              model=graphite.model)
+
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
                                                              augmentor=augmentor,
@@ -90,11 +95,6 @@ def run(args, training=None):
                      plateau_patience=args.plateau_patience,
                      patience=args.patience,
                      verbose=1)
-
-        graphite.save_context(params=args,
-                              dataset=dataset,
-                              augmentor=augmentor,
-                              model=graphite.model)
 
     if args.recognition:
         prediction_configs = [{
