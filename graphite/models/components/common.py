@@ -435,7 +435,7 @@ class BaseRecognitionModel(BaseModel):
         beam_width = max(top_paths, beam_width)
         batch_size = int(np.ceil(x.shape[0] / steps))
 
-        x = np.log(x.transpose((0, 2, 1, 3)) + 1e-7)
+        x = np.log(x + 1e-7)
         predictions, probabilities = [], []
 
         for step in range(steps):

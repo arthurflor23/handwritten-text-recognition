@@ -419,7 +419,7 @@ class Graphite():
             return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
-        predictions = np.transpose((predictions + 1.0) * 127.5, (0, 2, 1, 3))
+        predictions = ((predictions + 1.0) * 127.5).astype(np.uint8)
 
         return predictions
 

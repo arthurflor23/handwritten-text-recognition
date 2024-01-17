@@ -59,11 +59,10 @@ class GANMonitor(tf.keras.callbacks.Callback):
         filepath = os.path.join(self.filepath, str(step))
         os.makedirs(filepath, exist_ok=True)
 
-        images = np.transpose((images + 1.0) * 127.5, (0, 2, 1, 3))
+        images = ((images + 1.0) * 127.5).astype(np.uint8)
 
         for j, image in enumerate(images):
-            filename = os.path.join(filepath, f"{j + 1}_{name}.png")
-            cv2.imwrite(filename, image.astype(np.uint8))
+            cv2.imwrite(os.path.join(filepath, f"{j + 1}_{name}.png"), image)
 
     def on_train_batch_end(self, step, logs=None):
         """
