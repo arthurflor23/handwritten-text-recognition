@@ -328,7 +328,7 @@ class BetaVAELoss(tf.keras.losses.Loss):
         b = tf.cast(tf.shape(z)[0], tf.float32)
         m = tf.cast(tf.shape(z)[1], tf.float32)
 
-        reconstruction_loss = (tf.reduce_sum(tf.math.abs(y_true - generated_images)) / N) / b
+        reconstruction_loss = (tf.reduce_sum(tf.square(y_true - generated_images)) / N) / b
         kld_loss = ((-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1)) / m) / b
 
-        return tf.reduce_mean(reconstruction_loss + self.beta * kld_loss)
+        return tf.reduce_mean(reconstruction_loss + (self.beta * kld_loss))
