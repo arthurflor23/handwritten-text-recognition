@@ -55,7 +55,7 @@ def run(args, training=None):
     graphite = Graphite(synthesis=args.synthesis,
                         recognition=args.recognition,
                         spelling=args.spelling,
-                        image_shape=dataset.image_shape,
+                        image_shape=args.image_shape,
                         tokenizer=dataset.tokenizer,
                         discriminator_steps=args.discriminator_steps,
                         generator_steps=args.generator_steps,

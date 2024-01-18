@@ -45,7 +45,7 @@ def inference(args):
     graphite = Graphite(synthesis=args.synthesis,
                         recognition=args.recognition,
                         spelling=args.spelling,
-                        image_shape=dataset.image_shape,
+                        image_shape=args.image_shape,
                         tokenizer=dataset.tokenizer,
                         experiment_name=args.experiment_name)
     print(graphite)
