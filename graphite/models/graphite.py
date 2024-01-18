@@ -28,7 +28,8 @@ class Graphite():
                  discriminator_steps=1,
                  generator_steps=4,
                  synthesis_ratio=1.0,
-                 experiment_name=None):
+                 experiment_name=None,
+                 seed=None):
         """
         Initializes the Graphite model with specified components.
 
@@ -52,7 +53,12 @@ class Graphite():
             Ratio determining the synthesis influence.
         experiment_name : str, optional
             Name of the MLflow experiment.
+        seed : int, optional
+            Seed for operations.
         """
+
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
         self.synthesis = synthesis
         self.recognition = recognition

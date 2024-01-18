@@ -60,7 +60,8 @@ def run(args, training=None):
                         discriminator_steps=args.discriminator_steps,
                         generator_steps=args.generator_steps,
                         synthesis_ratio=args.synthesis_ratio,
-                        experiment_name=args.experiment_name)
+                        experiment_name=args.experiment_name,
+                        seed=args.seed)
     print(graphite)
 
     graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
