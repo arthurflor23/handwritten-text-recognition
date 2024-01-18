@@ -57,7 +57,7 @@ class Dataset():
             Seed for random shuffle.
         """
 
-        np.random.seed(seed)
+        np.random.seed(seed or 0)
 
         self.source = source
         self.text_level = text_level
