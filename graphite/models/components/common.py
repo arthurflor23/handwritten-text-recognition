@@ -266,7 +266,7 @@ class BaseRecognitionModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        self.image_shape = image_shape
+        self.image_shape = image_shape[1::-1] + image_shape[2:]
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
 
@@ -593,7 +593,7 @@ class BaseSynthesisModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        self.image_shape = image_shape
+        self.image_shape = image_shape[1::-1] + image_shape[2:]
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
 
