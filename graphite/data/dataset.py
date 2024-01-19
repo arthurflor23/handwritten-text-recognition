@@ -285,15 +285,15 @@ class Dataset():
                     return None
 
             source = item.copy()
-            encode = item.copy()
+            encoded = item.copy()
 
             if not self.lazy_mode:
-                encode['image'] = image
+                encoded['image'] = image
 
-            encode['text'] = self.tokenizer.encode_text(item['text'], keepstats=keepstats)
-            encode['writer'] = self.tokenizer.encode_writer(item['writer'], keepstats=keepstats)
+            encoded['text'] = self.tokenizer.encode_text(item['text'], keepstats=keepstats)
+            encoded['writer'] = self.tokenizer.encode_writer(item['writer'], keepstats=keepstats)
 
-            return source, encode
+            return source, encoded
 
         for partition in data:
             samples['source'][partition] = []
@@ -304,9 +304,9 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                source, encode = zip(*results)
+                source, encoded = zip(*sorted(results, key=lambda x: len(x[0]['text']), reverse=True))
                 samples['source'][partition] = np.array(source, dtype=object)
-                samples['encoded'][partition] = np.array(encode, dtype=object)
+                samples['encoded'][partition] = np.array(encoded, dtype=object)
 
         return samples
 
@@ -349,7 +349,10 @@ class Dataset():
 
                     multigrams.append(multigram.strip())
 
-            return multigrams
+            source = multigrams.copy()
+            encoded = [self.tokenizer.encode_text(x, keepstats=False) for x in multigrams]
+
+            return source, encoded
 
         for partition in data:
             if 'test' in partition:
@@ -357,16 +360,15 @@ class Dataset():
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(build, x) for x in data[partition]]
-                source = [multigram for future in futures for multigram in future.result()]
+                results = [future.result() for future in futures if future.result() is not None]
 
-            np.random.shuffle(source)
+            if results:
+                source, encoded = zip(*[(s, e) for x in results for s, e in zip(x[0], x[1])])
+                source_data = sorted(zip(source, encoded), key=lambda x: len(x[0]), reverse=True)
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self.tokenizer.encode_text, x, False) for x in source]
-                encoded = [future.result() for future in futures]
-
-            multigrams['source'].extend([{'text': x} for x in source])
-            multigrams['encoded'].extend([{'text': x} for x in encoded])
+                for s, e in source_data:
+                    multigrams['source'].append({'text': s})
+                    multigrams['encoded'].append({'text': e})
 
         multigrams['source'] = np.array(multigrams['source'], dtype=object)
         multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
@@ -411,29 +413,22 @@ class Dataset():
         """
 
         def batch_generator(data, multigrams):
-            data_length = len(data)
-            multigrams_length = len(multigrams)
-
-            indices = np.arange(data_length)
+            data_length, multigrams_length = len(data), len(multigrams)
             batch_index = 0
 
             while True:
-                if batch_index >= data_length:
-                    if shuffle:
-                        np.random.shuffle(indices)
+                if shuffle:
+                    batch_index = np.random.randint(0, data_length - batch_size)
+                elif batch_index >= data_length:
                     batch_index = 0
 
-                batch_indices = indices[batch_index:batch_index + batch_size]
+                batch = data[batch_index:batch_index + batch_size]
                 batch_index += batch_size
 
-                batch = data[batch_indices]
+                image_data, text_data, writer_data = map(
+                    list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
 
-                image_data = [data['image'] for data in batch]
-                text_data = [data['text'] for data in batch]
-                writer_data = [data['writer'] for data in batch]
-
-                aug_image_data = None
-                aug_text_data = None
+                aug_image_data, aug_text_data = None, None
 
                 if batch_encoded:
                     writer_data = np.array(writer_data)
@@ -445,8 +440,8 @@ class Dataset():
                     aug_text_data = text_data.copy()
 
                     if multigrams_length:
-                        multigrams_indices = np.random.choice(multigrams_length, len(batch))
-                        aug_text_data = [data['text'] for data in multigrams[multigrams_indices]]
+                        gram_index = np.random.randint(0, multigrams_length - batch_size)
+                        aug_text_data = [data['text'] for data in multigrams[gram_index:gram_index + batch_size]]
 
                     if augmentor:
                         aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
