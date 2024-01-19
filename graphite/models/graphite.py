@@ -230,7 +230,13 @@ class Graphite():
             Training and validation progress details.
         """
 
-        run_info = self.get_run_info(create_new=True)
+        create_new_run = True
+
+        if self.run_context is not None:
+            path = self.run_context.info.artifact_uri.replace('file://', '')
+            create_new_run = bool(glob.glob(f'{path}/**/*.h5', recursive=True))
+
+        run_info = self.get_run_info(create_new=create_new_run)
 
         with mlflow.start_run(run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
