@@ -96,11 +96,6 @@ def run(args, training=None):
                      patience=args.patience,
                      verbose=1)
 
-        graphite.save_context(params=args,
-                              dataset=dataset,
-                              augmentor=augmentor,
-                              model=graphite.model)
-
     if args.recognition:
         prediction_configs = [{
             'predict': True,
