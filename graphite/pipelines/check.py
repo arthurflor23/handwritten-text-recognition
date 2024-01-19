@@ -99,7 +99,7 @@ def check(args):
             image_augmented_data, _ = x_augmented_data
 
             x_processed_data, _ = next(processed_gen)
-            image_processed_data, _ = x_processed_data
+            image_processed_data, text_augmented_data = x_processed_data
 
             for i in range(len(image_source_data)):
                 # source
@@ -110,7 +110,7 @@ def check(args):
                 print('Source writer :', writer_source_data[i])
                 print('Encoded writer:', writer_encoded_data[i], '\n')
 
-                print('Source text')
+                print('Source text', f"(length {len(text_source_data[i])})")
                 print(text_source_data[i])
                 print('--------------------------------------------------\n')
 
@@ -124,6 +124,13 @@ def check(args):
                 cv2.imshow('Padded image', image_padded_data[i])
                 print('Padded text')
                 print(text_padded_data[i].tolist())
+                print('--------------------------------------------------\n')
+
+                # random text augmented
+                print('Text augmented (multigrams)')
+                print(dataset.tokenizer.decode_text(text_augmented_data[i].tolist()))
+                print()
+                print(text_augmented_data[i].tolist())
                 print('--------------------------------------------------\n')
 
                 # with augmentation and with padding
