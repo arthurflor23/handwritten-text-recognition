@@ -569,8 +569,8 @@ class BaseSynthesisModel(BaseModel):
                  image_shape,
                  lexical_shape,
                  writers_shape,
-                 discriminator_steps,
-                 generator_steps,
+                 discriminator_steps=1,
+                 generator_steps=1,
                  **kwargs):
         """
         Initialize the synthesis model with specified parameters for each submodel.
