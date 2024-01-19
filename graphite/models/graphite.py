@@ -234,11 +234,11 @@ class Graphite():
 
         if self.run_context is not None:
             path = self.run_context.info.artifact_uri.replace('file://', '')
-            create_new_run = bool(glob.glob(f'{path}/**/*.h5', recursive=True))
+            create_new_run = bool(glob.glob(os.path.join(path, '**', '*.h5'), recursive=True))
 
         run_info = self.get_run_info(create_new=create_new_run)
 
-        with mlflow.start_run(run_name=run_info['name']) as run:
+        with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
 
             logs_path = os.path.join(run_info['artifact_path'], 'logs')
@@ -303,7 +303,7 @@ class Graphite():
                 ])
 
             elif self.synthesis:
-                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'step_samples')
+                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training')
                 os.makedirs(synthesis_path, exist_ok=True)
 
                 callbacks.extend([
