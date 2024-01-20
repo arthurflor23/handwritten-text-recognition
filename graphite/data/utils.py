@@ -128,7 +128,7 @@ def batch_processing(batch_data, image_processing=False):
     return batch_data
 
 
-def read_image(image_path, bbox=None, image_shape=None):
+def read_image(image_path, bbox=None):
     """
     Read an image from the given file path and perform optional bbox.
 
@@ -138,8 +138,6 @@ def read_image(image_path, bbox=None, image_shape=None):
         The path to the image file.
     bbox : list, optional
         The bbox coordinates ([x, y, width, height]).
-    image_shape : list or tuple, optional
-        Image shape for resizing.
 
     Returns
     -------
@@ -190,13 +188,10 @@ def read_image(image_path, bbox=None, image_shape=None):
 
         image = image[y:y+height, x:x+width]
 
-    if image_shape is not None:
-        image = resize_image(image, target_shape=image_shape)
-
     return image
 
 
-def resize_image(image, target_shape):
+def resize_image(image, target_width=None, target_shape=None):
     """
     Resize the image to fit within the target shape, maintaining the aspect ratio.
 
@@ -204,8 +199,10 @@ def resize_image(image, target_shape):
     ----------
     image : ndarray
         Input image.
+    target_width : int, optional
+        Target image width from character widths.
     target_shape : list or tuple
-        Target shape.
+        Target image shape.
 
     Returns
     -------
@@ -213,22 +210,27 @@ def resize_image(image, target_shape):
         Resized image.
     """
 
-    if not target_shape:
-        return image
+    if image is None or image.size <= 1:
+        return None
 
-    h, w = image.shape
-    target_h, target_w = target_shape[:2]
+    if target_width and target_shape:
+        new_h, new_w = target_shape[0], min(target_width, target_shape[1])
+        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
-    if h > target_h or w > target_w:
-        aspect_ratio = w / h
+    elif target_shape:
+        h, w = image.shape
+        target_h, target_w = target_shape[:2]
 
-        if aspect_ratio >= 1:
-            new_w = min(target_w, int(target_h * aspect_ratio))
-            new_h = int(new_w / aspect_ratio)
-        else:
-            new_h = min(target_h, int(target_w / aspect_ratio))
-            new_w = int(new_h * aspect_ratio)
+        if h > target_h or w > target_w:
+            aspect_ratio = w / h
 
-        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            if aspect_ratio >= 1:
+                new_w = min(target_w, int(target_h * aspect_ratio))
+                new_h = int(new_w / aspect_ratio)
+            else:
+                new_h = min(target_h, int(target_w / aspect_ratio))
+                new_w = int(new_h * aspect_ratio)
+
+            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
     return image
