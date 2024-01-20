@@ -17,6 +17,7 @@ class Dataset():
                  source=None,
                  text_level='line',
                  image_shape=(1024, 64, 1),
+                 char_width=None,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -37,6 +38,8 @@ class Dataset():
             The text structure level.
         image_shape : list, optional
             The images shape.
+        char_width : int, optional
+            The width per character.
         training_ratio : float or int, optional
             The training ratio for resample.
         validation_ratio : float or int, optional
@@ -62,6 +65,7 @@ class Dataset():
         self.source = source
         self.text_level = text_level
         self.image_shape = image_shape[1::-1] + image_shape[2:]
+        self.char_width = char_width or 0
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -274,7 +278,9 @@ class Dataset():
                     return None
 
                 try:
-                    image = utils.read_image(item['image'], item['bbox'], self.image_shape)
+                    image = utils.resize_image(image=utils.read_image(item['image'], item['bbox']),
+                                               target_width=len(item['text']) * self.char_width,
+                                               target_shape=self.image_shape)
 
                     if image is None or image.size <= (32 * 32):
                         print(f"Image `{item['image']}` has an invalid size ({image.size}).")
@@ -434,7 +440,9 @@ class Dataset():
                     writer_data = np.array(writer_data)
 
                     if self.lazy_mode:
-                        image_data = [utils.read_image(x['image'], x['bbox'], self.image_shape) for x in batch]
+                        image_data = [utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
+                                                         target_width=len(x['text']) * self.char_width,
+                                                         target_shape=self.image_shape) for x in batch]
 
                     aug_image_data = image_data.copy()
                     aug_text_data = text_data.copy()
@@ -445,7 +453,7 @@ class Dataset():
 
                     if augmentor:
                         aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
-                        aug_image_data = [utils.resize_image(x, self.image_shape) for x in aug_image_data]
+                        aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
 
                     if batch_padding:
                         image_data = utils.batch_padding(image_data, self.image_shape, 255, np.uint8)
