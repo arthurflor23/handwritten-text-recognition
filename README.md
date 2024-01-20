@@ -93,6 +93,7 @@ The project has several command-line parameters that can be used to customize it
 -   `--source-input-path`: Source input path.
 -   `--text-level`: Define the text structure level (e.g., line, paragraph).
 -   `--image-shape`: Define the image shape (width, height, channels).
+-   `--char-width`: Define character width for normalization.
 -   `--training-ratio`: Set the training partition ratio.
 -   `--validation-ratio`: Set the validation partition ratio.
 -   `--test-ratio`: Set the test partition ratio.
