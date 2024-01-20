@@ -37,6 +37,7 @@ def inference(args):
 
     dataset = Dataset(data=data,
                       image_shape=args.image_shape,
+                      char_width=args.char_width,
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       seed=args.seed)
