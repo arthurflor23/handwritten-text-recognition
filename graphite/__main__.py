@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--source-input-path', default='datasets', help='Source input path')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
     parser.add_argument('--image-shape', default=[1024, 64, 1], nargs=3, type=int, help='Define image shape (w, h, c)')
+    parser.add_argument('--char-width', default=8, type=int, help='Define character width for normalization')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
