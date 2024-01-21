@@ -282,8 +282,8 @@ class Dataset():
                                                target_width=len(item['text']) * self.char_width,
                                                target_shape=self.image_shape)
 
-                    if image is None or image.size <= (32 * 32):
-                        print(f"Image `{item['image']}` has an invalid size ({image.size}).")
+                    if image is None or image.size < (32 * 32):
+                        print(f"Image `{item['image']}` is smaller than valid size.")
                         return None
 
                 except Exception:
