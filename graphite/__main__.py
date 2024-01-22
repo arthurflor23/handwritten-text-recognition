@@ -35,15 +35,14 @@ if __name__ == '__main__':
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
-
     # augmentor
     parser.add_argument('--binarize', default=None, nargs='+', help='Binarization parameters')
-    parser.add_argument('--erode', default=[0.66, 3, 1], nargs=3, type=float, help='Erosion parameters')
-    parser.add_argument('--dilate', default=[0.33, 2, 1], nargs=3, type=float, help='Dilation parameters')
-    parser.add_argument('--elastic', default=[0.66, 29, 1.0], nargs=3, type=float, help='Elastic parameters')
+    parser.add_argument('--erode', default=None, nargs=3, type=float, help='Erosion parameters')
+    parser.add_argument('--dilate', default=None, nargs=3, type=float, help='Dilation parameters')
+    parser.add_argument('--elastic', default=None, nargs=3, type=float, help='Elastic parameters')
     parser.add_argument('--perspective', default=[0.66, 0.4], nargs=2, type=float, help='Perspective parameters')
     parser.add_argument('--mixup', default=None, nargs=3, type=float, help='Mixup parameters')
-    parser.add_argument('--shear', default=[0.33, 15], nargs=2, type=float, help='Shearing parameters')
+    parser.add_argument('--shear', default=[0.33, 5], nargs=2, type=float, help='Shearing parameters')
     parser.add_argument('--scale', default=[0.33, 0.1], nargs=2, type=float, help='Scaling parameters')
     parser.add_argument('--rotate', default=[0.33, 1.0], nargs=2, type=float, help='Rotation parameters')
     parser.add_argument('--shift-y', default=None, nargs=2, type=float, help='Vertical translation parameters')
@@ -55,7 +54,7 @@ if __name__ == '__main__':
 
     # synthesis
     parser.add_argument('--discriminator-steps', default=1, type=int, help='Define repetition of steps for training')
-    parser.add_argument('--generator-steps', default=1, type=int, help='Define skipping steps for training')
+    parser.add_argument('--generator-steps', default=4, type=int, help='Define skipping steps for training')
     parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Define synthetic data ratio for training')
 
     # training
