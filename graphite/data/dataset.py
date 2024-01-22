@@ -16,7 +16,7 @@ class Dataset():
     def __init__(self,
                  source=None,
                  text_level='line',
-                 image_shape=(64, 1024, 1),
+                 image_shape=(64, 2048, 1),
                  char_width=None,
                  training_ratio=None,
                  validation_ratio=None,
@@ -60,7 +60,7 @@ class Dataset():
             Seed for random shuffle.
         """
 
-        np.random.seed(seed or 0)
+        np.random.seed(seed)
 
         self.source = source
         self.text_level = text_level
