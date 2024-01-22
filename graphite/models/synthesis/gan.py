@@ -229,8 +229,11 @@ class SynthesisModel(BaseSynthesisModel):
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
-            w_gradients = tape.gradient(d_wid_loss, self.identification.trainable_weights)
-            self.w_optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
+            w_gradients = tape.gradient(d_wid_loss, self.style_backbone.trainable_weights +
+                                        self.identification.trainable_weights)
+
+            self.w_optimizer.apply_gradients(zip(w_gradients, self.style_backbone.trainable_weights +
+                                                 self.identification.trainable_weights))
 
             # handwriting recognition
             with tf.GradientTape() as tape:
@@ -376,14 +379,10 @@ class SynthesisModel(BaseSynthesisModel):
             # generator loss
             g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + (g_cx_loss * 2.0)
 
-        g_gradients = tape.gradient(g_loss,
-                                    self.style_backbone.trainable_weights +
-                                    self.style_encoder.trainable_weights +
+        g_gradients = tape.gradient(g_loss, self.style_encoder.trainable_weights +
                                     self.generator.trainable_weights)
 
-        self.g_optimizer.apply_gradients(zip(g_gradients,
-                                             self.style_backbone.trainable_weights +
-                                             self.style_encoder.trainable_weights +
+        self.g_optimizer.apply_gradients(zip(g_gradients, self.style_encoder.trainable_weights +
                                              self.generator.trainable_weights))
 
         self.metrics_tracker.update({
@@ -858,6 +857,8 @@ class BackboneModel(BaseModel):
         blocks, feats = list(self.blocks) + [self.blocks[-1] * 2], []
 
         for i, filters in enumerate(self.blocks):
+            dropout_rate = 0.1 if i <= len(self.blocks) // 2 else 0.2
+
             block1 = tf.keras.layers.ReLU()(conv)
             block1 = tf.keras.layers.Conv2D(filters=filters,
                                             kernel_size=3,
@@ -865,6 +866,7 @@ class BackboneModel(BaseModel):
                                             padding='same',
                                             kernel_initializer=initializer)(block1)
             block1 = tf.keras.layers.BatchNormalization(renorm=True)(block1)
+            block1 = tf.keras.layers.Dropout(rate=dropout_rate)(block1)
 
             block1 = tf.keras.layers.ReLU()(block1)
             block1 = tf.keras.layers.Conv2D(filters=filters,
@@ -883,6 +885,7 @@ class BackboneModel(BaseModel):
                                             padding='same',
                                             kernel_initializer=initializer)(block2)
             block2 = tf.keras.layers.BatchNormalization(renorm=True)(block2)
+            block2 = tf.keras.layers.Dropout(rate=dropout_rate)(block2)
 
             block2 = tf.keras.layers.ReLU()(block2)
             block2 = tf.keras.layers.Conv2D(filters=blocks[i + 1],
