@@ -46,8 +46,7 @@ class RecognitionModel(BaseRecognitionModel):
         image_inputs = tf.keras.Input(shape=self.image_shape)
         inputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='input_transpose')(image_inputs)
 
-        target_shape = (self.image_shape[1] // 2, self.image_shape[0] // 2, self.image_shape[2] * 4)
-        conv = tf.keras.layers.Reshape(target_shape=target_shape)(inputs)
+        conv = tf.keras.layers.Reshape(target_shape=(512, 64, -1))(inputs)
 
         conv = tf.keras.layers.Conv2D(filters=8,
                                       kernel_size=(3, 3),
@@ -85,8 +84,7 @@ class RecognitionModel(BaseRecognitionModel):
                                       padding='same',
                                       activation='tanh')(conv)
 
-        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
-
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
         # conv = MaskingPadding()([image_inputs, conv])
 

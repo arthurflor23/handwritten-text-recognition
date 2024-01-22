@@ -51,7 +51,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
-                                      strides=(2, 2),
+                                      strides=(2, 1),
                                       padding='same',
                                       kernel_initializer='he_uniform')(inputs)
 
@@ -99,7 +99,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         conv = tf.keras.layers.Conv2D(filters=56,
                                       kernel_size=(2, 4),
-                                      strides=(1, 4),
+                                      strides=(2, 4),
                                       padding='same',
                                       kernel_initializer='he_uniform')(conv)
 
@@ -119,6 +119,7 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
+        conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
         # conv = MaskingPadding()([image_inputs, conv])
 
