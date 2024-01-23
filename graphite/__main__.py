@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
-    parser.add_argument('--seed', default=1234, type=int, help='Seed value')
+    parser.add_argument('--seed', default=42, type=int, help='Seed value')
 
     args = parser.parse_args()
 
