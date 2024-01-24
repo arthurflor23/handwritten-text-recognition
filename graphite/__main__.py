@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--source-input-path', default='datasets', help='Source input path')
     parser.add_argument('--text-level', default='line', help='Define text structure level')
     parser.add_argument('--image-shape', default=[64, 1024, 1], nargs=3, type=int, help='Define image shape (h, w, c)')
-    parser.add_argument('--char-width', default=8, type=int, help='Define character width for normalization')
+    parser.add_argument('--char-width', default=None, type=int, help='Define character width for normalization')
     parser.add_argument('--training-ratio', default=None, help='Define training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     # synthesis
     parser.add_argument('--discriminator-steps', default=1, type=int, help='Define repetition of steps for training')
-    parser.add_argument('--generator-steps', default=4, type=int, help='Define skipping steps for training')
+    parser.add_argument('--generator-steps', default=1, type=int, help='Define skipping steps for training')
     parser.add_argument('--synthesis-ratio', default=1.0, type=float, help='Define synthetic data ratio for training')
 
     # training
