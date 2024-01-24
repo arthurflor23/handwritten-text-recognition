@@ -282,7 +282,7 @@ class BaseRecognitionModel(BaseModel):
             'recognition',
         ]
 
-        self.ctc_loss = CTCLoss(weighted=True)
+        self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
 
         self.monitor = self.edit_distance.name

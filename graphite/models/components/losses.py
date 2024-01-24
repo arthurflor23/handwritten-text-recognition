@@ -11,14 +11,12 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, weighted=False, epsilon=1e-7, name='ctc_loss', **kwargs):
+    def __init__(self, epsilon=1e-7, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
-        weighted : bool, optional
-            If True, assigns edit distance as weights.
         epsilon : float, optional
             Small constant to avoid log of zero.
         name : str, optional
@@ -29,7 +27,6 @@ class CTCLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-        self.weighted = weighted
         self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
@@ -65,16 +62,7 @@ class CTCLoss(tf.keras.losses.Loss):
                                   logits_time_major=True,
                                   blank_index=0)
 
-        if self.weighted:
-            decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=tf.cast(logits, dtype=tf.float32),
-                                                       sequence_length=tf.cast(logit_length, dtype=tf.int32),
-                                                       beam_width=1,
-                                                       top_paths=1)
-
-            edit_distance = tf.edit_distance(decoded[0], labels, normalize=True)
-            ctc_loss = tf.reduce_mean(ctc_loss * edit_distance)
-        else:
-            ctc_loss = tf.reduce_mean(ctc_loss)
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
