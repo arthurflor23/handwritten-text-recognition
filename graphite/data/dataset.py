@@ -420,15 +420,27 @@ class Dataset():
 
         def batch_generator(data, multigrams):
             data_length, multigrams_length = len(data), len(multigrams)
+
+            indices = np.arange(data_length)
             batch_index = 0
 
             while True:
-                if shuffle:
-                    batch_index = np.random.randint(0, data_length - batch_size)
-                elif batch_index >= data_length:
-                    batch_index = 0
+                if self.char_width:
+                    if shuffle:
+                        batch_index = np.random.randint(0, data_length - batch_size)
+                    elif batch_index >= data_length:
+                        batch_index = 0
 
-                batch = data[batch_index:batch_index + batch_size]
+                    batch = data[batch_index:batch_index + batch_size]
+
+                else:
+                    if batch_index >= data_length:
+                        if shuffle:
+                            np.random.shuffle(indices)
+                        batch_index = 0
+
+                    batch = data[indices[batch_index:batch_index + batch_size]]
+
                 batch_index += batch_size
 
                 image_data, text_data, writer_data = map(
