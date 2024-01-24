@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -759,27 +760,47 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     References
     ----------
+    Spectral Norm Regularization for Improving the Generalizability of Deep Learning.
+        https://arxiv.org/abs/1705.10941
+
     Spectral Normalization for GANs
         https://arxiv.org/abs/1802.05957
+
+    Regularisation of neural networks by enforcing lipschitz continuity.
+        https://arxiv.org/abs/1804.04368
     """
 
-    def __init__(self, layer, power_iterations=1, **kwargs):
+    def __init__(self,
+                 layer,
+                 power_iteration=1,
+                 norm_multiplier=0.95,
+                 aggregation=tf.VariableAggregation.MEAN,
+                 **kwargs):
         """
         Initializes the spectral normalization wrapper.
 
         Parameters
         ----------
         layer : tf.keras.layers.Layer
-            The layer to which spectral normalization will be applied.
-        power_iterations : int, optional
-            Number of power iterations to perform for normalization.
+            Keras layer to be normalized.
+        power_iteration : int, optional
+            Number of power iterations for singular value estimation.
+        norm_multiplier : float, optional
+            Threshold for normalization.
+        aggregation : tf.VariableAggregation, optional
+            Aggregation method for distributed variables.
         **kwargs : dict
-            Additional keyword arguments for the wrapper.
+            Additional arguments for layers.Wrapper class.
         """
 
         super().__init__(layer, name=layer.name, **kwargs)
 
-        self.power_iterations = power_iterations
+        self.power_iteration = power_iteration
+        self.norm_multiplier = norm_multiplier
+        self.aggregation = aggregation
+
+        if not isinstance(layer, tf.keras.layers.Layer):
+            raise ValueError('`layer` must be a `tf.keras.layer.Layer`.')
 
     def get_config(self):
         """
@@ -794,7 +815,9 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         config = super().get_config()
 
         config.update({
-            'power_iterations': self.power_iterations,
+            'power_iteration': self.power_iteration,
+            'norm_multiplier': self.norm_multiplier,
+            'aggregation': self.aggregation,
         })
 
         return config
@@ -811,25 +834,27 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
         super().build(input_shape)
 
-        input_shape = tf.TensorShape(input_shape)
-        self.input_spec = tf.keras.layers.InputSpec(shape=[None] + input_shape[1:])
+        self._dtype = self.layer.kernel.dtype
+        self.layer.kernel._aggregation = self.aggregation
 
-        if hasattr(self.layer, 'kernel'):
-            self.kernel = self.layer.kernel
-        elif hasattr(self.layer, 'embeddings'):
-            self.kernel = self.layer.embeddings
-        else:
-            raise ValueError('Object has no attribute "kernel" nor "embeddings"')
+        self.w = self.layer.kernel
+        self.w_shape = self.w.shape.as_list()
 
-        self.kernel_shape = self.kernel.shape.as_list()
-
-        self.vector_u = self.add_weight(
-            shape=(1, self.kernel_shape[-1]),
-            initializer=tf.initializers.TruncatedNormal(stddev=0.02),
+        self.v = self.add_weight(
+            shape=(1, np.prod(self.w_shape[:-1])),
+            initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
             trainable=False,
-            dtype=self.kernel.dtype,
-            name=f"{self.name}_{self.layer.name}_vector_u",
-        )
+            name='v',
+            dtype=self.dtype,
+            aggregation=self.aggregation)
+
+        self.u = self.add_weight(
+            shape=(1, self.w_shape[-1]),
+            initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
+            trainable=False,
+            name='u',
+            dtype=self.dtype,
+            aggregation=self.aggregation)
 
     def call(self, inputs, training=None):
         """
@@ -848,45 +873,66 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
             The output tensor from the wrapped layer.
         """
 
-        if training:
-            kernel_matrix = tf.reshape(self.kernel, [-1, self.kernel_shape[-1]])
-            vector_u = self.vector_u
-
-            if not tf.reduce_all(tf.equal(kernel_matrix, 0.0)):
-                for _ in range(self.power_iterations):
-                    vector_v = tf.math.l2_normalize(tf.matmul(vector_u, kernel_matrix, transpose_b=True))
-                    vector_u = tf.math.l2_normalize(tf.matmul(vector_v, kernel_matrix))
-
-                vector_u = tf.stop_gradient(vector_u)
-                vector_v = tf.stop_gradient(vector_v)
-
-                sigma = tf.matmul(tf.matmul(vector_v, kernel_matrix), vector_u, transpose_b=True)
-
-                self.vector_u.assign(tf.cast(vector_u, self.vector_u.dtype))
-                self.kernel.assign(tf.cast(tf.reshape(self.kernel / sigma, self.kernel_shape), self.kernel.dtype))
-
+        u_update_op, v_update_op, w_update_op = self.update_weights(training=training)
         output = self.layer(inputs)
+        w_restore_op = self.restore_weights()
+
+        self.add_update(u_update_op)
+        self.add_update(v_update_op)
+        self.add_update(w_update_op)
+        self.add_update(w_restore_op)
+
         return output
 
-    def compute_output_shape(self, input_shape):
+    def update_weights(self, training=None):
         """
-        Compute the output shape of the wrapped layer.
+        Updates the weights of the wrapped layer.
 
         Parameters
         ----------
-        input_shape : tuple or list
-            The shape of the input to the layer.
+        training : bool, optional
+            If True, performs power iteration to update weights.
 
         Returns
         -------
-        tf.TensorShape
-            The computed shape of the output from the wrapped layer.
+        tuple
+            Update operations for u, v, and w weights.
         """
 
-        if not self.built:
-            self.build(input_shape)
+        w_reshaped = tf.reshape(self.w, [-1, self.w_shape[-1]])
 
-        return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
+        u_hat = self.u
+        v_hat = self.v
+
+        if training:
+            for _ in range(self.power_iteration):
+                v_hat = tf.nn.l2_normalize(tf.matmul(u_hat, tf.transpose(w_reshaped)))
+                u_hat = tf.nn.l2_normalize(tf.matmul(v_hat, w_reshaped))
+
+        sigma = tf.matmul(tf.matmul(v_hat, w_reshaped), tf.transpose(u_hat))
+        sigma = tf.reshape(sigma, [])
+
+        u_update_op = self.u.assign(u_hat)
+        v_update_op = self.v.assign(v_hat)
+
+        w_norm = tf.cond((self.norm_multiplier / sigma) < 1,
+                         lambda: (self.norm_multiplier / sigma) * self.w, lambda: self.w)
+
+        w_update_op = self.layer.kernel.assign(w_norm)
+
+        return u_update_op, v_update_op, w_update_op
+
+    def restore_weights(self):
+        """
+        Restores the weights of the layer after updates.
+
+        Returns
+        -------
+        tf.Operation
+            An operation that restores the weights.
+        """
+
+        return self.layer.kernel.assign(self.w)
 
 
 class TemporalConvolutional(tf.keras.layers.Layer):
