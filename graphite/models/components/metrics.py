@@ -11,14 +11,12 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, weighted=False, beam_width=1, epsilon=1e-7, name='ctc_metric', **kwargs):
+    def __init__(self, beam_width=1, epsilon=1e-7, name='cer', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
         Parameters
         ----------
-        weighted : bool, optional
-            If True, assigns CTC loss as weights.
         beam_width : int, optional
             The width of the beam for CTC beam search decoder.
         epsilon : float, optional
@@ -33,7 +31,6 @@ class EditDistance(tf.keras.metrics.Metric):
 
         self.tracker = tf.keras.metrics.Mean()
 
-        self.weighted = weighted
         self.beam_width = beam_width
         self.epsilon = epsilon
 
@@ -65,20 +62,7 @@ class EditDistance(tf.keras.metrics.Metric):
                                                    top_paths=1)
 
         edit_distance = tf.edit_distance(decoded[0], labels, normalize=True)
-
-        if self.weighted:
-            label_length = tf.math.count_nonzero(y_true, axis=-1)
-
-            ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                      logits=tf.cast(logits, dtype=tf.float32),
-                                      label_length=tf.cast(label_length, dtype=tf.int32),
-                                      logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                      logits_time_major=True,
-                                      blank_index=0)
-
-            value = tf.reduce_mean(edit_distance * ctc_loss)
-        else:
-            value = tf.reduce_mean(edit_distance)
+        value = tf.reduce_mean(edit_distance)
 
         if sample_weight is not None:
             batch_size = tf.cast(tf.shape(y_pred)[0], dtype=tf.float32)
