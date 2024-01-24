@@ -370,12 +370,10 @@ class BaseRecognitionModel(BaseModel):
         ctc_logits = self.recognition(image_data)
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
-        self.ctc_metric.update_state(text_data, ctc_logits)
         self.edit_distance.update_state(text_data, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
-            self.ctc_metric.name: self.ctc_metric.result(),
             self.edit_distance.name: self.edit_distance.result(),
         }
 
