@@ -52,7 +52,7 @@ class EditDistance(tf.keras.metrics.Metric):
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.math.log(tf.transpose(y_pred, perm=[1, 0, 2]) + self.epsilon)
+        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
 
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
 
