@@ -284,8 +284,9 @@ class BaseRecognitionModel(BaseModel):
 
         self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
+        self.ctc_metric = EditDistance(weighted=True, name='ctc_metric')
 
-        self.monitor = self.edit_distance.name
+        self.monitor = self.ctc_metric.name
 
         self.build_model()
         self.built = True
@@ -344,10 +345,12 @@ class BaseRecognitionModel(BaseModel):
         self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
         self.edit_distance.update_state(texts, ctc_logits)
+        self.ctc_metric.update_state(texts, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
             self.edit_distance.name: self.edit_distance.result(),
+            self.ctc_metric.name: self.ctc_metric.result(),
         }
 
     def test_step(self, input_data):
@@ -368,12 +371,14 @@ class BaseRecognitionModel(BaseModel):
         _, (image_data, text_data, _) = input_data
 
         ctc_logits = self.recognition(image_data)
-
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
+
+        self.ctc_metric.update_state(text_data, ctc_logits)
         self.edit_distance.update_state(text_data, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
+            self.ctc_metric.name: self.ctc_metric.result(),
             self.edit_distance.name: self.edit_distance.result(),
         }
 
