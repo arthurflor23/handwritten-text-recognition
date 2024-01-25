@@ -435,9 +435,9 @@ class Dataset():
 
                 else:
                     if batch_index >= data_length:
-                        if shuffle:
-                            np.random.shuffle(indices)
                         batch_index = 0
+                    if batch_index == 0 and shuffle:
+                        np.random.shuffle(indices)
 
                     batch = data[indices[batch_index:batch_index + batch_size]]
 
