@@ -34,12 +34,17 @@ class RecognitionModel(BaseRecognitionModel):
         self.optimizer = NormalizedOptimizer(
             tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
 
-    def build_model(self):
+    def build_model(self, backbone=False):
         """
         Builds the neural network model.
 
         This method sets up the architecture of the model by defining layers, their connections,
             and configurations. It is typically called in the constructor to create the model structure.
+
+        Parameters
+        ----------
+        backbone : bool, optional
+            Flag to set the backbone model.
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
@@ -93,6 +98,9 @@ class RecognitionModel(BaseRecognitionModel):
 
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
         # conv = MaskingPadding()([image_inputs, conv])
+
+        if backbone:
+            self.backbone = tf.keras.Model(inputs=image_inputs, outputs=conv, name='backbone')
 
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
