@@ -38,12 +38,17 @@ class RecognitionModel(BaseRecognitionModel):
         self.optimizer = NormalizedOptimizer(
             tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
 
-    def build_model(self):
+    def build_model(self, backbone=False):
         """
         Builds the neural network model.
 
         This method sets up the architecture of the model by defining layers, their connections,
             and configurations. It is typically called in the constructor to create the model structure.
+
+        Parameters
+        ----------
+        backbone : bool, optional
+            Flag to set the backbone model.
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
@@ -115,14 +120,17 @@ class RecognitionModel(BaseRecognitionModel):
 
         low_to_high = tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 2, 2, 1]), name='tile')(low_to_high)
 
-        octconv = tf.keras.layers.Add()([high_to_high, low_to_high])
-        octconv = tf.keras.layers.BatchNormalization(renorm=True)(octconv)
-        octconv = tf.keras.layers.Activation('relu')(octconv)
+        conv = tf.keras.layers.Add()([high_to_high, low_to_high])
+        conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
+        conv = tf.keras.layers.Activation('relu')(conv)
 
-        octconv = tf.keras.layers.Reshape(target_shape=(octconv.get_shape()[1], -1))(octconv)
-        # octconv = MaskingPadding()([image_inputs, octconv])
+        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        # conv = MaskingPadding()([image_inputs, conv])
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(octconv)
+        if backbone:
+            self.backbone = tf.keras.Model(inputs=image_inputs, outputs=conv, name='backbone')
+
+        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
         blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
