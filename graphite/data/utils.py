@@ -121,6 +121,8 @@ def batch_processing(batch_data, image_processing=False):
         Processed data.
     """
 
+    batch_data = batch_data.transpose((0, 2, 1))
+
     if image_processing:
         batch_data = np.expand_dims(batch_data, axis=-1)
         batch_data = (batch_data.astype(np.float32) / 127.5) - 1
@@ -214,12 +216,12 @@ def resize_image(image, target_width=None, target_shape=None):
         return None
 
     if target_width and target_shape:
-        new_h, new_w = target_shape[0], min(target_width, target_shape[1])
+        new_h, new_w = target_shape[1], min(target_width, target_shape[0])
         image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
     elif target_shape:
         h, w = image.shape
-        target_h, target_w = target_shape[:2]
+        target_w, target_h = target_shape[:2]
 
         if h > target_h or w > target_w:
             aspect_ratio = w / h
