@@ -436,6 +436,8 @@ class BaseRecognitionModel(BaseModel):
         batch_size = int(np.ceil(x.shape[0] / steps))
 
         x = np.log(x + 1e-7)
+        x = x.transpose((0, 2, 1, 3))
+
         predictions, probabilities = [], []
 
         for step in range(steps):
