@@ -102,6 +102,10 @@ def check(args):
             x_processed_data, _ = next(processed_gen)
             image_processed_data, text_augmented_data = x_processed_data
 
+            # better to read
+            image_processed_data = image_processed_data.transpose((0, 2, 1, 3))
+            text_augmented_data = text_augmented_data.transpose((0, 2, 1))
+
             for i in range(len(image_source_data)):
                 # source
                 print('\n')
