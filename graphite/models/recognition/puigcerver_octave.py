@@ -52,9 +52,8 @@ class RecognitionModel(BaseRecognitionModel):
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
-        inputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='input_transpose')(image_inputs)
 
-        high, low = OctConv2D(alpha=0.25, filters=16)([inputs, tf.keras.layers.AveragePooling2D(2)(inputs)])
+        high, low = OctConv2D(alpha=0.25, filters=16)([image_inputs, tf.keras.layers.AveragePooling2D(2)(image_inputs)])
 
         high = tf.keras.layers.BatchNormalization(renorm=True)(high)
         low = tf.keras.layers.BatchNormalization(renorm=True)(low)
@@ -140,6 +139,5 @@ class RecognitionModel(BaseRecognitionModel):
         blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='output_transpose')(outputs)
 
         self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)

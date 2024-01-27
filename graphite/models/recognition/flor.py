@@ -52,13 +52,12 @@ class RecognitionModel(BaseRecognitionModel):
         """
 
         image_inputs = tf.keras.Input(shape=self.image_shape)
-        inputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='input_transpose')(image_inputs)
 
         conv = tf.keras.layers.Conv2D(filters=16,
                                       kernel_size=(3, 3),
                                       strides=(2, 1),
                                       padding='same',
-                                      kernel_initializer='he_uniform')(inputs)
+                                      kernel_initializer='he_uniform')(image_inputs)
 
         conv = tf.keras.layers.PReLU(shared_axes=[1, 2])(conv)
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
@@ -138,6 +137,5 @@ class RecognitionModel(BaseRecognitionModel):
         bgru = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(bgru)
 
         outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(bgru)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.image.transpose(x), name='output_transpose')(outputs)
 
         self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
