@@ -1300,7 +1300,7 @@ class TemporalResidualBlock(tf.keras.layers.Layer):
             self.layers = []
 
             if self.activation == 'prelu':
-                activation = tf.keras.layers.PReLU()
+                activation = tf.keras.layers.PReLU(shared_axes=[-1])
             else:
                 activation = tf.keras.layers.Activation(self.activation)
 
