@@ -537,10 +537,10 @@ class BaseRecognitionModel(BaseModel):
                     top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
 
                     cer_distance = editdistance.eval(list(text_true), list(top_path))
-                    cer = cer_distance / max(len(text_true), len(top_path))
+                    cer = cer_distance / len(text_true)
 
                     wer_distance = editdistance.eval(text_true.split(), top_path.split())
-                    wer = wer_distance / max(len(text_true.split()), len(top_path.split()))
+                    wer = wer_distance / len(text_true.split())
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
