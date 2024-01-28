@@ -332,27 +332,24 @@ class GatedConv2D(tf.keras.layers.Layer):
         return outputs
 
 
-class MaskingPadding(tf.keras.layers.Layer):
+class MaskPadding(tf.keras.layers.Layer):
     """
-    Layer to mask padding in tensors and optionally reduce norm.
+    Layer to mask padding in tensors.
     """
 
-    def __init__(self, padding_value=1, axis=1, **kwargs):
+    def __init__(self, pad_value=1, **kwargs):
         """
         Parameters
         ----------
-        padding_value : float
-            Value for identifying padding.
-        axis : int
-            Specifies the reference dimension for masking.
+        pad_value : float or int, optional
+            Value used for padding.
         **kwargs : dict
             Additional keyword arguments for Layer.
         """
 
         super().__init__(**kwargs)
 
-        self.padding_value = padding_value
-        self.axis = axis
+        self.pad_value = pad_value
 
     def get_config(self):
         """
@@ -367,26 +364,10 @@ class MaskingPadding(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'padding_value': self.padding_value,
-            'axis': self.axis,
+            'pad_value': self.pad_value,
         })
 
         return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer shapes.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input to the layer.
-        """
-
-        super().build(input_shape)
-
-        self.origin_shape = input_shape[0]
-        self.target_shape = input_shape[1]
 
     def call(self, inputs):
         """
@@ -405,37 +386,69 @@ class MaskingPadding(tf.keras.layers.Layer):
 
         input_data, target_data = inputs
 
-        if self.axis == 2:
+        v_mask = self.get_mask(input_data, target_data, self.pad_value, transpose=False)
+        h_mask = self.get_mask(input_data, target_data, self.pad_value, transpose=True)
+
+        mask = tf.cast(tf.logical_and(v_mask, h_mask), dtype=target_data.dtype)
+        output = tf.math.multiply(target_data, mask)
+
+        return output
+
+    def get_mask(self, input_data, target_data, pad_value, transpose=False):
+        """
+        Generate a mask for the input data based on the padding value.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            The input tensor.
+        target_data : tf.Tensor
+            The target tensor for which the mask is applied.
+        pad_value : float or int
+            The padding value to identify in the input data.
+        transpose : bool, optional
+            Whether to transpose the input and target data.
+
+        Returns
+        -------
+        tf.Tensor
+            Boolean mask tensor.
+        """
+
+        if transpose:
             input_data = tf.image.transpose(input_data)
             target_data = tf.image.transpose(target_data)
 
-        reduce_axis = list(range(2, len(self.origin_shape)))
+        origin_shape = input_data.get_shape()
+        target_shape = target_data.get_shape()
+
+        reduce_axis = list(range(2, len(origin_shape)))
         input_mean = tf.reduce_mean(input_data, axis=reduce_axis)
 
         data_reversed = tf.reverse(input_mean, axis=[1])
-        padding_mask = tf.equal(data_reversed, tf.cast(self.padding_value, data_reversed.dtype))
+        padding_mask = tf.equal(data_reversed, tf.cast(pad_value, data_reversed.dtype))
 
         lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
-        input_lens = tf.where(tf.equal(lengths, 0), self.origin_shape[1], self.origin_shape[1] - lengths)
+        input_lens = tf.where(tf.equal(lengths, 0), origin_shape[1], origin_shape[1] - lengths)
 
-        if self.origin_shape[1] > self.target_shape[1]:
-            downscale = tf.math.ceil(self.origin_shape[1] / self.target_shape[1])
-            input_lens = tf.math.divide(tf.cast(input_lens, tf.float32), downscale + 1e-7)
+        if origin_shape[1] > target_shape[1]:
+            downscale = tf.math.ceil(origin_shape[1] / (target_shape[1] + 1e-7))
+            input_lens = tf.math.divide(tf.cast(input_lens, tf.float32), downscale)
         else:
-            upscale = tf.math.ceil(self.target_shape[1] / self.origin_shape[1])
+            upscale = tf.math.ceil(target_shape[1] / (origin_shape[1] + 1e-7))
             input_lens = tf.math.multiply(tf.cast(input_lens, tf.float32), upscale)
 
-        mask = tf.sequence_mask(input_lens, maxlen=self.target_shape[1], dtype=target_data.dtype)
+        mask = tf.sequence_mask(tf.math.ceil(input_lens), maxlen=target_shape[1])
 
-        for _ in range(len(self.target_shape) - 2):
+        for _ in range(len(reduce_axis)):
             mask = tf.expand_dims(mask, axis=-1)
 
-        target = tf.math.multiply(target_data, mask)
+        mask = tf.tile(mask, [1, 1, target_shape[2], 1])
 
-        if self.axis == 2:
-            target = tf.image.transpose(target)
+        if transpose:
+            mask = tf.image.transpose(mask)
 
-        return target
+        return mask
 
 
 class OctConv2D(tf.keras.layers.Layer):
