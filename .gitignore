@@ -1,7 +1,8 @@
 # Project artifacts
 datasets/
-outputs/
 mlruns/
+outputs/
+scripts/
 
 # Hidden files
 .directory
