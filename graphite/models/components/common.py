@@ -432,8 +432,8 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
+        batch_size = int(np.ceil(len(x) / steps))
         beam_width = max(top_paths, beam_width)
-        batch_size = int(np.ceil(x.shape[0] / steps))
 
         x = np.log(x + 1e-7)
         x = x.transpose((0, 2, 1, 3))
@@ -509,6 +509,7 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
+        batch_size = int(np.ceil(len(x) / steps))
         metrics = {'cer': [], 'wer': []}
         evaluations = []
 
@@ -520,8 +521,6 @@ class BaseRecognitionModel(BaseModel):
 
             _, y_data = next(y)
             _, text_true_data, _ = y_data
-
-            batch_size = len(text_true_data)
 
             start = step * batch_size
             end = start + batch_size
@@ -539,10 +538,10 @@ class BaseRecognitionModel(BaseModel):
                     top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
 
                     cer_distance = editdistance.eval(list(text_true), list(top_path))
-                    cer = cer_distance / len(text_true)
+                    cer = cer_distance / max(len(text_true), len(top_path))
 
                     wer_distance = editdistance.eval(text_true.split(), top_path.split())
-                    wer = wer_distance / len(text_true.split())
+                    wer = wer_distance / max(len(text_true.split()), len(top_path.split()))
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
@@ -732,6 +731,7 @@ class BaseSynthesisModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
+        batch_size = int(np.ceil(len(x) / steps))
         metrics = {'kid': []}
         evaluations = []
 
@@ -742,8 +742,6 @@ class BaseSynthesisModel(BaseModel):
 
             _, y_data = next(y)
             image_true_data, _, _ = y_data
-
-            batch_size = len(image_true_data)
 
             start = step * batch_size
             end = start + batch_size
