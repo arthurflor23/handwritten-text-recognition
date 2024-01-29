@@ -429,16 +429,12 @@ class MaskPadding(tf.keras.layers.Layer):
         padding_mask = tf.equal(data_reversed, tf.cast(pad_value, data_reversed.dtype))
 
         lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
-        input_lens = tf.where(tf.equal(lengths, 0), origin_shape[1], origin_shape[1] - lengths)
+        origin_lens = tf.where(tf.equal(lengths, 0), origin_shape[1], origin_shape[1] - lengths)
 
-        if origin_shape[1] > target_shape[1]:
-            downscale = tf.math.ceil(origin_shape[1] / (target_shape[1] + 1e-7))
-            input_lens = tf.math.divide(tf.cast(input_lens, tf.float32), downscale)
-        else:
-            upscale = tf.math.ceil(target_shape[1] / (origin_shape[1] + 1e-7))
-            input_lens = tf.math.multiply(tf.cast(input_lens, tf.float32), upscale)
+        scale = tf.math.divide(tf.cast(origin_lens, tf.float32), (origin_shape[1] + 1e-7))
+        target_lens = tf.math.multiply(tf.cast(target_shape[1], tf.float32), scale)
 
-        mask = tf.sequence_mask(tf.math.ceil(input_lens), maxlen=target_shape[1])
+        mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=target_shape[1])
 
         for _ in range(len(reduce_axis)):
             mask = tf.expand_dims(mask, axis=-1)
