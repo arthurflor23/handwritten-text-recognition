@@ -37,11 +37,11 @@ if __name__ == '__main__':
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
     # augmentor
     parser.add_argument('--binarize', default=None, nargs='+', help='Binarization parameters')
-    parser.add_argument('--erode', default=None, nargs=3, type=float, help='Erosion parameters')
-    parser.add_argument('--dilate', default=None, nargs=3, type=float, help='Dilation parameters')
-    parser.add_argument('--elastic', default=None, nargs=3, type=float, help='Elastic parameters')
+    parser.add_argument('--erode', default=None, nargs=2, type=float, help='Erosion parameters')
+    parser.add_argument('--dilate', default=None, nargs=2, type=float, help='Dilation parameters')
+    parser.add_argument('--elastic', default=None, nargs=2, type=float, help='Elastic parameters')
     parser.add_argument('--perspective', default=[0.66, 0.4], nargs=2, type=float, help='Perspective parameters')
-    parser.add_argument('--mixup', default=None, nargs=3, type=float, help='Mixup parameters')
+    parser.add_argument('--mixup', default=None, nargs=2, type=float, help='Mixup parameters')
     parser.add_argument('--shear', default=[0.33, 5], nargs=2, type=float, help='Shearing parameters')
     parser.add_argument('--scale', default=[0.33, 0.1], nargs=2, type=float, help='Scaling parameters')
     parser.add_argument('--rotate', default=[0.33, 1.0], nargs=2, type=float, help='Rotation parameters')
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--shift-x', default=None, nargs=2, type=float, help='Horizontal translation parameters')
     parser.add_argument('--salt-and-pepper', default=None, nargs=2, type=float, help='Salt & pepper parameters')
     parser.add_argument('--gaussian-noise', default=None, nargs=2, type=float, help='Gaussian noise parameters')
-    parser.add_argument('--gaussian-blur', default=None, nargs=3, type=float, help='Gaussian blur parameters')
+    parser.add_argument('--gaussian-blur', default=None, nargs=2, type=float, help='Gaussian blur parameters')
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable augmentation')
 
     # synthesis
