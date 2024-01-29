@@ -256,7 +256,7 @@ class Augmentor():
 
         return image
 
-    def elastic(self, image, kernel_size, alpha, radius=True):
+    def elastic(self, image, kernel_size, alpha=1.0, radius=True):
         """
         Apply elastic transform to the image.
 
