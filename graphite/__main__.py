@@ -35,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--validation-ratio', default=None, help='Define validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Define test partition ratio')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading mode')
+
     # augmentor
     parser.add_argument('--binarize', default=None, nargs='+', help='Binarization parameters')
     parser.add_argument('--erode', default=None, nargs=2, type=float, help='Erosion parameters')
