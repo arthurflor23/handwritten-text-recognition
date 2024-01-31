@@ -230,13 +230,13 @@ class Graphite():
             Training and validation progress details.
         """
 
-        create_new_run = True
+        new_context = True
 
         if self.run_context is not None:
             path = self.run_context.info.artifact_uri.replace('file://', '')
-            create_new_run = bool(glob.glob(os.path.join(path, '**', '*.h5'), recursive=True))
+            new_context = bool(glob.glob(os.path.join(path, '**', '*.h5'), recursive=True))
 
-        run_info = self.get_run_info(create_new=create_new_run)
+        run_info = self.get_run_info(new_context=new_context)
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
@@ -494,7 +494,7 @@ class Graphite():
 
         return metrics, evaluations
 
-    def get_run_info(self, run_context=None, create_new=False):
+    def get_run_info(self, run_context=None, new_context=False):
         """
         Get information about the current MLflow run.
 
@@ -502,7 +502,7 @@ class Graphite():
         ----------
         run_context : MLflow run, optional
             MLflow Run object to set as the current run.
-        create_new : bool, optional
+        new_context : bool, optional
             Create a new run context.
 
         Returns
@@ -518,7 +518,7 @@ class Graphite():
         if run_context is not None:
             self.run_context = run_context
 
-        if self.run_context is not None and not create_new:
+        if self.run_context is not None and not new_context:
             run_id = self.run_context.info.run_id
             run_name = self.run_context.info.run_name
             artifact_path = self.run_context.info.artifact_uri.replace('file://', '')
@@ -540,7 +540,8 @@ class Graphite():
                      evaluations=None,
                      evaluation_images=None,
                      prefix='test',
-                     suffix=None):
+                     suffix=None,
+                     new_context=False):
         """
         Save relevant context information to MLflow and log files.
 
@@ -564,9 +565,14 @@ class Graphite():
             Prefix used in the metric logs.
         suffix : str, optional
             Suffix used in the metric logs.
+        new_context : bool, optional
+            Create a new run context.
         """
 
-        run_info = self.get_run_info()
+        if new_context and self.run_context is not None:
+            new_context = bool(self.run_context.data.params)
+
+        run_info = self.get_run_info(new_context=new_context)
 
         def log_content(label, content):
             if content is not None:
@@ -627,7 +633,8 @@ class Graphite():
                       synthesis_run_index=None,
                       recognition=None,
                       recognition_run_index=None,
-                      experiment_name=None):
+                      experiment_name=None,
+                      status_finished=False):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -643,6 +650,8 @@ class Graphite():
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
+        status_finished : bool, optional
+            Restrict run index status.
 
         Returns
         -------

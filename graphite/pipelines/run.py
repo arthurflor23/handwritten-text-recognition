@@ -71,7 +71,8 @@ def run(args, training=None):
         graphite.save_context(params=args,
                               dataset=dataset,
                               augmentor=augmentor,
-                              model=graphite.model)
+                              model=graphite.model,
+                              new_context=training)
 
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
