@@ -657,16 +657,27 @@ class Graphite():
                 experiment = mlflow.set_experiment(experiment_name or 'Default')
                 experiment_ids = [experiment.experiment_id]
 
-                filter_string = f"status='FINISHED' AND tag.graphite.{tag_name}='{tag_value}'"
+                filter_string = f"tag.graphite.{tag_name}='{tag_value}'"
+
+                if status_finished:
+                    filter_string = f"status='FINISHED' AND {filter_string}"
 
                 df = mlflow.search_runs(experiment_ids=experiment_ids,
                                         filter_string=filter_string,
                                         order_by=['tags.mlflow.runName ASC'])
 
-                if not df.empty and run_index < len(df):
-                    run = mlflow.get_run(df.iloc[run_index]['run_id'])
-                    artifact_path = run.info.artifact_uri.replace('file://', '')
-                    return run, artifact_path
+                if not df.empty:
+                    df['artifact_uri'] = df['artifact_uri'].str.replace('file://', '')
+
+                    df['valid'] = df['artifact_uri'].apply(
+                        lambda x: bool(glob.glob(os.path.join(x, '**', '*.h5'), recursive=True)))
+
+                    df = df[df['valid']].reset_index(drop=True)
+
+                    if run_index < len(df):
+                        run = mlflow.get_run(df.iloc[run_index]['run_id'])
+                        artifact_path = run.info.artifact_uri.replace('file://', '')
+                        return run, artifact_path
 
             return None, None
 
