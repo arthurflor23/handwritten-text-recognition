@@ -124,8 +124,9 @@ class RecognitionModel(BaseRecognitionModel):
         conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
 
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(conv)
-        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+
         # conv = MaskPadding()([image_inputs, conv])
+        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         if backbone:
             self.backbone = tf.keras.Model(inputs=image_inputs, outputs=conv, name='backbone')
