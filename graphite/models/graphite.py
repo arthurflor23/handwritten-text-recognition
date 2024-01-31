@@ -618,11 +618,11 @@ class Graphite():
             log_content('augmentor', augmentor)
             log_content('model', model)
 
-            evaluation_label = f"{prefix or ''}_evaluations_{suffix or ''}".strip('_')
+            evaluation_label = f"evaluations_{prefix or ''}_{suffix or ''}".strip('_')
             log_content(evaluation_label, evaluations)
             log_images(evaluation_label, evaluation_images)
 
-            metric_label = f"{prefix or ''}_metrics_{suffix or ''}".strip('_')
+            metric_label = f"metrics_{prefix or ''}_{suffix or ''}".strip('_')
             log_content(metric_label, metrics)
             log_metric(metric_label, metrics)
 
