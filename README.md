@@ -85,6 +85,7 @@ The project has several command-line parameters that can be used to customize it
 
 -   `--synthesis-run-index`: Define a synthesis model run index.
 -   `--recognition-run-index`: Define a recognition model run index.
+-   `--status-finished`: Restrict run index status.
 -   `--experiment-name`: Define a MLflow experiment name.
 
 #### Dataset
