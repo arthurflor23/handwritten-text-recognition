@@ -18,7 +18,8 @@ def run(args, training=None):
                                                       synthesis_run_index=args.synthesis_run_index,
                                                       recognition=args.recognition,
                                                       recognition_run_index=args.recognition_run_index,
-                                                      experiment_name=args.experiment_name)
+                                                      experiment_name=args.experiment_name,
+                                                      status_finished=args.status_finished)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,

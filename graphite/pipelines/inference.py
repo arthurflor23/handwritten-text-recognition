@@ -20,7 +20,8 @@ def inference(args):
                                                       synthesis_run_index=args.synthesis_run_index,
                                                       recognition=args.recognition,
                                                       recognition_run_index=args.recognition_run_index,
-                                                      experiment_name=args.experiment_name)
+                                                      experiment_name=args.experiment_name,
+                                                      status_finished=args.status_finished)
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
