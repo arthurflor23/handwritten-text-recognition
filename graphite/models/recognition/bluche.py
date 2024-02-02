@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import GatedConv2D
-from graphite.models.components.layers import MaskPadding
 from graphite.models.components.optimizers import NormalizedOptimizer
 
 
@@ -90,7 +89,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         conv = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(conv)
 
-        # conv = MaskPadding()([image_inputs, conv])
         conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
 
         if backbone:
