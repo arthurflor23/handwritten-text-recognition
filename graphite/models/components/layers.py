@@ -369,6 +369,21 @@ class MaskPadding(tf.keras.layers.Layer):
 
         return config
 
+    def build(self, input_shape):
+        """
+        Initializes layer shapes.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input to the layer.
+        """
+
+        super().build(input_shape)
+
+        self.origin_shape = input_shape[0]
+        self.target_shape = input_shape[1]
+
     def call(self, inputs):
         """
         Applies masking to inputs.
@@ -415,31 +430,34 @@ class MaskPadding(tf.keras.layers.Layer):
             Boolean mask tensor.
         """
 
+        origin_shape = self.origin_shape[1:-1]
+        target_shape = self.target_shape[1:-1]
+
         if transpose:
+            origin_shape = origin_shape[::-1]
+            target_shape = target_shape[::-1]
+
             input_data = tf.image.transpose(input_data)
             target_data = tf.image.transpose(target_data)
 
-        origin_shape = input_data.get_shape()
-        target_shape = target_data.get_shape()
-
-        reduce_axis = list(range(2, len(origin_shape)))
+        reduce_axis = list(range(2, len(self.origin_shape)))
         input_mean = tf.reduce_mean(input_data, axis=reduce_axis)
 
         data_reversed = tf.reverse(input_mean, axis=[1])
         padding_mask = tf.equal(data_reversed, tf.cast(pad_value, data_reversed.dtype))
 
         lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
-        origin_lens = tf.where(tf.equal(lengths, 0), origin_shape[1], origin_shape[1] - lengths)
+        origin_lens = tf.where(tf.equal(lengths, 0), origin_shape[0], origin_shape[0] - lengths)
 
-        scale = tf.math.divide(tf.cast(origin_lens, tf.float32), (origin_shape[1] + 1e-7))
-        target_lens = tf.math.multiply(tf.cast(target_shape[1], tf.float32), scale)
+        scale = tf.math.divide(tf.cast(origin_lens, tf.float32), (origin_shape[0] + 1e-7))
+        target_lens = tf.math.multiply(tf.cast(target_shape[0], tf.float32), scale)
 
-        mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=target_shape[1])
+        mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=target_shape[0])
 
         for _ in range(len(reduce_axis)):
             mask = tf.expand_dims(mask, axis=-1)
 
-        mask = tf.tile(mask, [1, 1, target_shape[2], 1])
+        mask = tf.tile(mask, [1, 1, target_shape[1], 1])
 
         if transpose:
             mask = tf.image.transpose(mask)
