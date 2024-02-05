@@ -21,6 +21,9 @@ class RecognitionModel(BaseRecognitionModel):
     Batch Renormalization: Towards Reducing Minibatch Dependence in Batch-Normalized Models
         https://arxiv.org/abs/1702.03275
 
+    Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network
+        https://arxiv.org/abs/1707.04822
+
     Exact solutions to the nonlinear dynamics of learning in deep linear neural networks
         https://arxiv.org/abs/1312.6120
 
