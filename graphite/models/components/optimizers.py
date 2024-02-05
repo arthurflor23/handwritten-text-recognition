@@ -7,9 +7,19 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
     This optimizer wraps around another tf.keras optimizer and normalizes
         the gradients according to a specified norm.
+
+    References
+    ----------
+    Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network
+        https://arxiv.org/abs/1707.04822
     """
 
-    def __init__(self, optimizer, normalization='l2', epsilon=1e-7, name='normalized_optimizer', **kwargs):
+    def __init__(self,
+                 optimizer,
+                 normalization='l2',
+                 epsilon=1e-7,
+                 name='normalized_optimizer',
+                 **kwargs):
         """
         Initializes the NormalizedOptimizer.
 
