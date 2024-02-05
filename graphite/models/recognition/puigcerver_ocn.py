@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import OctConv2D
-from graphite.models.components.optimizers import NormalizedOptimizer
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -34,28 +33,24 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 3e-4
 
-        self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.RMSprop(learning_rate=learning_rate))
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
-    def build_model(self, backbone=False):
+    def build_model(self):
         """
         Builds the neural network model.
 
         This method sets up the architecture of the model by defining layers, their connections,
             and configurations. It is typically called in the constructor to create the model structure.
-
-        Parameters
-        ----------
-        backbone : bool, optional
-            Flag to set the backbone model.
         """
 
-        image_inputs = tf.keras.Input(shape=self.image_shape)
+        # encoder model
+        encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        high, low = OctConv2D(alpha=0.25, filters=16)([image_inputs, tf.keras.layers.AveragePooling2D(2)(image_inputs)])
+        inputs = [encoder_input, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder_input)]
+        high, low = OctConv2D(alpha=0.25, filters=16)(inputs)
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        high = tf.keras.layers.BatchNormalization()(high)
+        low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(high)
@@ -63,8 +58,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high, low = OctConv2D(alpha=0.25, filters=32)([high, low])
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        high = tf.keras.layers.BatchNormalization()(high)
+        low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
@@ -76,8 +71,8 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        high = tf.keras.layers.BatchNormalization()(high)
+        low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(high)
@@ -89,8 +84,8 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        high = tf.keras.layers.BatchNormalization()(high)
+        low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
 
@@ -100,17 +95,17 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        high = tf.keras.layers.BatchNormalization()(high)
+        low = tf.keras.layers.BatchNormalization()(low)
         high = tf.keras.layers.LeakyReLU(alpha=0.01)(high)
         low = tf.keras.layers.LeakyReLU(alpha=0.01)(low)
 
         high, low = OctConv2D(alpha=0.25, filters=80)([high, low])
 
-        high = tf.keras.layers.BatchNormalization(renorm=True)(high)
+        high = tf.keras.layers.BatchNormalization()(high)
         high = tf.keras.layers.Activation('relu')(high)
 
-        low = tf.keras.layers.BatchNormalization(renorm=True)(low)
+        low = tf.keras.layers.BatchNormalization()(low)
         low = tf.keras.layers.Activation('relu')(low)
 
         high_to_high = tf.keras.layers.Conv2D(80, 3, padding='same')(high)
@@ -118,24 +113,39 @@ class RecognitionModel(BaseRecognitionModel):
 
         low_to_high = tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 2, 2, 1]), name='tile')(low_to_high)
 
-        conv = tf.keras.layers.Add()([high_to_high, low_to_high])
-        conv = tf.keras.layers.BatchNormalization(renorm=True)(conv)
-        conv = tf.keras.layers.Activation('relu')(conv)
+        encoder = tf.keras.layers.Add()([high_to_high, low_to_high])
+        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.Activation('relu')(encoder)
 
-        conv = tf.keras.layers.Reshape(target_shape=(conv.get_shape()[1], -1))(conv)
+        encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
 
-        if backbone:
-            self.backbone = tf.keras.Model(inputs=image_inputs, outputs=conv, name='backbone')
+        self.encoder = tf.keras.Model(inputs=encoder_input, outputs=encoder, name='encoder')
 
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(conv)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
-        blstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(blstm)
+        # decoder model
+        decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
-        blstm = tf.keras.layers.Dropout(rate=0.5)(blstm)
-        blstm = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(blstm)
+        decoder = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(decoder_input)
 
-        outputs = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(blstm)
+        decoder = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(decoder)
 
-        self.recognition = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+        decoder = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(decoder)
+
+        decoder = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(decoder)
+
+        decoder = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.5))(decoder)
+
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
+
+        decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
+
+        self.decoder = tf.keras.Model(inputs=decoder_input, outputs=decoder, name='decoder')
+
+        # recognition model
+        decoder_output = self.decoder(self.encoder.output)
+        self.recognition = tf.keras.Model(inputs=encoder_input, outputs=decoder_output, name=self.name)
