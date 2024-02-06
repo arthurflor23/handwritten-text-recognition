@@ -60,6 +60,8 @@ class RecognitionModel(BaseRecognitionModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
+        initializer = tf.keras.initializers.random_normal(stddev=0.02)
+
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
@@ -67,7 +69,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder_input)
+                                         kernel_initializer=initializer)(encoder_input)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -76,13 +78,13 @@ class RecognitionModel(BaseRecognitionModel):
                               kernel_size=(3, 3),
                               strides=(1, 1),
                               padding='same',
-                              kernel_initializer='orthogonal')(encoder)
+                              kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(2, 4),
                                          strides=(2, 4),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder)
+                                         kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -91,14 +93,14 @@ class RecognitionModel(BaseRecognitionModel):
                               kernel_size=(3, 3),
                               strides=(1, 1),
                               padding='same',
-                              kernel_initializer='orthogonal')(encoder)
+                              kernel_initializer=initializer)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder)
+                                         kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -107,14 +109,14 @@ class RecognitionModel(BaseRecognitionModel):
                               kernel_size=(3, 3),
                               strides=(1, 1),
                               padding='same',
-                              kernel_initializer='orthogonal')(encoder)
+                              kernel_initializer=initializer)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(2, 4),
                                          strides=(2, 4),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder)
+                                         kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -126,7 +128,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder)
+                                         kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -138,7 +140,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='orthogonal')(encoder)
+                                         kernel_initializer=initializer)(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -147,7 +149,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = MaskPadding()([encoder_input, encoder])
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
-        encoder = tf.keras.layers.Dense(units=256, kernel_initializer='orthogonal')(encoder)
+        encoder = tf.keras.layers.Dense(units=256, kernel_initializer=initializer)(encoder)
 
         self.encoder = tf.keras.Model(inputs=encoder_input, outputs=encoder, name='encoder')
 
@@ -160,13 +162,13 @@ class RecognitionModel(BaseRecognitionModel):
                                         dilations=(1, 2, 4, 8),
                                         padding='same',
                                         activation='prelu',
-                                        kernel_initializer='orthogonal',
+                                        kernel_initializer=initializer,
                                         batch_norm=True,
                                         return_sequences=True,
                                         dropout=0.2)(decoder_input)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1],
-                                        kernel_initializer='orthogonal',
+                                        kernel_initializer=initializer,
                                         activation='softmax')(decoder)
 
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)

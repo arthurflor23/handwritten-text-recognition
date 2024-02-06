@@ -724,11 +724,12 @@ class SelfAttention(tf.keras.layers.Layer):
         super().build(input_shape)
 
         filters = input_shape[-1]
+        initializer = tf.keras.initializers.random_normal(stddev=0.02)
 
         self.f_conv = tf.keras.layers.Conv2D(filters=filters // 8,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer='orthogonal',
+                                             kernel_initializer=initializer,
                                              use_bias=False)
 
         self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
@@ -736,13 +737,13 @@ class SelfAttention(tf.keras.layers.Layer):
         self.g_conv = tf.keras.layers.Conv2D(filters=filters // 8,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer='orthogonal',
+                                             kernel_initializer=initializer,
                                              use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv2D(filters=filters // 2,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer='orthogonal',
+                                             kernel_initializer=initializer,
                                              use_bias=False)
 
         self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
@@ -750,7 +751,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.o_conv = tf.keras.layers.Conv2D(filters=filters,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer='orthogonal',
+                                             kernel_initializer=initializer,
                                              use_bias=False)
 
         if self.spectral_norm:
