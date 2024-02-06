@@ -28,7 +28,8 @@ class Graphite():
                  discriminator_steps=1,
                  generator_steps=4,
                  synthesis_ratio=1.0,
-                 experiment_name=None):
+                 experiment_name=None,
+                 seed=None):
         """
         Initializes the Graphite model with specified components.
 
@@ -52,6 +53,8 @@ class Graphite():
             Ratio determining the synthesis influence.
         experiment_name : str, optional
             Name of the MLflow experiment.
+        seed : int, optional
+            Seed for random shuffle.
         """
 
         self.synthesis = synthesis
@@ -84,31 +87,34 @@ class Graphite():
                                                        class_name='SpellingModel')
 
             if SynthesisModel and not RecognitionModel:
-                self.model = SynthesisModel(image_shape=image_shape,
+                self.model = SynthesisModel(name='synthesis',
+                                            image_shape=image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
                                             writers_shape=self.tokenizer.writers_shape,
                                             discriminator_steps=discriminator_steps,
                                             generator_steps=generator_steps,
-                                            name='synthesis')
+                                            seed=seed)
             elif RecognitionModel:
                 synthesis_params = {}
 
                 if SynthesisModel:
-                    synthesis = SynthesisModel(image_shape=image_shape,
+                    synthesis = SynthesisModel(name='synthesis',
+                                               image_shape=image_shape,
                                                lexical_shape=self.tokenizer.lexical_shape,
                                                writers_shape=self.tokenizer.writers_shape,
                                                discriminator_steps=discriminator_steps,
                                                generator_steps=generator_steps,
-                                               name='synthesis')
+                                               seed=seed)
                     synthesis_params = {
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
                         'synthesis_ratio': synthesis_ratio,
                     }
 
-                self.model = RecognitionModel(image_shape=image_shape,
+                self.model = RecognitionModel(name='recognition',
+                                              image_shape=image_shape,
                                               lexical_shape=self.tokenizer.lexical_shape,
-                                              name='recognition',
+                                              seed=seed,
                                               **synthesis_params)
 
                 if SpellingModel:

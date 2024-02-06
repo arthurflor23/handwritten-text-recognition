@@ -241,6 +241,7 @@ class BaseRecognitionModel(BaseModel):
                  style_encoder=None,
                  generator=None,
                  synthesis_ratio=1.0,
+                 seed=None,
                  **kwargs):
         """
         Initializes the synthesis and recognition model.
@@ -257,11 +258,15 @@ class BaseRecognitionModel(BaseModel):
             Generator model for image generation.
         synthesis_ratio : float, optional
             Probability to use synthetic data.
+        seed : int, optional
+            Seed for random shuffle.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
+
+        tf.keras.utils.set_random_seed(seed=seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -270,6 +275,8 @@ class BaseRecognitionModel(BaseModel):
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
+
+        self.initializer = tf.keras.initializers.random_normal(stddev=0.02, seed=seed)
 
         self.names = [
             'style_encoder',
@@ -566,6 +573,7 @@ class BaseSynthesisModel(BaseModel):
                  writers_shape,
                  discriminator_steps=1,
                  generator_steps=1,
+                 seed=None,
                  **kwargs):
         """
         Initialize the synthesis model with specified parameters for each submodel.
@@ -582,11 +590,15 @@ class BaseSynthesisModel(BaseModel):
             The repetition of steps for discriminator training.
         generator_steps : int, optional
             The skipping steps for generator training.
+        seed : int, optional
+            Seed for random shuffle.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
+
+        tf.keras.utils.set_random_seed(seed=seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -602,6 +614,8 @@ class BaseSynthesisModel(BaseModel):
         self.discriminator_steps = discriminator_steps
         self.generator_steps = generator_steps
         self.global_steps = tf.Variable(0, dtype=tf.int64)
+
+        self.initializer = tf.keras.initializers.random_normal(stddev=0.02, seed=seed)
 
         self.names = [
             'recognition',
