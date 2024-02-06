@@ -378,11 +378,11 @@ class IdentificationModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='random_normal')(style)
+            style = tf.keras.layers.Dense(units=256, kernel_initializer='orthogonal')(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
         encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0],
-                                               kernel_initializer='random_normal',
+                                               kernel_initializer='orthogonal',
                                                use_bias=False)(style)
 
         self.model = tf.keras.Model(inputs=self.backbone.input,
@@ -460,11 +460,11 @@ class StyleEncoderModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='random_normal')(style)
+            style = tf.keras.layers.Dense(units=256, kernel_initializer='orthogonal')(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='random_normal')(style)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='random_normal')(style)
+        mu = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='orthogonal')(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='orthogonal')(style)
 
         encoder_output = tf.keras.layers.Lambda(
             lambda x: self.reparameterize(x[0], x[1]), name='reparameterize')([mu, logvar])
