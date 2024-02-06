@@ -677,7 +677,12 @@ class SelfAttention(tf.keras.layers.Layer):
         https://arxiv.org/abs/1802.05957
     """
 
-    def __init__(self, spectral_norm=False, **kwargs):
+    def __init__(self,
+                 spectral_norm=False,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 **kwargs):
         """
         Initialize the self-attention gan layer.
 
@@ -685,6 +690,12 @@ class SelfAttention(tf.keras.layers.Layer):
         ----------
         spectral_norm : bool, optional
             Wheter apply spectral normalization or not.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -692,6 +703,9 @@ class SelfAttention(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.spectral_norm = spectral_norm
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
 
     def get_config(self):
         """
@@ -707,6 +721,9 @@ class SelfAttention(tf.keras.layers.Layer):
 
         config.update({
             'spectral_norm': self.spectral_norm,
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
         })
 
         return config
@@ -724,12 +741,13 @@ class SelfAttention(tf.keras.layers.Layer):
         super().build(input_shape)
 
         filters = input_shape[-1]
-        initializer = tf.keras.initializers.random_normal(stddev=0.02)
 
         self.f_conv = tf.keras.layers.Conv2D(filters=filters // 8,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer=initializer,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
@@ -737,13 +755,17 @@ class SelfAttention(tf.keras.layers.Layer):
         self.g_conv = tf.keras.layers.Conv2D(filters=filters // 8,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer=initializer,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv2D(filters=filters // 2,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer=initializer,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
@@ -751,7 +773,9 @@ class SelfAttention(tf.keras.layers.Layer):
         self.o_conv = tf.keras.layers.Conv2D(filters=filters,
                                              kernel_size=1,
                                              padding='same',
-                                             kernel_initializer=initializer,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         if self.spectral_norm:
