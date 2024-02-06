@@ -49,7 +49,8 @@ def inference(args):
                         spelling=args.spelling,
                         image_shape=args.image_shape,
                         tokenizer=dataset.tokenizer,
-                        experiment_name=args.experiment_name)
+                        experiment_name=args.experiment_name,
+                        seed=args.seed)
     print(graphite)
 
     graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
