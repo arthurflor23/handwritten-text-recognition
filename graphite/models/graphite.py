@@ -101,7 +101,6 @@ class Graphite():
                                                generator_steps=generator_steps,
                                                name='synthesis')
                     synthesis_params = {
-                        'style_backbone': synthesis.style_backbone,
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
                         'synthesis_ratio': synthesis_ratio,

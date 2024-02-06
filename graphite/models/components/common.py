@@ -238,7 +238,6 @@ class BaseRecognitionModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
-                 style_backbone=None,
                  style_encoder=None,
                  generator=None,
                  synthesis_ratio=1.0,
@@ -252,8 +251,6 @@ class BaseRecognitionModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
-        style_backbone : StyleBackbone instance
-            StyleBackbone model for extracting style patterns from images.
         style_encoder : StyleEncoder instance
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
@@ -270,13 +267,11 @@ class BaseRecognitionModel(BaseModel):
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
 
-        self.style_backbone = style_backbone
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
 
         self.names = [
-            'style_backbone',
             'style_encoder',
             'generator',
             'recognition',
@@ -328,12 +323,11 @@ class BaseRecognitionModel(BaseModel):
 
         images, texts = aug_image_data, text_data
 
-        if self.generator and self.style_backbone and self.style_encoder:
+        if self.generator and self.style_encoder:
             if random.random() <= self.synthesis_ratio:
                 images, texts = image_data, aug_text_data
 
-                features_data, _ = self.style_backbone(images, training=False)
-                latent_inputs, _, _ = self.style_encoder(features_data, training=False)
+                latent_inputs, _ = self.style_encoder(images, training=False)
                 images = self.generator([latent_inputs, texts], training=False)
 
         with tf.GradientTape() as tape:
@@ -598,26 +592,24 @@ class BaseSynthesisModel(BaseModel):
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
 
-        self.discriminator = None
-        self.patch_discriminator = None
-        self.style_backbone = None
-        self.identification = None
         self.recognition = None
+        self.identification = None
         self.style_encoder = None
         self.generator = None
+        self.discriminator = None
+        self.patch_discriminator = None
 
         self.discriminator_steps = discriminator_steps
         self.generator_steps = generator_steps
         self.global_steps = tf.Variable(0, dtype=tf.int64)
 
         self.names = [
-            'discriminator',
-            'patch_discriminator',
-            'style_backbone',
-            'identification',
             'recognition',
+            'identification',
             'style_encoder',
             'generator',
+            'discriminator',
+            'patch_discriminator',
         ]
 
         self.bv_loss = BetaVAELoss()
@@ -668,8 +660,7 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _) = input_data
 
-        features_data, _ = self.style_backbone(image_data)
-        latent_data, _, _ = self.style_encoder(features_data)
+        latent_data, _ = self.style_encoder(image_data)
         generated_images = self.generator([latent_data, text_data])
 
         self.kid.update_state(image_data, generated_images)
@@ -680,7 +671,7 @@ class BaseSynthesisModel(BaseModel):
 
     def call(self, x_data, training=None):
         """
-        Processes input images and text through the style backbone, encoder,
+        Processes input images and text through the style encoder,
             and generator to produce generated images.
 
         Parameters
@@ -701,8 +692,7 @@ class BaseSynthesisModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            features_data, _ = self.style_backbone(image_data, training=training)
-            latent_data, _, _ = self.style_encoder(features_data, training=training)
+            latent_data, _ = self.style_encoder(image_data, training=training)
 
         generated_images = self.generator([latent_data, text_data], training=training)
 
