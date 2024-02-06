@@ -60,6 +60,8 @@ class RecognitionModel(BaseRecognitionModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
+        self.initializer = tf.keras.initializers.random_normal(stddev=0.02, seed=self.seed)
+
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 

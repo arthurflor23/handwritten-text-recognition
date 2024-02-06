@@ -271,12 +271,11 @@ class BaseRecognitionModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthesis_ratio = synthesis_ratio
+        self.seed = seed
 
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
-
-        self.initializer = tf.keras.initializers.random_normal(stddev=0.02, seed=seed)
 
         self.names = [
             'style_encoder',
@@ -603,6 +602,7 @@ class BaseSynthesisModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
+        self.seed = seed
 
         self.recognition = None
         self.identification = None
@@ -614,8 +614,6 @@ class BaseSynthesisModel(BaseModel):
         self.discriminator_steps = discriminator_steps
         self.generator_steps = generator_steps
         self.global_steps = tf.Variable(0, dtype=tf.int64)
-
-        self.initializer = tf.keras.initializers.random_normal(stddev=0.02, seed=seed)
 
         self.names = [
             'recognition',
