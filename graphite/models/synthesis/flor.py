@@ -87,33 +87,33 @@ class SynthesisModel(BaseSynthesisModel):
         discriminator_blocks = [64, 128, 256, 256]
         generator_blocks = [256, 128, 64, 64]
 
-        self.recognition = RecognitionModel(image_shape=self.image_shape,
-                                            lexical_shape=self.lexical_shape,
-                                            name='recognition')
+        self.recognition = RecognitionModel(name='recognition',
+                                            image_shape=self.image_shape,
+                                            lexical_shape=self.lexical_shape)
 
-        self.identification = IdentificationModel(backbone=self.recognition.encoder,
-                                                  writers_shape=self.writers_shape,
-                                                  name='identification')
+        self.identification = IdentificationModel(name='identification',
+                                                  backbone=self.recognition.encoder,
+                                                  writers_shape=self.writers_shape)
 
-        self.style_encoder = StyleEncoderModel(backbone=self.recognition.encoder,
-                                               latent_dim=latent_dim,
-                                               name='style_encoder')
+        self.style_encoder = StyleEncoderModel(name='style_encoder',
+                                               backbone=self.recognition.encoder,
+                                               latent_dim=latent_dim)
 
-        self.generator = GeneratorModel(latent_dim=latent_dim,
+        self.generator = GeneratorModel(name='generator',
+                                        latent_dim=latent_dim,
                                         embedding_dim=embedding_dim,
                                         image_shape=self.image_shape,
                                         lexical_shape=self.lexical_shape,
-                                        blocks=generator_blocks,
-                                        name='generator')
+                                        blocks=generator_blocks)
 
-        self.discriminator = DiscriminatorModel(image_shape=self.image_shape,
-                                                blocks=discriminator_blocks,
-                                                name='discriminator')
+        self.discriminator = DiscriminatorModel(name='discriminator',
+                                                image_shape=self.image_shape,
+                                                blocks=discriminator_blocks)
 
-        self.patch_discriminator = DiscriminatorModel(image_shape=self.image_shape,
+        self.patch_discriminator = DiscriminatorModel(name='patch_discriminator',
+                                                      image_shape=self.image_shape,
                                                       blocks=discriminator_blocks,
-                                                      patch_shape=patch_shape,
-                                                      name='patch_discriminator')
+                                                      patch_shape=patch_shape)
 
         self.metrics_tracker = MetricsTracker()
 
@@ -378,15 +378,14 @@ class IdentificationModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='orthogonal')(style)
+            style = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
-        encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0],
-                                               kernel_initializer='orthogonal',
-                                               use_bias=False)(style)
+        encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0], use_bias=False)(style)
 
-        self.model = tf.keras.Model(inputs=self.backbone.input,
-                                    outputs=[encoder_output, feats], name=self.name)
+        self.model = tf.keras.Model(name=self.name,
+                                    inputs=self.backbone.input,
+                                    outputs=[encoder_output, feats])
 
 
 class StyleEncoderModel(BaseModel):
@@ -460,17 +459,18 @@ class StyleEncoderModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='orthogonal')(style)
+            style = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='orthogonal')(style)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim, kernel_initializer='orthogonal')(style)
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
 
         encoder_output = tf.keras.layers.Lambda(
             lambda x: self.reparameterize(x[0], x[1]), name='reparameterize')([mu, logvar])
 
-        self.model = tf.keras.Model(inputs=self.backbone.input,
-                                    outputs=[encoder_output, (mu, logvar, feats)], name=self.name)
+        self.model = tf.keras.Model(name=self.name,
+                                    inputs=self.backbone.input,
+                                    outputs=[encoder_output, (mu, logvar, feats)])
 
     def reparameterize(self, mu, logvar):
         """
@@ -682,7 +682,7 @@ class GeneratorModel(BaseModel):
                                    activation='tanh',
                                    kernel_initializer='random_normal'))(outputs)
 
-        self.model = tf.keras.Model(inputs=[latent_input, text_input], outputs=outputs, name=self.name)
+        self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input], outputs=outputs)
 
 
 class DiscriminatorModel(BaseModel):
@@ -823,4 +823,4 @@ class DiscriminatorModel(BaseModel):
         outputs = SpectralNormalization(
             tf.keras.layers.Dense(units=1, kernel_initializer='random_normal'))(block)
 
-        self.model = tf.keras.Model(inputs=image_inputs, outputs=outputs, name=self.name)
+        self.model = tf.keras.Model(name=self.name, inputs=image_inputs, outputs=outputs)
