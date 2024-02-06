@@ -256,7 +256,7 @@ class SynthesisModel(BaseSynthesisModel):
                 g_cx_loss += self.cx_loss(real_image_feat, feats[1])
 
             # generator loss
-            g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + (g_cx_loss * 2.0)
+            g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + (g_cx_loss * 5.0)
 
         g_gradients = tape.gradient(g_loss, self.generator.trainable_weights +
                                     self.style_encoder.trainable_weights)
