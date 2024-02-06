@@ -725,15 +725,33 @@ class SelfAttention(tf.keras.layers.Layer):
 
         filters = input_shape[-1]
 
-        self.f_conv = tf.keras.layers.Conv2D(filters // 8, kernel_size=1, padding='valid', use_bias=False)
-        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
+        self.f_conv = tf.keras.layers.Conv2D(filters=filters // 8,
+                                             kernel_size=1,
+                                             padding='same',
+                                             kernel_initializer='orthogonal',
+                                             use_bias=False)
 
-        self.g_conv = tf.keras.layers.Conv2D(filters // 8, kernel_size=1, padding='valid', use_bias=False)
+        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
 
-        self.h_conv = tf.keras.layers.Conv2D(filters // 2, kernel_size=1, padding='valid', use_bias=False)
-        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='same')
+        self.g_conv = tf.keras.layers.Conv2D(filters=filters // 8,
+                                             kernel_size=1,
+                                             padding='same',
+                                             kernel_initializer='orthogonal',
+                                             use_bias=False)
 
-        self.o_conv = tf.keras.layers.Conv2D(filters, kernel_size=1, padding='valid', use_bias=False)
+        self.h_conv = tf.keras.layers.Conv2D(filters=filters // 2,
+                                             kernel_size=1,
+                                             padding='same',
+                                             kernel_initializer='orthogonal',
+                                             use_bias=False)
+
+        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
+
+        self.o_conv = tf.keras.layers.Conv2D(filters=filters,
+                                             kernel_size=1,
+                                             padding='same',
+                                             kernel_initializer='orthogonal',
+                                             use_bias=False)
 
         if self.spectral_norm:
             self.f_conv = SpectralNormalization(self.f_conv)
