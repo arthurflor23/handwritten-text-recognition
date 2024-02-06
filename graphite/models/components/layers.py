@@ -670,6 +670,9 @@ class SelfAttention(tf.keras.layers.Layer):
     Attention Is All You Need
         https://arxiv.org/abs/1706.03762
 
+    Exact solutions to the nonlinear dynamics of learning in deep linear neural networks
+        https://arxiv.org/abs/1312.6120
+
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
 
@@ -679,7 +682,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
     def __init__(self,
                  spectral_norm=False,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='orthogonal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  **kwargs):
@@ -1011,11 +1014,11 @@ class TemporalConvolutional(tf.keras.layers.Layer):
 
     References
     ----------
-    Temporal Convolutional Networks for Action Segmentation and Detection
-        https://arxiv.org/abs/1611.05267
-
     An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
         https://arxiv.org/abs/1803.01271
+
+    Temporal Convolutional Networks for Action Segmentation and Detection
+        https://arxiv.org/abs/1611.05267
     """
 
     def __init__(self,
