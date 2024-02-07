@@ -76,7 +76,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
@@ -88,7 +88,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(2, 4),
@@ -112,7 +112,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = SelfAttention()(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        encoder = tf.keras.layers.Dropout(rate=0.3)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128,
                                          kernel_size=(3, 3),

@@ -78,7 +78,6 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(filters=40, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
-
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48,
@@ -91,7 +90,6 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(filters=48, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
-
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56,
@@ -104,7 +102,6 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(filters=56, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
-
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
@@ -127,7 +124,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder_input)
 
-        decoder = tf.keras.layers.Dense(units=256, activation='tanh')(decoder)
+        decoder = tf.keras.layers.Dense(units=256)(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
