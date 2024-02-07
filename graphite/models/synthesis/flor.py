@@ -8,7 +8,7 @@ from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.layers import SpectralNormalization
 from graphite.models.components.optimizers import NormalizedOptimizer
-from graphite.models.recognition.flor_tcn import RecognitionModel
+from graphite.models.recognition.flor_att import RecognitionModel
 
 
 class SynthesisModel(BaseSynthesisModel):
