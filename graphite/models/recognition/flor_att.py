@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import GatedConv2D
-from graphite.models.components.layers import MaskPadding
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.optimizers import NormalizedOptimizer
 
@@ -126,8 +125,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = SelfAttention()(encoder)
 
-        encoder = MaskPadding()([encoder_input, encoder])
-
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
         encoder = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(encoder)
 
@@ -146,8 +143,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
-
-        # decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
