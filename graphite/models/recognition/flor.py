@@ -126,16 +126,18 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder_input)
-        decoder = tf.keras.layers.Dense(units=256)(decoder)
+
+        decoder = tf.keras.layers.Dense(units=256, activation='tanh')(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
-        decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
 
+        decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
 
         self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
 
         # recognition model
-        decoder_output = self.decoder(self.encoder.output)
-        self.recognition = tf.keras.Model(name=self.name, inputs=encoder_input, outputs=decoder_output)
+        self.recognition = tf.keras.Model(name=self.name,
+                                          inputs=self.encoder.input,
+                                          outputs=self.decoder(self.encoder.output))
