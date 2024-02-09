@@ -962,3 +962,661 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         """
 
         return self.layer.kernel.assign(self.w)
+
+
+class TemporalConvolutional(tf.keras.layers.Layer):
+    """
+    A Temporal Convolutional Layer for sequence modeling.
+
+    References
+    ----------
+    Temporal Convolutional Networks for Action Segmentation and Detection
+        https://arxiv.org/abs/1611.05267
+
+    An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
+        https://arxiv.org/abs/1803.01271
+    """
+
+    def __init__(self,
+                 filters,
+                 kernel_size,
+                 nb_stacks=1,
+                 dilations=(1, 2, 4),
+                 padding='causal',
+                 dropout=0.0,
+                 use_skip_connections=True,
+                 return_sequences=False,
+                 activation='relu',
+                 kernel_initializer='glorot_uniform',
+                 batch_norm=False,
+                 layer_norm=False,
+                 weight_norm=False,
+                 go_backwards=False,
+                 **kwargs):
+        """
+        Initializes the temporal convolutional layer.
+
+        Parameters
+        ----------
+        filters : int or list
+            The dimensionality of the output space.
+        kernel_size : int
+            Length of the convolution window.
+        nb_stacks : int
+            Number of stacks of residual blocks.
+        dilations : tuple
+            The dilation rate to use for dilated convolution.
+        padding : str
+            One of 'causal' or 'same'.
+        dropout : float
+            Dropout rate.
+        use_skip_connections : bool
+            Whether to use skip connections.
+        return_sequences : bool
+            Whether to return the last output, or the full sequence.
+        activation : str
+            Activation function to use.
+        kernel_initializer : str
+            Initializer for the kernel weights matrix.
+        batch_norm : bool
+            Whether to use batch normalization.
+        layer_norm : bool
+            Whether to use layer normalization.
+        weight_norm : bool
+            Whether to use weight normalization.
+        go_backwards : bool
+            Process the input sequence backwards and return the reversed sequence.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        if sum([batch_norm, layer_norm, weight_norm]) > 1:
+            raise ValueError('Only one normalization can be used.')
+
+        if isinstance(filters, list) and len(filters) != len(dilations):
+            raise ValueError('Length of filters must match length of dilations.')
+
+        if use_skip_connections and isinstance(filters, list) and len(set(filters)) > 1:
+            raise ValueError('Skip connections require identical filter sizes for all layers.')
+
+        if padding not in ['causal', 'same']:
+            raise ValueError("Padding must be either 'causal' or 'same'.")
+
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.nb_stacks = nb_stacks
+        self.dilations = dilations
+        self.padding = padding
+        self.dropout = dropout
+        self.use_skip_connections = use_skip_connections
+        self.return_sequences = return_sequences
+        self.activation_name = activation
+        self.kernel_initializer = kernel_initializer
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        self.weight_norm = weight_norm
+        self.go_backwards = go_backwards
+
+        self.skip_connections = []
+        self.residual_blocks = []
+        self.layers_outputs = []
+        self.build_output_shape = None
+        self.slicer = None
+        self.output_slice_index = None
+        self.time_dim_unknown = False
+
+    def get_config(self):
+        """
+        Return the config of the wrapper.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the wrapper.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
+            'nb_stacks': self.nb_stacks,
+            'dilations': self.dilations,
+            'padding': self.padding,
+            'dropout': self.dropout,
+            'use_skip_connections': self.use_skip_connections,
+            'return_sequences': self.return_sequences,
+            'activation': self.activation_name,
+            'kernel_initializer': self.kernel_initializer,
+            'batch_norm': self.batch_norm,
+            'layer_norm': self.layer_norm,
+            'go_backwards': self.go_backwards,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Build the layer structure based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape tuple of the input tensor.
+        """
+
+        self.build_output_shape = input_shape
+        self.residual_blocks = []
+
+        for stack in range(self.nb_stacks):
+            for i, dilation in enumerate(self.dilations):
+                filters = self.filters[i] if isinstance(self.filters, list) else self.filters
+
+                res_block = TemporalResidualBlock(filters=filters,
+                                                  dilation_rate=dilation,
+                                                  kernel_size=self.kernel_size,
+                                                  padding=self.padding,
+                                                  activation=self.activation_name,
+                                                  dropout=self.dropout,
+                                                  batch_norm=self.batch_norm,
+                                                  layer_norm=self.layer_norm,
+                                                  weight_norm=self.weight_norm,
+                                                  kernel_initializer=self.kernel_initializer,
+                                                  name=f"residual_block_{stack}_{i}")
+
+                res_block.build(self.build_output_shape)
+                self.build_output_shape = res_block.res_output_shape
+                self.residual_blocks.append(res_block)
+
+        if self.padding == 'same':
+            if self.build_output_shape.as_list()[1] is None:
+                self.time_dim_unknown = True
+            else:
+                self.output_slice_index = int(self.build_output_shape.as_list()[1] / 2)
+        else:
+            self.output_slice_index = -1
+
+        self.slicer = tf.keras.layers.Lambda(lambda x: x[:, self.output_slice_index, :], name='output_slice')
+        self.slicer.build(self.build_output_shape.as_list())
+
+    def call(self, inputs, training=None):
+        """
+        Call the layer with the given inputs and training flag.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
+
+        Returns
+        -------
+        tensor
+            The output tensor of the layer.
+        """
+
+        x = tf.reverse(inputs, axis=[1]) if self.go_backwards else inputs
+
+        self.layers_outputs = [x]
+        self.skip_connections = []
+
+        for res_block in self.residual_blocks:
+            x, skip_out = res_block(x, training=training)
+
+            self.skip_connections.append(skip_out)
+            self.layers_outputs.append(x)
+
+        if self.use_skip_connections:
+            if len(self.skip_connections) > 1:
+                x = tf.keras.layers.Add()(self.skip_connections)
+            else:
+                x = self.skip_connections[0]
+
+            self.layers_outputs.append(x)
+
+        if not self.return_sequences:
+            if self.time_dim_unknown:
+                self.output_slice_index = tf.shape(self.layers_outputs[-1])[1] // 2
+
+            x = self.slicer(x)
+            self.layers_outputs.append(x)
+
+        return x
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        output_shape = None
+
+        if self.return_sequences:
+            output_shape = [x.value if hasattr(x, 'value') else x for x in self.build_output_shape]
+        else:
+            batch_size = self.build_output_shape[0]
+            batch_size = batch_size.value if hasattr(batch_size, 'value') else batch_size
+            output_shape = [batch_size, self.build_output_shape[-1]]
+
+        return tf.TensorShape(output_shape)
+
+
+class TemporalResidualBlock(tf.keras.layers.Layer):
+    """
+    A Residual Block within the Temporal Convolutional Network.
+    """
+
+    def __init__(self,
+                 filters,
+                 dilation_rate,
+                 kernel_size,
+                 padding,
+                 dropout,
+                 activation,
+                 kernel_initializer,
+                 batch_norm,
+                 layer_norm,
+                 weight_norm,
+                 **kwargs):
+        """
+        Initializes the residual block layer.
+
+        Parameters
+        ----------
+        filters : int
+            The dimensionality of the output space.
+        dilation_rate : int
+            The dilation rate to use for dilated convolution.
+        kernel_size : int
+            Length of the convolution window.
+        padding : str
+            One of 'valid' or 'same'.
+        dropout : float
+            Dropout rate.
+        activation : str
+            Activation function to use.
+        kernel_initializer : str
+            Initializer for the kernel weights matrix.
+        batch_norm : bool
+            Whether to use batch normalization.
+        layer_norm : bool
+            Whether to use layer normalization.
+        weight_norm : bool
+            Whether to use weight normalization.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.filters = filters
+        self.dilation_rate = dilation_rate
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.dropout = dropout
+        self.activation = activation
+        self.kernel_initializer = kernel_initializer
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        self.weight_norm = weight_norm
+
+        self.layers = []
+        self.shape_match_conv = None
+        self.res_output_shape = None
+        self.final_activation = None
+
+    def _build_layer(self, layer):
+        """
+        Helper function to build a layer and update the output shape.
+
+        Parameters
+        ----------
+        layer : tf.keras.layers.Layer
+            The layer to build and add to the block.
+        """
+
+        layer.build(self.res_output_shape)
+        self.res_output_shape = layer.compute_output_shape(self.res_output_shape)
+        self.layers.append(layer)
+
+    def get_config(self):
+        """
+        Return the config of the wrapper.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the wrapper.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'data_init': self.data_init,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Build the internal structure of the residual block based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape tuple of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        with tf.name_scope(self.name):
+            self.res_output_shape = input_shape
+            self.layers = []
+
+            if self.activation == 'prelu':
+                activation = tf.keras.layers.PReLU(shared_axes=[-1])
+            else:
+                activation = tf.keras.layers.Activation(self.activation)
+
+            for i in range(2):
+                with tf.name_scope(f"conv_block_{i}"):
+                    conv = tf.keras.layers.Conv1D(filters=self.filters,
+                                                  kernel_size=self.kernel_size,
+                                                  dilation_rate=self.dilation_rate,
+                                                  padding=self.padding,
+                                                  kernel_initializer=self.kernel_initializer)
+
+                    if self.weight_norm:
+                        conv = WeightNormalization(conv)
+
+                    self._build_layer(conv)
+                    self._build_layer(activation)
+
+                    if self.batch_norm:
+                        self._build_layer(tf.keras.layers.BatchNormalization(renorm=True))
+
+                    elif self.layer_norm:
+                        self._build_layer(tf.keras.layers.LayerNormalization())
+
+                    self._build_layer(tf.keras.layers.Dropout(rate=self.dropout))
+
+            if self.filters != input_shape[-1]:
+                self.shape_match_conv = tf.keras.layers.Conv1D(filters=self.filters,
+                                                               kernel_size=1,
+                                                               padding='same',
+                                                               kernel_initializer=self.kernel_initializer,
+                                                               name='match_conv1D')
+            else:
+                self.shape_match_conv = tf.keras.layers.Lambda(lambda x: x, name='match_identity')
+
+            self.shape_match_conv.build(input_shape)
+            self.res_output_shape = self.shape_match_conv.compute_output_shape(input_shape)
+
+            self._build_layer(activation)
+            self.final_activation = activation
+
+    def call(self, inputs, training=None):
+        """
+        Call the residual block with the given inputs.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
+
+        Returns
+        -------
+        list of tensors
+            A list containing the output tensor and the skip connection output.
+        """
+
+        x = inputs
+        for layer in self.layers:
+            x = layer(x, training=training)
+
+        x2 = self.shape_match_conv(inputs)
+        x1_x2 = self.final_activation(tf.keras.layers.Add()([x2, x]))
+
+        return [x1_x2, x]
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        return tf.TensorShape([self.res_output_shape, self.res_output_shape])
+
+
+class WeightNormalization(tf.keras.layers.Wrapper):
+    """
+    Performs weight normalization.
+    This wrapper reparameterizes a layer by decoupling the weight's magnitude and direction.
+    This speeds up convergence by improving the conditioning of the optimization problem.
+
+    References
+    ----------
+    Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
+        https://arxiv.org/abs/1602.07868
+    """
+
+    def __init__(self, layer, data_init=True, **kwargs):
+        """
+        Initializes the weight normalization wrapper.
+
+        Parameters
+        ----------
+        layer : tf.keras.layers.Layer
+            The layer to be wrapped.
+        data_init : bool, optional
+            Whether to use data-dependent initialization.
+        **kwargs : dict
+            Additional keyword arguments for the wrapper.
+
+        Raises
+        ------
+        ValueError
+            If data_init is True and the layer is an RNN, as advised against in the paper.
+        """
+
+        super().__init__(layer, **kwargs)
+
+        self.data_init = data_init
+        self._track_trackable(layer, name='layer')
+        self.is_rnn = isinstance(self.layer, tf.keras.layers.RNN)
+
+        if self.data_init and self.is_rnn:
+            raise ValueError('WeightNormalization: Using `data_init=True` with RNNs '
+                             'is advised against by the paper. Use `data_init=False`.')
+
+    def build(self, input_shape):
+        """
+        Build the WeightNormalization wrapper.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            The expected input shape for the layer.
+        """
+
+        input_shape = tf.TensorShape(input_shape)
+        self.input_spec = tf.keras.layers.InputSpec(shape=[None] + input_shape[1:])
+
+        if not self.layer.built:
+            self.layer.build(input_shape)
+
+        kernel_layer = self.layer.cell if self.is_rnn else self.layer
+
+        if not hasattr(kernel_layer, 'kernel'):
+            raise ValueError('`WeightNormalization` must wrap a layer that '
+                             'contains a `kernel` for weights')
+
+        if self.is_rnn:
+            kernel = kernel_layer.recurrent_kernel
+        else:
+            kernel = kernel_layer.kernel
+
+        self.layer_depth = int(kernel.shape[-1])
+        self.kernel_norm_axes = list(range(kernel.shape.rank - 1))
+
+        self.v = kernel
+
+        self.g = self.add_weight(name='g',
+                                 shape=(self.layer_depth,),
+                                 initializer='ones',
+                                 dtype=kernel.dtype,
+                                 trainable=True)
+
+        self._initialized = self.add_weight(name='initialized',
+                                            shape=None,
+                                            initializer='zeros',
+                                            dtype=tf.dtypes.bool,
+                                            trainable=False)
+
+        if self.data_init:
+            with tf.name_scope('data_dep_init'):
+                layer_config = tf.keras.layers.serialize(self.layer)
+                layer_config['config']['trainable'] = False
+
+                self._naked_clone_layer = tf.keras.layers.deserialize(layer_config)
+                self._naked_clone_layer.build(input_shape)
+                self._naked_clone_layer.set_weights(self.layer.get_weights())
+
+                if not self.is_rnn:
+                    self._naked_clone_layer.activation = None
+
+        self.built = True
+
+    def call(self, inputs):
+        """
+        Call the wrapped layer with inputs.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor.
+
+        Returns
+        -------
+        tensor
+            The output tensor of the layer.
+        """
+
+        def _do_nothing():
+            return tf.identity(self.g)
+
+        def _update_weights():
+            with tf.control_dependencies(self._initialize_weights(inputs)):
+                return tf.identity(self.g)
+
+        g = tf.cond(self._initialized, _do_nothing, _update_weights)
+
+        with tf.name_scope('compute_weights'):
+            kernel = tf.nn.l2_normalize(self.v, axis=self.kernel_norm_axes) * g
+
+            if self.is_rnn:
+                self.layer.cell.recurrent_kernel = kernel
+                update_kernel = tf.identity(self.layer.cell.recurrent_kernel)
+            else:
+                self.layer.kernel = kernel
+                update_kernel = tf.identity(self.layer.kernel)
+
+            with tf.control_dependencies([update_kernel]):
+                outputs = self.layer(inputs)
+                return outputs
+
+    def _initialize_weights(self, inputs):
+        """
+        Initialize the weights of the wrapped layer.
+
+        Parameters
+        ----------
+        inputs : tensor
+            Input tensor for data-dependent initialization.
+
+        Returns
+        -------
+        list of tensors
+            A list of tensors for weight initialization.
+        """
+
+        dependencies = [tf.debugging.assert_equal(self._initialized, False, message='The layer has been initialized.')]
+
+        with tf.control_dependencies(dependencies):
+            if self.data_init:
+                with tf.name_scope('data_dep_init'):
+                    x_init = self._naked_clone_layer(inputs)
+                    data_norm_axes = list(range(x_init.shape.rank - 1))
+                    m_init, v_init = tf.nn.moments(x_init, data_norm_axes)
+                    scale_init = 1.0 / tf.math.sqrt(v_init + 1e-10)
+
+                    if scale_init.shape[0] != self.g.shape[0]:
+                        rep = int(self.g.shape[0] / scale_init.shape[0])
+                        scale_init = tf.tile(scale_init, [rep])
+
+                    g_tensor = self.g.assign(self.g * scale_init)
+
+                    if hasattr(self.layer, 'bias') and self.layer.bias is not None:
+                        bias_tensor = self.layer.bias.assign(-m_init * scale_init)
+                        assign_tensors = [g_tensor, bias_tensor]
+                    else:
+                        assign_tensors = [g_tensor]
+            else:
+                with tf.name_scope('init_norm'):
+                    v_flat = tf.reshape(self.v, [-1, self.layer_depth])
+                    v_norm = tf.linalg.norm(v_flat, axis=0)
+                    g_tensor = self.g.assign(tf.reshape(v_norm, (self.layer_depth,)))
+                    assign_tensors = [g_tensor]
+
+            assign_tensors.append(self._initialized.assign(True))
+
+            return assign_tensors
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the wrapped layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The shape of the input to the layer.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        return tf.TensorShape(self.layer.compute_output_shape(input_shape).as_list())
