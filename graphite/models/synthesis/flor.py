@@ -7,8 +7,7 @@ from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.layers import SpectralNormalization
-from graphite.models.components.optimizers import NormalizedOptimizer
-from graphite.models.recognition.flor_att import RecognitionModel
+from graphite.models.recognition.flor import RecognitionModel
 
 
 class SynthesisModel(BaseSynthesisModel):
@@ -61,17 +60,11 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 2e-4
 
-        self.d_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
-        self.g_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.w_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=1e-3, weight_decay=0.1))
-
-        self.r_optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=1e-3, weight_decay=0.1))
+        self.w_optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
+        self.r_optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
 
     def build_model(self):
         """
