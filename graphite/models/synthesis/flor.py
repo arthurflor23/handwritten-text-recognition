@@ -371,7 +371,7 @@ class IdentificationModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(style)
+            style = tf.keras.layers.Dense(units=256)(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
         encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0], use_bias=False)(style)
@@ -452,7 +452,7 @@ class StyleEncoderModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(style)
+            style = tf.keras.layers.Dense(units=256)(style)
             style = tf.keras.layers.LeakyReLU(0.01)(style)
 
         mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
