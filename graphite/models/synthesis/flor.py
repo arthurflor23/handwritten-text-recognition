@@ -378,7 +378,7 @@ class IdentificationModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, feats])
+                                    outputs=[encoder_output, feats[-3:]])
 
 
 class StyleEncoderModel(BaseModel):
@@ -463,7 +463,7 @@ class StyleEncoderModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, (mu, logvar, feats)])
+                                    outputs=[encoder_output, (mu, logvar, feats[-3:])])
 
     def reparameterize(self, mu, logvar):
         """
