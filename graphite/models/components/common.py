@@ -266,7 +266,8 @@ class BaseRecognitionModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        tf.keras.utils.set_random_seed(seed=seed)
+        seed = seed or 0
+        tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -597,7 +598,8 @@ class BaseSynthesisModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        tf.keras.utils.set_random_seed(seed=seed)
+        seed = seed or 0
+        tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape

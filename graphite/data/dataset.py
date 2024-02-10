@@ -60,6 +60,7 @@ class Dataset():
             Seed for random shuffle.
         """
 
+        seed = seed or 0
         np.random.seed(seed)
 
         self.source = source
