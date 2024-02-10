@@ -365,7 +365,7 @@ class IdentificationModel(BaseModel):
 
         feats = []
         for layer in self.backbone.layers:
-            if layer.__class__.__name__ in ['GatedConv2D']:
+            if layer.__class__.__name__ in ['GatedConv2D', 'SelfAttention']:
                 feats.append(layer.output)
 
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
@@ -446,7 +446,7 @@ class StyleEncoderModel(BaseModel):
 
         feats = []
         for layer in self.backbone.layers:
-            if layer.__class__.__name__ in ['GatedConv2D']:
+            if layer.__class__.__name__ in ['GatedConv2D', 'SelfAttention']:
                 feats.append(layer.output)
 
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
