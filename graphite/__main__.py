@@ -62,7 +62,7 @@ if __name__ == '__main__':
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
     parser.add_argument('--epochs', default=None, type=int, help='Maximum number of epochs')
-    parser.add_argument('--batch-size', default=16, type=int, help='Batch size')
+    parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
     parser.add_argument('--learning-rate', default=None, type=float, help='Optimizer learning rate')
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
     parser.add_argument('--plateau-cooldown', default=0, type=int, help='Cooldown after rate plateau')
