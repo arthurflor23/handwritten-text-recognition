@@ -640,22 +640,6 @@ class GeneratorModel(BaseModel):
             h = ConditionalBatchNormalization(spectral_norm=True, momentum=0.9, epsilon=1e-5)([x, y])
             h = tf.keras.layers.ReLU()(h)
 
-            # if upsample:
-            #     h = SpectralNormalization(
-            #         tf.keras.layers.Conv2DTranspose(filters=filters,
-            #                                         kernel_size=3,
-            #                                         strides=upsample,
-            #                                         padding='same',
-            #                                         kernel_initializer='random_normal',
-            #                                         use_bias=False))(h)
-            #     x = SpectralNormalization(
-            #         tf.keras.layers.Conv2DTranspose(filters=filters,
-            #                                         kernel_size=3,
-            #                                         strides=upsample,
-            #                                         padding='same',
-            #                                         kernel_initializer='random_normal',
-            #                                         use_bias=False))(x)
-
             if upsample:
                 h = tf.keras.layers.UpSampling2D(size=upsample)(h)
                 x = tf.keras.layers.UpSampling2D(size=upsample)(x)
@@ -838,22 +822,6 @@ class DiscriminatorModel(BaseModel):
                     tf.keras.layers.Conv2D(filters=filters,
                                            kernel_size=1,
                                            kernel_initializer='random_normal'))(x)
-
-            # if downsample:
-            #     h = SpectralNormalization(
-            #         tf.keras.layers.Conv2D(filters=filters,
-            #                                kernel_size=3,
-            #                                strides=downsample,
-            #                                padding='same',
-            #                                kernel_initializer='random_normal',
-            #                                use_bias=False))(h)
-            #     x = SpectralNormalization(
-            #         tf.keras.layers.Conv2D(filters=filters,
-            #                                kernel_size=3,
-            #                                strides=downsample,
-            #                                padding='same',
-            #                                kernel_initializer='random_normal',
-            #                                use_bias=False))(x)
 
             if downsample:
                 h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(h)
