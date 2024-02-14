@@ -45,7 +45,7 @@ class RecognitionModel(BaseRecognitionModel):
         #     tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
 
         # self.optimizer = NormalizedOptimizer(
-        #     tf.keras.optimizers.RMSprop(learning_rate=learning_rate), normalization='std')
+        #     tf.keras.optimizers.RMSprop(learning_rate=learning_rate), normalization='avg_l2')
 
         self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
@@ -69,7 +69,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
@@ -81,7 +81,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40,
                                          kernel_size=(3, 3),
@@ -93,7 +93,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48,
                                          kernel_size=(3, 3),
@@ -106,7 +106,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
-        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
+        encoder = SelfAttention()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56,
                                          kernel_size=(3, 3),
@@ -119,7 +119,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
-        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
+        encoder = SelfAttention()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(3, 3),
@@ -132,7 +132,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
-        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
+        encoder = SelfAttention()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128,
                                          kernel_size=(3, 3),
@@ -169,5 +169,3 @@ class RecognitionModel(BaseRecognitionModel):
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
                                           outputs=self.decoder(self.encoder.output))
-
-        self.recognition.summary()
