@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import GatedConv2D
-from graphite.models.components.layers import MaskPadding
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.optimizers import NormalizedOptimizer
 
@@ -42,8 +41,13 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 1e-3
 
-        self.optimizer = NormalizedOptimizer(
-            tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
+        # self.optimizer = NormalizedOptimizer(
+        #     tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
+
+        # self.optimizer = NormalizedOptimizer(
+        #     tf.keras.optimizers.RMSprop(learning_rate=learning_rate), normalization='std')
+
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
     def build_model(self):
         """
@@ -65,19 +69,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=(2, 4),
-                                         strides=(2, 4),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
-        encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
-
-        encoder = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
@@ -87,21 +79,47 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedConv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=(2, 4),
-                                         strides=(2, 4),
+        encoder = tf.keras.layers.Conv2D(filters=40,
+                                         kernel_size=(3, 3),
+                                         strides=(1, 1),
                                          padding='same',
                                          kernel_initializer='he_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention()(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]), dualgate=True)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=48,
+                                         kernel_size=(3, 3),
+                                         strides=(1, 1),
+                                         padding='same',
+                                         kernel_initializer='he_uniform')(encoder)
+
+        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=56,
+                                         kernel_size=(3, 3),
+                                         strides=(1, 1),
+                                         padding='same',
+                                         kernel_initializer='he_uniform')(encoder)
+
+        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+
+        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(3, 3),
@@ -111,9 +129,10 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention()(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = SelfAttention(kernel_constraint=tf.keras.constraints.MaxNorm(2, axis=[0, 1, 2]))(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128,
                                          kernel_size=(3, 3),
@@ -124,14 +143,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = SelfAttention()(encoder)
-        encoder = MaskPadding()([encoder_input, encoder])
-
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
-        encoder = tf.keras.layers.Dense(units=256, kernel_initializer='he_uniform')(encoder)
-
-        encoder = tf.keras.layers.PReLU(shared_axes=[-1])(encoder)
-        encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
@@ -141,10 +153,12 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder_input)
 
-        decoder = tf.keras.layers.Dense(units=256, activation='tanh')(decoder)
+        decoder = tf.keras.layers.Dense(units=256)(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
+
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
@@ -155,3 +169,5 @@ class RecognitionModel(BaseRecognitionModel):
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
                                           outputs=self.decoder(self.encoder.output))
+
+        self.recognition.summary()
