@@ -630,7 +630,7 @@ class GeneratorModel(BaseModel):
         """
 
         def residual_block_up(x, y, filters, upsample=None):
-            h = ConditionalBatchNormalization(spectral_norm=True)([x, y])
+            h = ConditionalBatchNormalization(spectral_norm=True, momentum=0.9, epsilon=1e-5)([x, y])
             h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             if upsample:
@@ -644,7 +644,7 @@ class GeneratorModel(BaseModel):
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
 
-            h = ConditionalBatchNormalization(spectral_norm=True)([h, y])
+            h = ConditionalBatchNormalization(spectral_norm=True, momentum=0.9, epsilon=1e-5)([h, y])
             h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = SpectralNormalization(
@@ -708,7 +708,7 @@ class GeneratorModel(BaseModel):
 
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
-        outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
+        outputs = tf.keras.layers.BatchNormalization(renorm=True, momentum=0.9, epsilon=1e-5)(block)
         outputs = tf.keras.layers.PReLU(shared_axes=[1, 2])(outputs)
 
         outputs = SpectralNormalization(
