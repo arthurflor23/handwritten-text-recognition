@@ -618,6 +618,8 @@ class SelfAttention(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
+        pool = 2 if input_shape[-2] > 1 else 1
+
         self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
                                              kernel_size=1,
                                              padding='same',
@@ -626,7 +628,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
-        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
+        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool, strides=pool, padding='valid')
 
         self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
                                              kernel_size=1,
@@ -644,7 +646,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
-        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
+        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool, strides=pool, padding='valid')
 
         self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                              kernel_size=1,
