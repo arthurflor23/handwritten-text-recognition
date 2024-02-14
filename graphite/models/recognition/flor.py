@@ -55,7 +55,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=16)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
@@ -66,7 +66,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=32)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40,
                                          kernel_size=(2, 4),
@@ -77,7 +77,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=40, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48,
@@ -89,7 +89,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=48, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56,
@@ -101,7 +101,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(filters=56, kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]))(encoder)
+        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,

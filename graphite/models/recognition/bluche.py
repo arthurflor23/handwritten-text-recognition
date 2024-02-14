@@ -57,7 +57,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same',
                                          activation='tanh')(encoder)
 
-        encoder = GatedConv2D(filters=16, fullgate=False)(encoder)
+        encoder = GatedConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
@@ -65,7 +65,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same',
                                          activation='tanh')(encoder)
 
-        encoder = GatedConv2D(filters=32, fullgate=False)(encoder)
+        encoder = GatedConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(2, 4),
@@ -73,7 +73,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same',
                                          activation='tanh')(encoder)
 
-        encoder = GatedConv2D(filters=64, fullgate=False)(encoder)
+        encoder = GatedConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128,
                                          kernel_size=(3, 3),
