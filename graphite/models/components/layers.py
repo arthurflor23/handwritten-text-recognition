@@ -13,7 +13,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, spectral_norm=False, momentum=0.9, epsilon=1e-5, **kwargs):
+    def __init__(self, spectral_norm=False, momentum=0.99, epsilon=1e-3, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
