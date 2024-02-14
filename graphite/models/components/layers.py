@@ -213,14 +213,14 @@ class GatedConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 filters,
+                 filters=None,
                  kernel_size=(3, 3),
                  strides=(1, 1),
                  padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 fullgate=True,
+                 dualgate=False,
                  **kwargs):
         """
         Initializes the gated convolutional layer.
@@ -241,7 +241,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        fullgate : bool, optional
+        dualgate : bool, optional
             Whether to use full gating.
         **kwargs : dict
             Conv2D keyword arguments.
@@ -256,7 +256,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.fullgate = fullgate
+        self.dualgate = dualgate
 
     def get_config(self):
         """
@@ -278,7 +278,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'fullgate': self.fullgate,
+            'dualgate': self.dualgate,
         })
 
         return config
@@ -295,7 +295,10 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.fullgate else 1),
+        if self.filters is None:
+            self.filters = input_shape[-1]
+
+        self.conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.dualgate else 1),
                                            kernel_size=self.kernel_size,
                                            strides=self.strides,
                                            padding=self.padding,
@@ -320,7 +323,7 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         conv = self.conv(inputs)
 
-        if self.fullgate:
+        if self.dualgate:
             linear, sigmoid = tf.split(conv, 2, axis=-1)
             linear = tf.keras.layers.Activation('linear')(linear)
             sigmoid = tf.keras.layers.Activation('sigmoid')(sigmoid)
@@ -545,6 +548,7 @@ class SelfAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 filters=None,
                  spectral_norm=False,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -555,6 +559,8 @@ class SelfAttention(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        filters : int
+            Number of output filters.
         spectral_norm : bool, optional
             Wheter apply spectral normalization or not.
         kernel_initializer : initializer, optional
@@ -569,6 +575,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.filters = filters
         self.spectral_norm = spectral_norm
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
@@ -587,6 +594,7 @@ class SelfAttention(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'filters': self.filters,
             'spectral_norm': self.spectral_norm,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
@@ -607,9 +615,10 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        filters = input_shape[-1]
+        if self.filters is None:
+            self.filters = input_shape[-1]
 
-        self.f_conv = tf.keras.layers.Conv2D(filters=filters // 8,
+        self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
                                              kernel_size=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -619,7 +628,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
 
-        self.g_conv = tf.keras.layers.Conv2D(filters=filters // 8,
+        self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
                                              kernel_size=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -627,7 +636,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
-        self.h_conv = tf.keras.layers.Conv2D(filters=filters // 2,
+        self.h_conv = tf.keras.layers.Conv2D(filters=self.filters // 2,
                                              kernel_size=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -637,7 +646,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2, padding='valid')
 
-        self.o_conv = tf.keras.layers.Conv2D(filters=filters,
+        self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                              kernel_size=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
