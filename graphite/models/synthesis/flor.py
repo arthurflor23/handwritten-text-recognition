@@ -7,7 +7,7 @@ from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.layers import SpectralNormalization
-from graphite.models.recognition.flor import RecognitionModel
+from graphite.models.recognition.flor_att import RecognitionModel
 
 
 class SynthesisModel(BaseSynthesisModel):
@@ -74,7 +74,7 @@ class SynthesisModel(BaseSynthesisModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        latent_dim = 256
+        latent_dim = 128
         embedding_dim = 32
         patch_shape = [32, 32, 1]
         discriminator_blocks = [64, 128, 256, 256]
@@ -439,7 +439,7 @@ class IdentificationModel(BaseModel):
 
         for _ in range(2):
             style = tf.keras.layers.Dense(units=256)(style)
-            style = tf.keras.layers.LeakyReLU(0.01)(style)
+            style = tf.keras.layers.PReLU(shared_axes=[1])(style)
 
         encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0], use_bias=False)(style)
 
@@ -520,7 +520,7 @@ class StyleEncoderModel(BaseModel):
 
         for _ in range(2):
             style = tf.keras.layers.Dense(units=256)(style)
-            style = tf.keras.layers.LeakyReLU(0.01)(style)
+            style = tf.keras.layers.PReLU(shared_axes=[1])(style)
 
         mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
@@ -637,8 +637,8 @@ class GeneratorModel(BaseModel):
         """
 
         def residual_block_up(x, y, filters, upsample=None):
-            h = ConditionalBatchNormalization(spectral_norm=True, momentum=0.9, epsilon=1e-5)([x, y])
-            h = tf.keras.layers.ReLU()(h)
+            h = ConditionalBatchNormalization(spectral_norm=True)([x, y])
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             if upsample:
                 h = tf.keras.layers.UpSampling2D(size=upsample)(h)
@@ -649,23 +649,23 @@ class GeneratorModel(BaseModel):
                                        kernel_size=3,
                                        strides=1,
                                        padding='same',
-                                       kernel_initializer='random_normal'))(h)
+                                       kernel_initializer='orthogonal'))(h)
 
-            h = ConditionalBatchNormalization(spectral_norm=True, momentum=0.9, epsilon=1e-5)([h, y])
-            h = tf.keras.layers.ReLU()(h)
+            h = ConditionalBatchNormalization(spectral_norm=True)([h, y])
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        strides=1,
                                        padding='same',
-                                       kernel_initializer='random_normal'))(h)
+                                       kernel_initializer='orthogonal'))(h)
             x = SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=1,
                                        strides=1,
                                        padding='valid',
-                                       kernel_initializer='random_normal'))(x)
+                                       kernel_initializer='orthogonal'))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -676,12 +676,12 @@ class GeneratorModel(BaseModel):
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1] + 1,
                                                    output_dim=self.embedding_dim,
-                                                   embeddings_initializer='random_normal',
+                                                   embeddings_initializer='orthogonal',
                                                    mask_zero=True)(text_flattened)
 
         latent_dense = SpectralNormalization(
             tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks),
-                                  kernel_initializer='random_normal'))(latent_input)
+                                  kernel_initializer='orthogonal'))(latent_input)
 
         latent_chunks = tf.keras.layers.Lambda(
             lambda x: tf.split(x, len(self.blocks), axis=1), name='chunks')(latent_dense)
@@ -696,7 +696,7 @@ class GeneratorModel(BaseModel):
 
         latent_text = SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
-                                  kernel_initializer='random_normal'))(latent_text)
+                                  kernel_initializer='orthogonal'))(latent_text)
 
         block = tf.keras.layers.Reshape(target_shape=(latent_text.get_shape()[1] * 4, 4, -1))(latent_text)
 
@@ -715,8 +715,8 @@ class GeneratorModel(BaseModel):
 
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
-        outputs = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)(block)
-        outputs = tf.keras.layers.ReLU()(outputs)
+        outputs = tf.keras.layers.BatchNormalization(renorm=True)(block)
+        outputs = tf.keras.layers.PReLU(shared_axes=[1, 2])(outputs)
 
         outputs = SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1,
@@ -724,7 +724,7 @@ class GeneratorModel(BaseModel):
                                    strides=1,
                                    padding='same',
                                    activation='tanh',
-                                   kernel_initializer='random_normal'))(outputs)
+                                   kernel_initializer='orthogonal'))(outputs)
 
         self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input], outputs=outputs)
 
@@ -802,26 +802,26 @@ class DiscriminatorModel(BaseModel):
             h = x
 
             if preactive:
-                h = tf.keras.layers.ReLU()(x)
+                h = tf.keras.layers.PReLU(shared_axes=[1, 2])(x)
 
             h = SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        padding='same',
-                                       kernel_initializer='random_normal'))(h)
-            h = tf.keras.layers.ReLU()(h)
+                                       kernel_initializer='orthogonal'))(h)
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        padding='same',
-                                       kernel_initializer='random_normal'))(h)
+                                       kernel_initializer='orthogonal'))(h)
 
             if preactive:
                 x = SpectralNormalization(
                     tf.keras.layers.Conv2D(filters=filters,
                                            kernel_size=1,
-                                           kernel_initializer='random_normal'))(x)
+                                           kernel_initializer='orthogonal'))(x)
 
             if downsample:
                 h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(h)
@@ -831,7 +831,7 @@ class DiscriminatorModel(BaseModel):
                 x = SpectralNormalization(
                     tf.keras.layers.Conv2D(filters=filters,
                                            kernel_size=1,
-                                           kernel_initializer='random_normal'))(x)
+                                           kernel_initializer='orthogonal'))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -845,10 +845,10 @@ class DiscriminatorModel(BaseModel):
             downsample = (2, 2) if i < len(self.blocks) - 1 else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
-        block = tf.keras.layers.ReLU()(block)
+        block = tf.keras.layers.PReLU(shared_axes=[1, 2])(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
 
         outputs = SpectralNormalization(
-            tf.keras.layers.Dense(units=1, kernel_initializer='random_normal'))(block)
+            tf.keras.layers.Dense(units=1, kernel_initializer='orthogonal', use_bias=False))(block)
 
         self.model = tf.keras.Model(name=self.name, inputs=image_inputs, outputs=outputs)
