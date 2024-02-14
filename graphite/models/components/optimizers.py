@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
+class GradientNormalization(tf.keras.optimizers.Optimizer):
     """
     Custom optimizer wrapper for applying gradient normalization.
 
@@ -16,12 +16,12 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
     def __init__(self,
                  optimizer,
-                 normalization='l2',
+                 normalization='l1_l2',
                  epsilon=1e-7,
                  name='normalized_optimizer',
                  **kwargs):
         """
-        Initializes the NormalizedOptimizer.
+        Initializes the GradientNormalization.
 
         Parameters
         ----------
@@ -268,8 +268,8 @@ class NormalizedOptimizer(tf.keras.optimizers.Optimizer):
 
         Returns
         -------
-        NormalizedOptimizer
-            A `NormalizedOptimizer` instance.
+        GradientNormalization
+            A `GradientNormalization` instance.
         """
 
         optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
