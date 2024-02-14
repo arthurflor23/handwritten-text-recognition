@@ -16,11 +16,16 @@ class Tokenizer():
         """
 
         self.pad_tk = '¶'
+        self.sos_tk = '◖'
+        self.eos_tk = '◗'
         self.unk_tk = '◬'
 
         self.words = []
-        self.chars = [self.pad_tk, self.unk_tk]
         self.writers = [self.unk_tk]
+        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk]
+
+        self._reserved_chars_length = len(self.chars)
+        self._reserved_marks_length = len(self.chars) // 2
 
         self.lexical_shape = []
         self.writers_shape = []
@@ -41,7 +46,7 @@ class Tokenizer():
         info += f'\n{self.__class__.__name__.center(50)}'
         info += '\n--------------------------------------------------'
         info += f"\n{'words':<{25}}: {len(self.words):,}"
-        info += f"\n{'chars':<{25}}: {len(self.chars) - 2:,}"
+        info += f"\n{'chars':<{25}}: {len(self.chars) - self._reserved_chars_length:,}"
         info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
         info += '\n--------------------------------------------------'
         info += f"\n{'lexical_shape':<{25}}: {self.lexical_shape}"
@@ -182,21 +187,24 @@ class Tokenizer():
 
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_lines_per_page']),
-                next_power_of_two(self.metadata['max_chars_per_line']),
+                next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
                 len(self.chars) + 1,
             )
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
 
         pad_idx = char_to_index.get(self.pad_tk)
+        sos_idx = char_to_index.get(self.sos_tk)
+        eos_idx = char_to_index.get(self.eos_tk)
         unk_idx = char_to_index.get(self.unk_tk)
 
         text = [' '.join(x.split()) for x in re.sub(r'\n\n+', '\n', text).split('\n')]
-        max_length = max([len(line) for line in text])
+        max_length = max([len(line) for line in text]) + self._reserved_marks_length
 
         encoded_text = []
         for line in text:
             encoded_line = [char_to_index.get(char, unk_idx) for char in line]
+            encoded_line = [sos_idx] + encoded_line + [eos_idx]
 
             padding = (max_length - len(encoded_line))
             encoded_text.append(encoded_line + ([pad_idx] * padding))
@@ -218,7 +226,7 @@ class Tokenizer():
             The decoded text.
         """
 
-        translation_table = str.maketrans('', '', self.chars[0])
+        translation_table = str.maketrans('', '', ''.join(self.chars[:self._reserved_chars_length]))
         index_to_char = {idx: char for idx, char in enumerate(self.chars)}
 
         decoded_text = []
