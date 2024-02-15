@@ -335,6 +335,98 @@ class GatedConv2D(tf.keras.layers.Layer):
         return outputs
 
 
+class MaskPadding(tf.keras.layers.Layer):
+    """
+    Layer to mask padding in tensors.
+    """
+
+    def __init__(self, pad_value=1, **kwargs):
+        """
+        Parameters
+        ----------
+        pad_value : float or int, optional
+            Value used for padding.
+        **kwargs : dict
+            Additional keyword arguments for Layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.pad_value = pad_value
+
+    def get_config(self):
+        """
+        Return the config of the layer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'pad_value': self.pad_value,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer shapes.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input to the layer.
+        """
+
+        super().build(input_shape)
+
+        self.origin_shape = input_shape[0]
+        self.target_shape = input_shape[1]
+
+    def call(self, inputs):
+        """
+        Applies masking to inputs.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input and target data tensors.
+
+        Returns
+        -------
+        tf.Tensor
+            Target data with applied mask.
+        """
+
+        input_data, target_data = inputs
+
+        reduce_axis = list(range(2, len(self.origin_shape)))
+        input_mean = tf.reduce_mean(input_data, axis=reduce_axis)
+
+        data_reversed = tf.reverse(input_mean, axis=[1])
+        padding_mask = tf.equal(data_reversed, tf.cast(self.pad_value, data_reversed.dtype))
+
+        lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
+        origin_lens = tf.where(tf.equal(lengths, 0), self.origin_shape[1], self.origin_shape[1] - lengths)
+
+        scale = tf.math.divide(tf.cast(origin_lens, tf.float32), (self.origin_shape[1] + 1e-7))
+        target_lens = tf.math.multiply(tf.cast(self.target_shape[1], tf.float32), scale)
+
+        mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=self.target_shape[1])
+        mask = tf.cast(mask, dtype=target_data.dtype)
+
+        for _ in range(len(self.target_shape) - 2):
+            mask = tf.expand_dims(mask, axis=-1)
+
+        target = tf.math.multiply(target_data, mask)
+
+        return target
+
+
 class OctConv2D(tf.keras.layers.Layer):
     """
     Implements octave convolutional layer for TensorFlow.
