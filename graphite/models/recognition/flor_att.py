@@ -3,7 +3,6 @@ import tensorflow as tf
 from graphite.models.components.common import BaseRecognitionModel
 from graphite.models.components.layers import GatedConv2D
 from graphite.models.components.layers import SelfAttention
-from graphite.models.components.optimizers import NormalizedOptimizer
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -19,11 +18,11 @@ class RecognitionModel(BaseRecognitionModel):
     Batch Renormalization: Towards Reducing Minibatch Dependence in Batch-Normalized Models
         https://arxiv.org/abs/1702.03275
 
-    Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network
-        https://arxiv.org/abs/1707.04822
-
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
+
+    Self-Attention Generative Adversarial Networks
+        https://arxiv.org/abs/1805.08318
     """
 
     def compile(self, learning_rate=None):
@@ -40,12 +39,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         if learning_rate is None:
             learning_rate = 1e-3
-
-        # self.optimizer = NormalizedOptimizer(
-        #     tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=0.1))
-
-        # self.optimizer = NormalizedOptimizer(
-        #     tf.keras.optimizers.RMSprop(learning_rate=learning_rate), normalization='avg_l2')
 
         self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
@@ -143,6 +136,9 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
+        encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
+        encoder = SelfAttention()(encoder)
+
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
@@ -151,12 +147,15 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder_input)
+            tf.keras.layers.GRU(units=256, dropout=0.5, return_sequences=True))(decoder_input)
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
 
         decoder = tf.keras.layers.Dense(units=256)(decoder)
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
+            tf.keras.layers.GRU(units=256, dropout=0.5, return_sequences=True))(decoder)
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
@@ -169,3 +168,5 @@ class RecognitionModel(BaseRecognitionModel):
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
                                           outputs=self.decoder(self.encoder.output))
+
+        self.recognition.summary()
