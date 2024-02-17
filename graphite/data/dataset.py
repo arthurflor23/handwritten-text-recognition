@@ -284,7 +284,8 @@ class Dataset():
                                                target_shape=self.image_shape)
 
                     if image is None or image.size < (32 * 32):
-                        print(f"Image `{item['image']}` is smaller than valid size.")
+                        invalid_size = f"{image.shape[0]}x{image.shape[1]}"
+                        print(f"Image `{item['image']}` is smaller than valid size ({invalid_size}).")
                         return None
 
                 except Exception:
