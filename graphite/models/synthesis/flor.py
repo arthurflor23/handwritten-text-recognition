@@ -63,8 +63,8 @@ class SynthesisModel(BaseSynthesisModel):
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
-        self.w_optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-        self.r_optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        self.w_optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
+        self.r_optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
 
     def build_model(self):
         """
