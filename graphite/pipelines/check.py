@@ -21,7 +21,6 @@ def check(args):
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
-                      multigrams=True,
                       input_path=args.source_input_path,
                       seed=args.seed)
     print(dataset)
@@ -59,14 +58,6 @@ def check(args):
                                            augmentor=None,
                                            shuffle=False)
 
-    padded_gen, _ = dataset.get_generator(data_partition='training',
-                                          batch_size=args.batch_size,
-                                          batch_encoded=True,
-                                          batch_padding=True,
-                                          batch_processing=False,
-                                          augmentor=None,
-                                          shuffle=False)
-
     augmented_gen, _ = dataset.get_generator(data_partition='training',
                                              batch_size=args.batch_size,
                                              batch_encoded=True,
@@ -83,70 +74,52 @@ def check(args):
                                              augmentor=augmentor,
                                              shuffle=False)
 
-    if args.check:
-        print('\nChecking samples...\n')
+    print('\nChecking samples...')
 
-        while True:
-            _, y_source_data = next(source_gen)
-            image_source_data, text_source_data, writer_source_data = y_source_data
+    while True:
+        _, y_source_data = next(source_gen)
+        image_source_data, text_source_data, writer_source_data = y_source_data
 
-            _, y_encoded_data = next(encoded_gen)
-            image_encoded_data, text_encoded_data, writer_encoded_data = y_encoded_data
+        _, y_encoded_data = next(encoded_gen)
+        image_encoded_data, text_encoded_data, writer_encoded_data = y_encoded_data
 
-            _, y_padded_data = next(padded_gen)
-            image_padded_data, text_padded_data, _, = y_padded_data
+        x_augmented_data, _ = next(augmented_gen)
+        image_augmented_data, _ = x_augmented_data
 
-            x_augmented_data, _ = next(augmented_gen)
-            image_augmented_data, _ = x_augmented_data
+        x_processed_data, _ = next(processed_gen)
+        image_processed_data, _ = x_processed_data
 
-            x_processed_data, _ = next(processed_gen)
-            image_processed_data, text_augmented_data = x_processed_data
+        # better to read
+        image_processed_data = image_processed_data.transpose((0, 2, 1, 3))
 
-            # better to read
-            image_processed_data = image_processed_data.transpose((0, 2, 1, 3))
-            text_augmented_data = text_augmented_data.transpose((0, 2, 1))
+        for i in range(len(image_source_data)):
+            # source
+            print('\n')
+            print('Path image')
+            print(image_source_data[i], '\n')
 
-            for i in range(len(image_source_data)):
-                # source
-                print('\n')
-                print('Path image')
-                print(image_source_data[i], '\n')
+            print('Source writer :', writer_source_data[i])
+            print('Encoded writer:', writer_encoded_data[i], '\n')
 
-                print('Source writer :', writer_source_data[i])
-                print('Encoded writer:', writer_encoded_data[i], '\n')
+            print('Source text', f"(length {len(text_source_data[i])})")
+            print(text_source_data[i])
+            print('--------------------------------------------------\n')
 
-                print('Source text', f"(length {len(text_source_data[i])})")
-                print(text_source_data[i])
-                print('--------------------------------------------------\n')
+            # no augmentation and no padding
+            cv2.imshow('Image', image_encoded_data[i])
+            print('Encoded text')
+            print(text_encoded_data[i])
+            print('--------------------------------------------------\n')
 
-                # no augmentation and no padding
-                cv2.imshow('Image', image_encoded_data[i])
-                print('Encoded text')
-                print(text_encoded_data[i])
-                print('--------------------------------------------------\n')
+            # with augmentation and with padding
+            cv2.imshow('Augmented image', image_augmented_data[i])
 
-                # no augmentation and with padding
-                cv2.imshow('Padded image', image_padded_data[i])
-                print('Padded text')
-                print(text_padded_data[i].tolist())
-                print('--------------------------------------------------\n')
+            # with augmentation, with padding and input process
+            cv2.imshow('Processed image', image_processed_data[i])
 
-                # random text augmented
-                print('Text augmented (multigrams)')
-                print(dataset.tokenizer.decode_text(text_augmented_data[i].tolist()))
-                print()
-                print(text_augmented_data[i].tolist())
-                print('--------------------------------------------------\n')
+            print('Press Enter to continue or Esc to stop...\n')
+            key = cv2.waitKey(0)
 
-                # with augmentation and with padding
-                cv2.imshow('Augmented image', image_augmented_data[i])
-
-                # with augmentation, with padding and input process
-                cv2.imshow('Processed image', image_processed_data[i])
-
-                print('Press Enter to continue or Esc to stop...\n')
-                key = cv2.waitKey(0)
-
-                if key == 27:
-                    cv2.destroyAllWindows()
-                    return
+            if key == 27:
+                cv2.destroyAllWindows()
+                return
