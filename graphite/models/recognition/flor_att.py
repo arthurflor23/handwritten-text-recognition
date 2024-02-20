@@ -122,7 +122,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
-        # encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
@@ -154,6 +154,9 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='concat')(decoder)
+
+        # decoder = tf.keras.layers.Bidirectional(
+        #     tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='sum')(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
