@@ -510,7 +510,6 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
-        batch_size = int(np.ceil(len(x) / steps))
         metrics = {'cer': [], 'wer': []}
         evaluations = []
 
@@ -520,8 +519,8 @@ class BaseRecognitionModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, y_data = next(y)
-            _, text_true_data, _ = y_data
+            _, (_, text_true_data, _) = next(y)
+            batch_size = len(text_true_data)
 
             start = step * batch_size
             end = start + batch_size
@@ -744,8 +743,8 @@ class BaseSynthesisModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, y_data = next(y)
-            image_true_data, _, _ = y_data
+            _, (image_true_data, _, _) = next(y)
+            batch_size = len(image_true_data)
 
             start = step * batch_size
             end = start + batch_size
