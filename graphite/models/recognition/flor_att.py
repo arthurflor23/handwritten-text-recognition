@@ -76,7 +76,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=40,
+        encoder = tf.keras.layers.Conv2D(filters=48,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
@@ -88,7 +88,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48,
+        encoder = tf.keras.layers.Conv2D(filters=56,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
@@ -101,7 +101,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=56,
+        encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
@@ -114,7 +114,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
+        encoder = tf.keras.layers.Conv2D(filters=96,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
@@ -155,9 +155,6 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='concat')(decoder)
 
-        # decoder = tf.keras.layers.Bidirectional(
-        #     tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='sum')(decoder)
-
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
@@ -169,5 +166,3 @@ class RecognitionModel(BaseRecognitionModel):
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
                                           outputs=self.decoder(self.encoder.output))
-
-        self.recognition.summary()
