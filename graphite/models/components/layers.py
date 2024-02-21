@@ -619,14 +619,14 @@ class SelfAttention(tf.keras.layers.Layer):
             self.filters = input_shape[-1]
 
         if len(input_shape) == 3:
+            pool_size = 1
             conv_layer = tf.keras.layers.Conv1D
             pooling_layer = tf.keras.layers.MaxPooling1D
-            pool_size = 2 if input_shape[-2] > 1 else 1
 
         elif len(input_shape) == 4:
+            pool_size = 2 if input_shape[-3] > 1 and input_shape[-2] > 1 else 1
             conv_layer = tf.keras.layers.Conv2D
             pooling_layer = tf.keras.layers.MaxPooling2D
-            pool_size = (2, 2) if input_shape[-3] > 1 and input_shape[-2] > 1 else (1, 1)
         else:
             raise ValueError('Unsupported input shape: must be 1D or 2D')
 
