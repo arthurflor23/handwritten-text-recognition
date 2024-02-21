@@ -618,43 +618,53 @@ class SelfAttention(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
-        pool = 2 if input_shape[-2] > 1 else 1
+        if len(input_shape) == 3:
+            conv_layer = tf.keras.layers.Conv1D
+            pooling_layer = tf.keras.layers.MaxPooling1D
+            pool_size = 2 if input_shape[-2] > 1 else 1
 
-        self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
-                                             kernel_size=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+        elif len(input_shape) == 4:
+            conv_layer = tf.keras.layers.Conv2D
+            pooling_layer = tf.keras.layers.MaxPooling2D
+            pool_size = (2, 2) if input_shape[-3] > 1 and input_shape[-2] > 1 else (1, 1)
+        else:
+            raise ValueError('Unsupported input shape: must be 1D or 2D')
 
-        self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool, strides=pool, padding='valid')
+        self.f_conv = conv_layer(filters=self.filters // 8,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=False)
 
-        self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // 8,
-                                             kernel_size=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+        self.f_pooling = pooling_layer(pool_size=pool_size, strides=pool_size, padding='valid')
 
-        self.h_conv = tf.keras.layers.Conv2D(filters=self.filters // 2,
-                                             kernel_size=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+        self.g_conv = conv_layer(filters=self.filters // 8,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=False)
 
-        self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool, strides=pool, padding='valid')
+        self.h_conv = conv_layer(filters=self.filters // 2,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=False)
 
-        self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                             kernel_size=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+        self.h_pooling = pooling_layer(pool_size=pool_size, strides=pool_size, padding='valid')
+
+        self.o_conv = conv_layer(filters=self.filters,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=False)
 
         if self.spectral_norm:
             self.f_conv = SpectralNormalization(self.f_conv)
@@ -679,22 +689,22 @@ class SelfAttention(tf.keras.layers.Layer):
             Output tensor after applying self-attention.
         """
 
-        batch_size, height, width, channels = tf.unstack(tf.shape(x))
+        shape = tf.unstack(tf.shape(x))
 
         f = self.f_pooling(self.f_conv(x))
-        f = tf.reshape(f, shape=(batch_size, -1, f.shape[-1]))
+        f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
         g = self.g_conv(x)
-        g = tf.reshape(g, shape=(batch_size, -1, g.shape[-1]))
+        g = tf.reshape(g, shape=(shape[0], -1, g.shape[-1]))
 
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
         h = self.h_pooling(self.h_conv(x))
-        h = tf.reshape(h, shape=(batch_size, -1, h.shape[-1]))
+        h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[batch_size, height, width, channels // 2])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // 2])
 
         o = self.o_conv(o)
 
