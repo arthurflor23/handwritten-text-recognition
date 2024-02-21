@@ -548,6 +548,8 @@ class BaseRecognitionModel(BaseModel):
 
                     local_evaluation[f"top_path_{i+1}"] = {
                         'probability': prob_pred if prob_pred is None else prob_pred[i],
+                        'cer': cer,
+                        'wer': wer,
                         'prediction': top_path,
                     }
 
@@ -555,6 +557,7 @@ class BaseRecognitionModel(BaseModel):
 
             progbar.update(step + 1)
 
+        evaluations = sorted(evaluations, key=lambda x: x['top_path_1']['cer'])
         metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
 
         return metrics, evaluations
