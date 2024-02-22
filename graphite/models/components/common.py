@@ -534,14 +534,14 @@ class BaseRecognitionModel(BaseModel):
                 text_true = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ')).split())
                 local_evaluation = {'ground_truth': text_true}
 
-                for i, top_path in enumerate(text_pred):
-                    top_path = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ')).split())
+                for i, prediction in enumerate(text_pred):
+                    prediction = ' '.join(re.sub(pattern, r' \1 ', prediction.replace('\n', ' ')).split())
 
-                    cer_distance = editdistance.eval(list(text_true), list(top_path))
-                    cer = cer_distance / max(len(text_true), len(top_path))
+                    cer_distance = editdistance.eval(list(text_true.lower()), list(prediction.lower()))
+                    cer = cer_distance / max(len(text_true), len(prediction))
 
-                    wer_distance = editdistance.eval(text_true.split(), top_path.split())
-                    wer = wer_distance / max(len(text_true.split()), len(top_path.split()))
+                    wer_distance = editdistance.eval(text_true.lower().split(), prediction.lower().split())
+                    wer = wer_distance / max(len(text_true.split()), len(prediction.split()))
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
@@ -550,7 +550,7 @@ class BaseRecognitionModel(BaseModel):
                         'probability': prob_pred if prob_pred is None else prob_pred[i],
                         'cer': cer,
                         'wer': wer,
-                        'prediction': top_path,
+                        'prediction': prediction,
                     }
 
                 evaluations.append(local_evaluation)
