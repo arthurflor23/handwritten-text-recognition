@@ -204,16 +204,15 @@ class SpellingModel():
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='spelling', verbose=verbose)
 
-        batch_size = int(np.ceil(len(x) / steps))
         corrections = []
+        batch_index = 0
+        batch_size = int(np.ceil(len(x) / steps))
 
         for step in range(steps):
             progbar.update(step)
 
-            start = step * batch_size
-            end = start + batch_size
-
-            batch = x[start:end]
+            batch = x[batch_index:batch_index + batch_size]
+            batch_index += batch_size
 
             encoded_batch = self._encode_batch(batch)
             corrected_encoded_batch_batch = [self._request_api(item) for item in encoded_batch]
