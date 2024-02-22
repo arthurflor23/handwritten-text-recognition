@@ -526,13 +526,6 @@ class BaseRecognitionModel(BaseModel):
             prob_pred_data = probabilities[batch_index:batch_index + batch_size]
             batch_index += batch_size
 
-            print(batch_size)
-            print()
-            print(text_true_data)
-            print()
-            print(text_pred_data)
-            print()
-
             pattern = f'([{re.escape(string.punctuation)}])'
 
             for text_true, text_pred, prob_pred in zip(text_true_data, text_pred_data, prob_pred_data):
