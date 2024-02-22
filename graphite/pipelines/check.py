@@ -42,7 +42,7 @@ def check(args):
                           seed=args.seed)
     print(augmentor)
 
-    source_gen, _ = dataset.get_generator(data_partition='training',
+    source_gen, _ = dataset.get_generator(data_partition='test',
                                           batch_size=args.batch_size,
                                           batch_encoded=False,
                                           batch_padding=False,
@@ -50,7 +50,7 @@ def check(args):
                                           augmentor=None,
                                           shuffle=False)
 
-    encoded_gen, _ = dataset.get_generator(data_partition='training',
+    encoded_gen, _ = dataset.get_generator(data_partition='test',
                                            batch_size=args.batch_size,
                                            batch_encoded=True,
                                            batch_padding=False,
@@ -58,7 +58,7 @@ def check(args):
                                            augmentor=None,
                                            shuffle=False)
 
-    augmented_gen, _ = dataset.get_generator(data_partition='training',
+    augmented_gen, _ = dataset.get_generator(data_partition='test',
                                              batch_size=args.batch_size,
                                              batch_encoded=True,
                                              batch_padding=True,
@@ -66,7 +66,7 @@ def check(args):
                                              augmentor=augmentor,
                                              shuffle=False)
 
-    processed_gen, _ = dataset.get_generator(data_partition='training',
+    processed_gen, _ = dataset.get_generator(data_partition='test',
                                              batch_size=args.batch_size,
                                              batch_encoded=True,
                                              batch_padding=True,
