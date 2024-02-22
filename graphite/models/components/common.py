@@ -433,21 +433,20 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
-        batch_size = int(np.ceil(len(x) / steps))
-        beam_width = max(top_paths, beam_width)
-
         x = np.log(x + 1e-7)
         x = x.transpose((0, 2, 1, 3))
 
+        beam_width = max(top_paths, beam_width)
         predictions, probabilities = [], []
+
+        batch_index = 0
+        batch_size = int(np.ceil(len(x) / steps))
 
         for step in range(steps):
             progbar.update(step)
 
-            start = step * batch_size
-            end = start + batch_size
-
-            batch = x[start:end, :, :, :]
+            batch = x[batch_index:batch_index + batch_size, :, :, :]
+            batch_index += batch_size
 
             top_path_decoded, top_path_probabilities = [], []
             sequence_length = [batch.shape[2]] * batch.shape[0]
@@ -516,17 +515,23 @@ class BaseRecognitionModel(BaseModel):
         if probabilities is None:
             probabilities = [None] * len(x)
 
+        batch_index = 0
         for step in range(steps):
             progbar.update(step)
 
             _, (_, text_true_data, _) = next(y)
             batch_size = len(text_true_data)
 
-            start = step * batch_size
-            end = start + batch_size
+            text_pred_data = x[batch_index:batch_index + batch_size]
+            prob_pred_data = probabilities[batch_index:batch_index + batch_size]
+            batch_index += batch_size
 
-            text_pred_data = x[start:end]
-            prob_pred_data = probabilities[start:end]
+            print(batch_size)
+            print()
+            print(text_true_data)
+            print()
+            print(text_pred_data)
+            print()
 
             pattern = f'([{re.escape(string.punctuation)}])'
 
@@ -737,22 +742,20 @@ class BaseSynthesisModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
-        batch_size = int(np.ceil(len(x) / steps))
         metrics = {'kid': []}
         evaluations = []
 
         kid = KernelInceptionDistance(scale=1.0, offset=0.0)
 
+        batch_index = 0
         for step in range(steps):
             progbar.update(step)
 
             _, (image_true_data, _, _) = next(y)
             batch_size = len(image_true_data)
 
-            start = step * batch_size
-            end = start + batch_size
-
-            image_pred_data = x[start:end]
+            image_pred_data = x[batch_index:batch_index + batch_size]
+            batch_index += batch_size
 
             kid.update_state(image_true_data, image_pred_data)
             metrics['kid'].append(kid.result())
