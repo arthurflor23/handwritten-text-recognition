@@ -57,7 +57,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder_input)
+                                         kernel_initializer='glorot_uniform')(encoder_input)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -68,7 +68,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -80,7 +80,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -92,7 +92,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -105,7 +105,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -118,7 +118,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -131,7 +131,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
                                          padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
+                                         kernel_initializer='glorot_uniform')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -147,15 +147,16 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='concat')(decoder_input)
+            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True))(decoder_input)
 
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='concat')(decoder)
+            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True), merge_mode='concat')(decoder)
+            tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = SelfAttention()(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
