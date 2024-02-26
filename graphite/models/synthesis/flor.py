@@ -423,11 +423,7 @@ class IdentificationModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feats = []
-        for layer in self.backbone.layers:
-            if layer.__class__.__name__ in ['GatedConv2D', 'SelfAttention']:
-                feats.append(layer.output)
-
+        feats = [self.backbone.output]
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
@@ -438,7 +434,7 @@ class IdentificationModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, feats[-1:]])
+                                    outputs=[encoder_output, feats])
 
 
 class StyleEncoderModel(BaseModel):
@@ -504,11 +500,7 @@ class StyleEncoderModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feats = []
-        for layer in self.backbone.layers:
-            if layer.__class__.__name__ in ['GatedConv2D', 'SelfAttention']:
-                feats.append(layer.output)
-
+        feats = [self.backbone.output]
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
@@ -523,7 +515,7 @@ class StyleEncoderModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, (mu, logvar, feats[-1:])])
+                                    outputs=[encoder_output, (mu, logvar, feats)])
 
     def reparameterize(self, mu, logvar):
         """
