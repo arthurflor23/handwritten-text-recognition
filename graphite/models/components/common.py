@@ -519,7 +519,7 @@ class BaseRecognitionModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (_, text_true_data, _) = next(y)
+            _, (image_path_data, text_true_data, _) = next(y)
             batch_size = len(text_true_data)
 
             text_pred_data = x[batch_index:batch_index + batch_size]
@@ -528,8 +528,10 @@ class BaseRecognitionModel(BaseModel):
 
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for text_true, text_pred, prob_pred in zip(text_true_data, text_pred_data, prob_pred_data):
-                local_evaluation = {'ground_truth': text_true}
+            for image_path, text_true, text_pred, prob_pred in \
+                    zip(image_path_data, text_true_data, text_pred_data, prob_pred_data):
+
+                local_evaluation = {'image_path': image_path, 'ground_truth': text_true}
                 gt = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ').lower()).split())
 
                 for i, top_path in enumerate(text_pred):
