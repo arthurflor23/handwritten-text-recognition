@@ -56,8 +56,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Conv2D(filters=16,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder_input)
+                                         padding='same')(encoder_input)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -67,8 +66,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Conv2D(filters=32,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -79,8 +77,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Conv2D(filters=48,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -88,11 +85,10 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=56,
+        encoder = tf.keras.layers.Conv2D(filters=64,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -101,11 +97,10 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
+        encoder = tf.keras.layers.Conv2D(filters=80,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -114,11 +109,10 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=96,
+        encoder = tf.keras.layers.Conv2D(filters=104,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -130,8 +124,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Conv2D(filters=128,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='glorot_uniform')(encoder)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
@@ -156,7 +149,6 @@ class RecognitionModel(BaseRecognitionModel):
             tf.keras.layers.LSTM(units=128, dropout=0.5, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-        decoder = SelfAttention()(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
