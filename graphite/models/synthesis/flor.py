@@ -7,7 +7,7 @@ from graphite.models.components.layers import ConditionalBatchNormalization
 from graphite.models.components.layers import ExtractPatches
 from graphite.models.components.layers import SelfAttention
 from graphite.models.components.layers import SpectralNormalization
-from graphite.models.recognition.flor2 import RecognitionModel
+from graphite.models.recognition.flor_attention import RecognitionModel
 
 
 class SynthesisModel(BaseSynthesisModel):
