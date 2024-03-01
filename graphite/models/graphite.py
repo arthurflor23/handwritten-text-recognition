@@ -741,7 +741,17 @@ class Graphite():
             with open(metadata_file, 'r') as f:
                 yaml_file = yaml.safe_load(f)
 
+            experiment_id = metadata_file.split('/')[1]
             update_needed = False
+
+            if yaml_file.get('experiment_id', experiment_id) != experiment_id:
+                for key in artifact_path_keys:
+                    if yaml_file.get(key):
+                        yaml_file[key] = yaml_file[key].replace(yaml_file['experiment_id'], experiment_id)
+
+                yaml_file['experiment_id'] = experiment_id
+                update_needed = True
+
             for key in artifact_path_keys:
                 new_path = os.path.dirname(os.path.abspath(metadata_file))
                 new_path = os.path.join(new_path, artifact_path_keys[key])
