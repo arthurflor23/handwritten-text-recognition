@@ -48,13 +48,19 @@ class Source():
             Partition dictionary with list of items.
         """
 
-        curr_file_name = os.path.basename(__file__)
         curr_dir = os.path.dirname(os.path.realpath(__file__))
-
         sys.path.append(curr_dir)
 
-        filenames = [x for x in os.listdir(curr_dir) if x.endswith('.py')]
-        filenames = [x for x in filenames if x not in {curr_file_name, '__init__.py'}]
+        include_list = [
+            'bentham',
+            'iam',
+            'parzival',
+            'rimes',
+            'saintgall',
+            'washington',
+        ]
+
+        filenames = [x for x in os.listdir(curr_dir) if x.rstrip('.py') in include_list]
         filenames.sort()
 
         data = {'training': [], 'validation': [], 'test': []}
