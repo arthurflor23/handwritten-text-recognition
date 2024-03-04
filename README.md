@@ -59,19 +59,21 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 2. [Bressay](https://drive.google.com/file/d/1z7CZ0s6A1aC7K47eUKH7lPLWU5d927Id/view?usp=drive_link) [[paper]]()
 
-3. [CVL-Digits](https://drive.google.com/file/d/1s_13CvgVtYYMynL1wv1o7eI4QOkDgaGW/view?usp=drive_link) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
+3. [CVL-Database](https://drive.google.com/file/d/10uaLPxph8oG4-iEw9josKtLu1ciCVQJ7/view?usp=drive_link) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
 
-4. [IAM](https://drive.google.com/file/d/1-_tFR64Tko7ICnZMIdwUQraXAYd028R2/view?usp=drive_link) [[paper]](https://doi.org/10.1007/s100320200071)
+4. [CVL-Digits](https://drive.google.com/file/d/1s_13CvgVtYYMynL1wv1o7eI4QOkDgaGW/view?usp=drive_link) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
 
-5. [ORAND-CAR](https://drive.google.com/file/d/1NWywg7urSy-7asGFCfRrMuEugh59E6K1/view?usp=drive_link) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
+5. [IAM](https://drive.google.com/file/d/1-_tFR64Tko7ICnZMIdwUQraXAYd028R2/view?usp=drive_link) [[paper]](https://doi.org/10.1007/s100320200071)
 
-6. [Parzival](https://drive.google.com/file/d/1EYv33klUY_tnLMbZ07I_upEdTZAkv_58/view?usp=drive_link) [[paper]](http://dx.doi.org/10.1109/ICDAR.2011.20)
+6. [ORAND-CAR](https://drive.google.com/file/d/1NWywg7urSy-7asGFCfRrMuEugh59E6K1/view?usp=drive_link) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
 
-7. [Rimes](https://drive.google.com/file/d/1Hjnc_cYzzPg88382pvP04skjsq6acQGa/view?usp=drive_link) [[paper]](https://hal.science/hal-01395332)
+7. [Parzival](https://drive.google.com/file/d/1EYv33klUY_tnLMbZ07I_upEdTZAkv_58/view?usp=drive_link) [[paper]](http://dx.doi.org/10.1109/ICDAR.2011.20)
 
-8. [Saint Gall](https://drive.google.com/file/d/1o3hvTBcr-h6S45mT9vDWKRokFN9Rqfis/view?usp=drive_link) [[paper]](https://dl.acm.org/doi/10.1145/2037342.2037348)
+8. [RIMES](https://drive.google.com/file/d/1Hjnc_cYzzPg88382pvP04skjsq6acQGa/view?usp=drive_link) [[paper]](https://hal.science/hal-01395332)
 
-9. [Washington](https://drive.google.com/file/d/150I0IcSWsjikYARuBBqmjrRQwukwSzRh/view?usp=drive_link) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
+9. [Saint Gall](https://drive.google.com/file/d/1o3hvTBcr-h6S45mT9vDWKRokFN9Rqfis/view?usp=drive_link) [[paper]](https://dl.acm.org/doi/10.1145/2037342.2037348)
+
+10. [Washington](https://drive.google.com/file/d/150I0IcSWsjikYARuBBqmjrRQwukwSzRh/view?usp=drive_link) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
 
 ## Parameters
 
