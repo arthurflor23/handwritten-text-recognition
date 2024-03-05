@@ -103,10 +103,8 @@ class Source():
 
             filename = root.find('.//ns:Page', self.ns).get('imageFilename')
 
-            if filename is None or filename in exclude_data:
-                continue
-
-            data.extend(extract_function(root, partition_path, filename))
+            if filename and filename not in exclude_data:
+                data.extend(extract_function(root, partition_path, filename))
 
         return data
 
@@ -216,9 +214,6 @@ class Source():
         writer_id = filename.split('-')[0]
         paragraphs_data = []
 
-        # if filename.split('.')[0].split('-')[1] != '3':
-        #     return paragraphs_data
-
         for attr_region in root.findall('.//ns:AttrRegion[@attrType="3"]', self.ns):
             text = '\n'.join(
                 ' '.join(word.get('text') for word in line_region.findall(
@@ -256,9 +251,7 @@ class Source():
             Text with applied punctuation rules.
         """
 
-        rule = os.path.splitext(filename)[0].split('-')[-1]
-
-        punctuation_rules = {
+        rules = {
             '1': [
                 {'Lines': 'Lines,'},
                 {'Triangles': 'Triangles,', 'angles Squares': 'angles, Squares'},
@@ -346,67 +339,22 @@ class Source():
             ],
         }
 
-        # no_replace_terms = []
+        def replace_term(text, term, replacement):
+            pattern = r'(\W|^)' + re.escape(term) + r'(\W|$)'
+            regex = re.compile(pattern, re.IGNORECASE)
 
-        for group in punctuation_rules.get(rule, []):
-            # no_replace = True
+            def replace_func(match):
+                return match.group(1) + replacement + match.group(2)
 
+            return regex.subn(replace_func, text, 1)
+
+        rule = os.path.splitext(filename)[0].split('-')[-1]
+
+        for group in rules.get(rule, []):
             for term, replacement in group.items():
-                pattern = r'(\W|^)' + re.escape(term) + r'(\W|$)'
-                pattern = re.compile(pattern, re.IGNORECASE)
-
-                def replace_func(match):
-                    return match.group(1) + replacement + match.group(2)
-
-                text, count = pattern.subn(replace_func, text, 1)
+                text, count = replace_term(text, term, replacement)
 
                 if count > 0:
-                    # no_replace = False
                     break
-
-            # if no_replace:
-            #     no_replace_terms.extend(list(group.keys()))
-
-        # complete = [
-        #     '0015-1.tif',
-        #     '1117-1.tif',
-        #     '0909-1.tif',
-        #     '0098-1.tif',
-        #     '0599-1.tif',
-        #     '0717-1.tif',
-        #     '0972-1.tif',
-        #     '0960-1.tif',
-        #     '0080-1.tif',
-        #     '0964-1.tif',
-        #     '0246-2.tif',
-        #     '0387-2.tif',
-        #     '0157-2.tif',
-        #     '0384-2.tif',
-        #     '0482-2.tif',
-        #     '0164-2.tif',
-        #     '1101-2.tif',
-        #     '0156-3.tif',
-        #     '0223-3.tif',
-        #     '0383-3.tif',
-        #     '0599-3.tif',
-        #     '0172-3.tif',
-        #     '0534-3.tif',
-        #     '0960-3.tif',
-        #     '0530-4.tif',
-        #     '0599-4.tif',
-        #     '0571-6.tif',
-        #     '0223-6.tif',
-        #     '0507-6.tif',
-        #     '0265-6.tif',
-        #     '1121-6.tif',
-        # ]
-
-        # if no_replace_terms and filename not in complete:
-        #     print('---------------')
-        #     print(text)
-        #     print('---------------')
-        #     print('No replacement for terms:', no_replace_terms)
-        #     print(filename)
-        #     print()
 
         return text
