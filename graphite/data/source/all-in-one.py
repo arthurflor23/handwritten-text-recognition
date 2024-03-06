@@ -5,7 +5,7 @@ import importlib
 
 class Source():
     """
-    Represents all data sources.
+    Represents a subset of data sources.
 
     Requires implementation of `fetch_data`, returning a dictionary with
         'training', 'validation', and 'test' keys, each mapping to a list of data entries.
@@ -52,7 +52,7 @@ class Source():
         sys.path.append(curr_dir)
 
         include_list = [
-            'bentham',
+            'cvl-database',
             'iam',
             'parzival',
             'rimes',
