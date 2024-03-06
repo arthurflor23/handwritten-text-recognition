@@ -129,7 +129,7 @@ class Source():
 
     def _load_words_data(self, file_path):
         """
-        Loads the words data from a file.
+        Loads the words data.
 
         Parameters
         ----------
@@ -169,7 +169,7 @@ class Source():
 
     def _load_lines_data(self, file_path):
         """
-        Loads the lines data from a file.
+        Loads the lines data.
 
         Parameters
         ----------

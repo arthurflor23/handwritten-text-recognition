@@ -121,7 +121,7 @@ class Source():
 
     def _load_lines_data(self, file_path):
         """
-        Loads the lines data from a file.
+        Loads the lines data.
 
         Parameters
         ----------

@@ -153,7 +153,7 @@ class Source():
 
     def _load_lines_data(self, file_path):
         """
-        Loads the lines data from a file.
+        Loads the lines data.
 
         Parameters
         ----------
@@ -187,7 +187,7 @@ class Source():
 
     def _load_paragraphs_data(self, file_path):
         """
-        Loads the paragraphs data from a file.
+        Loads the paragraphs data.
 
         Parameters
         ----------

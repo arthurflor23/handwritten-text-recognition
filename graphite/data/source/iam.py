@@ -193,7 +193,7 @@ class Source():
 
     def _load_words_data(self, file_path, bbox_info=False):
         """
-        Loads the words data from a file.
+        Loads the words data.
 
         Parameters
         ----------
@@ -241,7 +241,7 @@ class Source():
 
     def _load_lines_data(self, file_path, bbox_info=False):
         """
-        Loads the lines data from a file.
+        Loads the lines data.
 
         Parameters
         ----------
@@ -289,7 +289,7 @@ class Source():
 
     def _load_paragraphs_data(self, lines_data, bbox_info=False):
         """
-        Loads the paragraphs data from a file.
+        Loads the paragraphs data.
 
         Parameters
         ----------
