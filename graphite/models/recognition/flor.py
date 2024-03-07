@@ -46,70 +46,40 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        encoder = tf.keras.layers.Conv2D(filters=16,
-                                         kernel_size=(3, 3),
-                                         strides=(2, 1),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder_input)
-
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 1), padding='same')(encoder_input)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=40,
-                                         kernel_size=(2, 4),
-                                         strides=(2, 4),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=(2, 4), strides=(2, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=56,
-                                         kernel_size=(2, 4),
-                                         strides=(1, 4),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=(2, 4), strides=(1, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
-        encoder = GatedConv2D(kernel_constraint=tf.keras.constraints.MaxNorm(4, [0, 1, 2]), dualgate=True)(encoder)
+        encoder = GatedConv2D(dualgate=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         kernel_initializer='he_uniform')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
