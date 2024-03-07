@@ -53,43 +53,27 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        encoder = tf.keras.layers.Conv2D(filters=16,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder_input)
-
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder_input)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2D(dualgate=True)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
@@ -97,11 +81,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=80,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
@@ -109,11 +89,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=104,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=104, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
@@ -121,11 +97,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
         encoder = SelfAttention()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=128,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(renorm=True)(encoder)
 
