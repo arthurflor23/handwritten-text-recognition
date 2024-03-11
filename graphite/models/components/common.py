@@ -89,7 +89,7 @@ class BaseModel(tf.keras.Model):
             if model is not None:
                 model.set_weights(weights[name])
 
-    def save_weights(self, filepath, overwrite=True, save_format=None, options=None):
+    def save_weights(self, filepath, overwrite=True, options=None):
         """
         Save the weights of the submodels.
 
@@ -99,8 +99,6 @@ class BaseModel(tf.keras.Model):
             Filepath for saving the weights.
         overwrite : bool, optional
             Whether to overwrite the existing file.
-        save_format : str, optional
-            Format of the file to save the weights.
         options : tf.train.CheckpointOptions, optional
             Optional arguments to pass to tf.train.Checkpoint.save.
         """
@@ -113,7 +111,6 @@ class BaseModel(tf.keras.Model):
                 model.trainable = True
                 model.save_weights(filepath=modelpath,
                                    overwrite=overwrite,
-                                   save_format=save_format,
                                    options=options)
 
     def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
