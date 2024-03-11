@@ -89,7 +89,7 @@ class BaseModel(tf.keras.Model):
             if model is not None:
                 model.set_weights(weights[name])
 
-    def save_weights(self, filepath, overwrite=True, options=None):
+    def save_weights(self, filepath, overwrite=True):
         """
         Save the weights of the submodels.
 
@@ -99,8 +99,6 @@ class BaseModel(tf.keras.Model):
             Filepath for saving the weights.
         overwrite : bool, optional
             Whether to overwrite the existing file.
-        options : tf.train.CheckpointOptions, optional
-            Optional arguments to pass to tf.train.Checkpoint.save.
         """
 
         for name in getattr(self, 'names', ['model']):
@@ -109,11 +107,9 @@ class BaseModel(tf.keras.Model):
 
             if model is not None:
                 model.trainable = True
-                model.save_weights(filepath=modelpath,
-                                   overwrite=overwrite,
-                                   options=options)
+                model.save_weights(filepath=modelpath, overwrite=overwrite)
 
-    def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
+    def load_weights(self, filepath, by_name=False, skip_mismatch=False):
         """
         Load the weights for the submodels.
 
@@ -125,8 +121,6 @@ class BaseModel(tf.keras.Model):
             Load weights by name.
         skip_mismatch : bool, optional
             Skip loading of layers where there is a mismatch in the number of weights.
-        options : tf.train.CheckpointOptions, optional
-            Optional arguments to pass to tf.train.Checkpoint.load.
         """
 
         for name in getattr(self, 'names', ['model']):
@@ -137,8 +131,7 @@ class BaseModel(tf.keras.Model):
                 model.built = True
                 model.load_weights(filepath=modelpath,
                                    by_name=by_name,
-                                   skip_mismatch=skip_mismatch,
-                                   options=options)
+                                   skip_mismatch=skip_mismatch)
 
     def get_batch_lens(self, batch, pad_value=None):
         """
