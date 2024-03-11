@@ -180,7 +180,7 @@ class Graphite():
 
         if run_context is not None:
             run_info = self.get_run_info(run_context=run_context)
-            artifact_path = os.path.join(run_info['artifact_path'], '<model>.h5')
+            artifact_path = os.path.join(run_info['artifact_path'], '<model>.weights.h5')
 
             self.model.load_weights(filepath=artifact_path, skip_mismatch=True, by_name=True)
 
@@ -239,7 +239,7 @@ class Graphite():
 
         if self.run_context is not None:
             path = self.run_context.info.artifact_uri.replace('file://', '')
-            new_context = bool(glob.glob(os.path.join(path, '**', '*.h5'), recursive=True))
+            new_context = bool(glob.glob(os.path.join(path, '**', '*.weights.h5'), recursive=True))
 
         run_info = self.get_run_info(new_context=new_context)
 
@@ -263,7 +263,7 @@ class Graphite():
                     append=True,
                 ),
                 tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(run_info['artifact_path'], '<model>.h5'),
+                    filepath=os.path.join(run_info['artifact_path'], '<model>.weights.h5'),
                     mode='min',
                     monitor=monitor,
                     save_freq='epoch',
@@ -684,7 +684,7 @@ class Graphite():
                     df['artifact_uri'] = df['artifact_uri'].str.replace('file://', '')
 
                     df['valid'] = df['artifact_uri'].apply(
-                        lambda x: bool(glob.glob(os.path.join(x, '**', '*.h5'), recursive=True)))
+                        lambda x: bool(glob.glob(os.path.join(x, '**', '*.weights.h5'), recursive=True)))
 
                     df = df[df['valid']].reset_index(drop=True)
 
