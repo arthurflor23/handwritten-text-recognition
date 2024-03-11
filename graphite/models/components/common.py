@@ -337,8 +337,8 @@ class BaseRecognitionModel(BaseModel):
         self.edit_distance.update_state(texts, ctc_logits)
 
         return {
-            self.ctc_loss.name: ctc_loss,
             self.edit_distance.name: self.edit_distance.result(),
+            'loss': ctc_loss,
         }
 
     def test_step(self, input_data):
@@ -364,8 +364,8 @@ class BaseRecognitionModel(BaseModel):
         self.edit_distance.update_state(text_data, ctc_logits)
 
         return {
-            self.ctc_loss.name: ctc_loss,
             self.edit_distance.name: self.edit_distance.result(),
+            'loss': ctc_loss,
         }
 
     def call(self, x_data, training=None):

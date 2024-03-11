@@ -324,7 +324,7 @@ class SynthesisModel(BaseSynthesisModel):
             'g_sty_loss': g_sty_loss,
             'g_cnt_loss': g_cnt_loss,
             'g_cx_loss': g_cx_loss,
-            'g_loss': g_loss,
+            'loss': g_loss,
         })
 
     def train_step(self, input_data):
