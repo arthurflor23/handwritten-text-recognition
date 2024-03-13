@@ -14,10 +14,7 @@ from graphite.models.components.callbacks import GANMonitor
 
 try:
     gpu = tf.config.list_physical_devices('GPU')[0]
-
     tf.config.set_visible_devices(gpu, 'GPU')
-    tf.config.experimental.set_memory_growth(gpu, True)
-
 except Exception:
     pass
 
