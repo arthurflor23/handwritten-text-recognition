@@ -18,8 +18,8 @@ try:
     tf.config.set_visible_devices(gpu, 'GPU')
     tf.config.experimental.set_memory_growth(gpu, True)
 
-except Exception as err:
-    print(err)
+except Exception:
+    pass
 
 
 class Graphite():
