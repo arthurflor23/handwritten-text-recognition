@@ -540,11 +540,8 @@ class BaseRecognitionModel(BaseModel):
                 for j, path in enumerate(text_pred):
                     pd = ' '.join(re.sub(pattern, r' \1 ', path.replace('\n', ' ').lower()).split())
 
-                    cer_distance = editdistance.eval(list(gt), list(pd))
-                    cer = cer_distance / max(len(gt), len(pd))
-
-                    wer_distance = editdistance.eval(gt.split(), pd.split())
-                    wer = wer_distance / max(len(gt.split()), len(pd.split()))
+                    cer = editdistance.eval(list(gt), list(pd)) / len(gt)
+                    wer = editdistance.eval(gt.split(), pd.split()) / len(gt.split())
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
