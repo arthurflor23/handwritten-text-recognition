@@ -627,6 +627,7 @@ class SelfAttention(tf.keras.layers.Layer):
             pool_size = 2 if input_shape[-3] > 1 and input_shape[-2] > 1 else 1
             conv_layer = tf.keras.layers.Conv2D
             pooling_layer = tf.keras.layers.MaxPooling2D
+
         else:
             raise ValueError('Unsupported input shape: must be 1D or 2D')
 
@@ -672,7 +673,10 @@ class SelfAttention(tf.keras.layers.Layer):
             self.h_conv = SpectralNormalization(self.h_conv)
             self.o_conv = SpectralNormalization(self.o_conv)
 
-        self.gamma = self.add_weight(shape=(1,), initializer='zeros', name=f"{self.name}_gamma", trainable=True)
+        self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                     shape=(1,),
+                                     initializer='zeros',
+                                     trainable=True)
 
     def call(self, x):
         """
@@ -798,21 +802,19 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
         self.w = self.layer.kernel
         self.w_shape = self.w.shape.as_list()
 
-        self.v = self.add_weight(
-            shape=(1, np.prod(self.w_shape[:-1])),
-            initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
-            trainable=False,
-            name='v',
-            dtype=self.dtype,
-            aggregation=self.aggregation)
+        self.v = self.add_weight(name='v',
+                                 shape=(1, np.prod(self.w_shape[:-1])),
+                                 initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
+                                 aggregation=self.aggregation,
+                                 dtype=self.dtype,
+                                 trainable=False,)
 
-        self.u = self.add_weight(
-            shape=(1, self.w_shape[-1]),
-            initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
-            trainable=False,
-            name='u',
-            dtype=self.dtype,
-            aggregation=self.aggregation)
+        self.u = self.add_weight(name='u',
+                                 shape=(1, self.w_shape[-1]),
+                                 initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
+                                 aggregation=self.aggregation,
+                                 dtype=self.dtype,
+                                 trainable=False,)
 
     def call(self, inputs, training=None):
         """
