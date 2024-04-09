@@ -55,25 +55,25 @@ pip install -r requirements.txt
 
 The project supports a wide range of datasets for handwritten text recognition. The following datasets are already integrated into the project and can be easily used for training and evaluation.
 
-1. [Bentham](https://drive.google.com/file/d/1eCTfy7erW6yWtpI3_hQ2alIw6IXE01dx/view?usp=sharing) [[paper]](https://doi.org/10.1109/DAS.2014.23)
+1. [Bentham](https://drive.google.com/file/d/1do3tS7vd-QaUxkeBwPE4Phia99-J_AUq/view?usp=sharing) [[paper]](https://doi.org/10.1109/DAS.2014.23)
 
-2. [Bressay](https://drive.google.com/file/d/1fzsl0JuVtF5nDyhEAspumT3RlE4OL3kK/view?usp=sharing) [[paper]]()
+2. [Bressay](https://drive.google.com/file/d/1oQV5Nr6QnTm4E4ARXTWSSoWx1SDrnHVA/view?usp=sharing) [[paper]]()
 
-3. [CVL-Database](https://drive.google.com/file/d/1enmfOanYH4cPukKjmoakw5BLXYamudtO/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
+3. [CVL-Database](https://drive.google.com/file/d/1H0M2lHdxUCLs7eKjk2q7fNBYU0-PkLDo/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
 
-4. [CVL-Digits](https://drive.google.com/file/d/1segC4k72l8tRH_Zj08ZuD2qqxN8xbntP/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
+4. [CVL-Digits](https://drive.google.com/file/d/1jPZtUtiARgrbFaCfPyPg_UZrgwYHJ7Td/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
 
-5. [IAM](https://drive.google.com/file/d/1mj1DBy7gV7JKVtFK4uoWm62k6mF2outz/view?usp=sharing) [[paper]](https://doi.org/10.1007/s100320200071)
+5. [IAM](https://drive.google.com/file/d/1z6gOT4U_eTsCguSCWAz3IaQwTD8TXwDw/view?usp=sharing) [[paper]](https://doi.org/10.1007/s100320200071)
 
-6. [ORAND-CAR](https://drive.google.com/file/d/1jbq-9Y16JDxIonSxXqqQKe1KBa16bc8J/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
+6. [ORAND-CAR](https://drive.google.com/file/d/1jkT2ow85eob9hK4xygdOjlIT6zNMUlAG/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICFHR.2014.136)
 
-7. [Parzival](https://drive.google.com/file/d/1T1C6WYGHbLeuImpsSfV2K1pL4fv1_5YU/view?usp=sharing) [[paper]](http://dx.doi.org/10.1109/ICDAR.2011.20)
+7. [Parzival](https://drive.google.com/file/d/1szhdRxYRCkkIehQaLgTk3YD9At563BSU/view?usp=sharing) [[paper]](http://dx.doi.org/10.1109/ICDAR.2011.20)
 
-8. [RIMES](https://drive.google.com/file/d/1aAsN_QbhlgKOVyf7MzfVHfrh1LIBI46o/view?usp=sharing) [[paper]](https://hal.science/hal-01395332)
+8. [RIMES](https://drive.google.com/file/d/1iax6qNqKtg0PHZl68HnJy2WRFQ2IcRLM/view?usp=sharing) [[paper]](https://hal.science/hal-01395332)
 
-9. [Saint Gall](https://drive.google.com/file/d/1iEdF6nbqIX9qzeQAIwRGEdJScKooO6fw/view?usp=sharing) [[paper]](https://dl.acm.org/doi/10.1145/2037342.2037348)
+9. [Saint Gall](https://drive.google.com/file/d/1X66lsJFEK-RixO4dQ0DP9ZH6yVc64P2m/view?usp=sharing) [[paper]](https://dl.acm.org/doi/10.1145/2037342.2037348)
 
-10. [Washington](https://drive.google.com/file/d/1BFNC1KpMNGl1hxBJWib2LnPq1tAlGnr4/view?usp=sharing) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
+10. [Washington](https://drive.google.com/file/d/1MuKc3D3SoWVUJPYqhmnOT9Xd-CWnmpk4/view?usp=sharing) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
 
 ## Parameters
 
