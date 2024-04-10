@@ -81,81 +81,82 @@ The project has several command-line parameters that can be used to customize it
 
 #### Models
 
--   `--synthesis`: Define the handwriting synthesis model to be used (e.g., gan).
--   `--recognition`: Define the recognition model to be used (e.g., bluche, flor, puigcerver).
--   `--spelling`: Define the spelling model to be used (e.g., openai).
+-   `--synthesis`: Specify synthesis model (e.g., gan).
+-   `--recognition`: Specify recognition model (e.g., bluche, flor, puigcerver).
+-   `--spelling`: Specify spelling model (e.g., openai).
 
 #### MLflow
 
--   `--synthesis-run-index`: Define a synthesis model run index.
--   `--recognition-run-index`: Define a recognition model run index.
--   `--status-finished`: Restrict run index status.
--   `--experiment-name`: Define a MLflow experiment name.
+-   `--synthesis-run-index`: Synthesis model run index.
+-   `--recognition-run-index`: Recognition model run index.
+-   `--finished-runs`: Include only finished runs.
+-   `--experiment-name`: MLflow experiment name.
 
 #### Dataset
 
--   `--source`: Define the source data (e.g., iam, rimes).
--   `--source-input-path`: Source input path.
--   `--text-level`: Define the text structure level (e.g., line, paragraph).
--   `--image-shape`: Define the image shape (height, width, channels).
--   `--char-width`: Define character width for normalization.
--   `--training-ratio`: Set the training partition ratio.
--   `--validation-ratio`: Set the validation partition ratio.
--   `--test-ratio`: Set the test partition ratio.
--   `--lazy-mode`: Enable lazy loading mode.
+-   `--source`: Source data (e.g., iam, rimes).
+-   `--source-input-path`: Path for source data input.
+-   `--text-level`: Text structure level (e.g., line, paragraph).
+-   `--image-shape`: Image dimensions (width, height, channels).
+-   `--char-width`: Character width for normalization.
+-   `--training-ratio`: Training partition ratio.
+-   `--validation-ratio`: Validation partition ratio.
+-   `--test-ratio`: Test partition ratio.
+-   `--lazy-mode`: Activate lazy loading.
 
 #### Augmentor
 
--   `--binarize`: Apply binarization thresholding (probability, method name).
--   `--erode`: Apply erode transformation (probability, kernel size, iterations).
--   `--dilate`: Apply dilate transformation (probability, kernel size, iterations).
--   `--elastic`: Apply elastic transformation (probability, kernel size, alpha).
--   `--perspective`: Apply perspective transformation (probability, alpha).
--   `--mixup`: Apply mixup transformation (probability, opacity, iterations).
--   `--shear`: Apply shear transformation (probability, angle).
--   `--scale`: Apply scale transformation (probability, scale alpha).
--   `--rotate`: Apply rotate transformation (probability, angle).
--   `--shift-y`: Apply vertical translation (probability, y-alpha).
--   `--shift-x`: Apply horizontal translation (probability, x-alpha).
--   `--salt-and-pepper`: Apply Salt and Pepper noise (probability, alpha).
--   `--gaussian-noise`: Apply Gaussian noise (probability, alpha).
--   `--gaussian-blur`: Apply Gaussian blur (probability, kernel size, iterations).
--   `--disable-augmentation`: Disable data augmentation completely.
+-   `--binarize`: Binarization (probability, method name).
+-   `--erode`: Erode transformation (probability, kernel size, iterations).
+-   `--dilate`: Dilate transformation (probability, kernel size, iterations).
+-   `--elastic`: Elastic transformation (probability, kernel size, alpha).
+-   `--perspective`: Perspective transformation (probability, alpha).
+-   `--mixup`: Mixup transformation (probability, opacity, iterations).
+-   `--shear`: Shear transformation (probability, angle).
+-   `--scale`: Scale transformation (probability, scale alpha).
+-   `--rotate`: Rotate transformation (probability, angle).
+-   `--shift-y`: Vertical translation (probability, y-alpha).
+-   `--shift-x`: Horizontal translation (probability, x-alpha).
+-   `--salt-and-pepper`: Salt and Pepper noise (probability, alpha).
+-   `--gaussian-noise`: Gaussian noise (probability, alpha).
+-   `--gaussian-blur`: Gaussian blur filter (probability, kernel size, iterations).
+-   `--disable-augmentation`: Disable all data augmentations.
 
 #### Synthesis
 
--   `--discriminator-steps`: Set the repetition of steps for discriminator training in synthesis workflow.
--   `--generator-steps`: Set the skipping steps for generator training in synthesis workflow.
--   `--synthesis-ratio`: Set the synthetic data ratio for synthesis and recognition workflow.
+-   `--discriminator-steps`: Repetition of steps for discriminator training in synthesis workflow.
+-   `--generator-steps`: Skipping steps for generator training in synthesis workflow.
+-   `--synthesis-ratio`: Synthetic data ratio for synthesis and recognition workflow.
 
 #### Training
 
 -   `--training`: Perform training pipeline.
 -   `--epochs`: Maximum number of epochs.
--   `--batch-size`: Batch size for the generator.
--   `--learning-rate`: Learning rate for the optimizer.
--   `--plateau-factor`: Factor for reducing the learning rate.
--   `--plateau-cooldown`: Epochs to wait after a learning rate reduction.
--   `--plateau-patience`: Epochs without improvement before reducing the learning rate.
--   `--patience`: Epochs without improvement before stopping training.
+-   `--batch-size`: Batch size.
+-   `--learning-rate`: Learning rate.
+-   `--plateau-factor`: Learning rate reduction factor.
+-   `--plateau-cooldown`: Cooldown after plateau.
+-   `--plateau-patience`: Plateau patience epochs.
+-   `--patience`: Stop after no improvement.
 
 #### Test
 
 -   `--test`: Perform test pipeline.
--   `--top-paths`: Number of top paths for prediction.
--   `--beam-width`: Beam width for CTC decoder.
+-   `--top-paths`: Top paths for prediction.
+-   `--beam-width`: CTC decoder beam width.
 
 #### Inference
 
 -   `--inference`: Perform inference pipeline.
 -   `--inference-output-path`: Inference output path.
--   `--image`: Image path for handwriting recognition.
--   `--bbox`: Bounding box values for image (x, y, width, height).
--   `--text`: Text input for handwriting synthesis.
+-   `--image`: Image path for recognition.
+-   `--bbox`: Bounding box (x, y, width, height).
+-   `--text`: Text for synthesis.
 
 #### Others
 
 -   `--check`: Perform check pipeline.
+-   `--gpu`: GPU index value.
 -   `--seed`: Seed value.
 
 ### Usage
