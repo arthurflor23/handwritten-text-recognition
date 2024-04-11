@@ -12,12 +12,6 @@ import tensorflow as tf
 from datetime import datetime
 from graphite.models.components.callbacks import GANMonitor
 
-try:
-    gpu = tf.config.list_physical_devices('GPU')[0]
-    tf.config.set_visible_devices(gpu, 'GPU')
-except Exception:
-    pass
-
 
 class Graphite():
     """
@@ -32,9 +26,10 @@ class Graphite():
                  image_shape=None,
                  tokenizer=None,
                  discriminator_steps=1,
-                 generator_steps=4,
+                 generator_steps=1,
                  synthesis_ratio=1.0,
                  experiment_name=None,
+                 gpu=0,
                  seed=None):
         """
         Initializes the Graphite model with specified components.
@@ -59,6 +54,8 @@ class Graphite():
             Ratio determining the synthesis influence.
         experiment_name : str, optional
             Name of the MLflow experiment.
+        gpu : int, optional
+            GPU index value.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -74,6 +71,16 @@ class Graphite():
         self.run_context = None
 
         if self.synthesis or self.recognition:
+            try:
+                if gpu is None:
+                    tf.config.set_visible_devices([], 'GPU')
+                else:
+                    gpu = tf.config.list_physical_devices('GPU')[gpu]
+                    tf.config.set_visible_devices(gpu, 'GPU')
+
+            except Exception:
+                pass
+
             mlflow.set_experiment(self.experiment_name)
 
             SynthesisModel = None
@@ -647,7 +654,7 @@ class Graphite():
                       recognition=None,
                       recognition_run_index=None,
                       experiment_name=None,
-                      status_finished=False):
+                      finished_runs=False):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -663,7 +670,7 @@ class Graphite():
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
-        status_finished : bool, optional
+        finished_runs : bool, optional
             Restrict run index status.
 
         Returns
@@ -681,7 +688,7 @@ class Graphite():
 
                 filter_string = f"tag.graphite.{tag_name}='{tag_value}'"
 
-                if status_finished:
+                if finished_runs:
                     filter_string = f"status='FINISHED' AND {filter_string}"
 
                 df = mlflow.search_runs(experiment_ids=experiment_ids,
