@@ -21,7 +21,7 @@ def inference(args):
                                                       recognition=args.recognition,
                                                       recognition_run_index=args.recognition_run_index,
                                                       experiment_name=args.experiment_name,
-                                                      status_finished=args.status_finished)
+                                                      finished_runs=args.finished_runs)
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
@@ -50,6 +50,7 @@ def inference(args):
                         image_shape=args.image_shape,
                         tokenizer=dataset.tokenizer,
                         experiment_name=args.experiment_name,
+                        gpu=args.gpu,
                         seed=args.seed)
     print(graphite)
 

@@ -19,7 +19,7 @@ def run(args, training=None):
                                                       recognition=args.recognition,
                                                       recognition_run_index=args.recognition_run_index,
                                                       experiment_name=args.experiment_name,
-                                                      status_finished=args.status_finished)
+                                                      finished_runs=args.finished_runs)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -63,6 +63,7 @@ def run(args, training=None):
                         generator_steps=args.generator_steps,
                         synthesis_ratio=args.synthesis_ratio,
                         experiment_name=args.experiment_name,
+                        gpu=args.gpu,
                         seed=args.seed)
     print(graphite)
 
