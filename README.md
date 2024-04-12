@@ -126,7 +126,11 @@ The project has several command-line parameters that can be used to customize it
 
 -   `--discriminator-steps`: Repetition of steps for discriminator training in synthesis workflow.
 -   `--generator-steps`: Skipping steps for generator training in synthesis workflow.
--   `--synthesis-ratio`: Synthetic data ratio for synthesis and recognition workflow.
+
+#### Recognition
+
+-   `--synthetic-data-ratio`: Synthetic data ratio in synthesis and recognition workflow.
+-   `--decoder-from-scratch`: Keep the recognition decoder model from scratch.
 
 #### Training
 
