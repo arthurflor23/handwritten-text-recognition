@@ -54,7 +54,9 @@ def inference(args):
                         seed=args.seed)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
+    graphite.compile(learning_rate=args.learning_rate,
+                     run_context=run_context,
+                     decoder_from_scratch=args.decoder_from_scratch)
 
     os.makedirs(args.inference_output_path, exist_ok=True)
     basename = os.path.splitext(os.path.basename(args.image or ''))[0]

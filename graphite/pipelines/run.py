@@ -61,13 +61,15 @@ def run(args, training=None):
                         tokenizer=dataset.tokenizer,
                         discriminator_steps=args.discriminator_steps,
                         generator_steps=args.generator_steps,
-                        synthesis_ratio=args.synthesis_ratio,
+                        synthetic_data_ratio=args.synthetic_data_ratio,
                         experiment_name=args.experiment_name,
                         gpu=args.gpu,
                         seed=args.seed)
     print(graphite)
 
-    graphite.compile(learning_rate=args.learning_rate, run_context=run_context)
+    graphite.compile(learning_rate=args.learning_rate,
+                     run_context=run_context,
+                     decoder_from_scratch=args.decoder_from_scratch)
 
     if training:
         graphite.save_context(params=args,
