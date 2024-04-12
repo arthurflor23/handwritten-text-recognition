@@ -27,7 +27,7 @@ class Graphite():
                  tokenizer=None,
                  discriminator_steps=1,
                  generator_steps=1,
-                 synthesis_ratio=1.0,
+                 synthetic_data_ratio=1.0,
                  experiment_name=None,
                  gpu=0,
                  seed=None):
@@ -50,7 +50,7 @@ class Graphite():
             The repetition of steps for discriminator training.
         generator_steps : int, optional
             The skipping steps for generator training.
-        synthesis_ratio : float, optional
+        synthetic_data_ratio : float, optional
             Ratio determining the synthesis influence.
         experiment_name : str, optional
             Name of the MLflow experiment.
@@ -121,7 +121,7 @@ class Graphite():
                     synthesis_params = {
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
-                        'synthesis_ratio': synthesis_ratio,
+                        'synthetic_data_ratio': synthetic_data_ratio,
                     }
 
                 self.model = RecognitionModel(name='recognition',
@@ -179,7 +179,7 @@ class Graphite():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=None, run_context=None):
+    def compile(self, learning_rate=None, run_context=None, decoder_from_scratch=False):
         """
         Compile the models.
 
@@ -189,6 +189,8 @@ class Graphite():
             The learning rate for the optimizer.
         run_context : mlflow.entities.Run object, optional
             MLFlow run context.
+        decoder_from_scratch : bool, optional
+            Keep the decoder model from scratch.
         """
 
         if run_context is not None:
@@ -200,6 +202,9 @@ class Graphite():
                                     skip_mismatch=True)
 
         self.model.compile(learning_rate=learning_rate)
+
+        # print(self.model.decoder)
+        # exit()
 
     def fit(self,
             training_gen,

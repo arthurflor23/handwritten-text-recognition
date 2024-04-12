@@ -230,7 +230,7 @@ class BaseRecognitionModel(BaseModel):
                  lexical_shape,
                  style_encoder=None,
                  generator=None,
-                 synthesis_ratio=1.0,
+                 synthetic_data_ratio=1.0,
                  seed=None,
                  **kwargs):
         """
@@ -246,7 +246,7 @@ class BaseRecognitionModel(BaseModel):
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
             Generator model for image generation.
-        synthesis_ratio : float, optional
+        synthetic_data_ratio : float, optional
             Probability to use synthetic data.
         seed : int, optional
             Seed for random shuffle.
@@ -261,7 +261,7 @@ class BaseRecognitionModel(BaseModel):
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
-        self.synthesis_ratio = synthesis_ratio
+        self.synthetic_data_ratio = synthetic_data_ratio
         self.seed = seed
 
         self.style_encoder = style_encoder
@@ -321,7 +321,7 @@ class BaseRecognitionModel(BaseModel):
         images, texts = aug_image_data, text_data
 
         if self.generator and self.style_encoder:
-            if random.random() <= self.synthesis_ratio:
+            if random.random() <= self.synthetic_data_ratio:
                 images, texts = image_data, aug_text_data
 
                 latent_inputs, _ = self.style_encoder(images, training=False)
