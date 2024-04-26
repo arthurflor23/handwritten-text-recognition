@@ -118,5 +118,5 @@ if __name__ == '__main__':
     else:
         # mlflow path compatibility
         #   https://github.com/mlflow/mlflow/issues/3144
-        from models.graphite import Graphite
-        Graphite().fix_mlflow_artifacts_path()
+        from sarah.models.compose import Compose
+        Compose().fix_mlflow_artifacts_path()
