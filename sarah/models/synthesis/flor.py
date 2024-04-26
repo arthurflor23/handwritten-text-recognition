@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from sarah.models.components.common import BaseModel
-from sarah.models.components.common import BaseSynthesisModel
+from sarah.models.components.base import BaseModel
+from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import SelfAttention

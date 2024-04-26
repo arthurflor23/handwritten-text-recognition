@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from sarah.models.components.common import BaseRecognitionModel
+from sarah.models.components.base import BaseRecognitionModel
 from sarah.models.components.layers import GatedConv2D
 
 
