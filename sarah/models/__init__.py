@@ -1,1 +1,1 @@
-from sarah.models.graphite import Graphite
+from sarah.models.compose import Compose
