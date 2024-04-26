@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from datetime import datetime
-from graphite.models.components.callbacks import GANMonitor
+from sarah.models.components.callbacks import GANMonitor
 
 
 class Graphite():
@@ -75,8 +75,9 @@ class Graphite():
                 if gpu is None:
                     tf.config.set_visible_devices([], 'GPU')
                 else:
-                    gpu = tf.config.list_physical_devices('GPU')[gpu]
-                    tf.config.set_visible_devices(gpu, 'GPU')
+                    device = tf.config.list_physical_devices('GPU')[gpu]
+                    tf.config.set_visible_devices(device, 'GPU')
+                    tf.config.experimental.set_memory_growth(device, True)
 
             except Exception:
                 pass
