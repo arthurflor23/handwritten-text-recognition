@@ -1,5 +1,5 @@
 from data import Augmentor, Dataset
-from models import Graphite
+from models import Compose
 
 
 def run(args, training=None):
@@ -14,12 +14,12 @@ def run(args, training=None):
         Whether to execute training phase.
     """
 
-    tokenizer, run_context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                      synthesis_run_index=args.synthesis_run_index,
-                                                      recognition=args.recognition,
-                                                      recognition_run_index=args.recognition_run_index,
-                                                      experiment_name=args.experiment_name,
-                                                      finished_runs=args.finished_runs)
+    tokenizer, run_context = Compose().get_tokenizer(synthesis=args.synthesis,
+                                                     synthesis_run_index=args.synthesis_run_index,
+                                                     recognition=args.recognition,
+                                                     recognition_run_index=args.recognition_run_index,
+                                                     experiment_name=args.experiment_name,
+                                                     finished_runs=args.finished_runs)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -54,29 +54,29 @@ def run(args, training=None):
                               seed=args.seed)
         print(augmentor)
 
-    graphite = Graphite(synthesis=args.synthesis,
-                        recognition=args.recognition,
-                        spelling=args.spelling,
-                        image_shape=args.image_shape,
-                        tokenizer=dataset.tokenizer,
-                        discriminator_steps=args.discriminator_steps,
-                        generator_steps=args.generator_steps,
-                        synthetic_data_ratio=args.synthetic_data_ratio,
-                        experiment_name=args.experiment_name,
-                        gpu=args.gpu,
-                        seed=args.seed)
-    print(graphite)
+    compose = Compose(synthesis=args.synthesis,
+                      recognition=args.recognition,
+                      spelling=args.spelling,
+                      image_shape=args.image_shape,
+                      tokenizer=dataset.tokenizer,
+                      discriminator_steps=args.discriminator_steps,
+                      generator_steps=args.generator_steps,
+                      synthetic_data_ratio=args.synthetic_data_ratio,
+                      experiment_name=args.experiment_name,
+                      gpu=args.gpu,
+                      seed=args.seed)
+    print(compose)
 
-    graphite.compile(learning_rate=args.learning_rate,
-                     run_context=run_context,
-                     decoder_from_scratch=args.decoder_from_scratch)
+    compose.compile(learning_rate=args.learning_rate,
+                    run_context=run_context,
+                    decoder_from_scratch=args.decoder_from_scratch)
 
     if training:
-        graphite.save_context(params=args,
-                              dataset=dataset,
-                              augmentor=augmentor,
-                              model=graphite.model,
-                              new_context=training)
+        compose.save_context(params=args,
+                             dataset=dataset,
+                             augmentor=augmentor,
+                             model=compose.model,
+                             new_context=training)
 
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
@@ -90,18 +90,18 @@ def run(args, training=None):
                                                          batch_size=args.batch_size,
                                                          samples=args.batch_size)
 
-        graphite.fit(epochs=args.epochs,
-                     training_gen=training_gen,
-                     training_steps=training_steps,
-                     validation_gen=validation_gen,
-                     validation_steps=validation_steps,
-                     monitor_sample_gen=sample_gen,
-                     monitor_sample_steps=sample_steps,
-                     plateau_factor=args.plateau_factor,
-                     plateau_cooldown=args.plateau_cooldown,
-                     plateau_patience=args.plateau_patience,
-                     patience=args.patience,
-                     verbose=1)
+        compose.fit(epochs=args.epochs,
+                    training_gen=training_gen,
+                    training_steps=training_steps,
+                    validation_gen=validation_gen,
+                    validation_steps=validation_steps,
+                    monitor_sample_gen=sample_gen,
+                    monitor_sample_steps=sample_steps,
+                    plateau_factor=args.plateau_factor,
+                    plateau_cooldown=args.plateau_cooldown,
+                    plateau_patience=args.plateau_patience,
+                    patience=args.patience,
+                    verbose=1)
 
     if args.recognition:
         prediction_configs = [{
@@ -121,26 +121,26 @@ def run(args, training=None):
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
-            predictions, probabilities = graphite.predict_recognition(x=test_gen,
-                                                                      steps=test_steps,
-                                                                      top_paths=args.top_paths,
-                                                                      beam_width=args.beam_width,
-                                                                      ctc_decode=True,
-                                                                      token_decode=True,
-                                                                      corrections=config['corrections'],
-                                                                      verbose=1)
+            predictions, probabilities = compose.predict_recognition(x=test_gen,
+                                                                     steps=test_steps,
+                                                                     top_paths=args.top_paths,
+                                                                     beam_width=args.beam_width,
+                                                                     ctc_decode=True,
+                                                                     token_decode=True,
+                                                                     corrections=config['corrections'],
+                                                                     verbose=1)
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                              batch_size=args.batch_size,
                                                              batch_encoded=False)
 
-            metrics, evaluations = graphite.evaluate_recognition(x=predictions,
-                                                                 y=source_gen,
-                                                                 steps=source_steps,
-                                                                 probabilities=probabilities,
-                                                                 verbose=1)
+            metrics, evaluations = compose.evaluate_recognition(x=predictions,
+                                                                y=source_gen,
+                                                                steps=source_steps,
+                                                                probabilities=probabilities,
+                                                                verbose=1)
 
-            graphite.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
+            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
             if metrics:
                 print('--------------------------------------------------\n')
@@ -152,18 +152,18 @@ def run(args, training=None):
         test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                      batch_size=args.batch_size)
 
-        predictions = graphite.predict_synthesis(x=test_gen, steps=test_steps)
+        predictions = compose.predict_synthesis(x=test_gen, steps=test_steps)
 
         source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size,
                                                          batch_processing=False)
 
-        metrics, evaluations = graphite.evaluate_synthesis(x=predictions,
-                                                           y=source_gen,
-                                                           steps=source_steps,
-                                                           verbose=1)
+        metrics, evaluations = compose.evaluate_synthesis(x=predictions,
+                                                          y=source_gen,
+                                                          steps=source_steps,
+                                                          verbose=1)
 
-        graphite.save_context(metrics=metrics, evaluation_images=evaluations)
+        compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
         if metrics:
             print('--------------------------------------------------\n')

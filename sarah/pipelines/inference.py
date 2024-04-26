@@ -3,7 +3,7 @@ import cv2
 import json
 
 from data import Dataset
-from models import Graphite
+from models import Compose
 
 
 def inference(args):
@@ -16,12 +16,12 @@ def inference(args):
         A namespace object containing all the arguments required.
     """
 
-    tokenizer, run_context = Graphite().get_tokenizer(synthesis=args.synthesis,
-                                                      synthesis_run_index=args.synthesis_run_index,
-                                                      recognition=args.recognition,
-                                                      recognition_run_index=args.recognition_run_index,
-                                                      experiment_name=args.experiment_name,
-                                                      finished_runs=args.finished_runs)
+    tokenizer, run_context = Compose().get_tokenizer(synthesis=args.synthesis,
+                                                     synthesis_run_index=args.synthesis_run_index,
+                                                     recognition=args.recognition,
+                                                     recognition_run_index=args.recognition_run_index,
+                                                     experiment_name=args.experiment_name,
+                                                     finished_runs=args.finished_runs)
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
@@ -44,19 +44,19 @@ def inference(args):
                       seed=args.seed)
     print(dataset)
 
-    graphite = Graphite(synthesis=args.synthesis,
-                        recognition=args.recognition,
-                        spelling=args.spelling,
-                        image_shape=args.image_shape,
-                        tokenizer=dataset.tokenizer,
-                        experiment_name=args.experiment_name,
-                        gpu=args.gpu,
-                        seed=args.seed)
-    print(graphite)
+    compose = Compose(synthesis=args.synthesis,
+                      recognition=args.recognition,
+                      spelling=args.spelling,
+                      image_shape=args.image_shape,
+                      tokenizer=dataset.tokenizer,
+                      experiment_name=args.experiment_name,
+                      gpu=args.gpu,
+                      seed=args.seed)
+    print(compose)
 
-    graphite.compile(learning_rate=args.learning_rate,
-                     run_context=run_context,
-                     decoder_from_scratch=args.decoder_from_scratch)
+    compose.compile(learning_rate=args.learning_rate,
+                    run_context=run_context,
+                    decoder_from_scratch=args.decoder_from_scratch)
 
     os.makedirs(args.inference_output_path, exist_ok=True)
     basename = os.path.splitext(os.path.basename(args.image or ''))[0]
@@ -77,14 +77,14 @@ def inference(args):
             infer_gen, infer_steps = dataset.get_generator(data_partition='test',
                                                            batch_size=args.batch_size)
 
-            predictions, probabilities = graphite.predict_recognition(x=infer_gen,
-                                                                      steps=infer_steps,
-                                                                      top_paths=args.top_paths,
-                                                                      beam_width=args.beam_width,
-                                                                      ctc_decode=True,
-                                                                      token_decode=True,
-                                                                      corrections=config['corrections'],
-                                                                      verbose=1)
+            predictions, probabilities = compose.predict_recognition(x=infer_gen,
+                                                                     steps=infer_steps,
+                                                                     top_paths=args.top_paths,
+                                                                     beam_width=args.beam_width,
+                                                                     ctc_decode=True,
+                                                                     token_decode=True,
+                                                                     corrections=config['corrections'],
+                                                                     verbose=1)
 
             content = []
             for x, p in zip(predictions, probabilities):
@@ -106,7 +106,7 @@ def inference(args):
         infer_gen, infer_steps = dataset.get_generator(data_partition='test',
                                                        batch_size=args.batch_size)
 
-        predictions = graphite.predict_synthesis(x=infer_gen, steps=infer_steps, verbose=1)
+        predictions = compose.predict_synthesis(x=infer_gen, steps=infer_steps, verbose=1)
 
         style = 'guided_style' if args.image else 'random_style'
         filepath = f"{basename}_{style}".strip('_')
