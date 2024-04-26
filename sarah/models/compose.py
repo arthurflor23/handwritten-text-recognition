@@ -13,9 +13,9 @@ from datetime import datetime
 from sarah.models.components.callbacks import GANMonitor
 
 
-class Graphite():
+class Compose():
     """
-    Graphite is a configurable model framework for synthesis and recognition tasks,
+    Compose is a configurable model framework for synthesis and recognition tasks,
         integrating various components and supporting MLflow experimentation.
     """
 
@@ -32,7 +32,7 @@ class Graphite():
                  gpu=0,
                  seed=None):
         """
-        Initializes the Graphite model with specified components.
+        Initializes the Compose model with specified components.
 
         Parameters
         ----------
@@ -341,9 +341,9 @@ class Graphite():
                     ),
                 ])
 
-            mlflow.set_tags({'graphite.synthesis': str(self.synthesis)})
-            mlflow.set_tags({'graphite.recognition': str(self.recognition)})
-            mlflow.set_tags({'graphite.spelling': str(self.spelling)})
+            mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
+            mlflow.set_tags({'compose.recognition': str(self.recognition)})
+            mlflow.set_tags({'compose.spelling': str(self.spelling)})
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -685,14 +685,14 @@ class Graphite():
             (tokenizer, run_context) or (None, None) if not found.
         """
 
-        Graphite().fix_mlflow_artifacts_path()
+        Compose().fix_mlflow_artifacts_path()
 
         def get_artifacts_path(tag_name, tag_value, run_index):
             if run_index is not None:
                 experiment = mlflow.set_experiment(experiment_name or 'Default')
                 experiment_ids = [experiment.experiment_id]
 
-                filter_string = f"tag.graphite.{tag_name}='{tag_value}'"
+                filter_string = f"tag.compose.{tag_name}='{tag_value}'"
 
                 if finished_runs:
                     filter_string = f"status='FINISHED' AND {filter_string}"
