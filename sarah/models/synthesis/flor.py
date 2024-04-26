@@ -1,13 +1,13 @@
 import tensorflow as tf
 
-from graphite.models.components.common import BaseModel
-from graphite.models.components.common import BaseSynthesisModel
-from graphite.models.components.common import MetricsTracker
-from graphite.models.components.layers import ConditionalBatchNormalization
-from graphite.models.components.layers import ExtractPatches
-from graphite.models.components.layers import SelfAttention
-from graphite.models.components.layers import SpectralNormalization
-from graphite.models.recognition.flor_attention import RecognitionModel
+from sarah.models.components.common import BaseModel
+from sarah.models.components.common import BaseSynthesisModel
+from sarah.models.components.layers import ConditionalBatchNormalization
+from sarah.models.components.layers import ExtractPatches
+from sarah.models.components.layers import SelfAttention
+from sarah.models.components.layers import SpectralNormalization
+from sarah.models.components.metrics import MetricsTracker
+from sarah.models.recognition.flor_attention import RecognitionModel
 
 
 class SynthesisModel(BaseSynthesisModel):
