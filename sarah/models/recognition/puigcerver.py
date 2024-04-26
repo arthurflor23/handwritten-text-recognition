@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from graphite.models.components.common import BaseRecognitionModel
+from sarah.models.components.common import BaseRecognitionModel
 
 
 class RecognitionModel(BaseRecognitionModel):

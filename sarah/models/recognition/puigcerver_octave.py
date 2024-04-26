@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from graphite.models.components.common import BaseRecognitionModel
-from graphite.models.components.layers import OctConv2D
+from sarah.models.components.common import BaseRecognitionModel
+from sarah.models.components.layers import OctConv2D
 
 
 class RecognitionModel(BaseRecognitionModel):

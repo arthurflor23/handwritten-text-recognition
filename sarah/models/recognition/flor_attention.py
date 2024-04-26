@@ -1,8 +1,8 @@
 import tensorflow as tf
 
-from graphite.models.components.common import BaseRecognitionModel
-from graphite.models.components.layers import GatedConv2D
-from graphite.models.components.layers import SelfAttention
+from sarah.models.components.common import BaseRecognitionModel
+from sarah.models.components.layers import GatedConv2D
+from sarah.models.components.layers import SelfAttention
 
 
 class RecognitionModel(BaseRecognitionModel):
