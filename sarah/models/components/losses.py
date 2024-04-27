@@ -133,6 +133,12 @@ class CXLoss(tf.keras.losses.Loss):
             The computed contextual loss.
         """
 
+        if len(y_true.shape) == 3:
+            y_true = tf.expand_dims(y_true, axis=1)
+
+        if len(y_pred.shape) == 3:
+            y_pred = tf.expand_dims(y_pred, axis=1)
+
         y_true = tf.transpose(y_true, perm=[0, 3, 1, 2])
         y_pred = tf.transpose(y_pred, perm=[0, 3, 1, 2])
 
