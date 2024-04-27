@@ -204,7 +204,11 @@ class Compose():
 
         self.model.compile(learning_rate=learning_rate)
 
-        # print(self.model.decoder)
+        # if decoder_from_scratch \
+        #         and hasattr(self.model, 'recognition') \
+        #         and hasattr(self.model, 'decoder'):
+        #     self.model = self.model.reset_weights(self.model.recognition, self.model.decoder)
+
         # exit()
 
     def fit(self,

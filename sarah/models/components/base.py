@@ -133,90 +133,49 @@ class BaseModel(tf.keras.Model):
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch)
 
-    def get_batch_lens(self, batch, pad_value=None):
-        """
-        Calculate tensor lengths in batch.
+    # def reset_weights(self, model, submodel=None):
+    #     """
+    #     Reset weights of the model.
 
-        Parameters
-        ----------
-        batch : tf.Tensor
-            A batch of tensors.
-        pad_value : float, optional
-            Value used for padding.
+    #     Parameters
+    #     ----------
+    #     model : tf.keras.Model
+    #         The model whose weights are to be reset.
+    #     submodel : tf.keras.Model, optional
+    #         The specific submodel within the model whose weights are to be reset.
+    #         If None, all weights of the model are reset.
 
-        Returns
-        -------
-        tf.Tensor
-            Batch of lengths for each tensor.
-        """
+    #     Returns
+    #     -------
+    #     tf.keras.Model
+    #         The model with reset weights.
+    #     """
 
-        shape = tf.shape(batch)
+    #     # if submodel is None:
+    #     #     for layer in model.layers:
+    #     #         if hasattr(layer, 'kernel_initializer'):
+    #     #             if layer.weights:
+    #     #                 new_weights = [layer.kernel_initializer(shape=w.shape) for w in layer.weights]
+    #     #                 layer.set_weights(new_weights)
 
-        if pad_value is None:
-            batch_lens = tf.fill((shape[0],), shape[1])
-        else:
-            reduce_axis = list(range(2, len(batch.shape)))
-            batch_mean = tf.reduce_mean(batch, axis=reduce_axis)
+    #     #         if hasattr(layer, 'bias_initializer') and layer.bias is not None:
+    #     #             bias_shape = layer.bias.shape
+    #     #             layer.bias.assign(layer.bias_initializer(shape=bias_shape))
+    #     # else:
+    #     #     submodel_layer_dict = {layer.name: layer for layer in submodel.layers}
+    #     #     print(submodel_layer_dict)
 
-            data_reversed = tf.reverse(batch_mean, axis=[1])
-            padding_mask = tf.equal(data_reversed, tf.cast(pad_value, dtype=data_reversed.dtype))
+    #     #     for layer in model.layers:
+    #     #         if layer.name in submodel_layer_dict:
+    #     #             submodel_layer = submodel_layer_dict[layer.name]
 
-            lengths = tf.argmax(tf.cast(~padding_mask, dtype=tf.int32), axis=1, output_type=shape.dtype)
-            batch_lens = tf.where(tf.equal(lengths, 0), shape[1], shape[1] - lengths)
+    #     #             if hasattr(submodel_layer, 'kernel_initializer'):
+    #     #                 layer.kernel.assign(submodel_layer.kernel_initializer(shape=layer.kernel.shape))
 
-        batch_lens = tf.stop_gradient(batch_lens, name='batch_lens')
+    #     #             if hasattr(submodel_layer, 'bias_initializer') and layer.bias is not None:
+    #     #                 layer.bias.assign(submodel_layer.bias_initializer(shape=layer.bias.shape))
 
-        return batch_lens
-
-    def set_batch_mask(self, batch, batch_lens=None, reduce_scale=None, reduce_norm=False):
-        """
-        Apply a mask to a batch of tensors based on their lengths.
-
-        Parameters
-        ----------
-        batch : tf.Tensor
-            A batch of tensors.
-        batch_lens : tf.Tensor, optional
-            A tensor containing the lengths for each tensor in the batch.
-        reduce_scale : float, optional
-            A scaling factor to reduce the lengths.
-        reduce_norm : bool, optional
-            Whether to normalize the batch after masking.
-
-        Returns
-        -------
-        tf.Tensor
-            The batch with the mask applied.
-        """
-
-        if batch_lens is None:
-            return batch
-
-        if reduce_scale is not None:
-            batch_lens_dtype = batch_lens.dtype
-            batch_lens = tf.cast(batch_lens, dtype=tf.float32)
-            reduce_scale = tf.cast(reduce_scale, dtype=tf.float32)
-
-            batch_lens = tf.math.ceil(tf.math.divide(batch_lens, reduce_scale + 1e-7))
-            batch_lens = tf.cast(batch_lens, dtype=batch_lens_dtype)
-
-        batch_shape = batch.get_shape()
-        mask = tf.sequence_mask(batch_lens, maxlen=batch_shape[1], dtype=batch.dtype)
-
-        for _ in range(len(batch_shape) - 2):
-            mask = tf.expand_dims(mask, axis=-1)
-
-        batch = tf.math.multiply(batch, tf.stop_gradient(mask), name='batch')
-
-        if reduce_norm:
-            batch_dtype = batch.dtype
-            batch = tf.cast(tf.reduce_sum(batch, axis=-1), dtype=tf.float32)
-            batch_lens = tf.cast(tf.expand_dims(batch_lens, axis=-1), dtype=tf.float32)
-
-            batch = tf.math.divide(batch, batch_lens + 1e-7)
-            batch = tf.cast(batch, dtype=batch_dtype)
-
-        return batch
+    #     return model
 
 
 class BaseRecognitionModel(BaseModel):
