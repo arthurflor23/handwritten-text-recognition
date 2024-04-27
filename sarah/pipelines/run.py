@@ -67,9 +67,7 @@ def run(args, training=None):
                       seed=args.seed)
     print(compose)
 
-    compose.compile(learning_rate=args.learning_rate,
-                    run_context=run_context,
-                    decoder_from_scratch=args.decoder_from_scratch)
+    compose.compile(learning_rate=args.learning_rate, run_context=run_context)
 
     if training:
         compose.save_context(params=args,

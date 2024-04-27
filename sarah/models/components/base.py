@@ -133,50 +133,6 @@ class BaseModel(tf.keras.Model):
                                    by_name=by_name,
                                    skip_mismatch=skip_mismatch)
 
-    # def reset_weights(self, model, submodel=None):
-    #     """
-    #     Reset weights of the model.
-
-    #     Parameters
-    #     ----------
-    #     model : tf.keras.Model
-    #         The model whose weights are to be reset.
-    #     submodel : tf.keras.Model, optional
-    #         The specific submodel within the model whose weights are to be reset.
-    #         If None, all weights of the model are reset.
-
-    #     Returns
-    #     -------
-    #     tf.keras.Model
-    #         The model with reset weights.
-    #     """
-
-    #     # if submodel is None:
-    #     #     for layer in model.layers:
-    #     #         if hasattr(layer, 'kernel_initializer'):
-    #     #             if layer.weights:
-    #     #                 new_weights = [layer.kernel_initializer(shape=w.shape) for w in layer.weights]
-    #     #                 layer.set_weights(new_weights)
-
-    #     #         if hasattr(layer, 'bias_initializer') and layer.bias is not None:
-    #     #             bias_shape = layer.bias.shape
-    #     #             layer.bias.assign(layer.bias_initializer(shape=bias_shape))
-    #     # else:
-    #     #     submodel_layer_dict = {layer.name: layer for layer in submodel.layers}
-    #     #     print(submodel_layer_dict)
-
-    #     #     for layer in model.layers:
-    #     #         if layer.name in submodel_layer_dict:
-    #     #             submodel_layer = submodel_layer_dict[layer.name]
-
-    #     #             if hasattr(submodel_layer, 'kernel_initializer'):
-    #     #                 layer.kernel.assign(submodel_layer.kernel_initializer(shape=layer.kernel.shape))
-
-    #     #             if hasattr(submodel_layer, 'bias_initializer') and layer.bias is not None:
-    #     #                 layer.bias.assign(submodel_layer.bias_initializer(shape=layer.bias.shape))
-
-    #     return model
-
 
 class BaseRecognitionModel(BaseModel):
     """

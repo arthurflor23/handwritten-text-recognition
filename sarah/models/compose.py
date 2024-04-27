@@ -180,7 +180,7 @@ class Compose():
         model = getattr(module, class_name)
         return model
 
-    def compile(self, learning_rate=None, run_context=None, decoder_from_scratch=False):
+    def compile(self, learning_rate=None, run_context=None):
         """
         Compile the models.
 
@@ -190,8 +190,6 @@ class Compose():
             The learning rate for the optimizer.
         run_context : mlflow.entities.Run object, optional
             MLFlow run context.
-        decoder_from_scratch : bool, optional
-            Keep the decoder model from scratch.
         """
 
         if run_context is not None:
@@ -203,13 +201,6 @@ class Compose():
                                     skip_mismatch=True)
 
         self.model.compile(learning_rate=learning_rate)
-
-        # if decoder_from_scratch \
-        #         and hasattr(self.model, 'recognition') \
-        #         and hasattr(self.model, 'decoder'):
-        #     self.model = self.model.reset_weights(self.model.recognition, self.model.decoder)
-
-        # exit()
 
     def fit(self,
             training_gen,
