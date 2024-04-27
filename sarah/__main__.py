@@ -60,7 +60,6 @@ if __name__ == '__main__':
 
     # recognition
     parser.add_argument('--synthetic-data-ratio', default=1.0, type=float, help='Synthetic data ratio for training')
-    parser.add_argument('--decoder-from-scratch', default=False, action='store_true', help='Keep decoder from scratch')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
