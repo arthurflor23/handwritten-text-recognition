@@ -5,7 +5,6 @@ from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import SelfAttention
-from sarah.models.components.layers import SpectralNormalization
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_attention import RecognitionModel
 
