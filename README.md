@@ -10,7 +10,7 @@ To get started with the project, follow the steps below.
 
 ### Prerequisites
 
--   Python 3.9 or higher
+-   Python 3.10 or higher
 -   pip package manager
 
 ### Installation
@@ -130,7 +130,6 @@ The project has several command-line parameters that can be used to customize it
 #### Recognition
 
 -   `--synthetic-data-ratio`: Synthetic data ratio in synthesis and recognition workflow.
--   `--decoder-from-scratch`: Keep the recognition decoder model from scratch.
 
 #### Training
 
