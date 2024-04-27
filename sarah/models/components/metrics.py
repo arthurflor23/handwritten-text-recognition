@@ -34,7 +34,7 @@ class EditDistance(tf.keras.metrics.Metric):
         self.beam_width = beam_width
         self.epsilon = epsilon
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(self, y_true, y_pred):
         """
         Update the metric state with new data.
 
@@ -44,8 +44,6 @@ class EditDistance(tf.keras.metrics.Metric):
             Tensor of true labels.
         y_pred : tf.Tensor
             Tensor of predicted labels.
-        sample_weight : tf.Tensor, optional
-            Sample weights.
         """
 
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
@@ -63,13 +61,6 @@ class EditDistance(tf.keras.metrics.Metric):
 
         edit_distance = tf.edit_distance(decoded[0], labels, normalize=True)
         value = tf.reduce_mean(edit_distance)
-
-        if sample_weight is not None:
-            batch_size = tf.cast(tf.shape(y_pred)[0], dtype=tf.float32)
-
-            sample_weight = tf.cast(sample_weight, dtype=tf.float32)
-            sample_weight /= tf.reduce_sum(sample_weight) / batch_size
-            value = tf.reduce_sum(value * sample_weight)
 
         self.tracker.update_state(value)
 
@@ -151,7 +142,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         self.kid_image_size = (299, 299, 3)
 
         self.encoder = tf.keras.Sequential([
-            tf.keras.layers.InputLayer(input_shape=(None, None, 1)),
+            tf.keras.layers.InputLayer(shape=(None, None, 1)),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
             tf.keras.layers.Rescaling(scale=self.scale, offset=self.offset),
             tf.keras.layers.Resizing(height=self.kid_image_size[0], width=self.kid_image_size[1]),
@@ -180,7 +171,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
         return (features_1 @ tf.transpose(features_2) / (feature_dimensions + self.epsilon) + 1.0) ** 3.0
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(self, y_true, y_pred):
         """
         Update the metric state with new data.
 
@@ -190,8 +181,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
             Batch of real images.
         y_pred : tf.Tensor
             Batch of generated images.
-        sample_weight : tf.Tensor, optional
-            Sample weights.
         """
 
         real_features = self.encoder(y_true, training=False)
@@ -212,15 +201,9 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
 
-        if tf.math.is_nan(value):
-            self.tracker.update_state(self.result())
-        else:
-            if sample_weight is not None:
-                sample_weight = tf.cast(sample_weight, dtype=tf.float32)
-                sample_weight /= tf.reduce_sum(sample_weight) / batch_size
-                value = tf.reduce_sum(value * sample_weight)
-
-            self.tracker.update_state(value)
+        tf.cond(pred=tf.math.is_nan(value),
+                true_fn=lambda: (self.tracker.update_state(self.result())),
+                false_fn=lambda: (self.tracker.update_state(value)))
 
     def result(self):
         """
