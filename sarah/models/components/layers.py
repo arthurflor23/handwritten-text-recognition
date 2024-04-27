@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 
@@ -75,8 +74,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.bias = tf.keras.layers.Dense(self.num_channels, use_bias=False)
 
         if self.spectral_norm:
-            self.gain = SpectralNormalization(self.gain)
-            self.bias = SpectralNormalization(self.bias)
+            self.gain = tf.keras.layers.SpectralNormalization(self.gain)
+            self.bias = tf.keras.layers.SpectralNormalization(self.bias)
 
         self.mean = self.add_weight(name=f"{self.name}_mean",
                                     shape=(self.num_channels,),
@@ -668,10 +667,10 @@ class SelfAttention(tf.keras.layers.Layer):
                                  use_bias=False)
 
         if self.spectral_norm:
-            self.f_conv = SpectralNormalization(self.f_conv)
-            self.g_conv = SpectralNormalization(self.g_conv)
-            self.h_conv = SpectralNormalization(self.h_conv)
-            self.o_conv = SpectralNormalization(self.o_conv)
+            self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv)
+            self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv)
+            self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv)
+            self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
@@ -713,183 +712,3 @@ class SelfAttention(tf.keras.layers.Layer):
         o = self.o_conv(o)
 
         return self.gamma * o + x
-
-
-class SpectralNormalization(tf.keras.layers.Wrapper):
-    """
-    Spectral Normalization for TensorFlow models.
-    Optimizes GAN training stability by normalizing layer weights.
-
-    References
-    ----------
-    Spectral Norm Regularization for Improving the Generalizability of Deep Learning.
-        https://arxiv.org/abs/1705.10941
-
-    Spectral Normalization for GANs
-        https://arxiv.org/abs/1802.05957
-
-    Regularisation of neural networks by enforcing lipschitz continuity.
-        https://arxiv.org/abs/1804.04368
-    """
-
-    def __init__(self,
-                 layer,
-                 power_iteration=1,
-                 norm_multiplier=0.95,
-                 aggregation=tf.VariableAggregation.MEAN,
-                 **kwargs):
-        """
-        Initializes the spectral normalization wrapper.
-
-        Parameters
-        ----------
-        layer : tf.keras.layers.Layer
-            Keras layer to be normalized.
-        power_iteration : int, optional
-            Number of power iterations for singular value estimation.
-        norm_multiplier : float, optional
-            Threshold for normalization.
-        aggregation : tf.VariableAggregation, optional
-            Aggregation method for distributed variables.
-        **kwargs : dict
-            Additional arguments for layers.Wrapper class.
-        """
-
-        super().__init__(layer, name=layer.name, **kwargs)
-
-        self.power_iteration = power_iteration
-        self.norm_multiplier = norm_multiplier
-        self.aggregation = aggregation
-
-        if not isinstance(layer, tf.keras.layers.Layer):
-            raise ValueError('`layer` must be a `tf.keras.layer.Layer`.')
-
-    def get_config(self):
-        """
-        Return the config of the wrapper.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the configuration of the wrapper.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'power_iteration': self.power_iteration,
-            'norm_multiplier': self.norm_multiplier,
-            'aggregation': self.aggregation,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Build the wrapper for the specified input shape.
-
-        Parameters
-        ----------
-        input_shape : tuple or list
-            The shape of the input to the layer.
-        """
-
-        super().build(input_shape)
-
-        self._dtype = self.layer.kernel.dtype
-        self.layer.kernel._aggregation = self.aggregation
-
-        self.w = self.layer.kernel
-        self.w_shape = self.w.shape.as_list()
-
-        self.v = self.add_weight(name='v',
-                                 shape=(1, np.prod(self.w_shape[:-1])),
-                                 initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
-                                 aggregation=self.aggregation,
-                                 dtype=self.dtype,
-                                 trainable=False,)
-
-        self.u = self.add_weight(name='u',
-                                 shape=(1, self.w_shape[-1]),
-                                 initializer=tf.initializers.random_normal(mean=0.0, stddev=0.02),
-                                 aggregation=self.aggregation,
-                                 dtype=self.dtype,
-                                 trainable=False,)
-
-    def call(self, inputs, training=None):
-        """
-        Call the wrapped layer with spectral normalization.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor or array-like
-            The inputs to the layer.
-        training : bool, optional
-            If True, apply spectral normalization during training.
-
-        Returns
-        -------
-        tf.Tensor
-            The output tensor from the wrapped layer.
-        """
-
-        u_update_op, v_update_op, w_update_op = self.update_weights(training=training)
-        output = self.layer(inputs)
-        w_restore_op = self.restore_weights()
-
-        self.add_update(u_update_op)
-        self.add_update(v_update_op)
-        self.add_update(w_update_op)
-        self.add_update(w_restore_op)
-
-        return output
-
-    def update_weights(self, training=None):
-        """
-        Updates the weights of the wrapped layer.
-
-        Parameters
-        ----------
-        training : bool, optional
-            If True, performs power iteration to update weights.
-
-        Returns
-        -------
-        tuple
-            Update operations for u, v, and w weights.
-        """
-
-        w_reshaped = tf.reshape(self.w, [-1, self.w_shape[-1]])
-
-        u_hat = self.u
-        v_hat = self.v
-
-        if training:
-            for _ in range(self.power_iteration):
-                v_hat = tf.nn.l2_normalize(tf.matmul(u_hat, tf.transpose(w_reshaped)))
-                u_hat = tf.nn.l2_normalize(tf.matmul(v_hat, w_reshaped))
-
-        sigma = tf.matmul(tf.matmul(v_hat, w_reshaped), tf.transpose(u_hat))
-        sigma = tf.reshape(sigma, [])
-
-        u_update_op = self.u.assign(u_hat)
-        v_update_op = self.v.assign(v_hat)
-
-        w_norm = tf.cond((self.norm_multiplier / sigma) < 1,
-                         lambda: (self.norm_multiplier / sigma) * self.w, lambda: self.w)
-
-        w_update_op = self.layer.kernel.assign(w_norm)
-
-        return u_update_op, v_update_op, w_update_op
-
-    def restore_weights(self):
-        """
-        Restores the weights of the layer after updates.
-
-        Returns
-        -------
-        tf.Operation
-            An operation that restores the weights.
-        """
-
-        return self.layer.kernel.assign(self.w)
