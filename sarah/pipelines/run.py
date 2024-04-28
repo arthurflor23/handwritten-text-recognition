@@ -19,7 +19,7 @@ def run(args, training=None):
                                                      recognition=args.recognition,
                                                      recognition_run_index=args.recognition_run_index,
                                                      experiment_name=args.experiment_name,
-                                                     finished_runs=args.finished_runs)
+                                                     all_runs=args.all_runs)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -141,10 +141,10 @@ def run(args, training=None):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
 
             if metrics:
-                print('--------------------------------------------------\n')
-                print(f"{config['suffix'] or ''} metrics".strip(), '\n')
+                print('--------------------------------------------------')
+                print(f"{config['suffix'] or ''} metrics".strip())
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('\n--------------------------------------------------')
+                print('--------------------------------------------------')
 
     elif args.synthesis:
         test_gen, test_steps = dataset.get_generator(data_partition='test',
@@ -164,7 +164,7 @@ def run(args, training=None):
         compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
         if metrics:
-            print('--------------------------------------------------\n')
-            print('metrics', '\n')
+            print('--------------------------------------------------')
+            print('metrics')
             print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-            print('\n--------------------------------------------------')
+            print('--------------------------------------------------')
