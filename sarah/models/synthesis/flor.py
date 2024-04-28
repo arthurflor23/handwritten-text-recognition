@@ -295,12 +295,16 @@ class SynthesisModel(BaseSynthesisModel):
 
             # contextual
             g_cx_loss = tf.constant(0.0)
+            g_cx_loss += self.cx_loss(real_feats, real_s_real_t_feats)
+            g_cx_loss += self.cx_loss(real_feats, real_s_fake_t_feats)
 
-            for real_image_feat, real_s_real_t_feat, real_s_fake_t_feat in \
-                    zip(real_feats, real_s_real_t_feats, real_s_fake_t_feats):
+            # g_cx_loss = tf.constant(0.0)
 
-                g_cx_loss += self.cx_loss(real_image_feat, real_s_real_t_feat)
-                g_cx_loss += self.cx_loss(real_image_feat, real_s_fake_t_feat)
+            # for real_image_feat, real_s_real_t_feat, real_s_fake_t_feat in \
+            #         zip(real_feats, real_s_real_t_feats, real_s_fake_t_feats):
+
+            #     g_cx_loss += self.cx_loss(real_image_feat, real_s_real_t_feat)
+            #     g_cx_loss += self.cx_loss(real_image_feat, real_s_fake_t_feat)
 
             # for real_image_feat, fake_image_feat in zip(real_feats, fake_feats):
             #     feats = tf.split(fake_image_feat, num_or_size_splits=2, axis=0)
@@ -309,7 +313,7 @@ class SynthesisModel(BaseSynthesisModel):
             #     g_cx_loss += self.cx_loss(real_image_feat, feats[1])
 
             # generator loss
-            g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + (g_cx_loss * 2.0)
+            g_loss = g_disc_loss + g_ctc_loss + g_sty_loss + g_cnt_loss + g_wid_loss + g_cx_loss
 
         g_gradients = tape.gradient(g_loss, self.generator.trainable_weights +
                                     self.style_encoder.trainable_weights)
