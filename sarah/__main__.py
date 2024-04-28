@@ -23,8 +23,8 @@ if __name__ == '__main__':
     # mlflow
     parser.add_argument('--synthesis-run-index', default=None, type=int, help='Synthesis run index')
     parser.add_argument('--recognition-run-index', default=None, type=int, help='Recognition run index')
-    parser.add_argument('--finished-runs', default=False, action='store_true', help='Only finished runs')
     parser.add_argument('--experiment-name', default='Default', help='Experiment name')
+    parser.add_argument('--all-runs', default=False, action='store_true', help='Enable all runs for selection')
 
     # dataset
     parser.add_argument('--source', default=None, help='Source data')
