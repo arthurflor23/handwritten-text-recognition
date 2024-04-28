@@ -109,7 +109,7 @@ class BaseModel(tf.keras.Model):
                 model.trainable = True
                 model.save_weights(filepath=modelpath, overwrite=overwrite)
 
-    def load_weights(self, filepath, by_name=False, skip_mismatch=False):
+    def load_weights(self, filepath, skip_mismatch=True):
         """
         Load the weights for the submodels.
 
@@ -117,8 +117,6 @@ class BaseModel(tf.keras.Model):
         ----------
         filepath : str
             Filepath for loading the weights.
-        by_name : bool, optional
-            Load weights by name.
         skip_mismatch : bool, optional
             Skip loading of layers where there is a mismatch in the number of weights.
         """
@@ -129,9 +127,7 @@ class BaseModel(tf.keras.Model):
 
             if model is not None and os.path.isfile(modelpath):
                 model.built = True
-                model.load_weights(filepath=modelpath,
-                                   by_name=by_name,
-                                   skip_mismatch=skip_mismatch)
+                model.load_weights(filepath=modelpath, skip_mismatch=skip_mismatch)
 
 
 class BaseRecognitionModel(BaseModel):

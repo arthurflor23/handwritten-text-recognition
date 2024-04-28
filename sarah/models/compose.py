@@ -192,13 +192,16 @@ class Compose():
             MLFlow run context.
         """
 
-        if run_context is not None:
+        if run_context is None:
+            run_info = self.get_run_info(new_context=True)
+
+            with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
+                run_info = self.get_run_info(run_context=run)
+        else:
             run_info = self.get_run_info(run_context=run_context)
             artifact_path = os.path.join(run_info['artifact_path'], '<model>.weights.h5')
 
-            self.model.load_weights(filepath=artifact_path,
-                                    by_name=True,
-                                    skip_mismatch=True)
+            self.model.load_weights(filepath=artifact_path)
 
         self.model.compile(learning_rate=learning_rate)
 
@@ -537,6 +540,22 @@ class Compose():
         artifact_path = None
 
         if run_context is not None:
+            title = None
+
+            if self.run_context is None:
+                title = "Run context (base)"
+            elif str(self.run_context.info.run_id) != str(run_context.info.run_id):
+                title = "Run context (new)"
+
+            if title:
+                print('==================================================')
+                print(f"{title.center(50)}")
+                print('--------------------------------------------------')
+                print(f"{'experiment_id':<{25}}: {run_context.info.experiment_id[:23]}")
+                print(f"{'run_id':<{25}}: {run_context.info.run_id[:23]}")
+                print(f"{'run_name':<{25}}: {run_context.info.run_name[:23]}")
+                print('--------------------------------------------------')
+
             self.run_context = run_context
 
         if self.run_context is not None and not new_context:
@@ -655,7 +674,7 @@ class Compose():
                       recognition=None,
                       recognition_run_index=None,
                       experiment_name=None,
-                      finished_runs=False):
+                      all_runs=False):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -671,8 +690,8 @@ class Compose():
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
-        finished_runs : bool, optional
-            Restrict run index status.
+        all_runs : bool, optional
+            Enable all runs for selection.
 
         Returns
         -------
@@ -689,7 +708,7 @@ class Compose():
 
                 filter_string = f"tag.compose.{tag_name}='{tag_value}'"
 
-                if finished_runs:
+                if not all_runs:
                     filter_string = f"status='FINISHED' AND {filter_string}"
 
                 df = mlflow.search_runs(experiment_ids=experiment_ids,
@@ -727,14 +746,6 @@ class Compose():
                         tokenizer = pickle.load(f)
                 except Exception as e:
                     print(f"Error loading tokenizer: {e}")
-
-        if run_context:
-            print('==================================================')
-            print(f"{'Run context'.center(50)}")
-            print('--------------------------------------------------')
-            print(f"{'experiment_id':<{25}}: {run_context.info.experiment_id[:23]}")
-            print(f"{'run_id':<{25}}: {run_context.info.run_id[:23]}")
-            print(f"{'run_name':<{25}}: {run_context.info.run_name[:23]}")
 
         return tokenizer, run_context
 
