@@ -126,7 +126,7 @@ class SynthesisModel(BaseSynthesisModel):
         random_latent_data = tf.random.normal(shape=random_latent_shape)
 
         for _ in range(self.discriminator_steps):
-            real_latent_data, _ = self.style_encoder(image_data, training=True)
+            real_latent_data, _, _, _ = self.style_encoder(image_data, training=True)
 
             real_s_real_t_images = self.generator([real_latent_data, text_data], training=True)
             real_s_fake_t_images = self.generator([real_latent_data, aug_text_data], training=True)
@@ -224,7 +224,7 @@ class SynthesisModel(BaseSynthesisModel):
         random_latent_data = tf.random.normal(shape=random_latent_shape)
 
         with tf.GradientTape() as tape:
-            real_latent_data, (mu, logvar, real_feats) = self.style_encoder(image_data, training=True)
+            real_latent_data, mu, logvar, real_feats = self.style_encoder(image_data, training=True)
 
             real_s_real_t_images = self.generator([real_latent_data, text_data], training=True)
             real_s_fake_t_images = self.generator([real_latent_data, aug_text_data], training=True)
@@ -279,7 +279,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             # style reconstruction
-            fake_latent_data, _ = self.style_encoder(fake_s_fake_t_images, training=True)
+            fake_latent_data, _, _, _ = self.style_encoder(fake_s_fake_t_images, training=True)
             g_sty_loss = tf.reduce_mean(tf.math.abs(fake_latent_data - random_latent_data))
 
             # content reconstruction
@@ -351,7 +351,7 @@ class SynthesisModel(BaseSynthesisModel):
         # kid metric
         _, (image_data, text_data, _) = input_data
 
-        latent_data, _ = self.style_encoder(image_data, training=False)
+        latent_data, _, _, _ = self.style_encoder(image_data, training=False)
         generated_images = self.generator([latent_data, text_data], training=False)
 
         self.kid.update_state(image_data, generated_images)
@@ -423,7 +423,6 @@ class IdentificationModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feats = [self.backbone.output]
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
@@ -434,7 +433,7 @@ class IdentificationModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, feats])
+                                    outputs=[encoder_output, self.backbone.output])
 
 
 class StyleEncoderModel(BaseModel):
@@ -500,7 +499,6 @@ class StyleEncoderModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        feats = [self.backbone.output]
         style = tf.keras.layers.GlobalAveragePooling1D()(self.backbone.output)
 
         for _ in range(2):
