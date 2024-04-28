@@ -235,8 +235,12 @@ class BaseRecognitionModel(BaseModel):
             if random.random() <= self.synthetic_data_ratio:
                 images, texts = image_data, aug_text_data
 
-                latent_inputs, _ = self.style_encoder(images, training=False)
-                images = self.generator([latent_inputs, texts], training=False)
+                latent_data = self.style_encoder(images, training=False)
+
+                if isinstance(latent_data, list):
+                    latent_data = latent_data[0]
+
+                images = self.generator([latent_data, texts], training=False)
 
         with tf.GradientTape() as tape:
             ctc_logits = self.recognition(images, training=True)
@@ -577,7 +581,11 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _) = input_data
 
-        latent_data, _ = self.style_encoder(image_data)
+        latent_data = self.style_encoder(image_data)
+
+        if isinstance(latent_data, list):
+            latent_data = latent_data[0]
+
         generated_images = self.generator([latent_data, text_data])
 
         self.kid.update_state(image_data, generated_images)
@@ -609,7 +617,10 @@ class BaseSynthesisModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            latent_data, _ = self.style_encoder(image_data, training=training)
+            latent_data = self.style_encoder(image_data, training=training)
+
+            if isinstance(latent_data, list):
+                latent_data = latent_data[0]
 
         generated_images = self.generator([latent_data, text_data], training=training)
 
