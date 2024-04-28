@@ -530,6 +530,42 @@ class OctConv2D(tf.keras.layers.Layer):
         return tf.TensorShape([high_out_shape, low_out_shape])
 
 
+class Reparameterization(tf.keras.layers.Layer):
+    """
+    Layer that applies the reparameterization trick for Gaussian sampling.
+
+    This layer takes a list of tensors, composed of the mean (mu) and the log-variance (logvar),
+        and returns a sampled latent variable by applying the reparameterization trick.
+
+    References
+    ----------
+    Auto-Encoding Variational Bayes
+        https://arxiv.org/abs/1312.6114
+    """
+
+    def call(self, inputs):
+        """
+        Applies the reparameterization trick on the input tensors.
+
+        Parameters
+        ----------
+        inputs : list of tf.Tensor
+            A list containing two tensors: mean (mu) and log-variance (logvar).
+
+        Returns
+        -------
+        tf.Tensor
+            A sampled latent variable after applying the reparameterization trick.
+        """
+
+        mu, logvar = tf.unstack(inputs)
+
+        std = tf.exp(0.5 * logvar)
+        eps = tf.random.normal(shape=tf.shape(mu))
+
+        return eps * std + mu
+
+
 class SelfAttention(tf.keras.layers.Layer):
     """
     Self-Attention layer.

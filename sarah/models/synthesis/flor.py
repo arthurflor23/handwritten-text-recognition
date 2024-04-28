@@ -4,6 +4,7 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
+from sarah.models.components.layers import Reparameterization
 from sarah.models.components.layers import SelfAttention
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_attention import RecognitionModel
@@ -506,37 +507,14 @@ class StyleEncoderModel(BaseModel):
             style = tf.keras.layers.Dense(units=256)(style)
             style = tf.keras.layers.PReLU(shared_axes=[1])(style)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        encoder = tf.keras.layers.Dense(units=self.latent_dim * 2)(style)
+        mu, logvar = tf.keras.layers.Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1))(encoder)
 
-        encoder_output = tf.keras.layers.Lambda(
-            lambda x: self.reparameterize(x[0], x[1]), name='reparameterize')([mu, logvar])
+        encoder_output = Reparameterization()([mu, logvar])
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.backbone.input,
-                                    outputs=[encoder_output, (mu, logvar, feats)])
-
-    def reparameterize(self, mu, logvar):
-        """
-        Reparameterization trick for Gaussian sampling.
-
-        Parameters
-        ----------
-        mu : tf.Tensor
-            Mean of the latent Gaussian.
-        logvar : tf.Tensor
-            Logarithm of the variance of the latent Gaussian.
-
-        Returns
-        -------
-        tf.Tensor
-            Sampled latent variable.
-        """
-
-        std = tf.exp(0.5 * logvar)
-        eps = tf.random.normal(shape=tf.shape(mu))
-
-        return eps * std + mu
+                                    outputs=[encoder_output, mu, logvar, self.backbone.output])
 
 
 class GeneratorModel(BaseModel):
@@ -668,13 +646,18 @@ class GeneratorModel(BaseModel):
                                   kernel_initializer='orthogonal'))(latent_input)
 
         latent_chunks = tf.keras.layers.Lambda(
-            lambda x: tf.split(x, len(self.blocks), axis=1), name='chunks')(latent_dense)
+            function=lambda x, y: tf.split(x, y, axis=1),
+            arguments={'y': len(self.blocks)},
+            name='chunks')(latent_dense)
 
-        latent_expanded = tf. keras.layers.Lambda(
-            lambda x: tf.expand_dims(x, axis=1), name='expand')(latent_input)
+        latent_expanded = tf.keras.layers.Lambda(
+            function=lambda x: tf.expand_dims(x, axis=1),
+            name='expand')(latent_input)
 
         latent_tiled = tf.keras.layers.Lambda(
-            lambda x: tf.tile(x[0], [1, tf.shape(x[1])[1], 1]), name='tile')([latent_expanded, text_embedding])
+            function=lambda x, y: tf.tile(x, y),
+            arguments={'y': [1, text_embedding.shape[1], 1]},
+            name='tile')(latent_expanded)
 
         latent_text = tf.keras.layers.Concatenate(axis=2)([latent_tiled, text_embedding])
 
