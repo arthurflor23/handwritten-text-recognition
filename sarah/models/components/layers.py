@@ -12,27 +12,27 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, spectral_norm=False, momentum=0.99, epsilon=1e-3, **kwargs):
+    def __init__(self, momentum=0.99, epsilon=1e-3, spectral_norm=False, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
         Parameters
         ----------
-        spectral_norm : bool, optional
-            Wheter apply spectral normalization or not.
         momentum : float, optional
             Momentum for the moving average of mean and variance.
         epsilon : float, optional
             Small constant to avoid division by zero.
+        spectral_norm : bool, optional
+            Wheter apply spectral normalization or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
 
-        self.spectral_norm = spectral_norm
         self.momentum = momentum
         self.epsilon = epsilon
+        self.spectral_norm = spectral_norm
         self.mean = None
         self.variance = None
 
@@ -49,9 +49,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'spectral_norm': self.spectral_norm,
             'momentum': self.momentum,
             'epsilon': self.epsilon,
+            'spectral_norm': self.spectral_norm,
             'mean': self.mean,
             'variance': self.variance,
         })
@@ -584,10 +584,10 @@ class SelfAttention(tf.keras.layers.Layer):
 
     def __init__(self,
                  filters=None,
-                 spectral_norm=False,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 spectral_norm=False,
                  **kwargs):
         """
         Initialize the self-attention gan layer.
@@ -596,14 +596,14 @@ class SelfAttention(tf.keras.layers.Layer):
         ----------
         filters : int
             Number of output filters.
-        spectral_norm : bool, optional
-            Wheter apply spectral normalization or not.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        spectral_norm : bool, optional
+            Wheter apply spectral normalization or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -611,10 +611,10 @@ class SelfAttention(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.filters = filters
-        self.spectral_norm = spectral_norm
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.spectral_norm = spectral_norm
 
     def get_config(self):
         """
@@ -630,10 +630,10 @@ class SelfAttention(tf.keras.layers.Layer):
 
         config.update({
             'filters': self.filters,
-            'spectral_norm': self.spectral_norm,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'spectral_norm': self.spectral_norm,
         })
 
         return config
