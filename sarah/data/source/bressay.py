@@ -1,4 +1,5 @@
 import os
+import re
 import glob
 import multiprocessing
 
@@ -142,6 +143,7 @@ class Source():
 
             with open(text_file, 'r') as file:
                 text = file.read().strip()
+            text = self._format_text(text)
 
             data.append({
                 'image': image_file,
@@ -151,3 +153,37 @@ class Source():
             })
 
         return data
+
+    def _format_text(self, text):
+        """
+        Standardizes a text.
+
+        Parameters
+        ----------
+        text : str
+            The text to be standardized.
+
+        Returns
+        -------
+        str
+            The standardized text.
+        """
+
+        mappings = [
+            {'regex': r'##@@\?\?\?@@##', 'remap': '↑◬↑'},           # ##@@???@@##
+            {'regex': r'\$\$@@\?\?\?@@\$\$', 'remap': '↓◬↓'},       # $$@@???@@$$
+            {'regex': r'@@\?\?\?@@', 'remap': '◬'},                 # @@???@@
+            {'regex': r'##--xxx--##', 'remap': '↑◬↑'},              # ##--xxx--##
+            {'regex': r'\$\$--xxx--\$\$', 'remap': '↓◬↓'},          # $$--xxx--$$
+            {'regex': r'--xxx--', 'remap': '◬'},                    # --xxx--
+            {'regex': r'##--(.*?)--##', 'remap': '↑↔{}↔↑'},         # ##--text--##
+            {'regex': r'\$\$--(.*?)--\$\$', 'remap': '↓↔{}↔↓'},     # $$--text--$$
+            {'regex': r'##(.*?)##', 'remap': '↑{}↑'},               # ##text##
+            {'regex': r'\$\$(.*?)\$\$', 'remap': '↓{}↓'},           # $$text$$
+            {'regex': r'--(.*?)--', 'remap': '↔{}↔'},               # --text--
+        ]
+
+        for x in mappings:
+            text = re.sub(x['regex'], lambda m: x['remap'].format(*m.groups()) if m.groups() else x['remap'], text)
+
+        return text
