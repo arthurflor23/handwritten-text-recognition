@@ -156,7 +156,7 @@ class Source():
             word_file_name = f"{parts[0]}.png"
 
             image_path = os.path.join(word_path, word_file_name)
-            text = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
+            text = self._format_text(parts[1]).replace('-', '').replace('|', ' ')
 
             words_data.append({
                 'image': image_path,
@@ -196,7 +196,7 @@ class Source():
             line_file_name = f"{parts[0]}.png"
 
             image_path = os.path.join(line_path, line_file_name)
-            text = self._format_label(parts[1]).replace('-', '').replace('|', ' ')
+            text = self._format_text(parts[1]).replace('-', '').replace('|', ' ')
 
             lines_data.append({
                 'image': image_path,
@@ -207,22 +207,22 @@ class Source():
 
         return lines_data
 
-    def _format_label(self, label):
+    def _format_text(self, text):
         """
-        Standardizes a label.
+        Standardizes a text.
 
         Parameters
         ----------
-        label : str
-            The label to be standardized.
+        text : str
+            The text to be standardized.
 
         Returns
         -------
         str
-            The standardized label.
+            The standardized text.
         """
 
-        substitutions = {
+        mappings = {
             'pt': '.',
             'eq': '-',
             'ha115': 's',
@@ -274,7 +274,7 @@ class Source():
             'sv7er7': 'v',      # ṽ
         }
 
-        for pattern, replacement in substitutions.items():
-            label = label.replace(pattern, replacement)
+        for pattern, replacement in mappings.items():
+            text = text.replace(pattern, replacement)
 
-        return label
+        return text
