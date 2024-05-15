@@ -66,14 +66,6 @@ def check(args):
                                              augmentor=augmentor,
                                              shuffle=False)
 
-    processed_gen, _ = dataset.get_generator(data_partition='test',
-                                             batch_size=args.batch_size,
-                                             batch_encoded=True,
-                                             batch_padding=True,
-                                             batch_processing=True,
-                                             augmentor=augmentor,
-                                             shuffle=False)
-
     print('\nChecking samples...')
 
     while True:
@@ -85,12 +77,6 @@ def check(args):
 
         x_augmented_data, _ = next(augmented_gen)
         image_augmented_data, _ = x_augmented_data
-
-        x_processed_data, _ = next(processed_gen)
-        image_processed_data, _ = x_processed_data
-
-        # better to read
-        image_processed_data = image_processed_data.transpose((0, 2, 1, 3))
 
         for i in range(len(image_source_data)):
             # source
@@ -113,9 +99,6 @@ def check(args):
 
             # with augmentation and with padding
             cv2.imshow('Augmented image', image_augmented_data[i])
-
-            # with augmentation, with padding and input process
-            cv2.imshow('Processed image', image_processed_data[i])
 
             print('Press Enter to continue or Esc to stop...\n')
             key = cv2.waitKey(0)
