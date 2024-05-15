@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--rotate', default=None, nargs=2, type=float, help='Rotation settings')
     parser.add_argument('--shift-y', default=None, nargs=2, type=float, help='Vertical shift settings')
     parser.add_argument('--shift-x', default=None, nargs=2, type=float, help='Horizontal shift settings')
-    parser.add_argument('--salt-and-pepper', default=None, nargs=2, type=float, help='Salt & pepper noise settings')
+    parser.add_argument('--salt-and-pepper', default=None, nargs=2, type=float, help='Salt and pepper noise settings')
     parser.add_argument('--gaussian-noise', default=None, nargs=2, type=float, help='Gaussian noise settings')
     parser.add_argument('--gaussian-blur', default=None, nargs=2, type=float, help='Gaussian blur settings')
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
