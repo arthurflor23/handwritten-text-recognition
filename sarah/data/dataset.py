@@ -100,24 +100,25 @@ class Dataset():
             Formatted string with useful information.
         """
 
-        info = "=================================================="
-        info += f"\n{self.__class__.__name__.center(50)}"
-        info += "\n--------------------------------------------------"
-        info += f"\n{'source':<{25}}: {self.source or '-'}"
-        info += f"\n{'text_level':<{25}}: {self.text_level or '-'}"
-        info += f"\n{'image_shape':<{25}}: {self.image_shape or '-'}"
-        info += f"\n{'training_ratio':<{25}}: {self.training_ratio or '-'}"
-        info += f"\n{'validation_ratio':<{25}}: {self.validation_ratio or '-'}"
-        info += f"\n{'test_ratio':<{25}}: {self.test_ratio or '-'}"
-        info += f"\n{'lazy_mode':<{25}}: {self.lazy_mode}"
-        info += f"\n{'seed':<{25}}: {self.seed}"
-        info += "\n--------------------------------------------------"
-        info += f"\n{'training_data':<{25}}: {len(self.samples['source']['training']):,}"
-        info += f"\n{'validation_data':<{25}}: {len(self.samples['source']['validation']):,}"
-        info += f"\n{'test_data':<{25}}: {len(self.samples['source']['test']):,}"
-        info += f"\n{'total_data':<{25}}: {sum(len(x) for x in self.samples['source'].values()):,}"
-        info += "\n--------------------------------------------------"
-        info += f"\n{'multigrams':<{25}}: {len(self.multigrams['source']):,}"
+        pad, width = 25, 60
+        info = "=" * width
+        info += f"\n{self.__class__.__name__.center(width)}"
+        info += "\n" + "-" * width
+        info += f"\n{'source':<{pad}}: {self.source or '-'}"
+        info += f"\n{'text_level':<{pad}}: {self.text_level or '-'}"
+        info += f"\n{'image_shape':<{pad}}: {self.image_shape or '-'}"
+        info += f"\n{'training_ratio':<{pad}}: {self.training_ratio or '-'}"
+        info += f"\n{'validation_ratio':<{pad}}: {self.validation_ratio or '-'}"
+        info += f"\n{'test_ratio':<{pad}}: {self.test_ratio or '-'}"
+        info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode}"
+        info += f"\n{'seed':<{pad}}: {self.seed}"
+        info += "\n" + "-" * width
+        info += f"\n{'training_data':<{pad}}: {len(self.samples['source']['training']):,}"
+        info += f"\n{'validation_data':<{pad}}: {len(self.samples['source']['validation']):,}"
+        info += f"\n{'test_data':<{pad}}: {len(self.samples['source']['test']):,}"
+        info += f"\n{'total_data':<{pad}}: {sum(len(x) for x in self.samples['source'].values()):,}"
+        info += "\n" + "-" * width
+        info += f"\n{'multigrams':<{pad}}: {len(self.multigrams['source']):,}"
         info += f"\n{self.tokenizer}"
 
         return info

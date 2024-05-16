@@ -42,28 +42,29 @@ class Tokenizer():
             Formatted string with useful information.
         """
 
-        info = '=================================================='
-        info += f'\n{self.__class__.__name__.center(50)}'
-        info += '\n--------------------------------------------------'
-        info += f"\n{'words':<{25}}: {len(self.words):,}"
-        info += f"\n{'chars':<{25}}: {len(self.chars) - self._reserved_chars_length:,}"
-        info += f"\n{'writers':<{25}}: {len(self.writers) - 1:,}"
-        info += '\n--------------------------------------------------'
-        info += f"\n{'lexical_shape':<{25}}: {self.lexical_shape}"
-        info += f"\n{'writers_shape':<{25}}: {self.writers_shape}"
-        info += "\n--------------------------------------------------"
+        pad, width = 25, 60
+        info = "=" * width
+        info += f'\n{self.__class__.__name__.center(width)}'
+        info += "\n" + "-" * width
+        info += f"\n{'words':<{pad}}: {len(self.words):,}"
+        info += f"\n{'chars':<{pad}}: {len(self.chars) - self._reserved_chars_length:,}"
+        info += f"\n{'writers':<{pad}}: {len(self.writers) - 1:,}"
+        info += "\n" + "-" * width
+        info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
+        info += f"\n{'writers_shape':<{pad}}: {self.writers_shape}"
+        info += "\n" + "-" * width
 
         chars = ''.join(self.chars)
-        chunks = [chars[i:i+22] for i in range(0, len(chars), 22)]
+        chunks = [chars[i:i+(width//2)+2] for i in range(0, len(chars), (width//2)+2)]
 
-        info += f"\n{'charset':<{25}}: {chunks[0]}"
+        info += f"\n{'charset':<{pad}}: {chunks[0]}"
         for chunk in chunks[1:]:
-            info += f"\n{'':<{25}}  {chunk}"
+            info += f"\n{'':<{pad}}  {chunk}"
 
-        info += "\n--------------------------------------------------"
+        info += "\n" + "-" * width
 
         for key, value in self.metadata.items():
-            info += f"\n{key:<{25}}: {value:,}"
+            info += f"\n{key:<{pad}}: {value:,}"
 
         return info
 

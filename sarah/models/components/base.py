@@ -29,8 +29,9 @@ class BaseModel(tf.keras.Model):
             Formatted string with useful information.
         """
 
-        info = "=================================================="
-        info += f"\n{self.__class__.__name__.center(50)}"
+        pad, width = 25, 60
+        info = "=" * width
+        info += f"\n{self.__class__.__name__.center(width)}"
 
         for name in getattr(self, 'names', ['model']):
             model = getattr(self, name, None)
@@ -42,13 +43,13 @@ class BaseModel(tf.keras.Model):
             non_trainable_count = sum([tf.size(x).numpy() for x in model.non_trainable_variables])
             total_count = trainable_count + non_trainable_count
 
-            info += "\n--------------------------------------------------"
-            info += f"\n{'Model':<{25}}: {model.name}"
-            info += "\n--------------------------------------------------"
-            info += f"\n{'Total params':<{25}}: {total_count:,}"
-            info += f"\n{'Trainable params':<{25}}: {trainable_count:,}"
-            info += f"\n{'Non-trainable params':<{25}}: {non_trainable_count:,}"
-            info += f"\n{'Size (MB)':<{25}}: {(total_count*4) / (1024**2):,.2f}"
+            info += "\n" + "-" * width
+            info += f"\n{'Model':<{pad}}: {model.name}"
+            info += "\n" + "-" * width
+            info += f"\n{'Total params':<{pad}}: {total_count:,}"
+            info += f"\n{'Trainable params':<{pad}}: {trainable_count:,}"
+            info += f"\n{'Non-trainable params':<{pad}}: {non_trainable_count:,}"
+            info += f"\n{'Size (MB)':<{pad}}: {(total_count*4) / (1024**2):,.2f}"
 
         return info
 

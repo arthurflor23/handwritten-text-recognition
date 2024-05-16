@@ -147,8 +147,9 @@ class Compose():
         if not self.model:
             return str(None)
 
-        info = "=================================================="
-        info += f"\n{self.__class__.__name__.center(50)}"
+        width = 60
+        info = "=" * width
+        info += f"\n{self.__class__.__name__.center(width)}"
         info += f"\n{self.model}"
 
         return info
@@ -548,13 +549,14 @@ class Compose():
                 title = "Run context (new)"
 
             if title:
-                print('==================================================')
-                print(f"{title.center(50)}")
-                print('--------------------------------------------------')
-                print(f"{'experiment_id':<{25}}: {run_context.info.experiment_id[:23]}")
-                print(f"{'run_id':<{25}}: {run_context.info.run_id[:23]}")
-                print(f"{'run_name':<{25}}: {run_context.info.run_name[:23]}")
-                print('--------------------------------------------------')
+                pad, width = 25, 60
+                print("=" * width)
+                print(f"{title.center(width)}")
+                print("-" * width)
+                print(f"{'experiment_id':<{pad}}: {run_context.info.experiment_id}")
+                print(f"{'run_id':<{pad}}: {run_context.info.run_id}")
+                print(f"{'run_name':<{pad}}: {run_context.info.run_name}")
+                print("-" * width)
 
             self.run_context = run_context
 
