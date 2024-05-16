@@ -358,18 +358,30 @@ class BaseRecognitionModel(BaseModel):
             sequence_length = [batch.shape[2]] * batch.shape[0]
 
             for i in range(batch.shape[1]):
-                decoded, log_probabilities = tf.keras.ops.ctc_decode(inputs=batch[:, i, :, :],
-                                                                     sequence_lengths=sequence_length,
-                                                                     strategy='beam_search',
-                                                                     beam_width=beam_width,
-                                                                     top_paths=top_paths,
-                                                                     merge_repeated=True,
-                                                                     mask_index=0)
+                inputs = tf.transpose(batch[:, i, :, :], perm=[1, 0, 2])
+                decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
+                                                                           sequence_length=sequence_length,
+                                                                           beam_width=beam_width,
+                                                                           top_paths=top_paths)
 
                 decoded_pads = []
                 for j in range(len(decoded)):
-                    paddings = [[0, 0], [0, batch.shape[2] - tf.reduce_max(tf.shape(decoded[j])[1])]]
-                    decoded_pads.append(tf.pad(decoded[j], paddings=paddings, constant_values=-1))
+                    sparse_decoded = tf.sparse.to_dense(decoded[j], default_value=-1)
+                    paddings = [[0, 0], [0, batch.shape[2] - tf.reduce_max(tf.shape(sparse_decoded)[1])]]
+                    decoded_pads.append(tf.pad(sparse_decoded, paddings=paddings, constant_values=-1))
+
+                # decoded, log_probabilities = tf.keras.ops.ctc_decode(inputs=batch[:, i, :, :],
+                #                                                      sequence_lengths=sequence_length,
+                #                                                      strategy='beam_search',
+                #                                                      beam_width=beam_width,
+                #                                                      top_paths=top_paths,
+                #                                                      merge_repeated=True,
+                #                                                      mask_index=0)
+
+                # decoded_pads = []
+                # for j in range(len(decoded)):
+                #     paddings = [[0, 0], [0, batch.shape[2] - tf.reduce_max(tf.shape(decoded[j])[1])]]
+                #     decoded_pads.append(tf.pad(decoded[j], paddings=paddings, constant_values=-1))
 
                 top_path_decoded.append(decoded_pads)
                 top_path_probabilities.append(tf.exp(log_probabilities))
