@@ -21,8 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('--spelling', default=None, help='Spelling model')
 
     # mlflow
-    parser.add_argument('--synthesis-run-index', default=None, type=int, help='Synthesis run index')
-    parser.add_argument('--recognition-run-index', default=None, type=int, help='Recognition run index')
+    parser.add_argument('--synthesis-run-id', default=None, help='Synthesis run id or index')
+    parser.add_argument('--recognition-run-id', default=None, help='Recognition run id or index')
     parser.add_argument('--experiment-name', default='Default', help='Experiment name')
     parser.add_argument('--all-runs', default=False, action='store_true', help='Enable all runs for selection')
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     # test
     parser.add_argument('--test', default=False, action='store_true', help='Perform test pipeline')
     parser.add_argument('--top-paths', default=1, type=int, help='Top paths for prediction')
-    parser.add_argument('--beam-width', default=30, type=int, help='CTC decoder beam width')
+    parser.add_argument('--beam-width', default=32, type=int, help='CTC decoder beam width')
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')

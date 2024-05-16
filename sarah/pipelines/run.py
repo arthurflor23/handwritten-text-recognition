@@ -15,9 +15,9 @@ def run(args, training=None):
     """
 
     tokenizer, run_context = Compose().get_tokenizer(synthesis=args.synthesis,
-                                                     synthesis_run_index=args.synthesis_run_index,
+                                                     synthesis_run_id=args.synthesis_run_id,
                                                      recognition=args.recognition,
-                                                     recognition_run_index=args.recognition_run_index,
+                                                     recognition_run_id=args.recognition_run_id,
                                                      experiment_name=args.experiment_name,
                                                      all_runs=args.all_runs)
 

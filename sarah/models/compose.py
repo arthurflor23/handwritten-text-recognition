@@ -670,9 +670,9 @@ class Compose():
 
     @staticmethod
     def get_tokenizer(synthesis=None,
-                      synthesis_run_index=None,
+                      synthesis_run_id=None,
                       recognition=None,
-                      recognition_run_index=None,
+                      recognition_run_id=None,
                       experiment_name=None,
                       all_runs=False):
         """
@@ -682,11 +682,11 @@ class Compose():
         ----------
         synthesis : str, optional
             Identification for synthesis model.
-        synthesis_run_index : int, optional
+        synthesis_run_id : str or int, optional
             Run index for the synthesis model.
         recognition : str, optional
             Identification for recognition model.
-        recognition_run_index : int, optional
+        recognition_run_id : str or int, optional
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
@@ -701,8 +701,10 @@ class Compose():
 
         Compose().fix_mlflow_artifacts_path()
 
-        def get_artifacts_path(tag_name, tag_value, run_index):
-            if run_index is not None:
+        def get_artifacts_path(tag_name, tag_value, run_id):
+            run, artifact_path = None, None
+
+            if run_id is not None:
                 experiment = mlflow.set_experiment(experiment_name or 'Default')
                 experiment_ids = [experiment.experiment_id]
 
@@ -723,15 +725,24 @@ class Compose():
 
                     df = df[df['valid']].reset_index(drop=True)
 
-                    if run_index < len(df):
-                        run = mlflow.get_run(df.iloc[run_index]['run_id'])
+                    try:
+                        if str(run_id).replace('-', '').isnumeric():
+                            run = mlflow.get_run(df.iloc[int(run_id)]['run_id'])
+                        else:
+                            df = df[df['run_id'] == run_id]
+                            run = mlflow.get_run(df.iloc[0]['run_id'])
+
+                    except Exception:
+                        print(f"Run ID not found: {run_id}")
+                        exit(1)
+
+                    if run is not None:
                         artifact_path = run.info.artifact_uri.replace('file://', '')
-                        return run, artifact_path
 
-            return None, None
+            return run, artifact_path
 
-        s_run, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_index)
-        r_run, r_path = get_artifacts_path('recognition', recognition, recognition_run_index)
+        s_run, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
+        r_run, r_path = get_artifacts_path('recognition', recognition, recognition_run_id)
 
         tokenizer = None
         run_context = s_run or r_run
@@ -744,8 +755,10 @@ class Compose():
                 try:
                     with open(tokenizer_uri, 'rb') as f:
                         tokenizer = pickle.load(f)
+
                 except Exception as e:
-                    print(f"Error loading tokenizer: {e}")
+                    print(f"Tokenizer error: {e}")
+                    exit(1)
 
         return tokenizer, run_context
 

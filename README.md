@@ -87,8 +87,8 @@ The project has several command-line parameters that can be used to customize it
 
 #### MLflow
 
--   `--synthesis-run-index`: Synthesis model run index.
--   `--recognition-run-index`: Recognition model run index.
+-   `--synthesis-run-id`: Synthesis model run id or index.
+-   `--recognition-run-id`: Recognition model run id or index.
 -   `--experiment-name`: MLflow experiment name.
 -   `--all-runs`: Enable all runs for selection.
 
@@ -177,18 +177,18 @@ This command will train the recognition model on IAM dataset at the line level, 
 **Example 2: Perform recognition model testing**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-index -1 --test
+python sarah --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-id -1 --test
 ```
 
-This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
+This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
 
 **Example 3: Perform recognition model inference**
 
 ```bash
-python sarah --recognition flor --beam-width 30 --recognition-run-index -1 --inference --image path/to/image1.png
+python sarah --recognition flor --beam-width 30 --recognition-run-id -1 --inference --image path/to/image1.png
 ```
 
-This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run index, which loads the last trained model.
+This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
 
 ---
 
