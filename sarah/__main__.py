@@ -98,6 +98,9 @@ if __name__ == '__main__':
     if args.training or args.test or args.inference:
         assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
 
+    elif args.spelling:
+        assert args.recognition_run_id, '--recognition-run-id must be defined'
+
     if args.synthesis and args.inference:
         assert args.text, '--text must be defined'
 
@@ -108,11 +111,11 @@ if __name__ == '__main__':
     if args.check:
         pipelines.check(args)
 
-    elif args.training or args.test:
-        pipelines.run(args, training=args.training)
-
     elif args.inference:
         pipelines.inference(args)
+
+    elif args.training or args.test or args.spelling:
+        pipelines.run(args)
 
     else:
         # mlflow path compatibility
