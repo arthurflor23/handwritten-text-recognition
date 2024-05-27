@@ -2,7 +2,7 @@ from data import Augmentor, Dataset
 from models import Compose
 
 
-def run(args, training=None):
+def run(args):
     """
     Executes the training and testing phase.
 
@@ -10,8 +10,6 @@ def run(args, training=None):
     ----------
     args : argparse.Namespace
         A namespace object containing all the arguments required.
-    training : bool, optional
-        Whether to execute training phase.
     """
 
     tokenizer, run_context = Compose().get_tokenizer(synthesis=args.synthesis,
@@ -36,7 +34,7 @@ def run(args, training=None):
     print(dataset)
 
     augmentor = None
-    if training and not args.disable_augmentation:
+    if args.training and not args.disable_augmentation:
         augmentor = Augmentor(binarize=args.binarize,
                               erode=args.erode,
                               dilate=args.dilate,
@@ -69,12 +67,12 @@ def run(args, training=None):
 
     compose.compile(learning_rate=args.learning_rate, run_context=run_context)
 
-    if training:
+    if args.training:
         compose.save_context(params=args,
                              dataset=dataset,
                              augmentor=augmentor,
                              model=compose.model,
-                             new_context=training)
+                             new_context=args.training)
 
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
