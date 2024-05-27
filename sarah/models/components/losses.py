@@ -46,21 +46,27 @@ class CTCLoss(tf.keras.losses.Loss):
             The computed CTC loss.
         """
 
+        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+
+        # logits = tf.math.log(y_pred + self.epsilon)
+
+        # label_length = tf.math.count_nonzero(y_true, axis=-1)
+        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+
+        # ctc_loss = tf.keras.ops.ctc_loss(target=tf.cast(y_true, dtype=tf.int32),
+        #                                  output=tf.cast(logits, dtype=tf.float32),
+        #                                  target_length=tf.cast(label_length, dtype=tf.int32),
+        #                                  output_length=tf.cast(logit_length, dtype=tf.int32),
+        #                                  mask_index=0)
+
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
         logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
 
-        # label_length = tf.math.count_nonzero(y_true, axis=-1)
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
-
-        # ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-        #                           logits=tf.cast(logits, dtype=tf.float32),
-        #                           label_length=tf.cast(label_length, dtype=tf.int32),
-        #                           logit_length=tf.cast(logit_length, dtype=tf.int32),
-        #                           logits_time_major=True,
-        #                           blank_index=-1)
 
         ctc_loss = tf.compat.v1.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
                                             inputs=tf.cast(logits, dtype=tf.float32),

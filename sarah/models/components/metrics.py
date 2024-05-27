@@ -46,6 +46,25 @@ class EditDistance(tf.keras.metrics.Metric):
             Tensor of predicted labels.
         """
 
+        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
+        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+
+        # labels = tf.sparse.from_dense(y_true)
+        # logits = tf.math.log(y_pred + self.epsilon)
+
+        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+
+        # decoded, _ = tf.keras.ops.ctc_decode(inputs=tf.cast(logits, dtype=tf.float32),
+        #                                      sequence_lengths=tf.cast(logit_length, dtype=tf.int32),
+        #                                      strategy='greedy',
+        #                                      beam_width=self.beam_width,
+        #                                      top_paths=1,
+        #                                      merge_repeated=False,
+        #                                      mask_index=None)
+
+        # decoded = tf.cast(tf.sparse.from_dense(decoded[0]), dtype=labels.dtype)
+        # edit_distance = tf.edit_distance(hypothesis=decoded, truth=labels, normalize=True)
+
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
@@ -59,10 +78,9 @@ class EditDistance(tf.keras.metrics.Metric):
                                                    beam_width=self.beam_width,
                                                    top_paths=1)
 
-        edit_distance = tf.edit_distance(decoded[0], labels, normalize=True)
-        value = tf.reduce_mean(edit_distance)
+        edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
 
-        self.tracker.update_state(value)
+        self.tracker.update_state(tf.reduce_mean(edit_distance))
 
     def result(self):
         """
