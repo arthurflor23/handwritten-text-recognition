@@ -313,7 +313,8 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                source, encoded = zip(*sorted(results, key=lambda x: len(x[0]['text']), reverse=True))
+                source, encoded = zip(*results)
+
                 samples['source'][partition] = np.array(source, dtype=object)
                 samples['encoded'][partition] = np.array(encoded, dtype=object)
 
@@ -373,9 +374,8 @@ class Dataset():
 
             if results:
                 source, encoded = zip(*[(s, e) for x in results for s, e in zip(x[0], x[1])])
-                source_data = sorted(zip(source, encoded), key=lambda x: len(x[0]), reverse=True)
 
-                for s, e in source_data:
+                for s, e in zip(source, encoded):
                     multigrams['source'].append({'text': s})
                     multigrams['encoded'].append({'text': e})
 
