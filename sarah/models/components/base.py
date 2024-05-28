@@ -438,19 +438,25 @@ class BaseRecognitionModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (image_path_data, text_true_data, _) = next(y)
-            batch_size = len(text_true_data)
+            _, (image_data, text_data, writer_data) = next(y)
+            batch_size = len(text_data)
 
-            text_pred_data = x[batch_index:batch_index + batch_size]
-            prob_pred_data = probabilities[batch_index:batch_index + batch_size]
+            pred_data = x[batch_index:batch_index + batch_size]
+            prob_data = probabilities[batch_index:batch_index + batch_size]
             batch_index += batch_size
 
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for image_path, text_true, text_pred, prob_pred in \
-                    zip(image_path_data, text_true_data, text_pred_data, prob_pred_data):
+            for image_path, text_true, writer_id, text_pred, prob_pred in \
+                    zip(image_data, text_data, writer_data, pred_data, prob_data):
 
-                local_evaluation = {'image_path': image_path, 'ground_truth': text_true}
+                local_evaluation = {
+                    'writer': writer_id,
+                    'image': image_path,
+                    'text': text_true,
+                    'predictions': [],
+                }
+
                 gt = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ').lower()).split())
 
                 for i, top_path in enumerate(text_pred):
@@ -465,18 +471,18 @@ class BaseRecognitionModel(BaseModel):
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
 
-                    local_evaluation[f"top_path_{i+1}"] = {
+                    local_evaluation['predictions'].append({
                         'probability': prob_pred if prob_pred is None else prob_pred[i],
                         'cer': cer,
                         'wer': wer,
-                        'prediction': top_path,
-                    }
+                        'text': top_path,
+                    })
 
                 evaluations.append(local_evaluation)
 
             progbar.update(step + 1)
 
-        evaluations = sorted(evaluations, key=lambda x: x['top_path_1']['cer'])
+        evaluations = sorted(evaluations, key=lambda x: x['predictions'][0]['cer'])
         metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
 
         return metrics, evaluations
