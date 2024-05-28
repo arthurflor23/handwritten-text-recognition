@@ -100,20 +100,7 @@ def run(args):
                     verbose=1)
 
     if args.recognition:
-        prediction_configs = [{
-            'predict': True,
-            'corrections': False,
-            'suffix': None,
-        }, {
-            'predict': args.spelling,
-            'corrections': True,
-            'suffix': 'spelling',
-        }]
-
-        for config in prediction_configs:
-            if not config['predict']:
-                continue
-
+        if args.test:
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
@@ -123,7 +110,6 @@ def run(args):
                                                                      beam_width=args.beam_width,
                                                                      ctc_decode=True,
                                                                      token_decode=True,
-                                                                     corrections=config['corrections'],
                                                                      verbose=1)
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
@@ -136,33 +122,58 @@ def run(args):
                                                                 probabilities=probabilities,
                                                                 verbose=1)
 
-            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=config['suffix'])
+            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
 
             if metrics:
                 print('--------------------------------------------------')
-                print(f"{config['suffix'] or ''} metrics".strip())
+                print('metrics')
+                print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+                print('--------------------------------------------------')
+
+        if args.spelling:
+            data, predictions, probabilities = compose.get_evaluations()
+
+            dt_test = Dataset(data=data)
+            source_gen, source_steps = dt_test.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_encoded=False)
+
+            predictions = compose.predict_spelling(x=predictions, steps=source_steps, verbose=1)
+
+            metrics, evaluations = compose.evaluate_recognition(x=predictions,
+                                                                y=source_gen,
+                                                                steps=source_steps,
+                                                                probabilities=probabilities,
+                                                                verbose=1)
+
+            compose.save_context(metrics=metrics, evaluations=evaluations, suffix='spelling')
+
+            if metrics:
+                print('--------------------------------------------------')
+                print('spelling metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
                 print('--------------------------------------------------')
 
     elif args.synthesis:
-        test_gen, test_steps = dataset.get_generator(data_partition='test',
-                                                     batch_size=args.batch_size)
+        if args.test:
+            test_gen, test_steps = dataset.get_generator(data_partition='test',
+                                                         batch_size=args.batch_size)
 
-        predictions = compose.predict_synthesis(x=test_gen, steps=test_steps)
+            predictions = compose.predict_synthesis(x=test_gen, steps=test_steps)
 
-        source_gen, source_steps = dataset.get_generator(data_partition='test',
-                                                         batch_size=args.batch_size,
-                                                         batch_processing=False)
+            source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_processing=False)
 
-        metrics, evaluations = compose.evaluate_synthesis(x=predictions,
-                                                          y=source_gen,
-                                                          steps=source_steps,
-                                                          verbose=1)
+            metrics, evaluations = compose.evaluate_synthesis(x=predictions,
+                                                              y=source_gen,
+                                                              steps=source_steps,
+                                                              verbose=1)
 
-        compose.save_context(metrics=metrics, evaluation_images=evaluations)
+            compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
-        if metrics:
-            print('--------------------------------------------------')
-            print('metrics')
-            print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-            print('--------------------------------------------------')
+            if metrics:
+                print('--------------------------------------------------')
+                print('metrics')
+                print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+                print('--------------------------------------------------')
