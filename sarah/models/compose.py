@@ -375,7 +375,6 @@ class Compose():
                             beam_width=32,
                             ctc_decode=True,
                             token_decode=True,
-                            corrections=False,
                             verbose=1):
         """
         Make predictions on test data with CTC decoding and spelling correction.
@@ -394,8 +393,6 @@ class Compose():
             Perform CTC decoding on predictions.
         token_decode : bool, optional
             Decode tokens during CTC decoding.
-        corrections : str, optional
-            Peform corrections using spelling model.
         verbose : int, optional
             Verbosity level.
 
@@ -420,12 +417,33 @@ class Compose():
                                                                 tokenizer=tokenizer,
                                                                 verbose=verbose)
 
-            if token_decode and corrections and self.spelling_model:
-                predictions = self.spelling_model.predict(x=predictions,
-                                                          steps=steps,
-                                                          verbose=verbose)
-
         return predictions, probabilities
+
+    def predict_spelling(self, x, steps, verbose=1):
+        """
+        Make predictions with the spelling correction model.
+
+        Parameters
+        ----------
+        x : Dataset generator
+            Data for predictions.
+        steps : int
+            Number of steps for prediction.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        np.ndarray
+            Predictions from the spelling correction model.
+        """
+
+        if x is None:
+            return None
+
+        predictions = self.spelling_model.predict(x=x, steps=steps, verbose=verbose)
+
+        return predictions
 
     def predict_synthesis(self, x, steps, verbose=1):
         """
@@ -512,12 +530,42 @@ class Compose():
         if y is None:
             return None, None
 
-        metrics, evaluations = self.model.image_evaluator(x=x,
-                                                          y=y,
-                                                          steps=steps,
-                                                          verbose=verbose)
+        metrics, evaluations = self.model.image_evaluator(x=x, y=y, steps=steps, verbose=verbose)
 
         return metrics, evaluations
+
+    def get_evaluations(self):
+        """
+        Retrieve data, predictions, and probabilities from evaluations JSON file.
+
+        Returns
+        -------
+        tuple
+            Data, predictions, and probabilities
+        """
+
+        data = {'test': []}
+        predictions, probabilities = [], []
+
+        run_context = self.get_run_info()
+        evaluations = os.path.join(run_context['artifact_path'], 'logs', 'evaluations.json')
+
+        if os.path.isfile(evaluations):
+            with open(evaluations, 'r') as file:
+                evals = json.load(file)
+
+            for x in evals:
+                data['test'].append({
+                    'writer': x['writer'],
+                    'image': x['image'],
+                    'bbox': [],
+                    'text': x['text'],
+                })
+
+                predictions.append([y['text'] for y in x['predictions']])
+                probabilities.append([y['probability'] for y in x['predictions']])
+
+        return data, predictions, probabilities
 
     def get_run_info(self, run_context=None, new_context=False):
         """
@@ -660,11 +708,11 @@ class Compose():
             log_content('augmentor', augmentor)
             log_content('model', model)
 
-            evaluation_label = f"{prefix or ''}_evaluations_{suffix or ''}".strip('_')
+            evaluation_label = f"evaluations_{suffix or ''}".strip('_')
             log_content(evaluation_label, evaluations)
             log_images(evaluation_label, evaluation_images)
 
-            metric_label = f"{prefix or ''}_metrics_{suffix or ''}".strip('_')
+            metric_label = f"metrics_{prefix or ''}_{suffix or ''}".strip('_')
             log_content(metric_label, metrics)
             log_metric(metric_label, metrics)
 
