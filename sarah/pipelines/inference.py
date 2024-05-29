@@ -25,14 +25,14 @@ def inference(args):
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
-        return
+        exit(1)
 
     data = {
         'test': [{
+            'writer': '1',
             'image': args.image,
             'bbox': args.bbox,
             'text': args.text,
-            'writer': '1',
         }],
     }
 
@@ -56,58 +56,50 @@ def inference(args):
 
     compose.compile(learning_rate=args.learning_rate, run_context=run_context)
 
-    os.makedirs(args.inference_output_path, exist_ok=True)
-    basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+    infer_gen, infer_steps = dataset.get_generator(data_partition='test',
+                                                   batch_size=args.batch_size)
 
     if args.recognition:
-        prediction_configs = [{
-            'predict': True,
-            'corrections': False,
-        }, {
-            'predict': args.spelling,
-            'corrections': True,
-        }]
+        predictions, probabilities = compose.predict_recognition(x=infer_gen,
+                                                                 steps=infer_steps,
+                                                                 top_paths=args.top_paths,
+                                                                 beam_width=args.beam_width,
+                                                                 ctc_decode=True,
+                                                                 token_decode=True,
+                                                                 verbose=1)
 
-        for config in prediction_configs:
-            if not config['predict']:
-                continue
+        if args.spelling:
+            corrections = compose.predict_spelling(x=predictions, steps=infer_steps, verbose=1)
 
-            infer_gen, infer_steps = dataset.get_generator(data_partition='test',
-                                                           batch_size=args.batch_size)
+        inferences = [
+            {
+                'top_path': y+1,
+                'probability': probabilities[i][y],
+                'prediction': predictions[i][y],
+                'correction': corrections[i][y] if args.spelling else ''
+            }
+            for i in range(len(predictions))
+            for y in range(len(predictions[i]))
+        ]
 
-            predictions, probabilities = compose.predict_recognition(x=infer_gen,
-                                                                     steps=infer_steps,
-                                                                     top_paths=args.top_paths,
-                                                                     beam_width=args.beam_width,
-                                                                     ctc_decode=True,
-                                                                     token_decode=True,
-                                                                     corrections=config['corrections'],
-                                                                     verbose=1)
+        inferences = json.dumps(inferences, indent=4, ensure_ascii=False)
+        print(inferences)
 
-            content = []
-            for x, p in zip(predictions, probabilities):
-                for i in range(len(x)):
-                    content.append({
-                        'top_path': i+1,
-                        'probability': p[i],
-                        'prediction': x[i],
-                    })
+        basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+        filepath = os.path.join(args.inference_output_path, f"{basename}.json")
+        os.makedirs(args.inference_output_path, exist_ok=True)
 
-            content = json.dumps(content, indent=4, ensure_ascii=False)
-            print(content)
-
-            filepath = os.path.join(args.inference_output_path, f"{basename}.json")
-            with open(filepath, 'w') as f:
-                f.write(content)
+        with open(filepath, 'w') as f:
+            f.write(inferences)
 
     elif args.synthesis:
-        infer_gen, infer_steps = dataset.get_generator(data_partition='test',
-                                                       batch_size=args.batch_size)
+        predictions = compose.predict_synthesis(x=infer_gen,
+                                                steps=infer_steps,
+                                                verbose=1)
 
-        predictions = compose.predict_synthesis(x=infer_gen, steps=infer_steps, verbose=1)
-
-        style = 'guided_style' if args.image else 'random_style'
-        filepath = f"{basename}_{style}".strip('_')
+        basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+        filepath = f"{basename}_{'guided_style' if args.image else 'random_style'}".strip('_')
+        os.makedirs(args.inference_output_path, exist_ok=True)
 
         for i, image in enumerate(predictions):
             generated_filepath = os.path.join(args.inference_output_path, f"{filepath}.png")
