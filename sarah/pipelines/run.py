@@ -131,16 +131,17 @@ def run(args):
                 print('--------------------------------------------------')
 
         if args.spelling:
-            data, predictions, probabilities = compose.get_evaluations()
+            if not args.test:
+                data, predictions, probabilities = compose.get_evaluations()
+                dataset = Dataset(data=data)
 
-            dt_test = Dataset(data=data)
-            source_gen, source_steps = dt_test.get_generator(data_partition='test',
-                                                             batch_size=args.batch_size,
-                                                             batch_encoded=False)
+                source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                                 batch_size=args.batch_size,
+                                                                 batch_encoded=False)
 
-            predictions = compose.predict_spelling(x=predictions, steps=source_steps, verbose=1)
+            corrections = compose.predict_spelling(x=predictions, steps=source_steps, verbose=1)
 
-            metrics, evaluations = compose.evaluate_recognition(x=predictions,
+            metrics, evaluations = compose.evaluate_recognition(x=corrections,
                                                                 y=source_gen,
                                                                 steps=source_steps,
                                                                 probabilities=probabilities,
