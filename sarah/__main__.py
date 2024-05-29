@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
-    parser.add_argument('--inference-output-path', default='outputs', help='Inference output path')
+    parser.add_argument('--inference-output-path', default='.', help='Inference output path')
     parser.add_argument('--image', default=None, help='Image path for recognition')
     parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box (x, y, w, h)')
     parser.add_argument('--text', default=None, help='Text for synthesis')
