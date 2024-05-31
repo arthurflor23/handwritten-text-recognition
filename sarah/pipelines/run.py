@@ -100,7 +100,7 @@ def run(args):
                     verbose=1)
 
     if args.recognition:
-        if args.test:
+        if args.training or args.test:
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
@@ -156,7 +156,7 @@ def run(args):
                 print('--------------------------------------------------')
 
     elif args.synthesis:
-        if args.test:
+        if args.training or args.test:
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
