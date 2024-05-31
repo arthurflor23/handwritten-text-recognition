@@ -102,5 +102,5 @@ def inference(args):
         os.makedirs(args.inference_output_path, exist_ok=True)
 
         for i, image in enumerate(predictions):
-            generated_filepath = os.path.join(args.inference_output_path, f"{filepath}.png")
+            generated_filepath = os.path.join(args.inference_output_path, f"{filepath}_{i+1}.png")
             cv2.imwrite(generated_filepath, image)
