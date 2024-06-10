@@ -131,13 +131,12 @@ def run(args):
                 print('--------------------------------------------------')
 
         if args.spelling:
-            if not args.test:
-                data, predictions, probabilities = compose.get_evaluations()
-                dataset = Dataset(data=data)
+            data, predictions, probabilities = compose.get_evaluations()
+            dataset = Dataset(data=data)
 
-                source_gen, source_steps = dataset.get_generator(data_partition='test',
-                                                                 batch_size=args.batch_size,
-                                                                 batch_encoded=False)
+            source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_encoded=False)
 
             corrections = compose.predict_spelling(x=predictions, steps=source_steps, verbose=1)
 
