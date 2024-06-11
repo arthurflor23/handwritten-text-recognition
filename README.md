@@ -57,7 +57,7 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 1. [Bentham](https://drive.google.com/file/d/1do3tS7vd-QaUxkeBwPE4Phia99-J_AUq/view?usp=sharing) [[paper]](https://doi.org/10.1109/DAS.2014.23)
 
-2. [Bressay](https://drive.google.com/file/d/1oQV5Nr6QnTm4E4ARXTWSSoWx1SDrnHVA/view?usp=sharing) [[paper]]()
+2. [BRESSAY](https://tc11.cvc.uab.es/datasets/BRESSAY_1) [[paper]](https://icdar2024.net/)
 
 3. [CVL-Database](https://drive.google.com/file/d/1H0M2lHdxUCLs7eKjk2q7fNBYU0-PkLDo/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
 
@@ -220,16 +220,20 @@ You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Th
 
 If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may be interested in the following references:
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition.](https://doi.org/10.1109/SIBGRAPI51738.2020.00016) 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition](https://doi.org/10.1109/SIBGRAPI51738.2020.00016). 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models.](https://doi.org/10.1145/3395027.3419603) Proceedings of the ACM Symposium on Document Engineering, 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models](https://doi.org/10.1145/3395027.3419603). Proceedings of the ACM Symposium on Document Engineering, 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H. [HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios.](https://doi.org/10.1109/ACCESS.2020.3039003) IEEE Access, 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H. [HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios](https://doi.org/10.1109/ACCESS.2020.3039003). IEEE Access, 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems.](https://doi.org/10.3390/app10217711) Applied Sciences, 2020.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems](https://doi.org/10.3390/app10217711). Applied Sciences, 2020.
 
--   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios.](https://doi.org/10.1016/j.patrec.2022.04.009) Pattern Recognition Letters, 2022.
+-   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios](https://doi.org/10.1016/j.patrec.2022.04.009). Pattern Recognition Letters, 2022.
 
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Moura, Gabriel C. D. and Toselli, Alejandro H. [Data Augmentation for Offline Handwritten Text Recognition: A Systematic Literature Review](https://doi.org/10.1007/s42979-023-02583-6). SN Computer Science, 2024.
+
+-   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [BRESSAY: A Brazilian Portuguese Dataset for Offline Handwritten Text Recognition](https://icdar2024.net/). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
+
+-   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://icdar2024.net/). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
 These references provide additional insights and background information related to Handwritten Text Recognition and can be a valuable resource for further exploration. If any of these papers have been beneficial to your research or project, it would be greatly appreciated if you could consider citing them.
