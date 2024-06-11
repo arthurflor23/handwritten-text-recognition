@@ -342,7 +342,6 @@ class Compose():
 
             mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
             mlflow.set_tags({'compose.recognition': str(self.recognition)})
-            mlflow.set_tags({'compose.spelling': str(self.spelling)})
 
             with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
                 pickle.dump(self.tokenizer, f)
@@ -377,7 +376,7 @@ class Compose():
                             token_decode=True,
                             verbose=1):
         """
-        Make predictions on test data with CTC decoding and spelling correction.
+        Make predictions on test data with CTC decoding.
 
         Parameters
         ----------
