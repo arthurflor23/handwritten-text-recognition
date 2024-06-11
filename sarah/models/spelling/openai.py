@@ -30,9 +30,9 @@ class SpellingModel():
         self.model = 'gpt-3.5-turbo-1106'
         self.max_tokens = 8192
 
-        self.instruction = ('Correct only evident spelling mistakes in texts inside tags while keeping'
-                            ' the number of tags the same. Do not add extra text or alter correct texts.'
-                            ' Retain the text\'s unique style and historical character.')
+        self.instruction = ('Correct only obvious spelling mistakes in words within tags, while keep'
+                            ' the number of tags the same. Do not add extra text or change correct texts.'
+                            ' Maintain the unique and historical style of the text.')
 
         openai.api_key = self._get_api_key()
 
@@ -166,7 +166,10 @@ class SpellingModel():
             try:
                 response = openai.chat.completions.create(model=self.model,
                                                           messages=messages,
-                                                          temperature=0)
+                                                          temperature=0,
+                                                          top_p=1.0,
+                                                          n=1,
+                                                          seed=0)
 
                 return response.choices[0].message.content.strip().split('\n')
 
