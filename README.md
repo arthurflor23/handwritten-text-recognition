@@ -57,7 +57,7 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 1. [Bentham](https://drive.google.com/file/d/1do3tS7vd-QaUxkeBwPE4Phia99-J_AUq/view?usp=sharing) [[paper]](https://doi.org/10.1109/DAS.2014.23)
 
-2. [BRESSAY](https://tc11.cvc.uab.es/datasets/BRESSAY_1) [[paper]](https://icdar2024.net/)
+2. [BRESSAY](https://zenodo.org/records/11637681) [[paper]](https://icdar2024.net/)
 
 3. [CVL-Database](https://drive.google.com/file/d/1H0M2lHdxUCLs7eKjk2q7fNBYU0-PkLDo/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
 
