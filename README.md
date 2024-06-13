@@ -15,7 +15,7 @@ Data partitioning (train, validation, test) was performed following the methodol
 
 a. [Bentham](http://www.transcriptorium.eu/~tsdata/)
 
-b. [BRESSAY](https://drive.google.com/file/d/1ZKdyVU_k1tnLd3Db1w-vaJnrKuR7WVKe/view)
+b. [BRESSAY](https://zenodo.org/records/11637681)
 
 c. [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
 
@@ -27,25 +27,25 @@ f. [Washington](https://fki.tic.heia-fr.ch/databases/washington-database)
 
 ## Requirements
 
-- Python 3.x
-- OpenCV 4.x
-- editdistance
-- TensorFlow 2.x
+-   Python 3.x
+-   OpenCV 4.x
+-   editdistance
+-   TensorFlow 2.x
 
 ## Command line arguments
 
-- `--source`: dataset/model name (bentham, iam, rimes, saintgall, washington)
-- `--arch`: network to be used (puigcerver, bluche, flor)
-- `--transform`: transform dataset to the HDF5 file
-- `--cv2`: visualize sample from transformed dataset
-- `--kaldi_assets`: save all assets for use with kaldi
-- `--image`: predict a single image with the source parameter
-- `--train`: train model using the source argument
-- `--test`: evaluate and predict model using the source argument
-- `--norm_accentuation`: discard accentuation marks in the evaluation
-- `--norm_punctuation`: discard punctuation marks in the evaluation
-- `--epochs`: number of epochs
-- `--batch_size`: number of the size of each batch
+-   `--source`: dataset/model name (bentham, iam, rimes, saintgall, washington)
+-   `--arch`: network to be used (puigcerver, bluche, flor)
+-   `--transform`: transform dataset to the HDF5 file
+-   `--cv2`: visualize sample from transformed dataset
+-   `--kaldi_assets`: save all assets for use with kaldi
+-   `--image`: predict a single image with the source parameter
+-   `--train`: train model using the source argument
+-   `--test`: evaluate and predict model using the source argument
+-   `--norm_accentuation`: discard accentuation marks in the evaluation
+-   `--norm_punctuation`: discard punctuation marks in the evaluation
+-   `--epochs`: number of epochs
+-   `--batch_size`: number of the size of each batch
 
 ## Tutorial (Google Colab/Drive)
 
@@ -76,3 +76,5 @@ If you are interested in learning more about the project or the subject of Handw
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios.](https://doi.org/10.1016/j.patrec.2022.04.009) Pattern Recognition Letters, 2022.
 
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Moura, Gabriel C. D. and Toselli, Alejandro H. [Data Augmentation for Offline Handwritten Text Recognition: A Systematic Literature Review](https://doi.org/10.1007/s42979-023-02583-6). SN Computer Science, 2024.
+
+-   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [BRESSAY: A Brazilian Portuguese Dataset for Offline Handwritten Text Recognition](https://icdar2024.net/). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
