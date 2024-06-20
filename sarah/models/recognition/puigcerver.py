@@ -88,15 +88,15 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
 
-        encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(encoder)
-
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
+        decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
+
         decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder_input)
+            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
