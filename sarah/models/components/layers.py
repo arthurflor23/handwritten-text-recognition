@@ -1,6 +1,255 @@
 import tensorflow as tf
 
 
+class BatchRenormalization(tf.keras.layers.Layer):
+    """
+    Batch Renormalization layer for TensorFlow models.
+    This layer normalizes the input data and applies renormalization during training.
+
+    References
+    ----------
+    Batch Renormalization: Towards Reducing Minibatch Dependence in Batch-Normalized Models
+        https://arxiv.org/abs/1702.03275
+    """
+
+    def __init__(self,
+                 axis=-1,
+                 momentum=0.99,
+                 epsilon=1e-3,
+                 r_max_value=3.0,
+                 d_max_value=5.0,
+                 t_delta=1e-3,
+                 center=True,
+                 scale=True,
+                 beta_initializer='zeros',
+                 gamma_initializer='ones',
+                 moving_mean_initializer='zeros',
+                 moving_variance_initializer='ones',
+                 beta_regularizer=None,
+                 gamma_regularizer=None,
+                 beta_constraint=None,
+                 gamma_constraint=None,
+                 **kwargs):
+        """
+        Initializes the Batch Renormalization layer.
+
+        Parameters
+        ----------
+        axis : int, optional
+            The axis that should be normalized.
+        momentum : float, optional
+            Momentum for the moving average of mean and variance.
+        epsilon : float, optional
+            Small constant to avoid division by zero.
+        r_max_value : float, optional
+            Maximum value for r.
+        d_max_value : float, optional
+            Maximum value for d.
+        t_delta : float, optional
+            Incremental delta for t.
+        center : bool, optional
+            If True, add offset of beta to normalized tensor.
+        scale : bool, optional
+            If True, multiply by gamma.
+        beta_initializer : str or Initializer, optional
+            Initializer for the beta weight.
+        gamma_initializer : str or Initializer, optional
+            Initializer for the gamma weight.
+        moving_mean_initializer : str or Initializer, optional
+            Initializer for the moving mean.
+        moving_variance_initializer : str or Initializer, optional
+            Initializer for the moving variance.
+        beta_regularizer : Regularizer, optional
+            Regularizer for the beta weight.
+        gamma_regularizer : Regularizer, optional
+            Regularizer for the gamma weight.
+        beta_constraint : Constraint, optional
+            Constraint for the beta weight.
+        gamma_constraint : Constraint, optional
+            Constraint for the gamma weight.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.axis = axis
+        self.momentum = momentum
+        self.epsilon = epsilon
+        self.r_max_value = r_max_value
+        self.d_max_value = d_max_value
+        self.t_delta = t_delta
+        self.center = center
+        self.scale = scale
+        self.beta_initializer = tf.keras.initializers.get(beta_initializer)
+        self.gamma_initializer = tf.keras.initializers.get(gamma_initializer)
+        self.moving_mean_initializer = tf.keras.initializers.get(moving_mean_initializer)
+        self.moving_variance_initializer = tf.keras.initializers.get(moving_variance_initializer)
+        self.beta_regularizer = tf.keras.regularizers.get(beta_regularizer)
+        self.gamma_regularizer = tf.keras.regularizers.get(gamma_regularizer)
+        self.beta_constraint = tf.keras.constraints.get(beta_constraint)
+        self.gamma_constraint = tf.keras.constraints.get(gamma_constraint)
+
+    def get_config(self):
+        """
+        Return the config of the layer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'axis': self.axis,
+            'momentum': self.momentum,
+            'epsilon': self.epsilon,
+            'r_max_value': self.r_max_value,
+            'd_max_value': self.d_max_value,
+            't_delta': self.t_delta,
+            'center': self.center,
+            'scale': self.scale,
+            'beta_initializer': tf.keras.initializers.serialize(self.beta_initializer),
+            'gamma_initializer': tf.keras.initializers.serialize(self.gamma_initializer),
+            'moving_mean_initializer': tf.keras.initializers.serialize(self.moving_mean_initializer),
+            'moving_variance_initializer': tf.keras.initializers.serialize(self.moving_variance_initializer),
+            'beta_regularizer': tf.keras.regularizers.serialize(self.beta_regularizer),
+            'gamma_regularizer': tf.keras.regularizers.serialize(self.gamma_regularizer),
+            'beta_constraint': tf.keras.constraints.serialize(self.beta_constraint),
+            'gamma_constraint': tf.keras.constraints.serialize(self.gamma_constraint),
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input to the layer.
+        """
+
+        dim = input_shape[self.axis]
+        shape = (dim,)
+
+        self.gamma = None
+        self.beta = None
+
+        if self.scale:
+            self.gamma = self.add_weight(shape=shape,
+                                         initializer=self.gamma_initializer,
+                                         regularizer=self.gamma_regularizer,
+                                         constraint=self.gamma_constraint,
+                                         name='gamma')
+
+        if self.center:
+            self.beta = self.add_weight(shape=shape,
+                                        initializer=self.beta_initializer,
+                                        regularizer=self.beta_regularizer,
+                                        constraint=self.beta_constraint,
+                                        name='beta')
+
+        self.moving_mean = self.add_weight(shape=shape,
+                                           initializer=self.moving_mean_initializer,
+                                           name='moving_mean',
+                                           trainable=False)
+
+        self.moving_variance = self.add_weight(shape=shape,
+                                               initializer=self.moving_variance_initializer,
+                                               name='moving_variance',
+                                               trainable=False)
+
+        self.r_max = self.add_weight(shape=(),
+                                     initializer=tf.keras.initializers.Constant(1),
+                                     name='r_max',
+                                     trainable=False)
+
+        self.d_max = self.add_weight(shape=(),
+                                     initializer=tf.keras.initializers.Constant(0),
+                                     name='d_max',
+                                     trainable=False)
+
+        self.t = self.add_weight(shape=(),
+                                 initializer=tf.keras.initializers.Constant(0),
+                                 name='t',
+                                 trainable=False)
+
+        self.t_delta_tensor = tf.constant(self.t_delta)
+        self.built = True
+
+    def call(self, inputs, training=None):
+        """
+        Call the layer with the specified inputs.
+
+        Parameters
+        ----------
+        inputs : tensor
+            The inputs tensors.
+        training : bool, optional
+            Whether the layer should behave in training mode or in inference mode.
+
+        Returns
+        -------
+        tf.Tensor
+            The normalized output tensor.
+        """
+
+        input_shape = tf.shape(inputs)
+        ndim = len(inputs.shape)
+
+        reduction_axes = list(range(ndim))
+        del reduction_axes[self.axis]
+
+        mean_batch, var_batch = tf.nn.moments(inputs, reduction_axes, keepdims=False)
+        std_batch = tf.sqrt(var_batch + self.epsilon)
+
+        r = std_batch / tf.sqrt(self.moving_variance + self.epsilon)
+        r = tf.clip_by_value(r, 1 / self.r_max, self.r_max)
+
+        d = (mean_batch - self.moving_mean) / tf.sqrt(self.moving_variance + self.epsilon)
+        d = tf.clip_by_value(d, -self.d_max, self.d_max)
+
+        if sorted(reduction_axes) == list(range(ndim - 1)):
+            x_normed_batch = (inputs - mean_batch) / std_batch
+            x_normed = (x_normed_batch * r + d) * self.gamma + self.beta
+        else:
+            broadcast_shape = [1] * ndim
+            broadcast_shape[self.axis] = input_shape[self.axis]
+
+            x_normed_batch = (inputs - tf.reshape(mean_batch, broadcast_shape)) / tf.reshape(std_batch, broadcast_shape)
+            x_normed = (x_normed_batch * tf.reshape(r, broadcast_shape) + tf.reshape(d, broadcast_shape)) * \
+                tf.reshape(self.gamma, broadcast_shape) + tf.reshape(self.beta, broadcast_shape)
+
+        if training:
+            mean_update = self.moving_mean.assign(
+                self.moving_mean * self.momentum + mean_batch * (1 - self.momentum))
+
+            variance_update = self.moving_variance.assign(
+                self.moving_variance * self.momentum + std_batch**2 * (1 - self.momentum))
+
+            r_val = self.r_max_value / (1 + (self.r_max_value - 1) * tf.exp(-self.t))
+            d_val = self.d_max_value / (1 + ((self.d_max_value / 1e-3) - 1) * tf.exp(-(2 * self.t)))
+
+            updates = [mean_update, variance_update, self.r_max.assign(r_val),
+                       self.d_max.assign(d_val), self.t.assign_add(self.t_delta_tensor)]
+
+            self.add_update(updates)
+            return x_normed
+        else:
+            x_normed_running = tf.nn.batch_normalization(x=inputs,
+                                                         mean=self.moving_mean,
+                                                         variance=self.moving_variance,
+                                                         offset=self.beta,
+                                                         scale=self.gamma,
+                                                         variance_epsilon=self.epsilon)
+
+            return x_normed_running
+
+
 class ConditionalBatchNormalization(tf.keras.layers.Layer):
     """
     Conditional Batch Normalization for TensorFlow models.
@@ -60,12 +309,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Create the layer's weights.
+        Initializes layer weights.
 
         Parameters
         ----------
-        input_shape : list of TensorShape
-            Shape of the input tensor.
+        input_shape : tuple
+            Shape of the input to the layer.
         """
 
         self.num_channels = input_shape[0][-1]
