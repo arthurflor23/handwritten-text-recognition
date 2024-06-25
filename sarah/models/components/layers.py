@@ -334,6 +334,185 @@ class GatedConv2D(tf.keras.layers.Layer):
         return outputs
 
 
+class MaskPadding(tf.keras.layers.Layer):
+    """
+    Layer to mask padding in tensors.
+    """
+
+    def __init__(self, mask_value='min', pad_value='max', epsilon=1e-7, **kwargs):
+        """
+        Parameters
+        ----------
+        mask_value : float, int, or str, optional
+            The value for masking input data.
+        pad_value : float, int, or str, optional
+            Value used for identify padding.
+        epsilon : float, optional
+            Small value for numerical stability.
+        **kwargs : dict
+            Additional keyword arguments for Layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.mask_value = mask_value
+        self.pad_value = pad_value
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the config of the layer.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration of the layer.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'mask_value': self.mask_value,
+            'pad_value': self.pad_value,
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer shapes.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input to the layer.
+        """
+
+        super().build(input_shape)
+
+        self.has_target_input = isinstance(input_shape, list)
+
+        if self.has_target_input:
+            self.origin_shape = input_shape[0]
+            self.target_shape = input_shape[1]
+        else:
+            self.origin_shape = input_shape
+            self.target_shape = input_shape
+
+    def call(self, inputs):
+        """
+        Applies masking to inputs.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input and target data tensors.
+
+        Returns
+        -------
+        tf.Tensor
+            Target data with applied mask.
+        """
+
+        if self.has_target_input:
+            input_data, target_data = inputs
+        else:
+            input_data = target_data = inputs
+
+        mask_value = self._resolve_value(self.mask_value, input_data)
+        pad_value = self._resolve_value(self.pad_value, input_data)
+
+        v_mask = self._generate_mask(input_data, pad_value, transpose=False)
+        h_mask = self._generate_mask(input_data, pad_value, transpose=True)
+
+        mask = tf.cast(tf.logical_and(v_mask, h_mask), dtype=target_data.dtype)
+
+        output = tf.where(tf.equal(mask, 0), mask_value, target_data)
+        output = tf.stop_gradient(output)
+
+        return output
+
+    def _resolve_value(self, value, tensor):
+        """
+        Resolve a value that can be 'min', 'max' or a numeric value.
+
+        Parameters
+        ----------
+        value : str, float or int
+            The value to resolve.
+        tensor : tf.Tensor
+            The tensor to apply min/max operations on.
+
+        Returns
+        -------
+        resolved_value : float or int
+            The resolved numeric value.
+        """
+
+        if value == 'min':
+            return tf.reduce_min(tensor)
+
+        elif value == 'max':
+            return tf.reduce_max(tensor)
+
+        return tf.cast(value, tensor.dtype)
+
+    def _generate_mask(self, input_data, pad_value, transpose=False):
+        """
+        Generate a mask for the input data based on the padding value.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            The input tensor.
+        pad_value : float, or int,
+            The padding value to identify in the input data.
+        transpose : bool, optional
+            Whether to transpose the input and target data.
+
+        Returns
+        -------
+        tf.Tensor
+            Boolean mask tensor.
+        """
+
+        origin_shape = self.origin_shape
+        target_shape = self.target_shape
+
+        if transpose:
+            origin_shape = origin_shape[::-1]
+            target_shape = target_shape[::-1]
+
+            perm = [0, 2, 1] + list(range(3, len(input_data.shape)))
+            input_data = tf.transpose(input_data, perm=perm)
+
+        reduce_axis = list(range(2, len(self.origin_shape)))
+        input_mean = tf.reduce_mean(input_data, axis=reduce_axis)
+
+        data_reversed = tf.reverse(input_mean, axis=[1])
+        padding_mask = tf.equal(data_reversed, pad_value)
+
+        lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
+        origin_lens = tf.where(tf.equal(lengths, 0), origin_shape[0], origin_shape[0] - lengths)
+
+        scale = tf.math.divide(tf.cast(origin_lens, tf.float32), (origin_shape[0] + self.epsilon))
+        target_lens = tf.math.multiply(tf.cast(target_shape[0], tf.float32), scale)
+
+        mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=target_shape[0])
+
+        for _ in range(len(reduce_axis)):
+            mask = tf.expand_dims(mask, axis=-1)
+
+        multiples = [1, 1, target_shape[1]] + list(range(3, len(self.target_shape)))
+        mask = tf.tile(mask, multiples=multiples)
+
+        if transpose:
+            mask = tf.transpose(mask, perm=perm)
+
+        return mask
+
+
 class OctConv2D(tf.keras.layers.Layer):
     """
     Implements octave convolutional layer for TensorFlow.
