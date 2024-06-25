@@ -477,18 +477,15 @@ class MaskPadding(tf.keras.layers.Layer):
             Boolean mask tensor.
         """
 
-        origin_shape = self.origin_shape
-        target_shape = self.target_shape
+        origin_shape = self.origin_shape[1:-1]
+        target_shape = self.target_shape[1:-1]
 
         if transpose:
             origin_shape = origin_shape[::-1]
             target_shape = target_shape[::-1]
+            input_data = tf.transpose(input_data, perm=[0, 2, 1, 3])
 
-            perm = [0, 2, 1] + list(range(3, len(input_data.shape)))
-            input_data = tf.transpose(input_data, perm=perm)
-
-        reduce_axis = list(range(2, len(self.origin_shape)))
-        input_mean = tf.reduce_mean(input_data, axis=reduce_axis)
+        input_mean = tf.reduce_mean(input_data, axis=[2, 3])
 
         data_reversed = tf.reverse(input_mean, axis=[1])
         padding_mask = tf.equal(data_reversed, pad_value)
@@ -500,15 +497,12 @@ class MaskPadding(tf.keras.layers.Layer):
         target_lens = tf.math.multiply(tf.cast(target_shape[0], tf.float32), scale)
 
         mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=target_shape[0])
+        mask = tf.expand_dims(tf.expand_dims(mask, axis=-1), axis=-1)
 
-        for _ in range(len(reduce_axis)):
-            mask = tf.expand_dims(mask, axis=-1)
-
-        multiples = [1, 1, target_shape[1]] + list(range(3, len(self.target_shape)))
-        mask = tf.tile(mask, multiples=multiples)
+        mask = tf.tile(mask, multiples=[1, 1, target_shape[1], 1])
 
         if transpose:
-            mask = tf.transpose(mask, perm=perm)
+            mask = tf.transpose(mask, perm=[0, 2, 1, 3])
 
         return mask
 
