@@ -471,8 +471,8 @@ class Dataset():
                         aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
 
                     if batch_padding:
-                        image_data = utils.batch_padding(image_data, self.image_shape[1::-1], 255, np.uint8)
-                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape[1::-1], 255, np.uint8)
+                        image_data = utils.batch_padding(image_data, self.image_shape[1::-1], 0, np.uint8)
+                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape[1::-1], 0, np.uint8)
 
                         text_data = utils.batch_padding(text_data, self.tokenizer.lexical_shape, 0, np.int64)
                         aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
