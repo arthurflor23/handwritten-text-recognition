@@ -219,7 +219,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 dualmode=False,
+                 mode=None,
                  **kwargs):
         """
         Initializes the gated convolutional layer.
@@ -240,8 +240,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        dualmode : bool, optional
-            Whether to use dual layers on gating.
+        mode : str, optional
+            Whether to use None, 'dual' or 'residual' gating.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -255,7 +255,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.dualmode = dualmode
+        self.mode = mode
 
     def get_config(self):
         """
@@ -277,7 +277,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'dualmode': self.dualmode,
+            'mode': self.mode,
         })
 
         return config
@@ -297,29 +297,19 @@ class GatedConv2D(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters,
+        self.f_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode else 1),
                                              kernel_size=self.kernel_size,
                                              strides=self.strides,
                                              padding=self.padding,
-                                             activation='sigmoid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint)
 
-        if self.dualmode:
-            self.l_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                                 kernel_size=self.kernel_size,
-                                                 strides=self.strides,
-                                                 padding=self.padding,
-                                                 activation='linear',
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint)
-
-        self.gamma = self.add_weight(name=f"{self.name}_gamma",
-                                     shape=(1,),
-                                     initializer='zeros',
-                                     trainable=True)
+        if self.mode == 'residual':
+            self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                         shape=(1,),
+                                         initializer='ones',
+                                         trainable=True)
 
     def call(self, inputs):
         """
@@ -336,15 +326,24 @@ class GatedConv2D(tf.keras.layers.Layer):
             Tensor resulting from the gated convolution.
         """
 
-        if self.dualmode:
-            linear = self.l_conv(inputs)
-            sigmoid = self.s_conv(inputs)
+        f = self.f_conv(inputs)
+
+        if self.mode == 'dual':
+            f1, f2 = tf.split(f, 2, axis=-1)
+            linear = tf.keras.layers.Activation('linear')(f1)
+            sigmoid = tf.keras.layers.Activation('sigmoid')(f2)
             outputs = linear * sigmoid
+
+        elif self.mode == 'residual':
+            f1, f2 = tf.split(f, 2, axis=-1)
+            linear = tf.keras.layers.Activation('linear')(f1)
+            sigmoid = tf.keras.layers.Activation('sigmoid')(f2)
+            outputs = self.gamma * (linear * sigmoid) + inputs
         else:
-            sigmoid = self.s_conv(inputs)
+            sigmoid = tf.keras.layers.Activation('sigmoid')(f)
             outputs = inputs * sigmoid
 
-        return self.gamma * outputs + inputs
+        return outputs
 
 
 class OctConv2D(tf.keras.layers.Layer):
@@ -667,12 +666,16 @@ class SelfAttention(tf.keras.layers.Layer):
             self.filters = input_shape[-1]
 
         if len(input_shape) == 3:
-            pool_size = strides = 2 if input_shape[-2] > 1 else 1
+            self.divisor = 2 if input_shape[-2] > 1 else 1
+            pool_size = strides = 2
+
             conv_layer = tf.keras.layers.Conv1D
             pooling_layer = tf.keras.layers.MaxPooling1D
 
         elif len(input_shape) == 4:
-            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
+            self.divisor = 2 if input_shape[-3] > 1 and input_shape[-2] > 1 else 1
+            pool_size = strides = (2, 2)
+
             conv_layer = tf.keras.layers.Conv2D
             pooling_layer = tf.keras.layers.MaxPooling2D
 
@@ -695,7 +698,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.h_conv = conv_layer(filters=self.filters // 2,
+        self.h_conv = conv_layer(filters=self.filters // self.divisor,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -703,22 +706,25 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.v_conv = conv_layer(filters=self.filters,
-                                 kernel_size=1,
-                                 padding='same',
-                                 kernel_initializer=self.kernel_initializer,
-                                 kernel_regularizer=self.kernel_regularizer,
-                                 kernel_constraint=self.kernel_constraint,
-                                 use_bias=False)
+        if self.divisor > 1:
+            self.o_conv = conv_layer(filters=self.filters,
+                                     kernel_size=1,
+                                     padding='same',
+                                     kernel_initializer=self.kernel_initializer,
+                                     kernel_regularizer=self.kernel_regularizer,
+                                     kernel_constraint=self.kernel_constraint,
+                                     use_bias=False)
 
-        self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
-        self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
+
+            if self.spectral_norm:
+                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
 
         if self.spectral_norm:
             self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv)
             self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv)
             self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv)
-            self.v_conv = tf.keras.layers.SpectralNormalization(self.v_conv)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
@@ -743,7 +749,9 @@ class SelfAttention(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(inputs))
 
         f = self.f_conv(inputs)
-        f = self.f_pooling(f)
+
+        if self.divisor > 1:
+            f = self.f_pooling(f)
 
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
@@ -754,13 +762,16 @@ class SelfAttention(tf.keras.layers.Layer):
         beta = tf.nn.softmax(s, axis=-1)
 
         h = self.h_conv(inputs)
-        h = self.h_pooling(h)
+
+        if self.divisor > 1:
+            h = self.h_pooling(h)
 
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
-        v = tf.matmul(beta, h)
-        v = tf.reshape(v, shape=[shape[0]] + shape[1:-1] + [shape[-1] // 2])
+        o = tf.matmul(beta, h)
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.divisor])
 
-        o = self.v_conv(v)
+        if self.divisor > 1:
+            o = self.o_conv(o)
 
         return self.gamma * o + inputs
