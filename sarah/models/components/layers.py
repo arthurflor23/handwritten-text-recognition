@@ -219,7 +219,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 dualgate=False,
+                 dualmode=False,
                  **kwargs):
         """
         Initializes the gated convolutional layer.
@@ -240,8 +240,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        dualgate : bool, optional
-            Whether to use full gating.
+        dualmode : bool, optional
+            Whether to use dual layers on gating.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -255,7 +255,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.dualgate = dualgate
+        self.dualmode = dualmode
 
     def get_config(self):
         """
@@ -277,7 +277,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'dualgate': self.dualgate,
+            'dualmode': self.dualmode,
         })
 
         return config
@@ -297,13 +297,29 @@ class GatedConv2D(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
-        self.conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.dualgate else 1),
-                                           kernel_size=self.kernel_size,
-                                           strides=self.strides,
-                                           padding=self.padding,
-                                           kernel_initializer=self.kernel_initializer,
-                                           kernel_regularizer=self.kernel_regularizer,
-                                           kernel_constraint=self.kernel_constraint)
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters,
+                                             kernel_size=self.kernel_size,
+                                             strides=self.strides,
+                                             padding=self.padding,
+                                             activation='sigmoid',
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint)
+
+        if self.dualmode:
+            self.l_conv = tf.keras.layers.Conv2D(filters=self.filters,
+                                                 kernel_size=self.kernel_size,
+                                                 strides=self.strides,
+                                                 padding=self.padding,
+                                                 activation='linear',
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint)
+
+        self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                     shape=(1,),
+                                     initializer='zeros',
+                                     trainable=True)
 
     def call(self, inputs):
         """
@@ -320,18 +336,15 @@ class GatedConv2D(tf.keras.layers.Layer):
             Tensor resulting from the gated convolution.
         """
 
-        conv = self.conv(inputs)
-
-        if self.dualgate:
-            linear, sigmoid = tf.split(conv, 2, axis=-1)
-            linear = tf.keras.layers.Activation('linear')(linear)
-            sigmoid = tf.keras.layers.Activation('sigmoid')(sigmoid)
+        if self.dualmode:
+            linear = self.l_conv(inputs)
+            sigmoid = self.s_conv(inputs)
             outputs = linear * sigmoid
         else:
-            conv = tf.keras.layers.Activation('sigmoid')(conv)
-            outputs = inputs * conv
+            sigmoid = self.s_conv(inputs)
+            outputs = inputs * sigmoid
 
-        return outputs
+        return self.gamma * outputs + inputs
 
 
 class OctConv2D(tf.keras.layers.Layer):
