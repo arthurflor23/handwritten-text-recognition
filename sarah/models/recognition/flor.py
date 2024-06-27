@@ -50,33 +50,33 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(dualgate=True)(encoder)
+        encoder = GatedConv2D(dualmode=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(dualgate=True)(encoder)
+        encoder = GatedConv2D(dualmode=True)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=(2, 4), strides=(2, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(dualgate=True)(encoder)
+        encoder = GatedConv2D(dualmode=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(dualgate=True)(encoder)
+        encoder = GatedConv2D(dualmode=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=(2, 4), strides=(1, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(dualgate=True)(encoder)
+        encoder = GatedConv2D(dualmode=True)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
