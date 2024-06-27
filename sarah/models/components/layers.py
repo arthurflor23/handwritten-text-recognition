@@ -588,7 +588,6 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  spectral_norm=False,
-                 max_pooling=False,
                  **kwargs):
         """
         Initialize the self-attention gan layer.
@@ -605,8 +604,6 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         spectral_norm : bool, optional
             Wheter apply spectral normalization or not.
-        max_pooling : bool, optional
-            Wheter apply max pooling or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -618,7 +615,6 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.spectral_norm = spectral_norm
-        self.max_pooling = 2 if max_pooling else 1
 
     def get_config(self):
         """
@@ -638,7 +634,6 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'spectral_norm': self.spectral_norm,
-            'max_pooling': self.max_pooling,
         })
 
         return config
@@ -671,21 +666,6 @@ class SelfAttention(tf.keras.layers.Layer):
         else:
             raise ValueError('Unsupported input shape: must be 1D or 2D')
 
-        if self.max_pooling > 1:
-            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
-            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
-
-            self.o_conv = conv_layer(filters=self.filters,
-                                     kernel_size=1,
-                                     padding='same',
-                                     kernel_initializer=self.kernel_initializer,
-                                     kernel_regularizer=self.kernel_regularizer,
-                                     kernel_constraint=self.kernel_constraint,
-                                     use_bias=False)
-
-            if self.spectral_norm:
-                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
-
         self.f_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
@@ -702,7 +682,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.h_conv = conv_layer(filters=self.filters // self.max_pooling,
+        self.h_conv = conv_layer(filters=self.filters // 2,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -710,23 +690,35 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
+        self.v_conv = conv_layer(filters=self.filters,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=False)
+
+        self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
+        self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides, padding='valid')
+
         if self.spectral_norm:
             self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv)
             self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv)
             self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv)
+            self.v_conv = tf.keras.layers.SpectralNormalization(self.v_conv)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
                                      initializer='zeros',
                                      trainable=True)
 
-    def call(self, x):
+    def call(self, inputs):
         """
         Processes the input tensors through the layer.
 
         Parameters
         ----------
-        x : tf.Tensor
+        inputs : tf.Tensor
             Input tensor to the layer.
 
         Returns
@@ -735,32 +727,27 @@ class SelfAttention(tf.keras.layers.Layer):
             Output tensor after applying self-attention.
         """
 
-        shape = tf.unstack(tf.shape(x))
+        shape = tf.unstack(tf.shape(inputs))
 
-        f = self.f_conv(x)
-
-        if self.max_pooling > 1:
-            f = self.f_pooling(f)
+        f = self.f_conv(inputs)
+        f = self.f_pooling(f)
 
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
-        g = self.g_conv(x)
+        g = self.g_conv(inputs)
         g = tf.reshape(g, shape=(shape[0], -1, g.shape[-1]))
 
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
-        h = self.h_conv(x)
-
-        if self.max_pooling > 1:
-            h = self.h_pooling(h)
+        h = self.h_conv(inputs)
+        h = self.h_pooling(h)
 
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
-        o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.max_pooling])
+        v = tf.matmul(beta, h)
+        v = tf.reshape(v, shape=[shape[0]] + shape[1:-1] + [shape[-1] // 2])
 
-        if self.max_pooling > 1:
-            o = self.o_conv(o)
+        o = self.v_conv(v)
 
-        return self.gamma * o + x
+        return self.gamma * o + inputs
