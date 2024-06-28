@@ -16,6 +16,7 @@ def check(args):
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
                       image_shape=args.image_shape,
+                      pad_value=args.pad_value,
                       char_width=args.char_width,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
@@ -39,6 +40,7 @@ def check(args):
                           salt_and_pepper=args.salt_and_pepper,
                           gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
+                          pad_value=args.pad_value,
                           seed=args.seed)
     print(augmentor)
 

@@ -38,6 +38,7 @@ def inference(args):
 
     dataset = Dataset(data=data,
                       image_shape=args.image_shape,
+                      pad_value=args.pad_value,
                       char_width=args.char_width,
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
