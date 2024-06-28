@@ -192,7 +192,7 @@ class Source():
             item_id = '-'.join(ids[:3])
             writer_id = self.writers.get(form_id, '1')
             bbox = []
-            text = ' '.join(row[-1].replace('|', ' ').split())
+            text = ' '.join(row[-1].replace('|', ' ').replace('...', '. . .').split())
 
             word_path = os.path.join('words', ids[0], form_id, f"{row[0]}.png")
             image_path = os.path.join(self.base_path, word_path)
@@ -239,7 +239,7 @@ class Source():
 
             writer_id = self.writers.get(form_id, '1')
             bbox = [int(x) for x in row[4:8]]
-            text = ' '.join(row[-1].replace('|', ' ').split())
+            text = ' '.join(row[-1].replace('|', ' ').replace('...', '. . .').split())
 
             pattern = os.path.join(self.base_path, "forms**", f"{form_id}.png")
             image_path = next(iter(glob.glob(pattern, recursive=True)), None)
