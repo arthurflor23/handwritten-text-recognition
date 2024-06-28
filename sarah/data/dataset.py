@@ -17,7 +17,8 @@ class Dataset():
                  source=None,
                  text_level='line',
                  image_shape=(1024, 64, 1),
-                 char_width=None,
+                 pad_value=0,
+                 char_width=0,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -38,6 +39,8 @@ class Dataset():
             The text structure level.
         image_shape : list, optional
             The images shape.
+        pad_value : int, optional
+            Padding value for images.
         char_width : int, optional
             The width per character.
         training_ratio : float or int, optional
@@ -66,7 +69,8 @@ class Dataset():
         self.source = source
         self.text_level = text_level
         self.image_shape = image_shape
-        self.char_width = char_width or 0
+        self.pad_value = pad_value
+        self.char_width = char_width
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -471,8 +475,9 @@ class Dataset():
                         aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
 
                     if batch_padding:
-                        image_data = utils.batch_padding(image_data, self.image_shape[1::-1], 0, np.uint8)
-                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape[1::-1], 0, np.uint8)
+                        image_shape = self.image_shape[1::-1]
+                        image_data = utils.batch_padding(image_data, image_shape, self.pad_value, np.uint8)
+                        aug_image_data = utils.batch_padding(aug_image_data, image_shape, self.pad_value, np.uint8)
 
                         text_data = utils.batch_padding(text_data, self.tokenizer.lexical_shape, 0, np.int64)
                         aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
