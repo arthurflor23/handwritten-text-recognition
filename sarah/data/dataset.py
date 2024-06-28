@@ -111,6 +111,8 @@ class Dataset():
         info += f"\n{'source':<{pad}}: {self.source or '-'}"
         info += f"\n{'text_level':<{pad}}: {self.text_level or '-'}"
         info += f"\n{'image_shape':<{pad}}: {self.image_shape or '-'}"
+        info += f"\n{'pad_value':<{pad}}: {self.pad_value}"
+        info += f"\n{'char_width':<{pad}}: {self.char_width or '-'}"
         info += f"\n{'training_ratio':<{pad}}: {self.training_ratio or '-'}"
         info += f"\n{'validation_ratio':<{pad}}: {self.validation_ratio or '-'}"
         info += f"\n{'test_ratio':<{pad}}: {self.test_ratio or '-'}"
