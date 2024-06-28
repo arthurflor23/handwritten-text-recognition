@@ -50,7 +50,7 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=5, padding='same')(encoder_input)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
 
