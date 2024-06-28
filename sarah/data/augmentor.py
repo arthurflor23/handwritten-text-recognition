@@ -22,7 +22,6 @@ class Augmentor():
                  salt_and_pepper=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
-                 pad_value=0,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -57,8 +56,6 @@ class Augmentor():
             Parameters for gaussian noise.
         gaussian_blur : list or None, optional
             Parameters for Gaussian blur transformation.
-        pad_value : int, optional
-            Padding value for images.
         seed : int or None, optional
             Seed for random values from numpy.
         """
@@ -80,7 +77,6 @@ class Augmentor():
         self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
-        self.pad_value = pad_value
         self.seed = seed
 
     def __repr__(self):
@@ -301,7 +297,7 @@ class Augmentor():
                           map2=displaced_coords[..., 0],
                           interpolation=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=self.pad_value)
+                          borderValue=np.median(image.flatten()))
 
         return image
 
@@ -351,7 +347,7 @@ class Augmentor():
 
         image = cv2.warpPerspective(image, M, (width, height),
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=self.pad_value)
+                                    borderValue=np.median(image.flatten()))
 
         return image
 
@@ -455,7 +451,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.pad_value)
+                               borderValue=np.median(image.flatten()))
 
         return image
 
@@ -488,7 +484,7 @@ class Augmentor():
         image = cv2.resize(image, dim, interpolation=cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA)
 
         if alpha > 0:
-            padded_image = np.full((height, width), self.pad_value, dtype=np.uint8)
+            padded_image = np.full((height, width), np.median(image.flatten()), dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
@@ -533,7 +529,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.pad_value)
+                               borderValue=np.median(image.flatten()))
 
         return image
 
@@ -572,7 +568,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (width, new_height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.pad_value)
+                               borderValue=np.median(image.flatten()))
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
 
@@ -613,7 +609,7 @@ class Augmentor():
 
         image = cv2.warpAffine(image, M, (new_width, height),
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=self.pad_value)
+                               borderValue=np.median(image.flatten()))
 
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
 
