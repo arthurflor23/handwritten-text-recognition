@@ -190,7 +190,7 @@ def read_image(image_path, bbox=None):
 
         image = image[y:y+height, x:x+width]
 
-    return image
+    return np.array(image, dtype=np.uint8)
 
 
 def resize_image(image, target_width=None, target_shape=None):
@@ -235,4 +235,4 @@ def resize_image(image, target_width=None, target_shape=None):
 
             image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    return image
+    return np.array(image, dtype=np.uint8)
