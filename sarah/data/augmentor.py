@@ -132,24 +132,30 @@ class Augmentor():
             self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
 
         transformations = [
-            (self.binarize, self.binarize_params),
-            (self.erode, self.erode_params),
-            (self.dilate, self.dilate_params),
-            (self.elastic, self.elastic_params),
-            (self.perspective, self.perspective_params),
-            (self.mixup, mixup_params),
-            (self.shear, self.shear_params),
-            (self.scale, self.scale_params),
-            (self.rotate, self.rotate_params),
-            (self.shift_y, self.shift_y_params),
-            (self.shift_x, self.shift_x_params),
-            (self.salt_and_pepper, self.salt_and_pepper_params),
-            (self.gaussian_noise, self.gaussian_noise_params),
-            (self.gaussian_blur, self.gaussian_blur_params),
+            (self.binarize, self.binarize_params, None),
+            (self.erode, self.erode_params, 32),
+            (self.dilate, self.dilate_params, 32),
+            (self.elastic, self.elastic_params, 32),
+            (self.perspective, self.perspective_params, 32),
+            (self.mixup, mixup_params, 32),
+            (self.shear, self.shear_params, 32),
+            (self.scale, self.scale_params, 32),
+            (self.rotate, self.rotate_params, None),
+            (self.shift_y, self.shift_y_params, None),
+            (self.shift_x, self.shift_x_params, None),
+            (self.salt_and_pepper, self.salt_and_pepper_params, None),
+            (self.gaussian_noise, self.gaussian_noise_params, 32),
+            (self.gaussian_blur, self.gaussian_blur_params, 32),
         ]
 
-        for transform_func, params in transformations:
-            if params is not None and len(params) > 0 and np.random.random() < float(params[0]):
+        for transform_func, params, min_size in transformations:
+            if params is None or len(params) == 0:
+                continue
+
+            if min_size and min(image.shape[:2]) <= min_size:
+                continue
+
+            if np.random.random() <= float(params[0]):
                 image = transform_func(image, *params[1:])
 
         return image
