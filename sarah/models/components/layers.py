@@ -347,6 +347,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             linear = tf.keras.layers.Activation('linear')(h)
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
             outputs = (self.gamma * (linear * sigmoid)) + inputs
+
         else:
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
             outputs = inputs * sigmoid
