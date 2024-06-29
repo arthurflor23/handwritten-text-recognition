@@ -297,7 +297,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode == 'dual' else 1),
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode else 1),
                                              kernel_size=self.kernel_size,
                                              strides=self.strides,
                                              padding=self.padding,
@@ -306,14 +306,6 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint)
 
         if self.mode == 'residual':
-            self.h_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                                 kernel_size=self.kernel_size,
-                                                 strides=self.strides,
-                                                 padding=self.padding,
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint)
-
             self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                          shape=(1,),
                                          initializer='zeros',
@@ -337,15 +329,15 @@ class GatedConv2D(tf.keras.layers.Layer):
         s = self.s_conv(inputs)
 
         if self.mode == 'dual':
-            s1, s2 = tf.split(s, 2, axis=-1)
+            s1, s2 = tf.split(s, num_or_size_splits=2, axis=-1)
             linear = tf.keras.layers.Activation('linear')(s1)
             sigmoid = tf.keras.layers.Activation('sigmoid')(s2)
             outputs = linear * sigmoid
 
         elif self.mode == 'residual':
-            h = self.h_conv(inputs)
-            linear = tf.keras.layers.Activation('linear')(h)
-            sigmoid = tf.keras.layers.Activation('sigmoid')(s)
+            s1, s2 = tf.split(s, num_or_size_splits=2, axis=-1)
+            linear = tf.keras.layers.Activation('linear')(s1)
+            sigmoid = tf.keras.layers.Activation('sigmoid')(s2)
             outputs = (self.gamma * (linear * sigmoid)) + inputs
 
         else:
