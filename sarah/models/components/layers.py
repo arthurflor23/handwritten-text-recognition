@@ -308,7 +308,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         if self.mode == 'residual':
             self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                          shape=(1,),
-                                         initializer='zeros',
+                                         initializer='ones',
                                          trainable=True)
 
     def call(self, inputs):
