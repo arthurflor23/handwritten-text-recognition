@@ -152,7 +152,7 @@ class Augmentor():
             if params is None or len(params) == 0:
                 continue
 
-            if min_size and min(image.shape[:2]) <= min_size:
+            if min_size and min(image.shape[:2]) < min_size:
                 continue
 
             if np.random.random() <= float(params[0]):
