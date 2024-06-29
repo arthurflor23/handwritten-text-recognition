@@ -297,7 +297,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         if self.filters is None:
             self.filters = input_shape[-1]
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode else 1),
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode == 'dual' else 1),
                                              kernel_size=self.kernel_size,
                                              strides=self.strides,
                                              padding=self.padding,
@@ -306,6 +306,14 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint)
 
         if self.mode == 'residual':
+            self.h_conv = tf.keras.layers.Conv2D(filters=self.filters,
+                                                 kernel_size=self.kernel_size,
+                                                 strides=self.strides,
+                                                 padding=self.padding,
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint)
+
             self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                          shape=(1,),
                                          initializer='ones',
@@ -335,9 +343,9 @@ class GatedConv2D(tf.keras.layers.Layer):
             outputs = linear * sigmoid
 
         elif self.mode == 'residual':
-            s1, s2 = tf.split(s, 2, axis=-1)
-            linear = tf.keras.layers.Activation('linear')(s1)
-            sigmoid = tf.keras.layers.Activation('sigmoid')(s2)
+            h = self.h_conv(inputs)
+            linear = tf.keras.layers.Activation('linear')(h)
+            sigmoid = tf.keras.layers.Activation('sigmoid')(s)
             outputs = (self.gamma * (linear * sigmoid)) + inputs
         else:
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
