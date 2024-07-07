@@ -601,6 +601,7 @@ class Compose():
                 print(f"{title.center(width)}")
                 print("-" * width)
                 print(f"{'experiment_id':<{pad}}: {run_context.info.experiment_id}")
+                print(f"{'experiment_name':<{pad}}: {self.experiment_name}")
                 print(f"{'run_id':<{pad}}: {run_context.info.run_id}")
                 print(f"{'run_name':<{pad}}: {run_context.info.run_name}")
                 print("-" * width)
