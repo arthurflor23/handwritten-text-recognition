@@ -12,9 +12,6 @@ class RecognitionModel(BaseRecognitionModel):
     A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios
         https://www.sciencedirect.com/science/article/abs/pii/S0167865522001052
 
-    Attention Is All You Need
-        https://arxiv.org/abs/1706.03762
-
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
