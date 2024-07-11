@@ -48,7 +48,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same')(encoder_input)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
+        encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32,
@@ -57,7 +57,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same')(encoder)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
+        encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
@@ -67,7 +67,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same')(encoder)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
+        encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2), padding='valid')(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
@@ -77,7 +77,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same')(encoder)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
+        encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=80,
@@ -86,7 +86,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          padding='same')(encoder)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.LeakyReLU(alpha=0.01)(encoder)
+        encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
