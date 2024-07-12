@@ -32,7 +32,7 @@ class RecognitionModel(BaseRecognitionModel):
         super().compile(run_eagerly=False)
 
         if learning_rate is None:
-            learning_rate = 5e-4
+            learning_rate = 1e-3
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5)
 
