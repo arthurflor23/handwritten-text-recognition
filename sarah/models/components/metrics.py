@@ -11,7 +11,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=1, epsilon=1e-7, name='cer', **kwargs):
+    def __init__(self, beam_width=1, epsilon=1e-7, name='dist', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
@@ -45,25 +45,6 @@ class EditDistance(tf.keras.metrics.Metric):
         y_pred : tf.Tensor
             Tensor of predicted labels.
         """
-
-        # y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
-        # y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
-
-        # labels = tf.sparse.from_dense(y_true)
-        # logits = tf.math.log(y_pred + self.epsilon)
-
-        # logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
-
-        # decoded, _ = tf.keras.ops.ctc_decode(inputs=tf.cast(logits, dtype=tf.float32),
-        #                                      sequence_lengths=tf.cast(logit_length, dtype=tf.int32),
-        #                                      strategy='greedy',
-        #                                      beam_width=self.beam_width,
-        #                                      top_paths=1,
-        #                                      merge_repeated=False,
-        #                                      mask_index=None)
-
-        # decoded = tf.cast(tf.sparse.from_dense(decoded[0]), dtype=labels.dtype)
-        # edit_distance = tf.edit_distance(hypothesis=decoded, truth=labels, normalize=True)
 
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
