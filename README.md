@@ -81,8 +81,8 @@ The project has several command-line parameters that can be used to customize it
 
 #### Models
 
--   `--synthesis`: Specify synthesis model (e.g., gan).
--   `--recognition`: Specify recognition model (e.g., bluche, flor, puigcerver).
+-   `--synthesis`: Specify synthesis model (e.g., flor).
+-   `--recognition`: Specify recognition model (e.g., bluche, flor_v1, flor_v2, puigcerver).
 -   `--spelling`: Specify spelling model (e.g., openai).
 
 #### MLflow
@@ -170,7 +170,7 @@ The project offers a range of functionalities through command-line parameters; f
 **Example 1: Perform recognition model training**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --batch-size 16 --training
+python sarah --source iam --text-level line --recognition flor_v2 --batch-size 16 --training
 ```
 
 This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 16.
@@ -178,7 +178,7 @@ This command will train the recognition model on IAM dataset at the line level, 
 **Example 2: Perform recognition model testing**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-id -1 --test
+python sarah --source iam --text-level line --recognition flor_v2 --beam-width 30 --top-paths 3 --recognition-run-id -1 --test
 ```
 
 This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
@@ -186,7 +186,7 @@ This command will perform testing phase on IAM dataset using the Flor optical ne
 **Example 3: Perform recognition model inference**
 
 ```bash
-python sarah --recognition flor --beam-width 30 --recognition-run-id -1 --inference --image path/to/image1.png
+python sarah --recognition flor_v2 --beam-width 30 --recognition-run-id -1 --inference --image path/to/image1.png
 ```
 
 This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
