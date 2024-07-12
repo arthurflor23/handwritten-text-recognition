@@ -540,7 +540,7 @@ class OctConv2D(tf.keras.layers.Layer):
         high_out_shape = (*high_in_shape[:3], self.high_channels)
         low_out_shape = (*low_in_shape[:3], self.low_channels)
 
-        return tf.TensorShape([high_out_shape, low_out_shape])
+        return [high_out_shape, low_out_shape]
 
 
 class Reparameterization(tf.keras.layers.Layer):
