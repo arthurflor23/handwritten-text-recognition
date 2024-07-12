@@ -34,7 +34,7 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 1e-3
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5)
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
 
     def build_model(self):
         """
@@ -72,7 +72,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
-        encoder = SelfAttention()(encoder)
+        encoder = GatedConv2D(mode='residual')(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
