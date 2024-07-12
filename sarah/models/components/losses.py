@@ -81,7 +81,7 @@ class CTCLoss(tf.keras.losses.Loss):
         return ctc_loss
 
 
-class CXLoss(tf.keras.losses.Loss):
+class CTXLoss(tf.keras.losses.Loss):
     """
     Contextual loss for comparing high-level features between two tensors.
 
@@ -102,10 +102,10 @@ class CXLoss(tf.keras.losses.Loss):
                  alpha=1.0,
                  similarity='cosine',
                  epsilon=1e-5,
-                 name='cx_loss',
+                 name='ctx_loss',
                  **kwargs):
         """
-        Initialize the CXLoss instance.
+        Initialize the CTXLoss instance.
 
         Parameters
         ----------
@@ -170,12 +170,12 @@ class CXLoss(tf.keras.losses.Loss):
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
-        cx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
-        cx = tf.reduce_mean(tf.reduce_max(cx_ij, axis=1), axis=1)
+        ctx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
+        ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
 
-        cx_loss = tf.math.reduce_mean(-tf.math.log(cx + self.epsilon))
+        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
 
-        return cx_loss
+        return ctx_loss
 
     def compute_cosine_distance(self, y, x):
         """
