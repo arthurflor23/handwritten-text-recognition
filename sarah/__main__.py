@@ -3,7 +3,7 @@ import sys
 import argparse
 
 sys.path.append(os.getcwd())
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 import pipelines  # noqa: E402
 
