@@ -603,7 +603,7 @@ class GeneratorModel(BaseModel):
         """
 
         def residual_block_up(x, y, filters, upsample=None):
-            h = ConditionalBatchNormalization(spectral_norm=True)([x, y])
+            h = ConditionalBatchNormalization(spectral=True)([x, y])
             h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             if upsample:
@@ -617,7 +617,7 @@ class GeneratorModel(BaseModel):
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
 
-            h = ConditionalBatchNormalization(spectral_norm=True)([h, y])
+            h = ConditionalBatchNormalization(spectral=True)([h, y])
             h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = tf.keras.layers.SpectralNormalization(
@@ -674,7 +674,7 @@ class GeneratorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             if i == 1:
-                block = SelfAttention(spectral_norm=True)(block)
+                block = SelfAttention(spectral=True)(block)
 
             upsample = None
             height_upsample_required = block.shape[1] < self.image_shape[0]
@@ -812,7 +812,7 @@ class DiscriminatorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             if i == len(self.blocks) - 1:
-                block = SelfAttention(spectral_norm=True)(block)
+                block = SelfAttention(spectral=True)(block)
 
             downsample = (2, 2) if i < len(self.blocks) - 1 else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
