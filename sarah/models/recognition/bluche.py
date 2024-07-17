@@ -30,7 +30,7 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 4e-4
 
-        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=0.9)
 
     def build_model(self):
         """
