@@ -253,7 +253,7 @@ class BaseRecognitionModel(BaseModel):
         self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
         self.vanilla_edit_distance.update_state(texts, ctc_logits)
-        self.weighted_edit_distance.update_state(texts, ctc_logits)
+        self.weighted_edit_distance.update_state(texts, ctc_logits, loss_weight=ctc_loss)
 
         return {
             self.ctc_loss.name: ctc_loss,

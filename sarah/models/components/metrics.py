@@ -37,7 +37,7 @@ class EditDistance(tf.keras.metrics.Metric):
         self.beam_width = beam_width
         self.epsilon = epsilon
 
-    def update_state(self, y_true, y_pred):
+    def update_state(self, y_true, y_pred, loss_weight=None):
         """
         Update the metric state with new data.
 
@@ -47,6 +47,8 @@ class EditDistance(tf.keras.metrics.Metric):
             Tensor of true labels.
         y_pred : tf.Tensor
             Tensor of predicted labels.
+        loss_weight : tf.Tensor, optional
+            Tensor of loss weight.
         """
 
         y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
@@ -66,14 +68,7 @@ class EditDistance(tf.keras.metrics.Metric):
         edit_distance = tf.reduce_mean(edit_distance)
 
         if self.weighted:
-            ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                      logits=tf.cast(logits, dtype=tf.float32),
-                                      label_length=None,
-                                      logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                      logits_time_major=True,
-                                      blank_index=-1)
-
-            edit_distance *= tf.reduce_mean(ctc_loss)
+            edit_distance *= loss_weight
 
         self.tracker.update_state(edit_distance)
 
