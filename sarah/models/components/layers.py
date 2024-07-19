@@ -316,7 +316,7 @@ class GatedConv2D(tf.keras.layers.Layer):
 
             self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                          shape=(1,),
-                                         initializer='ones',
+                                         initializer='zeros',
                                          trainable=True)
 
     def call(self, inputs):
