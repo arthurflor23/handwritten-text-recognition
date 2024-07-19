@@ -11,12 +11,14 @@ class EditDistance(tf.keras.metrics.Metric):
         https://mi.mathnet.ru/dan31411
     """
 
-    def __init__(self, beam_width=1, epsilon=1e-7, name='dist', **kwargs):
+    def __init__(self, weighted=False, beam_width=1, epsilon=1e-7, name='dist', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
         Parameters
         ----------
+        weighted : bool, optional
+            Whether apply loss as weight to edit distance.
         beam_width : int, optional
             The width of the beam for CTC beam search decoder.
         epsilon : float, optional
@@ -31,6 +33,7 @@ class EditDistance(tf.keras.metrics.Metric):
 
         self.tracker = tf.keras.metrics.Mean()
 
+        self.weighted = weighted
         self.beam_width = beam_width
         self.epsilon = epsilon
 
@@ -60,6 +63,14 @@ class EditDistance(tf.keras.metrics.Metric):
                                                    top_paths=1)
 
         edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
+
+        if self.weighted:
+            edit_distance *= tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                            logits=tf.cast(logits, dtype=tf.float32),
+                                            label_length=None,
+                                            logit_length=tf.cast(logit_length, dtype=tf.int32),
+                                            logits_time_major=True,
+                                            blank_index=-1)
 
         self.tracker.update_state(tf.reduce_mean(edit_distance))
 
