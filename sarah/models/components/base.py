@@ -187,9 +187,11 @@ class BaseRecognitionModel(BaseModel):
         ]
 
         self.ctc_loss = CTCLoss()
-        self.edit_distance = EditDistance()
 
-        self.monitor = self.edit_distance.name
+        self.vanilla_edit_distance = EditDistance(weighted=False, name='ved')
+        self.weighted_edit_distance = EditDistance(weighted=True, name='wed')
+
+        self.monitor = self.weighted_edit_distance.name
 
         self.build_model()
         self.built = True
@@ -250,11 +252,13 @@ class BaseRecognitionModel(BaseModel):
         gradients = tape.gradient(ctc_loss, self.recognition.trainable_weights)
         self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
-        self.edit_distance.update_state(texts, ctc_logits)
+        self.vanilla_edit_distance.update_state(texts, ctc_logits)
+        self.weighted_edit_distance.update_state(texts, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
-            self.edit_distance.name: self.edit_distance.result(),
+            self.vanilla_edit_distance.name: self.vanilla_edit_distance.result(),
+            self.weighted_edit_distance.name: self.weighted_edit_distance.result(),
         }
 
     def test_step(self, input_data):
@@ -277,11 +281,13 @@ class BaseRecognitionModel(BaseModel):
         ctc_logits = self.recognition(image_data)
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
-        self.edit_distance.update_state(text_data, ctc_logits)
+        self.vanilla_edit_distance.update_state(text_data, ctc_logits)
+        self.weighted_edit_distance.update_state(text_data, ctc_logits)
 
         return {
             self.ctc_loss.name: ctc_loss,
-            self.edit_distance.name: self.edit_distance.result(),
+            self.vanilla_edit_distance.name: self.vanilla_edit_distance.result(),
+            self.weighted_edit_distance.name: self.weighted_edit_distance.result(),
         }
 
     def call(self, x_data, training=None):
@@ -540,12 +546,12 @@ class BaseSynthesisModel(BaseModel):
             'patch_discriminator',
         ]
 
-        self.bv_loss = BetaVAELoss()
+        self.bva_loss = BetaVAELoss()
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
-        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
+        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
         self.monitor = self.kid.name
 
         self.build_model()
