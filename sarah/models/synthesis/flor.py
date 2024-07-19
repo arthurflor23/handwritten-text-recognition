@@ -279,7 +279,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             # content reconstruction
-            g_rec_loss = self.bv_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
+            g_rec_loss = self.bva_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
 
             # style reconstruction
             fake_latent_data, _, _, _ = self.style_encoder(fake_s_fake_t_images, training=True)
