@@ -282,7 +282,7 @@ class BaseRecognitionModel(BaseModel):
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
         self.vanilla_edit_distance.update_state(text_data, ctc_logits)
-        self.weighted_edit_distance.update_state(text_data, ctc_logits)
+        self.weighted_edit_distance.update_state(text_data, ctc_logits, loss_weight=ctc_loss)
 
         return {
             self.ctc_loss.name: ctc_loss,
