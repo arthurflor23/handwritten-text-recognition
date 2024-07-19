@@ -63,16 +63,19 @@ class EditDistance(tf.keras.metrics.Metric):
                                                    top_paths=1)
 
         edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
+        edit_distance = tf.reduce_mean(edit_distance)
 
         if self.weighted:
-            edit_distance *= tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                            logits=tf.cast(logits, dtype=tf.float32),
-                                            label_length=None,
-                                            logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                            logits_time_major=True,
-                                            blank_index=-1)
+            ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                      logits=tf.cast(logits, dtype=tf.float32),
+                                      label_length=None,
+                                      logit_length=tf.cast(logit_length, dtype=tf.int32),
+                                      logits_time_major=True,
+                                      blank_index=-1)
 
-        self.tracker.update_state(tf.reduce_mean(edit_distance))
+            edit_distance *= tf.reduce_mean(ctc_loss)
+
+        self.tracker.update_state(edit_distance)
 
     def result(self):
         """
