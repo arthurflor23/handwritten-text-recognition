@@ -19,7 +19,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Parameters
         ----------
         spectral : bool, optional
-            Wheter apply spectral normalization or not.
+            Whether apply spectral normalization or not.
         momentum : float, optional
             Momentum for the moving average of mean and variance.
         epsilon : float, optional
@@ -624,7 +624,7 @@ class SelfAttention(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         spectral : bool, optional
-            Wheter apply spectral normalization or not.
+            Whether apply spectral normalization or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
