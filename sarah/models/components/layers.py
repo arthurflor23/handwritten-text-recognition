@@ -306,7 +306,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint)
 
         if self.mode == 'residual':
-            self.l_conv = tf.keras.layers.Conv2D(filters=self.filters,
+            self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=self.kernel_size,
                                                  strides=self.strides,
                                                  padding=self.padding,
@@ -343,8 +343,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             outputs = linear * sigmoid
 
         elif self.mode == 'residual':
-            s1 = self.l_conv(inputs)
-            linear = tf.keras.layers.Activation('linear')(s1)
+            t = self.t_conv(inputs)
+            linear = tf.keras.layers.Activation('linear')(t)
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
             outputs = (self.gamma * (linear * sigmoid)) + inputs
 
