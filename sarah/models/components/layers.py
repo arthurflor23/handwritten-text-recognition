@@ -589,7 +589,7 @@ class Reparameterization(tf.keras.layers.Layer):
 
 class SelfAttention(tf.keras.layers.Layer):
     """
-    Self-Attention layer.
+    Self-Attention layer for capturing long-range dependencies.
 
     References
     ----------
