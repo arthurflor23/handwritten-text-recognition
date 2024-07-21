@@ -678,10 +678,20 @@ class Compose():
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
 
-        def log_metric(label, content):
+        def log_metrics(label, content):
             if content is not None:
+                filepath = os.path.join(run_info['artifact_path'], 'metrics.json')
+                data = {label.replace('<metric>', '').replace('__', '_').strip('_'): content}
+
+                if os.path.exists(filepath):
+                    with open(filepath, 'r') as f:
+                        data.update(json.load(f))
+
+                with open(filepath, 'w') as f:
+                    f.write(json.dumps(data, indent=4, ensure_ascii=False))
+
                 for key, value in content.items():
-                    mlflow.log_metric(label.replace('metrics', key), value)
+                    mlflow.log_metric(label.replace('<metric>', key), value)
 
         def log_params(content):
             if content is not None:
@@ -712,9 +722,8 @@ class Compose():
             log_content(evaluation_label, evaluations)
             log_images(evaluation_label, evaluation_images)
 
-            metric_label = f"{prefix or ''}_metrics_{suffix or ''}".strip('_')
-            log_content(metric_label, metrics)
-            log_metric(metric_label, metrics)
+            metric_label = f"{prefix or ''}_<metric>_{suffix or ''}".strip('_')
+            log_metrics(metric_label, metrics)
 
             mlflow.end_run()
 
