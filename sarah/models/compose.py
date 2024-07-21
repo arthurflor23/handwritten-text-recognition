@@ -675,6 +675,9 @@ class Compose():
                     filepath = filepath.replace('.log', '.json')
                     content = json.dumps(content, indent=4, ensure_ascii=False)
 
+                if hasattr(content, 'get_summary'):
+                    content = content.get_summary()
+
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
 
