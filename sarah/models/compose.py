@@ -200,7 +200,7 @@ class Compose():
                 run_info = self.get_run_info(run_context=run)
         else:
             run_info = self.get_run_info(run_context=run_context)
-            artifact_path = os.path.join(run_info['artifact_path'], '<model>.weights.h5')
+            artifact_path = os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5')
 
             self.model.load_weights(filepath=artifact_path)
 
@@ -266,9 +266,6 @@ class Compose():
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
 
-            logs_path = os.path.join(run_info['artifact_path'], 'logs')
-            os.makedirs(logs_path, exist_ok=True)
-
             tensorboard_path = os.path.join(run_info['artifact_path'], 'tensorboard')
             os.makedirs(tensorboard_path, exist_ok=True)
 
@@ -278,12 +275,12 @@ class Compose():
 
             callbacks = [
                 tf.keras.callbacks.CSVLogger(
-                    filename=os.path.join(logs_path, 'epochs.log'),
+                    filename=os.path.join(run_info['artifact_path'], 'epochs.log'),
                     separator=',',
                     append=True,
                 ),
                 tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(run_info['artifact_path'], '<model>.weights.h5'),
+                    filepath=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
                     mode='min',
                     monitor=monitor,
                     save_freq='epoch',
@@ -343,7 +340,10 @@ class Compose():
             mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
             mlflow.set_tags({'compose.recognition': str(self.recognition)})
 
-            with open(os.path.join(run_info['artifact_path'], 'tokenizer.pkl'), 'wb') as f:
+            tokenizer_path = os.path.join(run_info['artifact_path'], 'model', 'tokenizer.pkl')
+            os.makedirs(os.path.dirname(tokenizer_path), exist_ok=True)
+
+            with open(tokenizer_path, 'wb') as f:
                 pickle.dump(self.tokenizer, f)
 
             history = self.model.fit(x=training_gen,
@@ -547,7 +547,7 @@ class Compose():
         predictions, probabilities = [], []
 
         run_context = self.get_run_info()
-        evaluations = os.path.join(run_context['artifact_path'], 'logs', 'evaluations.json')
+        evaluations = os.path.join(run_context['artifact_path'], 'evaluations.json')
 
         if os.path.isfile(evaluations):
             with open(evaluations, 'r') as file:
@@ -666,10 +666,7 @@ class Compose():
 
         def log_content(label, content):
             if content is not None:
-                logs_path = os.path.join(run_info['artifact_path'], 'logs')
-                os.makedirs(logs_path, exist_ok=True)
-
-                filepath = os.path.join(logs_path, f"{label}.log")
+                filepath = os.path.join(run_info['artifact_path'], f"{label}.log")
 
                 if isinstance(content, dict) or isinstance(content, list):
                     filepath = filepath.replace('.log', '.json')
@@ -802,7 +799,7 @@ class Compose():
         artifacts_path = s_path or r_path
 
         if artifacts_path:
-            tokenizer_uri = os.path.join(artifacts_path, 'tokenizer.pkl')
+            tokenizer_uri = os.path.join(artifacts_path, 'model', 'tokenizer.pkl')
 
             if os.path.isfile(tokenizer_uri):
                 try:
