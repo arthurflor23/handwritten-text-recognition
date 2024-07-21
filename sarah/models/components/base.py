@@ -53,6 +53,28 @@ class BaseModel(tf.keras.Model):
 
         return info
 
+    def get_summary(self):
+        """
+        Provides summary of model architectures.
+
+        Returns
+        -------
+        str
+            Formatted model architectures.
+        """
+
+        info = []
+
+        for name in getattr(self, 'names', ['model']):
+            model = getattr(self, name, None)
+
+            if model is None:
+                continue
+
+            model.summary(print_fn=lambda x: info.append(x))
+
+        return "\n".join(info)
+
     def get_weights(self):
         """
         Retrieve the weights of the submodels.
