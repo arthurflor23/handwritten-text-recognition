@@ -96,7 +96,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         inputs : list or tuple
             The inputs tensors (data and conditional data).
         training : bool, optional
-            Whether the layer should behave in training mode or in inference mode.
+            Whether the layer should behave in training or inference mode.
 
         Returns
         -------
@@ -592,6 +592,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
+                 dropout=0.0,
                  pooling=True,
                  spectral=False,
                  **kwargs):
@@ -608,6 +609,8 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        dropout : float, optional
+            Whether apply attention dropout or not.
         pooling : bool, optional
             Whether apply max pooling or not.
         spectral : bool, optional
@@ -622,6 +625,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
+        self.dropout = dropout
         self.pooling = pooling
         self.spectral = spectral
 
@@ -642,6 +646,7 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
+            'dropout': self.dropout,
             'pooling': self.pooling,
             'spectral': self.spectral,
         })
@@ -725,7 +730,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         """
         Processes the input tensors through the layer.
 
@@ -733,6 +738,8 @@ class SelfAttention(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Input tensor to the layer.
+        training : bool, optional
+            Whether the layer should behave in training or inference mode.
 
         Returns
         -------
@@ -754,6 +761,9 @@ class SelfAttention(tf.keras.layers.Layer):
 
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
+
+        if training and self.dropout:
+            beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_conv(inputs)
 
