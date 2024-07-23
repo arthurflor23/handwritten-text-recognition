@@ -216,6 +216,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
+                 dropout=0.0,
                  mode=None,
                  **kwargs):
         """
@@ -231,6 +232,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        dropout : float, optional
+            Whether apply dropout or not.
         mode : str, optional
             Whether to use None, 'dual' or 'residual' gating.
         **kwargs : dict
@@ -243,6 +246,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
+        self.dropout = dropout
         self.mode = mode
 
     def get_config(self):
@@ -262,6 +266,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
+            'dropout': self.dropout,
             'mode': self.mode,
         })
 
@@ -303,7 +308,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                          initializer=self.gamma_initializer,
                                          trainable=True)
 
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         """
         Apply gated convolution to the input.
 
@@ -311,6 +316,8 @@ class GatedConv2D(tf.keras.layers.Layer):
         ----------
         inputs : tensor
             The inputs to the layer.
+        training : bool, optional
+            Whether the layer should behave in training or inference mode.
 
         Returns
         -------
@@ -330,11 +337,16 @@ class GatedConv2D(tf.keras.layers.Layer):
             t = self.t_conv(inputs)
             linear = tf.keras.layers.Activation('linear')(t)
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
-            outputs = (self.gamma * (linear * sigmoid)) + inputs
+            beta = self.gamma * linear * sigmoid
+
+            if training and self.dropout:
+                beta = tf.nn.dropout(beta, rate=self.dropout)
+
+            outputs = beta + inputs
 
         else:
             sigmoid = tf.keras.layers.Activation('sigmoid')(s)
-            outputs = inputs * sigmoid
+            outputs = sigmoid * inputs
 
         return outputs
 
@@ -610,7 +622,7 @@ class SelfAttention(tf.keras.layers.Layer):
         gamma_initializer : initializer, optional
             Gamma weights initializer.
         dropout : float, optional
-            Whether apply attention dropout or not.
+            Whether apply dropout or not.
         pooling : bool, optional
             Whether apply max pooling or not.
         spectral : bool, optional
