@@ -431,7 +431,7 @@ class IdentificationModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(style)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256)(style)
+            style = tf.keras.layers.Dense(units=128)(style)
             style = tf.keras.layers.PReLU(shared_axes=[1])(style)
 
         encoder_output = tf.keras.layers.Dense(units=self.writers_shape[0], use_bias=False)(style)
@@ -508,11 +508,11 @@ class StyleEncoderModel(BaseModel):
         style = tf.keras.layers.GlobalAveragePooling1D()(style)
 
         for _ in range(2):
-            style = tf.keras.layers.Dense(units=256)(style)
+            style = tf.keras.layers.Dense(units=128)(style)
             style = tf.keras.layers.PReLU(shared_axes=[1])(style)
 
-        encoder = tf.keras.layers.Dense(units=self.latent_dim * 2)(style)
-        mu, logvar = tf.keras.layers.Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1))(encoder)
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
 
         encoder_output = Reparameterization()([mu, logvar])
 
