@@ -1,7 +1,6 @@
 import os
 import re
 import string
-import random
 import numpy as np
 import editdistance
 import tensorflow as tf
@@ -164,7 +163,7 @@ class BaseRecognitionModel(BaseModel):
                  lexical_shape,
                  style_encoder=None,
                  generator=None,
-                 synthetic_data_ratio=1.0,
+                 synthetic_data_ratio=0.99,
                  seed=None,
                  **kwargs):
         """
@@ -255,7 +254,7 @@ class BaseRecognitionModel(BaseModel):
         images, texts = aug_image_data, text_data
 
         if self.generator and self.style_encoder:
-            if random.random() <= self.synthetic_data_ratio:
+            if np.random.random() <= self.synthetic_data_ratio:
                 images, texts = image_data, aug_text_data
 
                 latent_data = self.style_encoder(images, training=False)
