@@ -27,7 +27,7 @@ class Compose():
                  tokenizer=None,
                  discriminator_steps=1,
                  generator_steps=1,
-                 synthetic_data_ratio=1.0,
+                 synthetic_data_ratio=0.99,
                  experiment_name=None,
                  gpu=0,
                  seed=None):
