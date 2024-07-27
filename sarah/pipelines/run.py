@@ -126,10 +126,10 @@ def run(args):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
 
             if metrics:
-                print('--------------------------------------------------')
+                print('-' * 60)
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('--------------------------------------------------')
+                print('-' * 60)
 
         if args.spelling:
             data, predictions, probabilities = compose.get_evaluations()
@@ -150,10 +150,10 @@ def run(args):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix='spelling')
 
             if metrics:
-                print('--------------------------------------------------')
+                print('-' * 60)
                 print('spelling metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('--------------------------------------------------')
+                print('-' * 60)
 
     elif args.synthesis:
         if args.training or args.test:
@@ -174,7 +174,7 @@ def run(args):
             compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
             if metrics:
-                print('--------------------------------------------------')
+                print('-' * 60)
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('--------------------------------------------------')
+                print('-' * 60)

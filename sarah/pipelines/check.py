@@ -90,13 +90,13 @@ def check(args):
 
             print('Source text', f"(length {len(text_source_data[i])})")
             print(text_source_data[i])
-            print('--------------------------------------------------\n')
+            print('-' * 60, '\n')
 
             # no augmentation and no padding
             cv2.imshow('Image', image_encoded_data[i])
             print('Encoded text')
             print(text_encoded_data[i])
-            print('--------------------------------------------------\n')
+            print('-' * 60, '\n')
 
             # with augmentation and with padding
             cv2.imshow('Augmented image', image_augmented_data[i])
