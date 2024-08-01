@@ -17,7 +17,7 @@ def run(args):
                                                      recognition=args.recognition,
                                                      recognition_run_id=args.recognition_run_id,
                                                      experiment_name=args.experiment_name,
-                                                     all_runs=args.all_runs)
+                                                     finished_runs=args.finished_runs)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,

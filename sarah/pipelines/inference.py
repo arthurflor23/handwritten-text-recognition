@@ -21,7 +21,7 @@ def inference(args):
                                                      recognition=args.recognition,
                                                      recognition_run_id=args.recognition_run_id,
                                                      experiment_name=args.experiment_name,
-                                                     all_runs=args.all_runs)
+                                                     finished_runs=args.finished_runs)
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
