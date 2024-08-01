@@ -733,7 +733,7 @@ class Compose():
                       recognition=None,
                       recognition_run_id=None,
                       experiment_name=None,
-                      all_runs=False):
+                      finished_runs=False):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -749,8 +749,8 @@ class Compose():
             Run index for the recognition model.
         experiment_name : str, optional
             MLflow experiment name.
-        all_runs : bool, optional
-            Enable all runs for selection.
+        finished_runs : bool, optional
+            Only finished runs for selection.
 
         Returns
         -------
@@ -769,7 +769,7 @@ class Compose():
 
                 filter_string = f"tag.compose.{tag_name}='{tag_value}'"
 
-                if not all_runs:
+                if finished_runs:
                     filter_string = f"status='FINISHED' AND {filter_string}"
 
                 df = mlflow.search_runs(experiment_ids=experiment_ids,
