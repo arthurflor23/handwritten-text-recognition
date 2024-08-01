@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--synthesis-run-id', default=None, help='Synthesis run id or index')
     parser.add_argument('--recognition-run-id', default=None, help='Recognition run id or index')
     parser.add_argument('--experiment-name', default='Default', help='Experiment name')
-    parser.add_argument('--all-runs', default=False, action='store_true', help='Enable all runs for selection')
+    parser.add_argument('--finished-runs', default=False, action='store_true', help='Only finished runs for selection')
 
     # dataset
     parser.add_argument('--source', default=None, help='Source data')
