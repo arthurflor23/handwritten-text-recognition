@@ -90,7 +90,7 @@ The project has several command-line parameters that can be used to customize it
 -   `--synthesis-run-id`: Synthesis model run id or index.
 -   `--recognition-run-id`: Recognition model run id or index.
 -   `--experiment-name`: MLflow experiment name.
--   `--all-runs`: Enable all runs for selection.
+-   `--finished-runs`: Only finished runs for selection.
 
 #### Dataset
 
