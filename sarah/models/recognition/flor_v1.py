@@ -92,13 +92,17 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(units=128, return_sequences=True))(decoder)
+        for i in range(2):
+            forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+            forwards = tf.keras.layers.GRU(units=128, return_sequences=True, go_backwards=False)(forwards)
 
-        decoder = tf.keras.layers.Dense(units=256)(decoder)
+            backwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+            backwards = tf.keras.layers.GRU(units=128, return_sequences=True, go_backwards=True)(backwards)
 
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(units=128, return_sequences=True))(decoder)
+            decoder = tf.keras.layers.Concatenate()([forwards, backwards])
+
+            if i == 0:
+                decoder = tf.keras.layers.Dense(units=256)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)

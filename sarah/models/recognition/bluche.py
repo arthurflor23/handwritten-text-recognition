@@ -90,11 +90,14 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
-        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(decoder)
+        for i in range(2):
+            forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(decoder)
+            backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(decoder)
 
-        decoder = tf.keras.layers.Dense(units=128, activation='tanh')(decoder)
+            decoder = tf.keras.layers.Concatenate()([forwards, backwards])
 
-        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(decoder)
+            if i == 0:
+                decoder = tf.keras.layers.Dense(units=128, activation='tanh')(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)
