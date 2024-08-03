@@ -11,14 +11,12 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, epsilon=1e-8, name='ctc_loss', **kwargs):
+    def __init__(self, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
-        epsilon : float, optional
-            Small constant to avoid log of zero.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -26,8 +24,6 @@ class CTCLoss(tf.keras.losses.Loss):
         """
 
         super().__init__(name=name, **kwargs)
-
-        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -50,7 +46,7 @@ class CTCLoss(tf.keras.losses.Loss):
         y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
+        logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
 
         label_length = tf.math.count_nonzero(y_true, axis=-1)
         logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
@@ -87,7 +83,6 @@ class CTXLoss(tf.keras.losses.Loss):
                  sigma=0.5,
                  alpha=1.0,
                  similarity='cosine',
-                 epsilon=1e-8,
                  name='ctx_loss',
                  **kwargs):
         """
@@ -101,8 +96,6 @@ class CTXLoss(tf.keras.losses.Loss):
             Scaling factor for weighting the distances.
         similarity : str, optional
             Type of loss to be used.
-        epsilon : float, optional
-            Small constant to avoid division by zero.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -113,7 +106,6 @@ class CTXLoss(tf.keras.losses.Loss):
 
         self.sigma = sigma
         self.alpha = alpha
-        self.epsilon = epsilon
         self.similarity = similarity
 
     def call(self, y_true, y_pred):
@@ -152,14 +144,14 @@ class CTXLoss(tf.keras.losses.Loss):
             distance = self.compute_l2_distance(y_true, y_pred)
 
         d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
-        d_tilde = distance / (d_min + self.epsilon)
+        d_tilde = distance / (d_min + 1e-8)
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
         ctx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
 
-        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
+        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
 
         return ctx_loss
 
