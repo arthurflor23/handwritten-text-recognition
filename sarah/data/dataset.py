@@ -237,7 +237,7 @@ class Dataset():
                             continue
 
                         np.random.shuffle(merged)
-                        index = round((ratios[i] + 1e-7) * total_merged)
+                        index = round((ratios[i] + 1e-8) * total_merged)
 
                         data[i] = merged[:index]
                         merged = merged[index:]
@@ -248,7 +248,7 @@ class Dataset():
                         continue
 
                     np.random.shuffle(data[i])
-                    index = round((ratios[i] + 1e-7) * len(data[i])) \
+                    index = round((ratios[i] + 1e-8) * len(data[i])) \
                         if isinstance(ratios[i], float) else ratios[i]
 
                     data[i] = data[i][:index]
