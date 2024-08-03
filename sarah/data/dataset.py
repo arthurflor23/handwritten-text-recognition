@@ -231,13 +231,13 @@ class Dataset():
                 total_merged = len(merged)
 
                 if total_merged > 0:
+                    np.random.shuffle(merged)
+
                     for i in ratios:
                         if ratios[i] is None:
                             continue
 
-                        np.random.shuffle(merged)
                         index = round((ratios[i] + 1e-8) * total_merged)
-
                         data[i] = merged[:index]
                         merged = merged[index:]
 
