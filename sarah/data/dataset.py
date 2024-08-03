@@ -223,7 +223,7 @@ class Dataset():
                 merged = []
 
                 for i in ratios:
-                    if ratios[i] is None:
+                    if ratios[i] is None or ratios[i] == 1.0:
                         continue
 
                     np.random.shuffle(data[i])
