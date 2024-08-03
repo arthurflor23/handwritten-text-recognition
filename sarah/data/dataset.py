@@ -223,10 +223,9 @@ class Dataset():
                 merged = []
 
                 for i in ratios:
-                    if ratios[i] is None or ratios[i] == 1.0:
+                    if ratios[i] is None:
                         continue
 
-                    np.random.shuffle(data[i])
                     merged.extend(data[i])
 
                 total_merged = len(merged)
