@@ -11,7 +11,7 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, epsilon=1e-7, name='ctc_loss', **kwargs):
+    def __init__(self, epsilon=1e-8, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
@@ -87,7 +87,7 @@ class CTXLoss(tf.keras.losses.Loss):
                  sigma=0.5,
                  alpha=1.0,
                  similarity='cosine',
-                 epsilon=1e-5,
+                 epsilon=1e-8,
                  name='ctx_loss',
                  **kwargs):
         """
