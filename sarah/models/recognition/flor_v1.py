@@ -33,7 +33,7 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 1e-3
 
-        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=0.9)
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=0.9, epsilon=1e-8)
 
     def build_model(self):
         """
@@ -92,13 +92,13 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(units=128, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Dense(units=256)(decoder)
 
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.GRU(units=128, dropout=0.5, return_sequences=True))(decoder)
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(units=128, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1], activation='softmax')(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-2), name='expand_dims')(decoder)

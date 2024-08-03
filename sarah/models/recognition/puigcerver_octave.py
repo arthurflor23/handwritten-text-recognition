@@ -33,7 +33,7 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 3e-4
 
-        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=0.9)
+        self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=0.9, epsilon=1e-8)
 
     def build_model(self):
         """
@@ -124,20 +124,9 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
+        for _ in range(5):
+            decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+            decoder = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True))(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
