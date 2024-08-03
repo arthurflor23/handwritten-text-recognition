@@ -360,7 +360,7 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
-        x = np.log(x + 1e-7)
+        x = np.log(x + 1e-8)
         x = x.transpose((0, 2, 1, 3))
 
         beam_width = max(top_paths, beam_width)
