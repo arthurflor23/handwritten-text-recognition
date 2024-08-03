@@ -23,7 +23,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         momentum : float, optional
             Momentum for the moving average of mean and variance.
         epsilon : float, optional
-            Small constant to avoid division by zero.
+            Small float added to variance to avoid dividing by zero.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
