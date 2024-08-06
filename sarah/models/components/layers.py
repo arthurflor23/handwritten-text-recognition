@@ -87,7 +87,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
                                         initializer='ones',
                                         trainable=False)
 
-    def call(self, inputs, training=None):
+    def call(self, inputs, training=False):
         """
         Call the layer with the specified inputs.
 
