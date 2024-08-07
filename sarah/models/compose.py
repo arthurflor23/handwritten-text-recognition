@@ -285,17 +285,6 @@ class Compose():
                     save_weights_only=True,
                     verbose=verbose,
                 ),
-                # tf.keras.callbacks.TensorBoard(
-                #     log_dir=os.path.join(run_info['artifact_path'], 'tensorboard'),
-                #     histogram_freq=0,
-                #     write_graph=True,
-                #     write_images=False,
-                #     write_steps_per_second=False,
-                #     update_freq='epoch',
-                #     profile_batch=0,
-                #     embeddings_freq=0,
-                #     embeddings_metadata=None,
-                # ),
                 tf.keras.callbacks.EarlyStopping(
                     mode='min',
                     monitor=monitor,
