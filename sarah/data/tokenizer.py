@@ -18,14 +18,13 @@ class Tokenizer():
         self.pad_tk = '¶'
         self.sos_tk = '◖'
         self.eos_tk = '◗'
-        self.unk_tk = '◬'
 
         self.words = []
-        self.writers = [self.unk_tk]
-        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk, self.unk_tk]
+        self.writers = []
+        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk]
 
         self._reserved_chars_length = len(self.chars)
-        self._reserved_marks_length = len(self.chars) // 2
+        self._reserved_marks_length = 2
 
         self.lexical_shape = []
         self.writers_shape = []
@@ -48,7 +47,7 @@ class Tokenizer():
         info += "\n" + "-" * width
         info += f"\n{'words':<{pad}}: {len(self.words):,}"
         info += f"\n{'chars':<{pad}}: {len(self.chars) - self._reserved_chars_length:,}"
-        info += f"\n{'writers':<{pad}}: {len(self.writers) - 1:,}"
+        info += f"\n{'writers':<{pad}}: {len(self.writers):,}"
         info += "\n" + "-" * width
         info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
         info += f"\n{'writers_shape':<{pad}}: {self.writers_shape}"
@@ -187,8 +186,8 @@ class Tokenizer():
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
             self.lexical_shape = (
-                next_power_of_two(self.metadata['max_lines_per_page']),
                 next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
+                next_power_of_two(self.metadata['max_lines_per_page']),
                 len(self.chars) + 1,
             )
 
@@ -197,14 +196,13 @@ class Tokenizer():
         pad_idx = char_to_index.get(self.pad_tk)
         sos_idx = char_to_index.get(self.sos_tk)
         eos_idx = char_to_index.get(self.eos_tk)
-        unk_idx = char_to_index.get(self.unk_tk)
 
         text = [' '.join(x.split()) for x in re.sub(r'\n\n+', '\n', text).split('\n')]
         max_length = max([len(line) for line in text]) + self._reserved_marks_length
 
         encoded_text = []
         for line in text:
-            encoded_line = [char_to_index.get(char, unk_idx) for char in line]
+            encoded_line = [char_to_index.get(char, 0) for char in line]
             encoded_line = [sos_idx] + encoded_line + [eos_idx]
 
             padding = (max_length - len(encoded_line))
@@ -262,7 +260,7 @@ class Tokenizer():
             self.writers_shape = tuple([len(self.writers)])
 
         writer_to_index = {writer: idx for idx, writer in enumerate(self.writers)}
-        encoded_writer = writer_to_index.get(writer, writer_to_index.get(self.unk_tk))
+        encoded_writer = writer_to_index.get(writer, 0)
 
         return encoded_writer
 
@@ -282,6 +280,6 @@ class Tokenizer():
         """
 
         index_to_writer = {idx: char for idx, char in enumerate(self.writers)}
-        writer = index_to_writer.get(encoded_writer, self.unk_tk)
+        writer = index_to_writer.get(encoded_writer, 0)
 
         return writer
