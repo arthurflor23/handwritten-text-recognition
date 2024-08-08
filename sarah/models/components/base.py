@@ -65,12 +65,13 @@ class BaseModel(tf.keras.Model):
         info = []
 
         for name in getattr(self, 'names', ['model']):
-            model = getattr(self, name, None)
+            x = getattr(self, name, None)
+            x = getattr(x, name, x)
 
-            if model is None:
+            if x is None:
                 continue
 
-            model.summary(print_fn=lambda x: info.append(x))
+            x.summary(print_fn=lambda r: info.append(r))
 
         return "\n".join(info)
 
