@@ -266,9 +266,6 @@ class Compose():
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
 
-            tensorboard_path = os.path.join(run_info['artifact_path'], 'tensorboard')
-            os.makedirs(tensorboard_path, exist_ok=True)
-
             monitor = self.model.monitor
             if validation_gen is not None:
                 monitor = f"val_{self.model.monitor}"
@@ -289,7 +286,7 @@ class Compose():
                     verbose=verbose,
                 ),
                 tf.keras.callbacks.TensorBoard(
-                    log_dir=tensorboard_path,
+                    log_dir=os.path.join(run_info['artifact_path'], 'tensorboard'),
                     histogram_freq=0,
                     write_graph=True,
                     write_images=False,
@@ -325,12 +322,9 @@ class Compose():
                 ])
 
             elif self.synthesis:
-                synthesis_path = os.path.join(run_info['artifact_path'], 'synthesis', 'training')
-                os.makedirs(synthesis_path, exist_ok=True)
-
                 callbacks.extend([
                     GANMonitor(
-                        filepath=synthesis_path,
+                        filepath=os.path.join(run_info['artifact_path'], 'synthesis', 'training'),
                         sample_gen=monitor_sample_gen,
                         sample_steps=monitor_sample_steps,
                         latent_dim=self.model.style_encoder.latent_dim,
