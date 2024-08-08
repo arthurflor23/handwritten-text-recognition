@@ -88,7 +88,7 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     """
 
     if target_shape:
-        max_height, max_width = target_shape[:2]
+        max_width, max_height = target_shape[:2]
     else:
         max_height = max(len(height) for height in batch_data)
         max_width = max(len(width) for height in batch_data for width in height)
