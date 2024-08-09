@@ -468,8 +468,8 @@ class Dataset():
                     aug_text_data = text_data.copy()
 
                     if multigrams_length:
-                        gram_index = np.random.randint(0, multigrams_length - batch_size)
-                        aug_text_data = [data['text'] for data in multigrams[gram_index:gram_index + batch_size]]
+                        g_index = np.random.randint(0, multigrams_length - len(batch))
+                        aug_text_data = [data['text'] for data in multigrams[g_index:g_index + len(batch)]]
 
                     if augmentor:
                         aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
