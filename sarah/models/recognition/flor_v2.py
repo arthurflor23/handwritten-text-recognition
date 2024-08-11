@@ -105,7 +105,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
-
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
@@ -117,7 +116,6 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
         decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
-
         self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
 
         # recognition model
