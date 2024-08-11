@@ -107,4 +107,4 @@ class RecognitionModel(BaseRecognitionModel):
         # recognition model
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
-                                          outputs=self.decoder(self.encoder.output))
+                                          outputs=self.decoder(self.encoder(encoder_input)))
