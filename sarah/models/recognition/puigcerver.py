@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
+from sarah.models.components.layers import Bidirectional
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -95,23 +96,13 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], -1))(decoder_input)
 
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
-
-        decoder = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=256, dropout=0.5, return_sequences=True))(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
