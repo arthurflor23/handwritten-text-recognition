@@ -71,7 +71,7 @@ class BaseModel(tf.keras.Model):
             if x is None:
                 continue
 
-            x.summary(print_fn=lambda r: info.append(r))
+            x.summary(print_fn=lambda r: info.append(r), expand_nested=True)
 
         return "\n".join(info)
 
