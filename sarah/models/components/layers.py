@@ -39,7 +39,7 @@ class Bidirectional(tf.keras.layers.Layer):
             raise ValueError(
                 f"Invalid merge mode. Received: {merge_mode}. "
                 "Merge mode should be one of "
-                '{"sum", "mul", "ave", "concat", None}'
+                '{"sum", "mul", "concat", "ave", None}'
             )
 
         config = tf.keras.utils.serialize_keras_object(layer)
