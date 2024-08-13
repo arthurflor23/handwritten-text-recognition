@@ -543,6 +543,7 @@ class BaseSynthesisModel(BaseModel):
         self.seed = seed
 
         self.recognition = None
+        self.style_backbone = None
         self.identification = None
         self.style_encoder = None
         self.generator = None
@@ -555,6 +556,7 @@ class BaseSynthesisModel(BaseModel):
 
         self.names = [
             'recognition',
+            'style_backbone',
             'identification',
             'style_encoder',
             'generator',
