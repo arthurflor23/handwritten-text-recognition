@@ -105,7 +105,7 @@ class Bidirectional(tf.keras.layers.Layer):
             'layer': tf.keras.utils.serialize_keras_object(self.forward_layer),
             'backward_layer': tf.keras.utils.serialize_keras_object(self.backward_layer),
             'dropout': self.dropout,
-            'merge_mode': self.units,
+            'merge_mode': self.merge_mode,
         })
 
         return config
