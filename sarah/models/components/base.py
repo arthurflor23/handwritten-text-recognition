@@ -254,11 +254,12 @@ class BaseRecognitionModel(BaseModel):
 
         images, texts = aug_image_data, text_data
 
-        if self.generator and self.style_encoder:
+        if self.style_backbone and self.style_encoder and self.generator:
             if np.random.random() <= self.synthetic_data_ratio:
                 images, texts = image_data, aug_text_data
 
-                latent_data = self.style_encoder(images, training=False)
+                features_data = self.style_backbone(images, training=False)
+                latent_data = self.style_encoder(features_data, training=False)
 
                 if isinstance(latent_data, list):
                     latent_data = latent_data[0]
@@ -306,7 +307,7 @@ class BaseRecognitionModel(BaseModel):
             self.edit_distance.name: self.edit_distance.result(),
         }
 
-    def call(self, x_data, training=None):
+    def call(self, x_data, training=False):
         """
         Processes input images and transcribes handwritten texts from them.
 
@@ -612,7 +613,8 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _) = input_data
 
-        latent_data = self.style_encoder(image_data)
+        features_data = self.style_backbone(image_data)
+        latent_data = self.style_encoder(features_data)
 
         if isinstance(latent_data, list):
             latent_data = latent_data[0]
@@ -625,7 +627,7 @@ class BaseSynthesisModel(BaseModel):
             self.kid.name: self.kid.result(),
         }
 
-    def call(self, x_data, training=None):
+    def call(self, x_data, training=False):
         """
         Processes input images and text through the style encoder,
             and generator to produce generated images.
@@ -648,7 +650,8 @@ class BaseSynthesisModel(BaseModel):
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
-            latent_data = self.style_encoder(image_data, training=training)
+            features_data = self.style_backbone(image_data, training=training)
+            latent_data = self.style_encoder(features_data, training=training)
 
             if isinstance(latent_data, list):
                 latent_data = latent_data[0]

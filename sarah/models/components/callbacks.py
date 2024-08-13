@@ -88,7 +88,8 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 self._save_images(self.global_step, image_data, name='authentic')
 
                 # guided latent images
-                guided_latent_data = self.model.style_encoder(image_data, training=False)
+                features_data = self.model.style_backbone(image_data, training=False)
+                guided_latent_data = self.model.style_encoder(features_data, training=False)
 
                 if isinstance(guided_latent_data, list):
                     guided_latent_data = guided_latent_data[0]
