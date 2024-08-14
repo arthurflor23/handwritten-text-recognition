@@ -272,7 +272,7 @@ class Compose():
 
             callbacks = [
                 tf.keras.callbacks.CSVLogger(
-                    filename=os.path.join(run_info['artifact_path'], 'epochs.log'),
+                    filename=os.path.join(run_info['artifact_path'], 'epochs.csv'),
                     separator=';',
                     append=True,
                 ),
