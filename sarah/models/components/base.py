@@ -198,11 +198,13 @@ class BaseRecognitionModel(BaseModel):
         self.synthetic_data_ratio = synthetic_data_ratio
         self.seed = seed
 
+        self.style_backbone = None
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
 
         self.names = [
+            'style_backbone',
             'style_encoder',
             'generator',
             'recognition',
