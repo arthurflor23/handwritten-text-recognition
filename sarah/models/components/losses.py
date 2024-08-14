@@ -82,7 +82,7 @@ class CTXLoss(tf.keras.losses.Loss):
     def __init__(self,
                  sigma=0.5,
                  alpha=1.0,
-                 similarity='cosine',
+                 similarity='l2',
                  name='ctx_loss',
                  **kwargs):
         """
