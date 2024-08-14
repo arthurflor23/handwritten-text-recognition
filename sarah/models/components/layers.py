@@ -421,8 +421,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.num_channels = input_shape[0][-1]
 
-        self.beta = tf.keras.layers.Dense(self.num_channels, use_bias=False)
-        self.gamma = tf.keras.layers.Dense(self.num_channels, use_bias=False)
+        self.beta = tf.keras.layers.Dense(self.num_channels)
+        self.gamma = tf.keras.layers.Dense(self.num_channels)
 
         if self.spectral:
             self.beta = tf.keras.layers.SpectralNormalization(self.beta)
@@ -1051,24 +1051,21 @@ class SelfAttention(tf.keras.layers.Layer):
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
                                  kernel_regularizer=self.kernel_regularizer,
-                                 kernel_constraint=self.kernel_constraint,
-                                 use_bias=False)
+                                 kernel_constraint=self.kernel_constraint)
 
         self.g_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
                                  kernel_regularizer=self.kernel_regularizer,
-                                 kernel_constraint=self.kernel_constraint,
-                                 use_bias=False)
+                                 kernel_constraint=self.kernel_constraint)
 
         self.h_conv = conv_layer(filters=self.filters // self.divisor,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
                                  kernel_regularizer=self.kernel_regularizer,
-                                 kernel_constraint=self.kernel_constraint,
-                                 use_bias=False)
+                                 kernel_constraint=self.kernel_constraint)
 
         if self.pooling:
             self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
@@ -1079,8 +1076,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                      padding='same',
                                      kernel_initializer=self.kernel_initializer,
                                      kernel_regularizer=self.kernel_regularizer,
-                                     kernel_constraint=self.kernel_constraint,
-                                     use_bias=False)
+                                     kernel_constraint=self.kernel_constraint)
 
             if self.spectral:
                 self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
