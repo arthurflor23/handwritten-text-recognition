@@ -83,7 +83,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
-        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
@@ -91,7 +91,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
@@ -111,7 +111,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
 
-        decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
+        decoder = tf.keras.layers.Dropout(rate=0.625)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
