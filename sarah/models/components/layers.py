@@ -363,7 +363,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, spectral=False, momentum=0.99, epsilon=1e-3, **kwargs):
+    def __init__(self, spectral=False, momentum=0.9, epsilon=1e-5, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -421,12 +421,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.num_channels = input_shape[0][-1]
 
-        self.gain = tf.keras.layers.Dense(self.num_channels, use_bias=False)
-        self.bias = tf.keras.layers.Dense(self.num_channels, use_bias=False)
+        self.beta = tf.keras.layers.Dense(self.num_channels, use_bias=False)
+        self.gamma = tf.keras.layers.Dense(self.num_channels, use_bias=False)
 
         if self.spectral:
-            self.gain = tf.keras.layers.SpectralNormalization(self.gain)
-            self.bias = tf.keras.layers.SpectralNormalization(self.bias)
+            self.beta = tf.keras.layers.SpectralNormalization(self.beta)
+            self.gamma = tf.keras.layers.SpectralNormalization(self.gamma)
 
         self.mean = self.add_weight(name=f"{self.name}_mean",
                                     shape=(self.num_channels,),
@@ -455,29 +455,31 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
             The normalized output tensor.
         """
 
-        inputs, conditional = inputs
+        x, conditional = inputs
+
+        beta = self.beta(conditional)
+        gamma = self.gamma(conditional)
+
+        beta = tf.reshape(beta, shape=[-1, 1, 1, self.num_channels])
+        gamma = tf.reshape(gamma, shape=[-1, 1, 1, self.num_channels])
 
         if training:
-            mean, variance = tf.nn.moments(x=inputs, axes=[0, 1, 2], keepdims=False)
+            mean, variance = tf.nn.moments(x=x, axes=[0, 1, 2], keepdims=False)
 
             self.mean.assign(self.mean * self.momentum + mean * (1 - self.momentum))
             self.variance.assign(self.variance * self.momentum + variance * (1 - self.momentum))
 
-        else:
-            mean = self.mean
-            variance = self.variance
+        mean = self.mean
+        variance = self.variance
 
-        gain = tf.reshape(1 + self.gain(conditional), shape=[tf.shape(conditional)[0], 1, 1, -1])
-        bias = tf.reshape(self.bias(conditional), shape=[tf.shape(conditional)[0], 1, 1, -1])
+        outputs = tf.nn.batch_normalization(x=x,
+                                            mean=mean,
+                                            variance=variance,
+                                            offset=beta,
+                                            scale=gamma,
+                                            variance_epsilon=self.epsilon)
 
-        out = tf.nn.batch_normalization(x=inputs,
-                                        mean=mean,
-                                        variance=variance,
-                                        offset=None,
-                                        scale=None,
-                                        variance_epsilon=self.epsilon)
-
-        return out * gain + bias
+        return outputs
 
 
 class ExtractPatches(tf.keras.layers.Layer):
@@ -956,7 +958,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  gamma_initializer='zeros',
                  dropout=0.0,
-                 pooling=True,
+                 pooling=False,
                  spectral=False,
                  **kwargs):
         """
