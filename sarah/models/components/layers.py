@@ -1068,6 +1068,11 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
+        if self.spectral:
+            self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv, name=self.f_conv.name)
+            self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv, name=self.g_conv.name)
+            self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv, name=self.h_conv.name)
+
         if self.pooling:
             self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
             self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
@@ -1080,12 +1085,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                      kernel_constraint=self.kernel_constraint)
 
             if self.spectral:
-                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
-
-        if self.spectral:
-            self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv)
-            self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv)
-            self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv)
+                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
