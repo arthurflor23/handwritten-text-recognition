@@ -469,8 +469,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
             self.mean.assign(self.mean * self.momentum + mean * (1 - self.momentum))
             self.variance.assign(self.variance * self.momentum + variance * (1 - self.momentum))
 
-        mean = self.mean
-        variance = self.variance
+        else:
+            mean = self.mean
+            variance = self.variance
 
         outputs = tf.nn.batch_normalization(x=x,
                                             mean=mean,
