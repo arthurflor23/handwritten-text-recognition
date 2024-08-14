@@ -273,7 +273,7 @@ class Compose():
             callbacks = [
                 tf.keras.callbacks.CSVLogger(
                     filename=os.path.join(run_info['artifact_path'], 'epochs.log'),
-                    separator=',',
+                    separator=';',
                     append=True,
                 ),
                 tf.keras.callbacks.ModelCheckpoint(
