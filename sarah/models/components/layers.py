@@ -566,18 +566,25 @@ class GatedConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 mode=None,
+                 dropout=0.0,
+                 spectral=False,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
-                 dropout=0.0,
-                 mode=None,
                  **kwargs):
         """
         Initializes the gated convolutional layer.
 
         Parameters
         ----------
+        mode : str, optional
+            Whether to use None, 'dual' or 'residual' gating.
+        dropout : float, optional
+            Whether apply dropout or not.
+        spectral : bool, optional
+            Whether apply spectral normalization or not.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -586,22 +593,19 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
-        dropout : float, optional
-            Whether apply dropout or not.
-        mode : str, optional
-            Whether to use None, 'dual' or 'residual' gating.
         **kwargs : dict
             Conv2D keyword arguments.
         """
 
         super().__init__(**kwargs)
 
+        self.mode = mode
+        self.dropout = dropout
+        self.spectral = spectral
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
-        self.dropout = dropout
-        self.mode = mode
 
     def get_config(self):
         """
@@ -616,12 +620,13 @@ class GatedConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'mode': self.mode,
+            'dropout': self.dropout,
+            'spectral': self.spectral,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
-            'dropout': self.dropout,
-            'mode': self.mode,
         })
 
         return config
@@ -648,7 +653,15 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint)
 
+        if self.spectral:
+            self.s_conv = tf.keras.layers.SpectralNormalization(self.s_conv)
+
         if self.mode == 'residual':
+            self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                         shape=(1,),
+                                         initializer=self.gamma_initializer,
+                                         trainable=True)
+
             self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=(3, 3),
                                                  strides=(1, 1),
@@ -657,10 +670,8 @@ class GatedConv2D(tf.keras.layers.Layer):
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint)
 
-            self.gamma = self.add_weight(name=f"{self.name}_gamma",
-                                         shape=(1,),
-                                         initializer=self.gamma_initializer,
-                                         trainable=True)
+            if self.spectral:
+                self.t_conv = tf.keras.layers.SpectralNormalization(self.t_conv)
 
     def call(self, inputs, training=False):
         """
