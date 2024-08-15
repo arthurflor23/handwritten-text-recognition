@@ -567,8 +567,8 @@ class GatedConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  mode=None,
-                 dropout=0.0,
                  spectral=False,
+                 dropout=0.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -581,10 +581,10 @@ class GatedConv2D(tf.keras.layers.Layer):
         ----------
         mode : str, optional
             Whether to use None, 'dual' or 'residual' gating.
-        dropout : float, optional
-            Whether apply dropout or not.
         spectral : bool, optional
             Whether apply spectral normalization or not.
+        dropout : float, optional
+            Whether apply dropout or not.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -600,8 +600,8 @@ class GatedConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.mode = mode
-        self.dropout = dropout
         self.spectral = spectral
+        self.dropout = dropout
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -621,8 +621,8 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         config.update({
             'mode': self.mode,
-            'dropout': self.dropout,
             'spectral': self.spectral,
+            'dropout': self.dropout,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -969,9 +969,9 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
-                 dropout=0.0,
                  pooling=False,
                  spectral=False,
+                 dropout=0.0,
                  **kwargs):
         """
         Initialize the self-attention gan layer.
@@ -986,12 +986,12 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
-        dropout : float, optional
-            Whether apply dropout or not.
         pooling : bool, optional
             Whether apply max pooling or not.
         spectral : bool, optional
             Whether apply spectral normalization or not.
+        dropout : float, optional
+            Whether apply dropout or not.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -1002,9 +1002,9 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
-        self.dropout = dropout
         self.pooling = pooling
         self.spectral = spectral
+        self.dropout = dropout
 
     def get_config(self):
         """
@@ -1023,9 +1023,9 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
-            'dropout': self.dropout,
             'pooling': self.pooling,
             'spectral': self.spectral,
+            'dropout': self.dropout,
         })
 
         return config
