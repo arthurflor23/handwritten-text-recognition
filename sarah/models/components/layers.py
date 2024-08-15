@@ -654,7 +654,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint)
 
         if self.spectral:
-            self.s_conv = tf.keras.layers.SpectralNormalization(self.s_conv)
+            self.s_conv = tf.keras.layers.SpectralNormalization(self.s_conv, name=self.s_conv.name)
 
         if self.mode == 'residual':
             self.gamma = self.add_weight(name=f"{self.name}_gamma",
@@ -671,7 +671,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                                  kernel_constraint=self.kernel_constraint)
 
             if self.spectral:
-                self.t_conv = tf.keras.layers.SpectralNormalization(self.t_conv)
+                self.t_conv = tf.keras.layers.SpectralNormalization(self.t_conv, name=self.t_conv.name)
 
     def call(self, inputs, training=False):
         """
@@ -1080,9 +1080,9 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint)
 
         if self.spectral:
-            self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv)
-            self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv)
-            self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv)
+            self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv, name=self.f_conv.name)
+            self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv, name=self.g_conv.name)
+            self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv, name=self.h_conv.name)
 
         if self.pooling:
             self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
@@ -1096,7 +1096,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                      kernel_constraint=self.kernel_constraint)
 
             if self.spectral:
-                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv)
+                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
