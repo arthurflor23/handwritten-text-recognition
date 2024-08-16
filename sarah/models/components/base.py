@@ -162,6 +162,7 @@ class BaseRecognitionModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
+                 style_backbone=None,
                  style_encoder=None,
                  generator=None,
                  synthetic_data_ratio=0.99,
@@ -176,6 +177,8 @@ class BaseRecognitionModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
+        style_backbone : StyleBackbone instance
+            StyleBackbone model for features extraction.
         style_encoder : StyleEncoder instance
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
@@ -198,7 +201,7 @@ class BaseRecognitionModel(BaseModel):
         self.synthetic_data_ratio = synthetic_data_ratio
         self.seed = seed
 
-        self.style_backbone = None
+        self.style_backbone = style_backbone
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
@@ -261,10 +264,10 @@ class BaseRecognitionModel(BaseModel):
                 images, texts = image_data, aug_text_data
 
                 features_data = self.style_backbone(images, training=False)
-                latent_data = self.style_encoder(features_data, training=False)
+                features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-                if isinstance(latent_data, list):
-                    latent_data = latent_data[0]
+                latent_data = self.style_encoder(features_data, training=False)
+                latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
                 images = self.generator([latent_data, texts], training=False)
 
@@ -616,10 +619,10 @@ class BaseSynthesisModel(BaseModel):
         _, (image_data, text_data, _) = input_data
 
         features_data = self.style_backbone(image_data)
-        latent_data = self.style_encoder(features_data)
+        features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-        if isinstance(latent_data, list):
-            latent_data = latent_data[0]
+        latent_data = self.style_encoder(features_data)
+        latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
         generated_images = self.generator([latent_data, text_data])
 
@@ -653,10 +656,10 @@ class BaseSynthesisModel(BaseModel):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
         else:
             features_data = self.style_backbone(image_data, training=training)
-            latent_data = self.style_encoder(features_data, training=training)
+            features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-            if isinstance(latent_data, list):
-                latent_data = latent_data[0]
+            latent_data = self.style_encoder(features_data, training=training)
+            latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
         generated_images = self.generator([latent_data, text_data], training=training)
 
