@@ -120,6 +120,7 @@ class Compose():
                                                generator_steps=generator_steps,
                                                seed=seed)
                     synthesis_params = {
+                        'style_backbone': synthesis.style_backbone,
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
                         'synthetic_data_ratio': synthetic_data_ratio,
