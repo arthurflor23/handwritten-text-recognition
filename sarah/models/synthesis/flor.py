@@ -368,7 +368,7 @@ class BackboneModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-        self.backbone = backbone
+        self.backbone = tf.keras.models.clone_model(model=backbone, recursive=True)
 
         self.build_model()
 
