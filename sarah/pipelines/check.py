@@ -71,13 +71,13 @@ def check(args):
 
     while True:
         _, y_source_data = next(source_gen)
-        image_source_data, text_source_data, writer_source_data = y_source_data
+        image_source_data, _, text_source_data, writer_source_data = y_source_data
 
         _, y_encoded_data = next(encoded_gen)
-        image_encoded_data, text_encoded_data, writer_encoded_data = y_encoded_data
+        image_encoded_data, shape_data, text_encoded_data, writer_encoded_data = y_encoded_data
 
         x_augmented_data, _ = next(augmented_gen)
-        image_augmented_data, _ = x_augmented_data
+        image_augmented_data, _, _ = x_augmented_data
 
         for i in range(len(image_source_data)):
             # source
@@ -85,6 +85,7 @@ def check(args):
             print('Path image')
             print(image_source_data[i], '\n')
 
+            print('Image shape   :', shape_data[i])
             print('Source writer :', writer_source_data[i])
             print('Encoded writer:', writer_encoded_data[i], '\n')
 

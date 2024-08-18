@@ -454,7 +454,10 @@ class Dataset():
                 image_data, text_data, writer_data = map(
                     list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
 
-                aug_image_data, aug_text_data = None, None
+                shape_data = [self.image_shape[:2][::-1] for _ in image_data]
+                aug_image_data = None
+                aug_shape_data = None
+                aug_text_data = None
 
                 if batch_encoded:
                     writer_data = np.array(writer_data)
@@ -464,7 +467,9 @@ class Dataset():
                                                          target_width=len(x['text']) * self.char_width,
                                                          target_shape=self.image_shape) for x in batch]
 
+                    shape_data = [x.shape for x in image_data]
                     aug_image_data = image_data.copy()
+                    aug_shape_data = shape_data.copy()
                     aug_text_data = text_data.copy()
 
                     if multigrams_length:
@@ -474,6 +479,7 @@ class Dataset():
                     if augmentor:
                         aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
                         aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
+                        aug_shape_data = [x.shape for x in aug_image_data]
 
                     if batch_padding:
                         image_data = utils.batch_padding(image_data, self.image_shape, self.pad_value, np.uint8)
@@ -483,13 +489,19 @@ class Dataset():
                         aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
 
                     if batch_processing:
-                        image_data = utils.batch_processing(image_data, image_processing=True)
-                        aug_image_data = utils.batch_processing(aug_image_data, image_processing=True)
+                        image_data = utils.batch_processing(image_data, mode='image')
+                        aug_image_data = utils.batch_processing(aug_image_data, mode='image')
 
-                        text_data = utils.batch_processing(text_data, image_processing=False)
-                        aug_text_data = utils.batch_processing(aug_text_data, image_processing=False)
+                        text_data = utils.batch_processing(text_data, mode='text')
+                        aug_text_data = utils.batch_processing(aug_text_data, mode='text')
 
-                yield (aug_image_data, aug_text_data), (image_data, text_data, writer_data)
+                        shape_data = utils.batch_processing(shape_data, mode='shape')
+                        aug_shape_data = utils.batch_processing(aug_shape_data, mode='shape')
+
+                x_data = (aug_image_data, aug_text_data, aug_shape_data)
+                y_data = (image_data, text_data, shape_data, writer_data)
+
+                yield x_data, y_data
 
         subset = 'encoded' if batch_encoded else 'source'
 

@@ -255,13 +255,16 @@ class BaseRecognitionModel(BaseModel):
             A dictionary containing metrics and losses.
         """
 
-        (aug_image_data, aug_text_data), (image_data, text_data, _) = input_data
+        x_data, y_data = input_data
 
-        images, texts = aug_image_data, text_data
+        aug_image_data, aug_text_data, aug_shape_data = x_data
+        image_data, text_data, shape_data, _ = y_data
+
+        images, texts, shape = aug_image_data, text_data, aug_shape_data
 
         if self.style_backbone and self.style_encoder and self.generator:
             if np.random.random() <= self.synthetic_data_ratio:
-                images, texts = image_data, aug_text_data
+                images, texts, shape = image_data, aug_text_data, shape_data
 
                 features_data = self.style_backbone(images, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
@@ -269,7 +272,7 @@ class BaseRecognitionModel(BaseModel):
                 latent_data = self.style_encoder(features_data, training=False)
                 latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-                images = self.generator([latent_data, texts], training=False)
+                images = self.generator([latent_data, texts, shape], training=False)
 
         with tf.GradientTape() as tape:
             ctc_logits = self.recognition(images, training=True)
@@ -616,7 +619,7 @@ class BaseSynthesisModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        _, (image_data, text_data, _) = input_data
+        _, (image_data, text_data, shape_data, _) = input_data
 
         features_data = self.style_backbone(image_data)
         features_data = features_data[0] if isinstance(features_data, list) else features_data
@@ -624,7 +627,7 @@ class BaseSynthesisModel(BaseModel):
         latent_data = self.style_encoder(features_data)
         latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([latent_data, text_data])
+        generated_images = self.generator([latent_data, text_data, shape_data])
 
         self.kid.update_state(image_data, generated_images)
 
@@ -650,7 +653,7 @@ class BaseSynthesisModel(BaseModel):
             The generated images.
         """
 
-        image_data, text_data = x_data
+        image_data, text_data, shape_data = x_data
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_data = tf.random.normal(shape=(len(text_data), self.style_encoder.latent_dim))
@@ -661,7 +664,7 @@ class BaseSynthesisModel(BaseModel):
             latent_data = self.style_encoder(features_data, training=training)
             latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([latent_data, text_data], training=training)
+        generated_images = self.generator([latent_data, text_data, shape_data], training=training)
 
         return generated_images
 
