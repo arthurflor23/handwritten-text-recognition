@@ -4,7 +4,6 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
-from sarah.models.components.layers import GatedConv2D
 from sarah.models.components.layers import Reparameterization
 from sarah.models.components.layers import SelfAttention
 from sarah.models.components.metrics import MetricsTracker
@@ -171,7 +170,8 @@ class SynthesisModel(BaseSynthesisModel):
                 # real_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_adv))
 
                 # discriminator loss
-                d_adv_loss = fake_adv_loss + real_adv_loss  # + fake_patch_adv_loss + real_patch_adv_loss
+                d_adv_loss = fake_adv_loss + real_adv_loss
+                # d_adv_loss = fake_adv_loss + real_adv_loss + fake_patch_adv_loss + real_patch_adv_loss
 
             d_gradients = tape.gradient(d_adv_loss, self.discriminator.trainable_variables)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_variables))
@@ -248,7 +248,8 @@ class SynthesisModel(BaseSynthesisModel):
             # fake_patch_adv_adv = self.patch_discriminator(fake_images, training=True)
             # fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv_adv)
 
-            g_adv_loss = fake_adv_loss  # + fake_patch_adv_loss
+            # g_adv_loss = fake_adv_loss + fake_patch_adv_loss
+            g_adv_loss = fake_adv_loss
 
             # handwriting recognition
             real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
@@ -280,8 +281,8 @@ class SynthesisModel(BaseSynthesisModel):
 
             # contextual
             g_ctx_loss = tf.constant(0.0)
-            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats)
-            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats)
+            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats) * 5
+            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats) * 5
 
             # generator loss
             g_loss = g_adv_loss + g_ctc_loss + g_rec_loss + g_res_loss + g_wid_loss + g_ctx_loss
@@ -484,7 +485,7 @@ class IdentificationModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.LeakyReLU(negative_slope=0.2)(style)
+        style = tf.keras.layers.PReLU(shared_axes=None)(style)
 
         outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
@@ -558,7 +559,7 @@ class StyleEncoderModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.LeakyReLU(negative_slope=0.2)(style)
+        style = tf.keras.layers.PReLU(shared_axes=None)(style)
 
         mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
@@ -651,11 +652,11 @@ class GeneratorModel(BaseModel):
 
         def residual_block_up(x, y, filters, upsample=None):
             h = ConditionalBatchNormalization(spectral=True)([x, y])
-            h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             if upsample:
-                h = tf.keras.layers.UpSampling2D(size=upsample)(h)
-                x = tf.keras.layers.UpSampling2D(size=upsample)(x)
+                h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
+                x = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(x)
 
                 # h = tf.keras.layers.SpectralNormalization(
                 #     tf.keras.layers.Conv2DTranspose(filters=filters,
@@ -679,7 +680,7 @@ class GeneratorModel(BaseModel):
                                        kernel_initializer='orthogonal'))(h)
 
             h = ConditionalBatchNormalization(spectral=True)([h, y])
-            h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -728,11 +729,10 @@ class GeneratorModel(BaseModel):
                                   kernel_initializer='orthogonal'))(latent_text)
 
         block = tf.keras.layers.Reshape(target_shape=(latent_text.shape[1] * 4, 4, -1))(latent_text)
-        # block = tf.keras.layers.Reshape(target_shape=(latent_text.shape[1], 4 * 4, -1))(latent_text)
 
         for i, filters in enumerate(self.blocks):
-            # if i == len(self.blocks) - 1:
-            #     block = GatedConv2D(mode='residual', kernel_initializer='orthogonal')(block)
+            # if i == 1:
+            #     block = SelfAttention(pooling=True, spectral=True, kernel_initializer='orthogonal')(block)
 
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
@@ -740,11 +740,8 @@ class GeneratorModel(BaseModel):
             upsample = strides if 2 in strides else None
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
-            # if i == 0:
-            #     block = SelfAttention(pooling=True, spectral=True, kernel_initializer='orthogonal')(block)
-
         outputs = tf.keras.layers.BatchNormalization()(block)
-        outputs = tf.keras.layers.LeakyReLU(negative_slope=0.2)(outputs)
+        outputs = tf.keras.layers.PReLU(shared_axes=[1, 2])(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1,
@@ -831,14 +828,14 @@ class DiscriminatorModel(BaseModel):
             h = x
 
             if preactive:
-                h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
+                h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
-            h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
+            h = tf.keras.layers.PReLU(shared_axes=[1, 2])(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -857,20 +854,6 @@ class DiscriminatorModel(BaseModel):
                 h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(h)
                 x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(x)
 
-                # h = tf.keras.layers.SpectralNormalization(
-                #     tf.keras.layers.Conv2DTranspose(filters=filters,
-                #                                     kernel_size=2,
-                #                                     strides=downsample,
-                #                                     padding='same',
-                #                                     kernel_initializer='orthogonal'))(h)
-
-                # x = tf.keras.layers.SpectralNormalization(
-                #     tf.keras.layers.Conv2DTranspose(filters=filters,
-                #                                     kernel_size=2,
-                #                                     strides=downsample,
-                #                                     padding='same',
-                #                                     kernel_initializer='orthogonal'))(x)
-
             if not preactive:
                 x = tf.keras.layers.SpectralNormalization(
                     tf.keras.layers.Conv2D(filters=filters,
@@ -887,16 +870,14 @@ class DiscriminatorModel(BaseModel):
             # if i == len(self.blocks) - 1:
             #     block = SelfAttention(pooling=True, spectral=True, kernel_initializer='orthogonal')(block)
 
-            strides = (2 if block.shape[1] > 4 else 1,
-                       2 if block.shape[2] > 4 else 1)
+            strides = (2 if i < len(self.blocks) - 1 and block.shape[1] > 4 else 1,
+                       2 if i < len(self.blocks) - 1 and block.shape[2] > 4 else 1)
 
             downsample = strides if 2 in strides else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
-            # if i == 0:
-            #     block = GatedConv2D(mode='residual', kernel_initializer='orthogonal')(block)
-
-        outputs = tf.keras.layers.GlobalAveragePooling2D()(block)
+        outputs = tf.keras.layers.PReLU(shared_axes=[1, 2])(block)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=1, kernel_initializer='orthogonal'))(outputs)
