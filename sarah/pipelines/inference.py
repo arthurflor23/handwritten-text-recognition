@@ -99,7 +99,7 @@ def inference(args):
                                                 verbose=1)
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
-        filepath = f"{basename}_{'guided_style' if args.image else 'random_style'}".strip('_')
+        filepath = f"{basename}_{'guided' if args.image else 'random'}".strip('_')
         os.makedirs(args.inference_output_path, exist_ok=True)
 
         for i, image in enumerate(predictions):
