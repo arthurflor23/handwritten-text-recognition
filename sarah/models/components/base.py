@@ -303,7 +303,7 @@ class BaseRecognitionModel(BaseModel):
             A dictionary containing evaluation metrics.
         """
 
-        _, (image_data, text_data, _) = input_data
+        _, (image_data, text_data, _, _) = input_data
 
         ctc_logits = self.recognition(image_data)
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
@@ -456,7 +456,7 @@ class BaseRecognitionModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (image_data, text_data, writer_data) = next(y)
+            _, (image_data, text_data, _, writer_data) = next(y)
             batch_size = len(text_data)
 
             pred_data = x[batch_index:batch_index + batch_size]
