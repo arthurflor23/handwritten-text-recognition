@@ -359,11 +359,14 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     References
     ----------
+    Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
+        https://arxiv.org/abs/1502.03167
+
     Modulating early visual processing by language
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, spectral=False, momentum=0.9, epsilon=1e-5, **kwargs):
+    def __init__(self, spectral=False, momentum=0.99, epsilon=1e-3, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
