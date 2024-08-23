@@ -16,6 +16,9 @@ class RecognitionModel(BaseRecognitionModel):
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
+    Mish: A Self Regularized Non-Monotonic Activation Function
+        https://arxiv.org/abs/1908.08681
+
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
     """
@@ -56,7 +59,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -64,7 +67,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -72,7 +75,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -80,7 +83,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
         encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
@@ -88,7 +91,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
@@ -96,10 +99,10 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention()(encoder)
+        encoder = SelfAttention(pooling=False)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
@@ -112,6 +115,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
