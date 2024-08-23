@@ -53,7 +53,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
+        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
 
         encoder = GatedConv2D(mode='residual')(encoder)
 
