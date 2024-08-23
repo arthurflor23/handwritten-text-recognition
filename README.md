@@ -57,7 +57,7 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 1. [Bentham](https://drive.google.com/file/d/1do3tS7vd-QaUxkeBwPE4Phia99-J_AUq/view?usp=sharing) [[paper]](https://doi.org/10.1109/DAS.2014.23)
 
-2. [BRESSAY](https://zenodo.org/records/11637681) [[paper]](https://icdar2024.net/)
+2. [BRESSAY](https://zenodo.org/records/11637681) [[paper]](https://doi.org/10.1007/978-3-031-70536-6_19)
 
 3. [CVL-Database](https://drive.google.com/file/d/1H0M2lHdxUCLs7eKjk2q7fNBYU0-PkLDo/view?usp=sharing) [[paper]](https://doi.org/10.1109/ICDAR.2013.117)
 
@@ -233,8 +233,8 @@ If you are interested in learning more about the project or the subject of Handw
 
 -   Neto, Arthur F. S. and Bezerra, Byron L. D. and Moura, Gabriel C. D. and Toselli, Alejandro H. [Data Augmentation for Offline Handwritten Text Recognition: A Systematic Literature Review](https://doi.org/10.1007/s42979-023-02583-6). SN Computer Science, 2024.
 
--   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [BRESSAY: A Brazilian Portuguese Dataset for Offline Handwritten Text Recognition](https://icdar2024.net/). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
+-   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [BRESSAY: A Brazilian Portuguese Dataset for Offline Handwritten Text Recognition](https://doi.org/10.1007/978-3-031-70536-6_19). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
--   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://icdar2024.net/). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
+-   Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://doi.org/10.1007/978-3-031-70552-6_21). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
 These references provide additional insights and background information related to Handwritten Text Recognition and can be a valuable resource for further exploration. If any of these papers have been beneficial to your research or project, it would be greatly appreciated if you could consider citing them.
