@@ -665,7 +665,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                          initializer=self.gamma_initializer,
                                          trainable=True)
 
-            self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
+            self.l_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=(3, 3),
                                                  strides=(1, 1),
                                                  padding='same',
@@ -674,7 +674,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                                  kernel_constraint=self.kernel_constraint)
 
             if self.spectral:
-                self.t_conv = tf.keras.layers.SpectralNormalization(self.t_conv, name=self.t_conv.name)
+                self.l_conv = tf.keras.layers.SpectralNormalization(self.l_conv, name=self.l_conv.name)
 
     def call(self, inputs, training=False):
         """
@@ -693,28 +693,28 @@ class GatedConv2D(tf.keras.layers.Layer):
             Tensor resulting from the gated convolution.
         """
 
-        s = self.s_conv(inputs)
+        s_conv = self.s_conv(inputs)
 
         if self.mode == 'dual':
-            s1, s2 = tf.split(s, num_or_size_splits=2, axis=-1)
-            linear = tf.keras.layers.Activation('linear')(s1)
-            sigmoid = tf.keras.layers.Activation('sigmoid')(s2)
-            outputs = linear * sigmoid
+            l_conv, s_conv = tf.split(s_conv, num_or_size_splits=2, axis=-1)
+            l_conv = tf.keras.layers.Activation('linear')(l_conv)
+            s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
+            outputs = l_conv * s_conv
 
         elif self.mode == 'residual':
-            t = self.t_conv(inputs)
-            linear = tf.keras.layers.Activation('linear')(t)
-            sigmoid = tf.keras.layers.Activation('sigmoid')(s)
-            beta = linear * sigmoid
+            l_conv = self.l_conv(inputs)
+            l_conv = tf.keras.layers.Activation('linear')(l_conv)
+            s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
+            g_conv = l_conv * s_conv
 
             if training and self.dropout:
-                beta = tf.nn.dropout(beta, rate=self.dropout)
+                g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
-            outputs = self.gamma * beta + inputs
+            outputs = self.gamma * g_conv + inputs
 
         else:
-            sigmoid = tf.keras.layers.Activation('sigmoid')(s)
-            outputs = sigmoid * inputs
+            s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
+            outputs = inputs * s_conv
 
         return outputs
 
