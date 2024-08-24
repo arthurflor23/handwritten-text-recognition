@@ -35,6 +35,9 @@ class SynthesisModel(BaseSynthesisModel):
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
 
+    Mish: A Self Regularized Non-Monotonic Activation Function
+        https://arxiv.org/abs/1908.08681
+
     Modulating early visual processing by language
         https://arxiv.org/abs/1707.00683v3
 
@@ -75,7 +78,8 @@ class SynthesisModel(BaseSynthesisModel):
         """
 
         latent_dim = 128
-        embedding_dim = 32
+        text_dim = 32
+        shape_dim = 16
         patch_shape = [32, 32, 1]
         discriminator_blocks = [64, 128, 256, 256]
         generator_blocks = [256, 128, 64, 64]
@@ -97,10 +101,11 @@ class SynthesisModel(BaseSynthesisModel):
                                                latent_dim=latent_dim)
 
         self.generator = GeneratorModel(name='generator',
-                                        latent_dim=latent_dim,
-                                        embedding_dim=embedding_dim,
                                         image_shape=self.image_shape,
                                         lexical_shape=self.lexical_shape,
+                                        latent_dim=latent_dim,
+                                        text_dim=text_dim,
+                                        shape_dim=shape_dim,
                                         blocks=generator_blocks)
 
         self.discriminator = DiscriminatorModel(name='discriminator',
@@ -407,19 +412,17 @@ class BackboneModel(BaseModel):
         """
 
         style = tf.keras.layers.Reshape(target_shape=(-1, self.backbone.output.shape[-1]))(self.backbone.output)
-        style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(style)
 
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
-        style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=-1), name='reduce_sum')(style)
 
-        outputs = tf.keras.layers.Flatten()(style)
-
-        outputs = tf.keras.layers.Dense(units=256)(outputs)
-        outputs = tf.keras.layers.PReLU(shared_axes=None)(outputs)
+        # style = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1), name='expand')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # style = tf.keras.layers.Conv2D(32, kernel_size=3, strides=2, padding='same')(style)
+        # outputs = tf.keras.layers.Flatten()(style)
 
         self._input_shape = self.backbone.output.shape[1:]
         self._output_shape = outputs.shape[1:]
@@ -493,7 +496,10 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='mish')(style)
+
+        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
         self.model = tf.keras.Model(name=self.name, inputs=feature_inputs, outputs=outputs)
 
@@ -564,8 +570,14 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='mish')(style)
+
+        style = tf.keras.layers.Dense(units=256)(style)
+        style = tf.keras.layers.Activation(activation='mish')(style)
+
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
 
         outputs = Reparameterization()([mu, logvar])
 
@@ -581,10 +593,11 @@ class GeneratorModel(BaseModel):
     """
 
     def __init__(self,
-                 latent_dim,
-                 embedding_dim,
                  image_shape,
                  lexical_shape,
+                 latent_dim,
+                 text_dim,
+                 shape_dim,
                  blocks,
                  name='generator',
                  **kwargs):
@@ -593,14 +606,16 @@ class GeneratorModel(BaseModel):
 
         Parameters
         ----------
-        latent_dim : int
-            Dimension of the latent space.
-        embedding_dim : int
-            Dimension of the embedding space.
         image_shape : list or tuple
             Shape of the output image.
         lexical_shape : list or tuple
             Shape of the text sequences and vocabulary encoding.
+        latent_dim : int
+            Dimension of the latent space.
+        text_dim : int
+            Size of the embedding for text space.
+        shape_dim : int
+            Size of the embedding for image dimension.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
         name : str, optional
@@ -611,10 +626,11 @@ class GeneratorModel(BaseModel):
 
         super().__init__(name=name, **kwargs)
 
-        self.latent_dim = latent_dim
-        self.embedding_dim = embedding_dim
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
+        self.latent_dim = latent_dim
+        self.text_dim = text_dim
+        self.shape_dim = shape_dim
         self.blocks = blocks
 
         self.build_model()
@@ -636,10 +652,11 @@ class GeneratorModel(BaseModel):
         config = super().get_config()
 
         config.update({
-            'latent_dim': self.latent_dim,
-            'embedding_dim': self.embedding_dim,
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
+            'latent_dim': self.latent_dim,
+            'text_dim': self.text_dim,
+            'shape_dim': self.shape_dim,
             'blocks': self.blocks,
         })
 
@@ -655,8 +672,8 @@ class GeneratorModel(BaseModel):
 
         def residual_block_up(x, y, filters, upsample=None):
             h = ConditionalBatchNormalization(spectral=True)([x, y])
-            # h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
-            h = tf.keras.layers.ReLU()(h)
+            h = tf.keras.layers.Activation(activation='mish')(h)
+            # h = tf.keras.layers.ReLU()(h)
 
             if upsample:
                 h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
@@ -684,8 +701,8 @@ class GeneratorModel(BaseModel):
                                        kernel_initializer='orthogonal'))(h)
 
             h = ConditionalBatchNormalization(spectral=True)([h, y])
-            # h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
-            h = tf.keras.layers.ReLU()(h)
+            h = tf.keras.layers.Activation(activation='mish')(h)
+            # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -707,24 +724,8 @@ class GeneratorModel(BaseModel):
         text_flattened = tf.keras.layers.Flatten()(text_input)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                                   output_dim=self.embedding_dim,
+                                                   output_dim=self.text_dim,
                                                    embeddings_initializer='orthogonal')(text_flattened)
-
-        shape_input = tf.keras.layers.Input(shape=(2,))
-
-        height_embedding = tf.keras.layers.Embedding(input_dim=self.image_shape[0] + 1,
-                                                     output_dim=1,
-                                                     embeddings_initializer='orthogonal')(shape_input[:, 0])
-
-        width_embedding = tf.keras.layers.Embedding(input_dim=self.image_shape[1] + 1,
-                                                    output_dim=1,
-                                                    embeddings_initializer='orthogonal')(shape_input[:, 1])
-
-        dimension_embedding = tf.keras.layers.Concatenate(axis=-1)([height_embedding, width_embedding])
-
-        dimension_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
-                                                 arguments={'y': [1, text_embedding.shape[1], 1]},
-                                                 name='dimension_tile')(dimension_embedding)
 
         latent_input = tf.keras.layers.Input(shape=(self.latent_dim,))
 
@@ -732,7 +733,25 @@ class GeneratorModel(BaseModel):
                                               arguments={'y': [1, text_embedding.shape[1], 1]},
                                               name='latent_tile')(latent_input)
 
-        latent_text = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, dimension_tiled])
+        shape_input = tf.keras.layers.Input(shape=(2,))
+
+        shape_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
+                                                    output_dim=self.shape_dim,
+                                                    embeddings_initializer='orthogonal')(shape_input)
+
+        shape_flattened = tf.keras.layers.Flatten()(shape_embedding)
+
+        shape_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
+                                             arguments={'y': [1, text_embedding.shape[1], 1]},
+                                             name='dimension_tile')(shape_flattened)
+
+        latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, shape_tiled])
+
+        latent_text = tf.keras.layers.SpectralNormalization(
+            tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
+                                  kernel_initializer='orthogonal'))(latent_concat)
+
+        block = tf.keras.layers.Reshape(target_shape=(latent_text.shape[1] * 4, 4, -1))(latent_text)
 
         latent_dense = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks),
@@ -741,12 +760,6 @@ class GeneratorModel(BaseModel):
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
                                                arguments={'y': len(self.blocks)},
                                                name='latent_chunks')(latent_dense)
-
-        latent_text = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
-                                  kernel_initializer='orthogonal'))(latent_text)
-
-        block = tf.keras.layers.Reshape(target_shape=(latent_text.shape[1] * 4, 4, -1))(latent_text)
 
         for i, filters in enumerate(self.blocks):
             # if i == 1:
@@ -759,8 +772,8 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
-        # outputs = tf.keras.layers.LeakyReLU(negative_slope=0.2)(block)
-        outputs = tf.keras.layers.ReLU()(outputs)
+        outputs = tf.keras.layers.Activation(activation='mish')(outputs)
+        # outputs = tf.keras.layers.ReLU()(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1,
@@ -844,18 +857,19 @@ class DiscriminatorModel(BaseModel):
         """
 
         def residual_block_down(x, filters, preactive=True, downsample=None):
-            h = x
+            h = tf.keras.layers.Identity()(x)
 
             if preactive:
-                h = tf.keras.layers.ReLU()(h)
+                h = tf.keras.layers.Activation(activation='mish')(h)
+                # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
-            # h = tf.keras.layers.LeakyReLU(negative_slope=0.2)(h)
-            h = tf.keras.layers.ReLU()(h)
+            h = tf.keras.layers.Activation(activation='mish')(h)
+            # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -896,9 +910,9 @@ class DiscriminatorModel(BaseModel):
             downsample = strides if 2 in strides else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
-        # outputs = tf.keras.layers.LeakyReLU(negative_slope=0.2)(block)
-        outputs = tf.keras.layers.ReLU()(block)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
+        outputs = tf.keras.layers.Activation(activation='mish')(block)
+        # outputs = tf.keras.layers.ReLU()(block)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce_sum')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=1, kernel_initializer='orthogonal'))(outputs)
