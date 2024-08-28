@@ -16,8 +16,8 @@ class RecognitionModel(BaseRecognitionModel):
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
-    Mish: A Self Regularized Non-Monotonic Activation Function
-        https://arxiv.org/abs/1908.08681
+    Searching for Activation Functions (Swish: a Self-Gated Activation Function)
+        https://arxiv.org/abs/1710.05941
 
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
@@ -53,13 +53,13 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         encoder = GatedConv2D(mode='residual')(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -67,7 +67,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -75,7 +75,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
@@ -83,7 +83,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
         encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
@@ -91,7 +91,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
@@ -99,7 +99,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
-        encoder = tf.keras.layers.Activation(activation='mish')(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = SelfAttention(pooling=False)(encoder)
