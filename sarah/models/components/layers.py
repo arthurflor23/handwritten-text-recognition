@@ -960,6 +960,9 @@ class SelfAttention(tf.keras.layers.Layer):
     Attention Is All You Need
         https://arxiv.org/abs/1706.03762
 
+    DropAttention: A Regularization Method for Fully-Connected Self-Attention Networks
+        https://arxiv.org/abs/1907.11065
+
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
 
