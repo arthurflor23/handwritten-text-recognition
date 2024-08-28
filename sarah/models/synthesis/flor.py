@@ -35,14 +35,14 @@ class SynthesisModel(BaseSynthesisModel):
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
 
-    Mish: A Self Regularized Non-Monotonic Activation Function
-        https://arxiv.org/abs/1908.08681
-
     Modulating early visual processing by language
         https://arxiv.org/abs/1707.00683v3
 
     ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation
         https://arxiv.org/abs/2003.10557
+
+    Searching for Activation Functions (Swish: a Self-Gated Activation Function)
+        https://arxiv.org/abs/1710.05941
 
     Wasserstein GAN
         https://arxiv.org/abs/1701.07875
@@ -63,11 +63,11 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
-        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
-
         self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
         self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
+
+        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, epsilon=1e-8)
 
     def build_model(self):
         """
@@ -497,7 +497,7 @@ class IdentificationModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='mish')(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
 
         outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
@@ -571,10 +571,10 @@ class StyleEncoderModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='mish')(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
 
         style = tf.keras.layers.Dense(units=256)(style)
-        style = tf.keras.layers.Activation(activation='mish')(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
 
         mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
@@ -672,7 +672,7 @@ class GeneratorModel(BaseModel):
 
         def residual_block_up(x, y, filters, upsample=None):
             h = ConditionalBatchNormalization(spectral=True)([x, y])
-            h = tf.keras.layers.Activation(activation='mish')(h)
+            h = tf.keras.layers.Activation(activation='swish')(h)
             # h = tf.keras.layers.ReLU()(h)
 
             if upsample:
@@ -701,7 +701,7 @@ class GeneratorModel(BaseModel):
                                        kernel_initializer='orthogonal'))(h)
 
             h = ConditionalBatchNormalization(spectral=True)([h, y])
-            h = tf.keras.layers.Activation(activation='mish')(h)
+            h = tf.keras.layers.Activation(activation='swish')(h)
             # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
@@ -772,7 +772,7 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
-        outputs = tf.keras.layers.Activation(activation='mish')(outputs)
+        outputs = tf.keras.layers.Activation(activation='swish')(outputs)
         # outputs = tf.keras.layers.ReLU()(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
@@ -860,7 +860,7 @@ class DiscriminatorModel(BaseModel):
             h = tf.keras.layers.Identity()(x)
 
             if preactive:
-                h = tf.keras.layers.Activation(activation='mish')(h)
+                h = tf.keras.layers.Activation(activation='swish')(h)
                 # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
@@ -868,7 +868,7 @@ class DiscriminatorModel(BaseModel):
                                        kernel_size=3,
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
-            h = tf.keras.layers.Activation(activation='mish')(h)
+            h = tf.keras.layers.Activation(activation='swish')(h)
             # h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
@@ -910,7 +910,7 @@ class DiscriminatorModel(BaseModel):
             downsample = strides if 2 in strides else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
-        outputs = tf.keras.layers.Activation(activation='mish')(block)
+        outputs = tf.keras.layers.Activation(activation='swish')(block)
         # outputs = tf.keras.layers.ReLU()(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce_sum')(outputs)
 
