@@ -15,13 +15,14 @@ class Tokenizer():
         Initialize the Tokenizer instance.
         """
 
+        self.blk_tk = '•'
         self.pad_tk = '¶'
         self.sos_tk = '◖'
         self.eos_tk = '◗'
 
         self.words = []
         self.writers = []
-        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk]
+        self.chars = [self.blk_tk, self.pad_tk, self.sos_tk, self.eos_tk]
 
         self._reserved_chars_length = len(self.chars)
         self._reserved_marks_length = 2
@@ -188,7 +189,7 @@ class Tokenizer():
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
                 next_power_of_two(self.metadata['max_lines_per_page']),
-                len(self.chars) + 1,
+                len(self.chars),
             )
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
