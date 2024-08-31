@@ -7,6 +7,9 @@ class CTCLoss(tf.keras.losses.Loss):
 
     References
     ----------
+    A Novel Connectionist System for Unconstrained Handwriting Recognition
+        https://ieeexplore.ieee.org/document/4531750
+
     Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with Recurrent Neural Networks
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
@@ -48,14 +51,15 @@ class CTCLoss(tf.keras.losses.Loss):
         labels = tf.sparse.from_dense(y_true)
         logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
 
-        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=False)
+        logit_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
 
         ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
                                   logits=tf.cast(logits, dtype=tf.float32),
-                                  label_length=None,
+                                  label_length=tf.cast(label_length, dtype=tf.int32),
                                   logit_length=tf.cast(logit_length, dtype=tf.int32),
                                   logits_time_major=True,
-                                  blank_index=-1)
+                                  blank_index=0)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
 

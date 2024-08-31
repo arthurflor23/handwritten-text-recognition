@@ -7,18 +7,19 @@ class EditDistance(tf.keras.metrics.Metric):
 
     References
     ----------
-    Binary Codes Capable of Correcting Deletions, Insertions and Reversals
-        https://mi.mathnet.ru/dan31411
+    A Guided Tour to Approximate String Matching
+        https://dl.acm.org/doi/10.1145/375360.375365
+
+    A Novel Connectionist System for Unconstrained Handwriting Recognition
+        https://ieeexplore.ieee.org/document/4531750
     """
 
-    def __init__(self, beam_width=1, name='dist', **kwargs):
+    def __init__(self, name='dist', **kwargs):
         """
         Initialize the EditDistance metric instance.
 
         Parameters
         ----------
-        beam_width : int, optional
-            The width of the beam for CTC beam search decoder.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -28,8 +29,6 @@ class EditDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.tracker = tf.keras.metrics.Mean()
-
-        self.beam_width = beam_width
 
     def update_state(self, y_true, y_pred):
         """
@@ -49,12 +48,12 @@ class EditDistance(tf.keras.metrics.Metric):
         labels = tf.sparse.from_dense(y_true)
         logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
 
-        logit_length = tf.reduce_sum(tf.reduce_sum(y_pred, axis=-1), axis=-1)
+        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
 
-        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=tf.cast(logits, dtype=tf.float32),
-                                                   sequence_length=tf.cast(logit_length, dtype=tf.int32),
-                                                   beam_width=self.beam_width,
-                                                   top_paths=1)
+        decoded, _ = tf.nn.ctc_greedy_decoder(inputs=tf.cast(logits, dtype=tf.float32),
+                                              sequence_length=tf.cast(sequence_length, dtype=tf.int32),
+                                              merge_repeated=True,
+                                              blank_index=0)
 
         edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
         edit_distance = tf.reduce_mean(edit_distance)
