@@ -705,12 +705,12 @@ class GatedConv2D(tf.keras.layers.Layer):
             l_conv = self.l_conv(inputs)
             l_conv = tf.keras.layers.Activation('linear')(l_conv)
             s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
-            g_conv = self.gamma * l_conv * s_conv
+            g_conv = l_conv * s_conv
 
             if training and self.dropout:
                 g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
-            outputs = g_conv + inputs
+            outputs = self.gamma * g_conv + inputs
 
         else:
             s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
