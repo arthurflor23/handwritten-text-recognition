@@ -112,7 +112,6 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
