@@ -86,7 +86,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=2, strides=2)(encoder)
 
-        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
@@ -94,7 +94,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = SelfAttention(pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
@@ -102,7 +102,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention()(encoder)
+        encoder = SelfAttention(pooling=False, dropout=0.1)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
@@ -110,10 +110,10 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.4)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.4)(decoder)
 
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
