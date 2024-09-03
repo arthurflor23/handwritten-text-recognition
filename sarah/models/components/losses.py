@@ -51,12 +51,11 @@ class CTCLoss(tf.keras.losses.Loss):
         labels = tf.sparse.from_dense(y_true)
         logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
 
-        label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=False)
         logit_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
 
         ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
                                   logits=tf.cast(logits, dtype=tf.float32),
-                                  label_length=tf.cast(label_length, dtype=tf.int32),
+                                  label_length=None,
                                   logit_length=tf.cast(logit_length, dtype=tf.int32),
                                   logits_time_major=True,
                                   blank_index=-1)
