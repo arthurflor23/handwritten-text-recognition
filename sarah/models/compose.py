@@ -341,7 +341,9 @@ class Compose():
 
         if monitor in history.history:
             best_metric_index = history.history[monitor].index(min(history.history[monitor]))
-            metrics = {k: history.history[k][best_metric_index] for k in history.history}
+
+            metrics = {k: history.history[k][best_metric_index]
+                       for k in history.history if k not in ('lr', 'learning_rate')}
 
             training_metrics = {k: metrics[k] for k in metrics if k[:4] != 'val_'}
             self.save_context(metrics=training_metrics, prefix='training')
