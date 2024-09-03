@@ -85,7 +85,7 @@ class CTXLoss(tf.keras.losses.Loss):
     def __init__(self,
                  sigma=0.5,
                  alpha=1.0,
-                 similarity='l2',
+                 similarity='cosine',
                  name='ctx_loss',
                  **kwargs):
         """
@@ -151,7 +151,7 @@ class CTXLoss(tf.keras.losses.Loss):
 
         w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
 
-        ctx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
+        ctx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
 
         ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
@@ -175,6 +175,8 @@ class CTXLoss(tf.keras.losses.Loss):
             Tensor representing the cosine distance between y and x.
         """
 
+        N, C, _, _ = tf.unstack(tf.shape(x))
+
         y_mu = tf.reduce_mean(y, axis=[0, 2, 3], keepdims=True)
 
         x_centered = x - y_mu
@@ -183,14 +185,12 @@ class CTXLoss(tf.keras.losses.Loss):
         x_normalized = x_centered / tf.norm(x_centered, ord=2, axis=1, keepdims=True)
         y_normalized = y_centered / tf.norm(y_centered, ord=2, axis=1, keepdims=True)
 
-        N, C, _, _ = tf.unstack(tf.shape(x))
+        x_normalized = tf.reshape(x_normalized, [N, C, -1])
+        y_normalized = tf.reshape(y_normalized, [N, C, -1])
 
-        x_feature = tf.reshape(x_normalized, [N, C, -1])
-        y_feature = tf.reshape(y_normalized, [N, C, -1])
+        x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
 
-        x_feature = tf.transpose(x_feature, perm=[0, 2, 1])
-
-        dist = (1. - tf.matmul(x_feature, y_feature)) / 2.
+        dist = 1. - tf.matmul(x_normalized, y_normalized)
 
         return dist
 
