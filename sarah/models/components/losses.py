@@ -84,7 +84,6 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def __init__(self,
                  sigma=0.5,
-                 alpha=1.0,
                  similarity='cosine',
                  name='ctx_loss',
                  **kwargs):
@@ -95,8 +94,6 @@ class CTXLoss(tf.keras.losses.Loss):
         ----------
         sigma : float, optional
             Sharpness parameter of the similarity function.
-        alpha : float, optional
-            Scaling factor for weighting the distances.
         similarity : str, optional
             Type of loss to be used.
         name : str, optional
@@ -108,7 +105,6 @@ class CTXLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.sigma = sigma
-        self.alpha = alpha
         self.similarity = similarity
 
     def call(self, y_true, y_pred):
@@ -147,9 +143,9 @@ class CTXLoss(tf.keras.losses.Loss):
             distance = self.compute_l2_distance(y_true, y_pred)
 
         d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
-        d_tilde = distance / (d_min + 1e-8)
+        d_tilde = distance / (d_min + 1e-5)
 
-        w = tf.math.exp((self.alpha - d_tilde) / self.sigma)
+        w = tf.math.exp((1 - d_tilde) / self.sigma)
 
         ctx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
@@ -190,7 +186,7 @@ class CTXLoss(tf.keras.losses.Loss):
 
         x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
 
-        dist = 1. - tf.matmul(x_normalized, y_normalized)
+        dist = 1 - tf.matmul(x_normalized, y_normalized)
 
         return dist
 
