@@ -7,6 +7,7 @@ import pickle
 import mlflow
 import importlib
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from datetime import datetime
@@ -272,11 +273,6 @@ class Compose():
                 monitor = f"val_{self.model.monitor}"
 
             callbacks = [
-                tf.keras.callbacks.CSVLogger(
-                    filename=os.path.join(run_info['artifact_path'], 'epochs.csv'),
-                    separator=',',
-                    append=True,
-                ),
                 tf.keras.callbacks.ModelCheckpoint(
                     filepath=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
                     mode='min',
@@ -336,10 +332,21 @@ class Compose():
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
                                      epochs=(epochs or 1000000),
+                                     shuffle=False,
                                      verbose=verbose)
             mlflow.end_run()
 
         if monitor in history.history:
+            df = pd.DataFrame(history.history)
+            df.index = df.index + 1
+            df.index.name = 'epoch'
+
+            df['checkpoint'] = df[monitor].cummin()
+            df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
+            df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
+
+            df.to_csv(os.path.join(run_info['artifact_path'], 'epochs.csv'), sep=',', index=True)
+
             best_metric_index = history.history[monitor].index(min(history.history[monitor]))
             metrics = {k: history.history[k][best_metric_index] for k in history.history}
 
