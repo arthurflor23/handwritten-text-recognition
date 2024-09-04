@@ -102,7 +102,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(pooling=False, dropout=0.1)(encoder)
+        encoder = SelfAttention(pooling=False)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
@@ -110,7 +110,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.4)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.2)(decoder)
         decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.4)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
