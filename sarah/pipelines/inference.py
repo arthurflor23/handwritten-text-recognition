@@ -67,10 +67,10 @@ def inference(args):
                                                                  beam_width=args.beam_width,
                                                                  ctc_decode=True,
                                                                  token_decode=True,
-                                                                 verbose=1)
+                                                                 verbose=args.verbose)
 
         if args.spelling:
-            corrections = compose.predict_spelling(x=predictions, steps=infer_steps, verbose=1)
+            corrections = compose.predict_spelling(x=predictions, steps=infer_steps, verbose=args.verbose)
 
         inferences = [
             {
@@ -96,7 +96,7 @@ def inference(args):
     elif args.synthesis:
         predictions = compose.predict_synthesis(x=infer_gen,
                                                 steps=infer_steps,
-                                                verbose=1)
+                                                verbose=args.verbose)
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
         filepath = f"{basename}_{'guided' if args.image else 'random'}".strip('_')

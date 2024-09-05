@@ -88,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--gpu', default=0, type=str, help='GPU index value')
     parser.add_argument('--seed', default=0, type=int, help='Seed value')
+    parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
     args.gpu = int(args.gpu) if str(args.gpu).isdigit() else None

@@ -98,7 +98,7 @@ def run(args):
                     plateau_cooldown=args.plateau_cooldown,
                     plateau_patience=args.plateau_patience,
                     patience=args.patience,
-                    verbose=1)
+                    verbose=args.verbose)
 
     if args.recognition:
         if args.training or args.test:
@@ -111,7 +111,7 @@ def run(args):
                                                                      beam_width=args.beam_width,
                                                                      ctc_decode=True,
                                                                      token_decode=True,
-                                                                     verbose=1)
+                                                                     verbose=args.verbose)
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                              batch_size=args.batch_size,
@@ -121,7 +121,7 @@ def run(args):
                                                                 y=source_gen,
                                                                 steps=source_steps,
                                                                 probabilities=probabilities,
-                                                                verbose=1)
+                                                                verbose=args.verbose)
 
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
 
@@ -139,13 +139,13 @@ def run(args):
                                                              batch_size=args.batch_size,
                                                              batch_encoded=False)
 
-            corrections = compose.predict_spelling(x=predictions, steps=source_steps, verbose=1)
+            corrections = compose.predict_spelling(x=predictions, steps=source_steps, verbose=args.verbose)
 
             metrics, evaluations = compose.evaluate_recognition(x=corrections,
                                                                 y=source_gen,
                                                                 steps=source_steps,
                                                                 probabilities=probabilities,
-                                                                verbose=1)
+                                                                verbose=args.verbose)
 
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix='spelling')
 
@@ -169,7 +169,7 @@ def run(args):
             metrics, evaluations = compose.evaluate_synthesis(x=predictions,
                                                               y=source_gen,
                                                               steps=source_steps,
-                                                              verbose=1)
+                                                              verbose=args.verbose)
 
             compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
