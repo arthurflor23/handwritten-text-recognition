@@ -162,6 +162,7 @@ The project has several command-line parameters that can be used to customize it
 -   `--check`: Perform check pipeline.
 -   `--gpu`: GPU index value.
 -   `--seed`: Seed value.
+-   `--verbose`: Verbosity level.
 
 ### Usage
 
