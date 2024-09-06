@@ -76,7 +76,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = GatedConv2D(mode='residual', dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=72, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
