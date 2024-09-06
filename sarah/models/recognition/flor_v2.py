@@ -114,12 +114,13 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
-        decoder = tf.keras.layers.LayerNormalization()(decoder)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
         decoder = tf.keras.layers.LayerNormalization()(decoder)
-
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
