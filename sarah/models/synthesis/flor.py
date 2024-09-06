@@ -264,8 +264,15 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
+            # real_s_real_t_ctc_loss = self.ctc_loss(text_data, real_s_real_t_ctc)
+
             real_s_fake_t_ctc = self.recognition(real_s_fake_t_images, training=True)
+            # real_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, real_s_fake_t_ctc)
+
             fake_s_fake_t_ctc = self.recognition(fake_s_fake_t_images, training=True)
+            # fake_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, fake_s_fake_t_ctc)
+
+            # g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             real_texts = tf.concat([text_data, aug_text_data, aug_text_data], axis=0)
             fake_texts = tf.concat([real_s_real_t_ctc, real_s_fake_t_ctc, fake_s_fake_t_ctc], axis=0)
@@ -497,7 +504,8 @@ class IdentificationModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='swish')(style)
+        # style = tf.keras.layers.Activation(activation='swish')(style)
+        style = tf.keras.layers.ReLU()(style)
 
         outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
@@ -571,10 +579,12 @@ class StyleEncoderModel(BaseModel):
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
         style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='swish')(style)
+        # style = tf.keras.layers.Activation(activation='swish')(style)
+        style = tf.keras.layers.ReLU()(style)
 
         style = tf.keras.layers.Dense(units=256)(style)
-        style = tf.keras.layers.Activation(activation='swish')(style)
+        # style = tf.keras.layers.Activation(activation='swish')(style)
+        style = tf.keras.layers.ReLU()(style)
 
         mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
         logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
@@ -672,8 +682,8 @@ class GeneratorModel(BaseModel):
 
         def residual_block_up(x, y, filters, upsample=None):
             h = ConditionalBatchNormalization(spectral=True)([x, y])
-            h = tf.keras.layers.Activation(activation='swish')(h)
-            # h = tf.keras.layers.ReLU()(h)
+            # h = tf.keras.layers.Activation(activation='swish')(h)
+            h = tf.keras.layers.ReLU()(h)
 
             if upsample:
                 h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
@@ -701,8 +711,8 @@ class GeneratorModel(BaseModel):
                                        kernel_initializer='orthogonal'))(h)
 
             h = ConditionalBatchNormalization(spectral=True)([h, y])
-            h = tf.keras.layers.Activation(activation='swish')(h)
-            # h = tf.keras.layers.ReLU()(h)
+            # h = tf.keras.layers.Activation(activation='swish')(h)
+            h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -735,17 +745,18 @@ class GeneratorModel(BaseModel):
 
         shape_input = tf.keras.layers.Input(shape=(2,))
 
-        shape_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
-                                                    output_dim=self.shape_dim,
-                                                    embeddings_initializer='orthogonal')(shape_input)
+        # shape_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
+        #                                             output_dim=self.shape_dim,
+        #                                             embeddings_initializer='orthogonal')(shape_input)
 
-        shape_flattened = tf.keras.layers.Flatten()(shape_embedding)
+        # shape_flattened = tf.keras.layers.Flatten()(shape_embedding)
 
-        shape_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
-                                             arguments={'y': [1, text_embedding.shape[1], 1]},
-                                             name='dimension_tile')(shape_flattened)
+        # shape_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
+        #                                      arguments={'y': [1, text_embedding.shape[1], 1]},
+        #                                      name='dimension_tile')(shape_flattened)
 
-        latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, shape_tiled])
+        latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding])
+        # latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, shape_tiled])
 
         latent_text = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
@@ -763,7 +774,7 @@ class GeneratorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             # if i == 1:
-            #     block = SelfAttention(pooling=True, spectral=True, kernel_initializer='orthogonal')(block)
+            #     block = SelfAttention(spectral=True, kernel_initializer='orthogonal')(block)
 
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
@@ -772,8 +783,8 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
-        outputs = tf.keras.layers.Activation(activation='swish')(outputs)
-        # outputs = tf.keras.layers.ReLU()(outputs)
+        # outputs = tf.keras.layers.Activation(activation='swish')(outputs)
+        outputs = tf.keras.layers.ReLU()(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1,
@@ -860,16 +871,16 @@ class DiscriminatorModel(BaseModel):
             h = tf.keras.layers.Identity()(x)
 
             if preactive:
-                h = tf.keras.layers.Activation(activation='swish')(h)
-                # h = tf.keras.layers.ReLU()(h)
+                # h = tf.keras.layers.Activation(activation='swish')(h)
+                h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
                                        kernel_size=3,
                                        padding='same',
                                        kernel_initializer='orthogonal'))(h)
-            h = tf.keras.layers.Activation(activation='swish')(h)
-            # h = tf.keras.layers.ReLU()(h)
+            # h = tf.keras.layers.Activation(activation='swish')(h)
+            h = tf.keras.layers.ReLU()(h)
 
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters,
@@ -902,7 +913,7 @@ class DiscriminatorModel(BaseModel):
 
         for i, filters in enumerate(self.blocks):
             # if i == len(self.blocks) - 1:
-            #     block = SelfAttention(pooling=True, spectral=True, kernel_initializer='orthogonal')(block)
+            #     block = SelfAttention(spectral=True, kernel_initializer='orthogonal')(block)
 
             strides = (2 if i < len(self.blocks) - 1 and block.shape[1] > 4 else 1,
                        2 if i < len(self.blocks) - 1 and block.shape[2] > 4 else 1)
@@ -910,8 +921,8 @@ class DiscriminatorModel(BaseModel):
             downsample = strides if 2 in strides else None
             block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
 
-        outputs = tf.keras.layers.Activation(activation='swish')(block)
-        # outputs = tf.keras.layers.ReLU()(block)
+        # outputs = tf.keras.layers.Activation(activation='swish')(block)
+        outputs = tf.keras.layers.ReLU()(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce_sum')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
