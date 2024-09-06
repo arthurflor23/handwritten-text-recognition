@@ -672,8 +672,11 @@ class Compose():
                 data = {label.replace('<metric>', '').replace('__', '_').strip('_'): content}
 
                 if os.path.exists(filepath):
+                    local_data = data.copy()
+
                     with open(filepath, 'r') as f:
-                        data.update(json.load(f))
+                        data = json.load(f)
+                        data.update(local_data)
 
                 with open(filepath, 'w') as f:
                     f.write(json.dumps(data, indent=4, ensure_ascii=False))
