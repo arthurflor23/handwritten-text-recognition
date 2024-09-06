@@ -16,6 +16,9 @@ class RecognitionModel(BaseRecognitionModel):
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
+    Layer Normalization
+        https://arxiv.org/abs/1607.06450
+
     Searching for Activation Functions (Swish: a Self-Gated Activation Function)
         https://arxiv.org/abs/1710.05941
 
@@ -110,10 +113,15 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.2)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=160, return_sequences=True), dropout=0.4)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
 
-        decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
+        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
+
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
