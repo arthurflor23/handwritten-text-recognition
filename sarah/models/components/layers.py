@@ -975,6 +975,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
+                 reduce_by=8,
                  spectral=False,
                  dropout=0.0,
                  **kwargs):
@@ -991,6 +992,8 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        reduce_by : int, optional
+            Reduce the channels dimension by number factor.
         spectral : bool, optional
             Whether apply spectral normalization or not.
         dropout : float, optional
@@ -1005,6 +1008,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
+        self.reduce_by = reduce_by
         self.spectral = spectral
         self.dropout = dropout
 
@@ -1025,6 +1029,7 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
+            'reduce_by': self.reduce_by,
             'spectral': self.spectral,
             'dropout': self.dropout,
         })
@@ -1068,25 +1073,28 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
-        self.h_conv = conv_layer(filters=self.filters // 8,
+        self.h_conv = conv_layer(filters=self.filters // self.reduce_by,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
-        self.o_conv = conv_layer(filters=self.filters,
-                                 kernel_size=1,
-                                 padding='same',
-                                 kernel_initializer=self.kernel_initializer,
-                                 kernel_regularizer=self.kernel_regularizer,
-                                 kernel_constraint=self.kernel_constraint)
+        if self.reduce_by > 1:
+            self.o_conv = conv_layer(filters=self.filters,
+                                     kernel_size=1,
+                                     padding='same',
+                                     kernel_initializer=self.kernel_initializer,
+                                     kernel_regularizer=self.kernel_regularizer,
+                                     kernel_constraint=self.kernel_constraint)
+
+            if self.spectral:
+                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
 
         if self.spectral:
             self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv, name=self.f_conv.name)
             self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv, name=self.g_conv.name)
             self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv, name=self.h_conv.name)
-            self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
@@ -1128,8 +1136,9 @@ class SelfAttention(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // 8])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.reduce_by])
 
-        o = self.o_conv(o)
+        if self.reduce_by > 1:
+            o = self.o_conv(o)
 
         return self.gamma * o + inputs
