@@ -975,7 +975,6 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
-                 pooling=False,
                  spectral=False,
                  dropout=0.0,
                  **kwargs):
@@ -992,8 +991,6 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
-        pooling : bool, optional
-            Whether apply max pooling or not.
         spectral : bool, optional
             Whether apply spectral normalization or not.
         dropout : float, optional
@@ -1008,7 +1005,6 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
-        self.pooling = pooling
         self.spectral = spectral
         self.dropout = dropout
 
@@ -1029,7 +1025,6 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
-            'pooling': self.pooling,
             'spectral': self.spectral,
             'dropout': self.dropout,
         })
@@ -1049,20 +1044,15 @@ class SelfAttention(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
-            pool_size = strides = 2 if input_shape[-2] > 1 else 1
             conv_layer = tf.keras.layers.Conv1D
-            pooling_layer = tf.keras.layers.MaxPooling1D
 
         elif len(input_shape) == 4:
-            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
             conv_layer = tf.keras.layers.Conv2D
-            pooling_layer = tf.keras.layers.MaxPooling2D
 
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
         self.filters = input_shape[-1]
-        self.divisor = (2 if self.pooling else 1)
 
         self.f_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
@@ -1078,7 +1068,14 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
-        self.h_conv = conv_layer(filters=self.filters // self.divisor,
+        self.h_conv = conv_layer(filters=self.filters // 8,
+                                 kernel_size=1,
+                                 padding='same',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint)
+
+        self.o_conv = conv_layer(filters=self.filters,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1089,20 +1086,7 @@ class SelfAttention(tf.keras.layers.Layer):
             self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv, name=self.f_conv.name)
             self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv, name=self.g_conv.name)
             self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv, name=self.h_conv.name)
-
-        if self.pooling:
-            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-
-            self.o_conv = conv_layer(filters=self.filters,
-                                     kernel_size=1,
-                                     padding='same',
-                                     kernel_initializer=self.kernel_initializer,
-                                     kernel_regularizer=self.kernel_regularizer,
-                                     kernel_constraint=self.kernel_constraint)
-
-            if self.spectral:
-                self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
+            self.o_conv = tf.keras.layers.SpectralNormalization(self.o_conv, name=self.o_conv.name)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
@@ -1129,10 +1113,6 @@ class SelfAttention(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(inputs))
 
         f = self.f_conv(inputs)
-
-        if self.pooling:
-            f = self.f_pooling(f)
-
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
         g = self.g_conv(inputs)
@@ -1145,16 +1125,11 @@ class SelfAttention(tf.keras.layers.Layer):
             beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_conv(inputs)
-
-        if self.pooling:
-            h = self.h_pooling(h)
-
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.divisor])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // 8])
 
-        if self.pooling:
-            o = self.o_conv(o)
+        o = self.o_conv(o)
 
         return self.gamma * o + inputs
