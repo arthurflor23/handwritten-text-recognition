@@ -571,11 +571,11 @@ class GatedConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  mode=None,
                  spectral=False,
-                 dropout=0.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
+                 dropout=0.0,
                  **kwargs):
         """
         Initializes the gated convolutional layer.
@@ -586,8 +586,6 @@ class GatedConv2D(tf.keras.layers.Layer):
             Whether to use None, 'dual' or 'residual' gating.
         spectral : bool, optional
             Whether apply spectral normalization or not.
-        dropout : float, optional
-            Whether apply dropout or not.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -596,6 +594,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        dropout : float, optional
+            Whether apply dropout or not.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -604,11 +604,11 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         self.mode = mode
         self.spectral = spectral
-        self.dropout = dropout
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
+        self.dropout = dropout
 
     def get_config(self):
         """
@@ -625,11 +625,11 @@ class GatedConv2D(tf.keras.layers.Layer):
         config.update({
             'mode': self.mode,
             'spectral': self.spectral,
-            'dropout': self.dropout,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
+            'dropout': self.dropout,
         })
 
         return config
@@ -971,12 +971,12 @@ class SelfAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 downrate=2,
+                 spectral=False,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
-                 reduce_by=8,
-                 spectral=False,
                  dropout=0.0,
                  **kwargs):
         """
@@ -984,6 +984,10 @@ class SelfAttention(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        downrate : int, optional
+            Reduce the channels dimension by number factor.
+        spectral : bool, optional
+            Whether apply spectral normalization or not.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -992,10 +996,6 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
-        reduce_by : int, optional
-            Reduce the channels dimension by number factor.
-        spectral : bool, optional
-            Whether apply spectral normalization or not.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -1004,12 +1004,12 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.downrate = downrate
+        self.spectral = spectral
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.gamma_initializer = gamma_initializer
-        self.reduce_by = reduce_by
-        self.spectral = spectral
         self.dropout = dropout
 
     def get_config(self):
@@ -1025,12 +1025,12 @@ class SelfAttention(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'downrate': self.downrate,
+            'spectral': self.spectral,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'gamma_initializer': self.gamma_initializer,
-            'reduce_by': self.reduce_by,
-            'spectral': self.spectral,
             'dropout': self.dropout,
         })
 
@@ -1049,10 +1049,14 @@ class SelfAttention(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
+            pool_size = strides = 2 if input_shape[-2] > 1 else 1
             conv_layer = tf.keras.layers.Conv1D
+            pooling_layer = tf.keras.layers.MaxPooling1D
 
         elif len(input_shape) == 4:
+            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
             conv_layer = tf.keras.layers.Conv2D
+            pooling_layer = tf.keras.layers.MaxPooling2D
 
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
@@ -1073,14 +1077,17 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
-        self.h_conv = conv_layer(filters=self.filters // self.reduce_by,
+        self.h_conv = conv_layer(filters=self.filters // self.downrate,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
                                  kernel_regularizer=self.kernel_regularizer,
                                  kernel_constraint=self.kernel_constraint)
 
-        if self.reduce_by > 1:
+        if self.downrate > 1:
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+
             self.o_conv = conv_layer(filters=self.filters,
                                      kernel_size=1,
                                      padding='same',
@@ -1121,6 +1128,10 @@ class SelfAttention(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(inputs))
 
         f = self.f_conv(inputs)
+
+        if self.downrate > 1:
+            f = self.f_pooling(f)
+
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
         g = self.g_conv(inputs)
@@ -1133,12 +1144,16 @@ class SelfAttention(tf.keras.layers.Layer):
             beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_conv(inputs)
+
+        if self.downrate > 1:
+            h = self.h_pooling(h)
+
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.reduce_by])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.downrate])
 
-        if self.reduce_by > 1:
+        if self.downrate > 1:
             o = self.o_conv(o)
 
         return self.gamma * o + inputs
