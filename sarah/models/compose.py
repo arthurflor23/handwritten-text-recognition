@@ -678,6 +678,8 @@ class Compose():
                         data = json.load(f)
                         data.update(local_data)
 
+                data = dict(sorted(data.items()))
+
                 with open(filepath, 'w') as f:
                     f.write(json.dumps(data, indent=4, ensure_ascii=False))
 
