@@ -655,7 +655,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+                                             use_bias=True)
 
         if self.spectral:
             self.s_conv = tf.keras.layers.SpectralNormalization(self.s_conv, name=self.s_conv.name)
@@ -673,7 +673,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=False)
+                                                 use_bias=True)
 
             if self.spectral:
                 self.l_conv = tf.keras.layers.SpectralNormalization(self.l_conv, name=self.l_conv.name)
