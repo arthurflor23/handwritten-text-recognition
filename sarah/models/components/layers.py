@@ -974,6 +974,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
     def __init__(self,
                  downrate=2,
+                 pooling=False,
                  spectral=False,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -988,6 +989,8 @@ class SelfAttention(tf.keras.layers.Layer):
         ----------
         downrate : int, optional
             Reduce the channels dimension by number factor.
+        pooling : bool, optional
+            Whether apply max pooling or not.
         spectral : bool, optional
             Whether apply spectral normalization or not.
         kernel_initializer : initializer, optional
@@ -1007,6 +1010,7 @@ class SelfAttention(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.downrate = downrate
+        self.pooling = pooling
         self.spectral = spectral
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
@@ -1028,6 +1032,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         config.update({
             'downrate': self.downrate,
+            'pooling': self.pooling,
             'spectral': self.spectral,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
@@ -1090,9 +1095,6 @@ class SelfAttention(tf.keras.layers.Layer):
                                  use_bias=False)
 
         if self.downrate > 1:
-            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-
             self.o_conv = conv_layer(filters=self.filters,
                                      kernel_size=1,
                                      padding='same',
@@ -1108,6 +1110,10 @@ class SelfAttention(tf.keras.layers.Layer):
             self.f_conv = tf.keras.layers.SpectralNormalization(self.f_conv, name=self.f_conv.name)
             self.g_conv = tf.keras.layers.SpectralNormalization(self.g_conv, name=self.g_conv.name)
             self.h_conv = tf.keras.layers.SpectralNormalization(self.h_conv, name=self.h_conv.name)
+
+        if self.pooling:
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
 
         self.gamma = self.add_weight(name=f"{self.name}_gamma",
                                      shape=(1,),
@@ -1135,7 +1141,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         f = self.f_conv(inputs)
 
-        if self.downrate > 1:
+        if self.pooling:
             f = self.f_pooling(f)
 
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
@@ -1151,7 +1157,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         h = self.h_conv(inputs)
 
-        if self.downrate > 1:
+        if self.pooling:
             h = self.h_pooling(h)
 
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
