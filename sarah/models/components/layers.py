@@ -973,7 +973,7 @@ class SelfAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 downrate=2,
+                 downrate=1,
                  pooling=False,
                  spectral=False,
                  kernel_initializer='glorot_uniform',
