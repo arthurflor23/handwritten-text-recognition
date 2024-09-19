@@ -574,7 +574,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 gamma_initializer='zeros',
+                 beta_initializer='ones',
                  dropout=0.0,
                  **kwargs):
         """
@@ -592,8 +592,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -607,7 +607,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
         self.dropout = dropout
 
     def get_config(self):
@@ -628,7 +628,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'gamma_initializer': self.gamma_initializer,
+            'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
         })
 
@@ -661,12 +661,12 @@ class GatedConv2D(tf.keras.layers.Layer):
             self.s_conv = tf.keras.layers.SpectralNormalization(self.s_conv, name=self.s_conv.name)
 
         if self.mode == 'residual':
-            self.gamma = self.add_weight(name=f"{self.name}_gamma",
-                                         shape=(1,),
-                                         initializer=self.gamma_initializer,
-                                         trainable=True)
+            self.beta = self.add_weight(name=f"{self.name}_beta",
+                                        shape=(1,),
+                                        initializer=self.beta_initializer,
+                                        trainable=True)
 
-            self.l_conv = tf.keras.layers.Conv2D(filters=self.filters,
+            self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=(3, 3),
                                                  strides=(1, 1),
                                                  padding='same',
@@ -676,7 +676,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                                  use_bias=True)
 
             if self.spectral:
-                self.l_conv = tf.keras.layers.SpectralNormalization(self.l_conv, name=self.l_conv.name)
+                self.t_conv = tf.keras.layers.SpectralNormalization(self.t_conv, name=self.t_conv.name)
 
     def call(self, inputs, training=False):
         """
@@ -698,16 +698,16 @@ class GatedConv2D(tf.keras.layers.Layer):
         s_conv = self.s_conv(inputs)
 
         if self.mode == 'dual':
-            l_conv, s_conv = tf.split(s_conv, num_or_size_splits=2, axis=-1)
-            l_conv = tf.keras.layers.Activation('linear')(l_conv)
+            t_conv, s_conv = tf.split(s_conv, num_or_size_splits=2, axis=-1)
+            t_conv = tf.keras.layers.Activation('linear')(t_conv)
             s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
-            outputs = l_conv * s_conv
+            outputs = t_conv * s_conv
 
         elif self.mode == 'residual':
-            l_conv = self.l_conv(inputs)
-            l_conv = tf.keras.layers.Activation('linear')(l_conv)
+            t_conv = self.t_conv(inputs)
+            t_conv = tf.keras.layers.Activation('linear')(t_conv)
             s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
-            g_conv = self.gamma * l_conv * s_conv
+            g_conv = self.beta * t_conv * s_conv
 
             if training and self.dropout:
                 g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
