@@ -965,6 +965,9 @@ class SelfAttention(tf.keras.layers.Layer):
     DropAttention: A Regularization Method for Fully-Connected Self-Attention Networks
         https://arxiv.org/abs/1907.11065
 
+    Exact solutions to the nonlinear dynamics of learning in deep linear neural networks
+        https://arxiv.org/abs/1312.6120
+
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
 
@@ -976,7 +979,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  downrate=1,
                  pooling=False,
                  spectral=False,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='orthogonal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  gamma_initializer='zeros',
