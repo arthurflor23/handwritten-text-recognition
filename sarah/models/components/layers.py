@@ -574,7 +574,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='ones',
+                 beta_initializer='zeros',
                  dropout=0.0,
                  **kwargs):
         """
@@ -649,8 +649,8 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.filters = input_shape[-1]
 
         self.s_conv = tf.keras.layers.Conv2D(filters=self.filters * (2 if self.mode == 'dual' else 1),
-                                             kernel_size=(3, 3),
-                                             strides=(1, 1),
+                                             kernel_size=3,
+                                             strides=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
@@ -667,8 +667,8 @@ class GatedConv2D(tf.keras.layers.Layer):
                                         trainable=True)
 
             self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                                 kernel_size=(3, 3),
-                                                 strides=(1, 1),
+                                                 kernel_size=3,
+                                                 strides=1,
                                                  padding='same',
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
@@ -707,6 +707,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             t_conv = self.t_conv(inputs)
             t_conv = tf.keras.layers.Activation('linear')(t_conv)
             s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
+
             g_conv = self.beta * t_conv * s_conv
 
             if training and self.dropout:
@@ -979,7 +980,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 gamma_initializer='zeros',
+                 beta_initializer='zeros',
                  dropout=0.0,
                  **kwargs):
         """
@@ -999,8 +1000,8 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -1015,7 +1016,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
         self.dropout = dropout
 
     def get_config(self):
@@ -1037,7 +1038,7 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'gamma_initializer': self.gamma_initializer,
+            'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
         })
 
@@ -1116,10 +1117,10 @@ class SelfAttention(tf.keras.layers.Layer):
             self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
             self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
 
-        self.gamma = self.add_weight(name=f"{self.name}_gamma",
-                                     shape=(1,),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
+        self.beta = self.add_weight(name=f"{self.name}_beta",
+                                    shape=(1,),
+                                    initializer=self.beta_initializer,
+                                    trainable=True)
 
     def call(self, inputs, training=False):
         """
@@ -1169,4 +1170,4 @@ class SelfAttention(tf.keras.layers.Layer):
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return self.gamma * o + inputs
+        return self.beta * o + inputs
