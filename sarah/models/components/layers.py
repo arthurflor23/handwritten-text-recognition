@@ -1073,7 +1073,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         self.filters = input_shape[-1]
 
-        self.f_conv = conv_layer(filters=int(self.filters / 8),
+        self.f_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1081,7 +1081,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.g_conv = conv_layer(filters=int(self.filters / 8),
+        self.g_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1089,7 +1089,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.h_conv = conv_layer(filters=int(self.filters / self.downrate),
+        self.h_conv = conv_layer(filters=self.filters // self.downrate,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1166,7 +1166,7 @@ class SelfAttention(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [int(shape[-1] / self.downrate)])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [shape[-1] // self.downrate])
 
         if self.downrate > 1:
             o = self.o_conv(o)
