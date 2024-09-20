@@ -976,7 +976,7 @@ class SelfAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 filters=None,
+                 h=None,
                  pooling=False,
                  spectral=False,
                  kernel_initializer='orthogonal',
@@ -990,8 +990,8 @@ class SelfAttention(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        filters : int, optional
-            Reduce the channels dimension by filters values.
+        h : int, optional
+            Reduce the h channels dimension to value.
         pooling : bool, optional
             Whether apply max pooling or not.
         spectral : bool, optional
@@ -1012,7 +1012,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.filters = filters
+        self.h = h
         self.pooling = pooling
         self.spectral = spectral
         self.kernel_initializer = kernel_initializer
@@ -1034,7 +1034,7 @@ class SelfAttention(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'filters': self.filters,
+            'h': self.h,
             'pooling': self.pooling,
             'spectral': self.spectral,
             'kernel_initializer': self.kernel_initializer,
@@ -1071,10 +1071,10 @@ class SelfAttention(tf.keras.layers.Layer):
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
-        self.channels = input_shape[-1]
-        self._channels = self.filters if self.filters else input_shape[-1]
+        self.filters = input_shape[-1]
+        self.h = self.h or input_shape[-1]
 
-        self.f_conv = conv_layer(filters=self.channels // 8,
+        self.f_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1082,7 +1082,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.g_conv = conv_layer(filters=self.channels // 8,
+        self.g_conv = conv_layer(filters=self.filters // 8,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1090,7 +1090,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.h_conv = conv_layer(filters=self._channels,
+        self.h_conv = conv_layer(filters=self.h,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1098,8 +1098,8 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        if self.channels != self._channels:
-            self.o_conv = conv_layer(filters=self.channels,
+        if self.filters != self.h:
+            self.o_conv = conv_layer(filters=self.filters,
                                      kernel_size=1,
                                      padding='same',
                                      kernel_initializer=self.kernel_initializer,
@@ -1167,9 +1167,9 @@ class SelfAttention(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self._channels])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h])
 
-        if self.channels != self._channels:
+        if self.filters != self.h:
             o = self.o_conv(o)
 
         return self.gamma * o + inputs
