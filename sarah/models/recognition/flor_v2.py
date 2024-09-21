@@ -16,9 +16,6 @@ class RecognitionModel(BaseRecognitionModel):
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
-    Layer Normalization
-        https://arxiv.org/abs/1607.06450
-
     Searching for Activation Functions (Swish: a Self-Gated Activation Function)
         https://arxiv.org/abs/1710.05941
 
@@ -89,7 +86,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = SelfAttention(h=32, dropout=0.1)(encoder)
+        encoder = SelfAttention(h=32, pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
@@ -97,7 +94,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(h=64, dropout=0.1)(encoder)
+        encoder = SelfAttention(h=64, pooling=True, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
@@ -105,7 +102,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(h=128, dropout=0.1)(encoder)
+        encoder = SelfAttention(h=128, pooling=False, dropout=0.2)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
@@ -114,9 +111,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
-        decoder = tf.keras.layers.LayerNormalization()(decoder)
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
-        decoder = tf.keras.layers.LayerNormalization()(decoder)
         decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True), dropout=0.5)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
