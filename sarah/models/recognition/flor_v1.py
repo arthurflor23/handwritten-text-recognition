@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
 from sarah.models.components.layers import Bidirectional
-from sarah.models.components.layers import GatedConv2D
+from sarah.models.components.layers import GatedConv2DDual
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -51,33 +51,33 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(mode='dual')(encoder)
+        encoder = GatedConv2DDual()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(mode='dual')(encoder)
+        encoder = GatedConv2DDual()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=(2, 4), strides=(2, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(mode='dual')(encoder)
+        encoder = GatedConv2DDual()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(mode='dual')(encoder)
+        encoder = GatedConv2DDual()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=(2, 4), strides=(1, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
 
-        encoder = GatedConv2D(mode='dual')(encoder)
+        encoder = GatedConv2DDual()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
