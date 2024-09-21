@@ -556,8 +556,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
 class GatedConv2D(tf.keras.layers.Layer):
     """
-    Implements gated convolutional layer for TensorFlow.
-    Combines linear and sigmoid activations for convolutional gating.
+    Implements gated convolutional layer.
 
     References
     ----------
