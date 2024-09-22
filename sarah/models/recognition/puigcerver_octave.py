@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
-from sarah.models.components.layers import Bidirectional
 from sarah.models.components.layers import OctConv2D
 
 
@@ -125,11 +124,12 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=256, return_sequences=True), dropout=0.5)(decoder)
+        for _ in range(5):
+            forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+            backwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+            forwards = tf.keras.layers.LSTM(units=256, return_sequences=True, go_backwards=False)(forwards)
+            backwards = tf.keras.layers.LSTM(units=256, return_sequences=True, go_backwards=True)(backwards)
+            decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
 

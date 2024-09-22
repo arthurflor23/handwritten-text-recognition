@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
-from sarah.models.components.layers import Bidirectional
 from sarah.models.components.layers import GatedConv2D
 
 
@@ -90,9 +89,15 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
 
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(decoder)
+        forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(decoder)
+        backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(decoder)
+        decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
+
         decoder = tf.keras.layers.Dense(units=128, activation='tanh')(decoder)
-        decoder = Bidirectional(tf.keras.layers.LSTM(units=128, return_sequences=True))(decoder)
+
+        forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(decoder)
+        backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(decoder)
+        decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
