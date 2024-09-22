@@ -102,7 +102,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
-        encoder = SelfAttention(h=128, dropout=0.3)(encoder)
+        encoder = SelfAttention(h=128, dropout=0.2)(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
