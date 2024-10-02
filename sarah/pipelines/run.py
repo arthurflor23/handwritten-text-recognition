@@ -35,7 +35,7 @@ def run(args):
     print(dataset)
 
     augmentor = None
-    if args.training and not args.disable_augmentation:
+    if args.training and not args.skip_augmentation:
         augmentor = Augmentor(binarize=args.binarize,
                               erode=args.erode,
                               dilate=args.dilate,

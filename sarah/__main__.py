@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--salt-and-pepper', default=None, nargs=2, type=float, help='Salt and pepper noise settings')
     parser.add_argument('--gaussian-noise', default=None, nargs=2, type=float, help='Gaussian noise settings')
     parser.add_argument('--gaussian-blur', default=None, nargs=2, type=float, help='Gaussian blur settings')
-    parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable all augmentations')
+    parser.add_argument('--skip-augmentation', default=False, action='store_true', help='Skip data augmentation')
 
     # synthesis
     parser.add_argument('--discriminator-steps', default=1, type=int, help='Discriminator step repetitions in training')
