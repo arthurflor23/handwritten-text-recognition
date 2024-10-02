@@ -263,14 +263,14 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.t_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
+        self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
                                              kernel_size=3,
                                              strides=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+                                             use_bias=False)
 
     def call(self, inputs):
         """
@@ -287,11 +287,10 @@ class GatedConv2D(tf.keras.layers.Layer):
             Tensor resulting from the gated convolution.
         """
 
-        t_conv = self.t_conv(inputs)
-        s_conv = tf.keras.layers.Activation('sigmoid')(t_conv)
-        outputs = inputs * s_conv
+        s_conv = self.s_conv(inputs)
+        s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
 
-        return outputs
+        return s_conv * inputs
 
 
 class GatedConv2DDual(tf.keras.layers.Layer):
@@ -365,14 +364,14 @@ class GatedConv2DDual(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.t_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
-                                             kernel_size=3,
-                                             strides=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+        self.sl_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
+                                              kernel_size=3,
+                                              strides=1,
+                                              padding='same',
+                                              kernel_initializer=self.kernel_initializer,
+                                              kernel_regularizer=self.kernel_regularizer,
+                                              kernel_constraint=self.kernel_constraint,
+                                              use_bias=True)
 
     def call(self, inputs):
         """
@@ -389,15 +388,12 @@ class GatedConv2DDual(tf.keras.layers.Layer):
             Tensor resulting from the dual gated convolution.
         """
 
-        t_conv = self.t_conv(inputs)
+        sl_conv = self.sl_conv(inputs)
 
-        t_conv, s_conv = tf.split(t_conv, num_or_size_splits=2, axis=-1)
-        t_conv = tf.keras.layers.Activation('linear')(t_conv)
+        s_conv, l_conv = tf.split(sl_conv, num_or_size_splits=2, axis=-1)
         s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
 
-        outputs = t_conv * s_conv
-
-        return outputs
+        return s_conv * l_conv
 
 
 class GatedConv2DResidual(tf.keras.layers.Layer):
@@ -406,10 +402,12 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 gamma_initializer='ones',
                  dropout=0.0,
                  **kwargs):
         """
@@ -417,6 +415,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        h : int, optional
+            Reduce the channels dimension to the value.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -425,6 +425,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -433,10 +435,12 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.h = h
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
 
     def get_config(self):
@@ -452,10 +456,12 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'h': self.h,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
         })
 
@@ -474,29 +480,34 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         super().build(input_shape)
 
         self.filters = input_shape[-1]
+        self.h = self.h or input_shape[-1]
 
-        self.t_conv = tf.keras.layers.Conv2D(filters=self.filters,
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
                                              kernel_size=3,
-                                             strides=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+                                             use_bias=False)
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                             kernel_size=3,
-                                             strides=1,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+        if self.filters != self.h:
+            self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
+                                                 kernel_size=1,
+                                                 padding='same',
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint,
+                                                 use_bias=True)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
+
+        self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                     shape=(1,),
+                                     initializer=self.gamma_initializer,
+                                     trainable=True)
 
     def call(self, inputs, training=False):
         """
@@ -515,20 +526,18 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             Tensor resulting from the residual gated convolution.
         """
 
-        t_conv = self.t_conv(inputs)
         s_conv = self.s_conv(inputs)
 
-        t_conv = tf.keras.layers.Activation('linear')(t_conv)
-        s_conv = tf.keras.layers.Activation('sigmoid')(s_conv)
-
-        g_conv = self.beta * t_conv * s_conv
+        g_conv = tf.keras.layers.Activation('sigmoid')(self.gamma * s_conv)
+        g_conv = self.beta * s_conv * g_conv
 
         if training and self.dropout:
             g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
-        outputs = g_conv + inputs
+        if self.filters != self.h:
+            g_conv = self.o_conv(g_conv)
 
-        return outputs
+        return g_conv + inputs
 
 
 class OctConv2D(tf.keras.layers.Layer):
@@ -794,7 +803,7 @@ class SelfAttention(tf.keras.layers.Layer):
         Parameters
         ----------
         h : int, optional
-            Reduce the h channels dimension to value.
+            Reduce the channels dimension to the value.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
