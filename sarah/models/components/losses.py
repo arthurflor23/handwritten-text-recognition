@@ -83,7 +83,6 @@ class CTXLoss(tf.keras.losses.Loss):
 
     def __init__(self,
                  sigma=0.5,
-                 similarity='cosine',
                  name='ctx_loss',
                  **kwargs):
         """
@@ -93,8 +92,6 @@ class CTXLoss(tf.keras.losses.Loss):
         ----------
         sigma : float, optional
             Sharpness parameter of the similarity function.
-        similarity : str, optional
-            Type of loss to be used.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -104,7 +101,6 @@ class CTXLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.sigma = sigma
-        self.similarity = similarity
 
     def call(self, y_true, y_pred):
         """
@@ -123,136 +119,22 @@ class CTXLoss(tf.keras.losses.Loss):
             The computed contextual loss.
         """
 
-        if len(y_true.shape) == 3:
-            y_true = tf.expand_dims(y_true, axis=1)
+        ref_norm = tf.nn.l2_normalize(y_true, axis=-1)
+        gen_norm = tf.nn.l2_normalize(y_pred, axis=-1)
 
-        if len(y_pred.shape) == 3:
-            y_pred = tf.expand_dims(y_pred, axis=1)
+        cosine_dist = tf.matmul(ref_norm, gen_norm, transpose_b=True)
+        cosine_dist = 1.0 - cosine_dist
 
-        y_true = tf.transpose(y_true, perm=[0, 3, 1, 2])
-        y_pred = tf.transpose(y_pred, perm=[0, 3, 1, 2])
-
-        if self.similarity == 'cosine':
-            distance = self.compute_cosine_distance(y_true, y_pred)
-
-        elif self.similarity == 'l1':
-            distance = self.compute_l1_distance(y_true, y_pred)
-
-        elif self.similarity == 'l2':
-            distance = self.compute_l2_distance(y_true, y_pred)
-
-        d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
-        d_tilde = distance / (d_min + 1e-5)
+        d_min = tf.math.reduce_min(cosine_dist, axis=1, keepdims=True)
+        d_tilde = cosine_dist / (d_min + 1e-5)
 
         w = tf.math.exp((1 - d_tilde) / self.sigma)
+        ctx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
 
-        ctx_ij = w / tf.math.reduce_sum(w, axis=2, keepdims=True)
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
-
         ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
 
         return ctx_loss
-
-    def compute_cosine_distance(self, y, x):
-        """
-        Compute the cosine distance between two tensors.
-
-        Parameters
-        ----------
-        y : tf.Tensor
-            The target tensor.
-        x : tf.Tensor
-            The prediction tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor representing the cosine distance between y and x.
-        """
-
-        N, C, _, _ = tf.unstack(tf.shape(x))
-
-        y_mu = tf.reduce_mean(y, axis=[0, 2, 3], keepdims=True)
-
-        x_centered = x - y_mu
-        y_centered = y - y_mu
-
-        x_normalized = x_centered / tf.norm(x_centered, ord=2, axis=1, keepdims=True)
-        y_normalized = y_centered / tf.norm(y_centered, ord=2, axis=1, keepdims=True)
-
-        x_normalized = tf.reshape(x_normalized, [N, C, -1])
-        y_normalized = tf.reshape(y_normalized, [N, C, -1])
-
-        x_normalized = tf.transpose(x_normalized, perm=[0, 2, 1])
-
-        dist = 1 - tf.matmul(x_normalized, y_normalized)
-
-        return dist
-
-    def compute_l1_distance(self, y, x):
-        """
-        Compute the L1 (Manhattan) distance between two tensors.
-
-        Parameters
-        ----------
-        y : tf.Tensor
-            The target tensor.
-        x : tf.Tensor
-            The prediction tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor representing the L1 distance between y and x.
-        """
-
-        N, C, _, _ = tf.unstack(tf.shape(x))
-
-        x_vec = tf.reshape(x, [N, C, -1])
-        y_vec = tf.reshape(y, [N, C, -1])
-
-        dist = tf.expand_dims(x_vec, axis=2) - tf.expand_dims(y_vec, axis=3)
-        dist = tf.math.reduce_sum(tf.math.abs(dist), axis=1)
-        dist = tf.transpose(dist, perm=[0, 2, 1])
-
-        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
-
-        return dist
-
-    def compute_l2_distance(self, y, x):
-        """
-        Compute the L2 (Euclidean) distance between two tensors.
-
-        Parameters
-        ----------
-        y : tf.Tensor
-            The target tensor.
-        x : tf.Tensor
-            The prediction tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor representing the L2 distance between y and x.
-        """
-
-        N, C, _, _ = tf.unstack(tf.shape(x))
-
-        x_vec = tf.reshape(x, [N, C, -1])
-        y_vec = tf.reshape(y, [N, C, -1])
-
-        x_s = tf.math.reduce_sum(x_vec ** 2, axis=1, keepdims=True)
-        y_s = tf.math.reduce_sum(y_vec ** 2, axis=1, keepdims=True)
-
-        A = tf.transpose(y_vec, perm=[0, 2, 1]) @ x_vec
-        B = tf.transpose(x_s, perm=[0, 2, 1])
-
-        dist = y_s - 2 * A + B
-        dist = tf.transpose(dist, perm=[0, 2, 1])
-
-        dist = tf.clip_by_value(dist, clip_value_min=0., clip_value_max=100000.)
-
-        return dist
 
 
 class BetaVAELoss(tf.keras.losses.Loss):
