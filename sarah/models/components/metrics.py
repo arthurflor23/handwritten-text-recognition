@@ -269,11 +269,19 @@ class MetricsTracker:
             Dictionary with metric names as keys and their new values.
         """
 
-        for name, value in metrics.items():
+        def _skip_update():
+            return 0
+
+        def _update_metric():
             if name not in self.metrics:
                 self.add([name])
 
             self.metrics[name].update_state(value)
+            return 0
+
+        for name, value in metrics.items():
+            nan_check = tf.reduce_any(tf.math.is_nan(value))
+            tf.cond(nan_check, _skip_update, _update_metric)
 
     def result(self):
         """
