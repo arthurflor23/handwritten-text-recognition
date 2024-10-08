@@ -113,7 +113,7 @@ def batch_processing(batch_data, mode=None):
     data_batch : list
         List of arrays.
     mode : str, optional
-        Whether to use None, 'image', 'text' or 'shape' processing.
+        Whether to use None, 'image' or 'text' processing.
 
     Returns
     -------
@@ -130,9 +130,6 @@ def batch_processing(batch_data, mode=None):
 
     elif mode == 'text':
         batch_data = batch_data.transpose((0, 2, 1))
-
-    elif mode == 'shape':
-        batch_data = batch_data[:, ::-1]
 
     return batch_data
 
