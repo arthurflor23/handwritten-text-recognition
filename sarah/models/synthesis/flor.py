@@ -78,7 +78,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         latent_dim = 128
         text_dim = 32
-        shape_dim = 16
+        spatial_dim = 4
         patch_shape = [32, 32, 1]
         discriminator_blocks = [64, 128, 256, 256]
         generator_blocks = [256, 128, 64, 64]
@@ -104,7 +104,7 @@ class SynthesisModel(BaseSynthesisModel):
                                         lexical_shape=self.lexical_shape,
                                         latent_dim=latent_dim,
                                         text_dim=text_dim,
-                                        shape_dim=shape_dim,
+                                        spatial_dim=spatial_dim,
                                         blocks=generator_blocks)
 
         self.discriminator = DiscriminatorModel(name='discriminator',
@@ -595,7 +595,7 @@ class GeneratorModel(BaseModel):
                  lexical_shape,
                  latent_dim,
                  text_dim,
-                 shape_dim,
+                 spatial_dim,
                  blocks,
                  name='generator',
                  **kwargs):
@@ -612,8 +612,8 @@ class GeneratorModel(BaseModel):
             Dimension of the latent space.
         text_dim : int
             Size of the embedding for text space.
-        shape_dim : int
-            Size of the embedding for image dimension.
+        spatial_dim : int
+            Size of the embedding for spatial data.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
         name : str, optional
@@ -628,7 +628,7 @@ class GeneratorModel(BaseModel):
         self.lexical_shape = lexical_shape
         self.latent_dim = latent_dim
         self.text_dim = text_dim
-        self.shape_dim = shape_dim
+        self.spatial_dim = spatial_dim
         self.blocks = blocks
 
         self.build_model()
@@ -654,7 +654,7 @@ class GeneratorModel(BaseModel):
             'lexical_shape': self.lexical_shape,
             'latent_dim': self.latent_dim,
             'text_dim': self.text_dim,
-            'shape_dim': self.shape_dim,
+            'spatial_dim': self.spatial_dim,
             'blocks': self.blocks,
         })
 
@@ -729,42 +729,19 @@ class GeneratorModel(BaseModel):
                                               arguments={'y': [1, text_embedding.shape[1], 1]},
                                               name='latent_tile')(latent_input)
 
-        shape_input = tf.keras.layers.Input(shape=(2,))
+        spatial_input = tf.keras.layers.Input(shape=(2, 4))
 
-        # height_embedding = tf.keras.layers.Embedding(input_dim=self.image_shape[0] + 1,
-        #                                              output_dim=self.shape_dim,
-        #                                              embeddings_initializer='glorot_uniform')(shape_input[:, 0])
+        spatial_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
+                                                      output_dim=self.spatial_dim,
+                                                      embeddings_initializer='glorot_uniform')(spatial_input)
 
-        # height_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
-        #                                       arguments={'y': [1, text_embedding.shape[1], 1]},
-        #                                       name='height_tile')(height_embedding)
+        spatial_flattened = tf.keras.layers.Flatten()(spatial_embedding)
 
-        # width_embedding = tf.keras.layers.Embedding(input_dim=self.image_shape[1] + 1,
-        #                                             output_dim=self.shape_dim,
-        #                                             embeddings_initializer='glorot_uniform')(shape_input[:, 1])
+        spatial_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
+                                               arguments={'y': [1, text_embedding.shape[1], 1]},
+                                               name='spatial_tile')(spatial_flattened)
 
-        # width_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
-        #                                      arguments={'y': [1, text_embedding.shape[1], 1]},
-        #                                      name='width_tile')(width_embedding)
-
-        # shape_tiled = tf.keras.layers.Concatenate(axis=-1)([height_tiled, width_tiled])
-
-        shape_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
-                                                    output_dim=self.shape_dim,
-                                                    embeddings_initializer='glorot_uniform')(shape_input)
-
-        shape_flattened = tf.keras.layers.Flatten()(shape_embedding)
-
-        shape_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
-                                             arguments={'y': [1, text_embedding.shape[1], 1]},
-                                             name='shape_tile')(shape_flattened)
-
-        # print(self.image_shape, shape_input)
-        # print(tf.constant(self.image_shape, dtype=tf.float32) - tf.cast(shape_input, dtype=tf.float32))
-        # exit()
-
-        latent_concat = tf.keras.layers.Concatenate(axis=-1)([text_embedding, latent_tiled, shape_tiled])
-        # latent_concat = tf.keras.layers.Concatenate(axis=-1)([text_embedding, latent_tiled])
+        latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, spatial_tiled])
 
         latent_text = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
@@ -799,7 +776,7 @@ class GeneratorModel(BaseModel):
 
         outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
 
-        self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input, shape_input], outputs=outputs)
+        self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input, spatial_input], outputs=outputs)
 
 
 class DiscriminatorModel(BaseModel):
