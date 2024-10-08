@@ -197,14 +197,125 @@ class BetaVAELoss(tf.keras.losses.Loss):
         b = tf.cast(tf.shape(z)[0], tf.float32)
         m = tf.cast(tf.shape(z)[1], tf.float32)
 
-        # Reconstruction Loss
         rec_loss = tf.reduce_sum(tf.square(y_true - generated_images))
         rec_loss = rec_loss / N
         rec_loss = rec_loss / b
 
-        # KL Divergence Loss
         kl_loss = -0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1)
         kl_loss = tf.reduce_sum(kl_loss) / m
         kl_loss = kl_loss / b
 
         return rec_loss + self.beta * kl_loss
+
+
+class PaddingLoss(tf.keras.losses.Loss):
+    """
+    Computes Intersection over Union (IoU) of padded regions between tensors.
+
+    References
+    ----------
+    Generalized Intersection over Union: A Metric and A Loss for Bounding Box Regression
+        https://arxiv.org/abs/1902.09630
+
+    The Lovász-Softmax loss:
+        A tractable surrogate for the optimization ofthe intersection-over-union measure in neural networks
+        https://arxiv.org/abs/1705.08790
+    """
+
+    def __init__(self, pad_value=0, name='pad_loss', **kwargs):
+        """
+        Initialize the PaddingLoss instance.
+
+        Parameters
+        ----------
+        pad_value : float or int, optional
+            Value used for padding.
+        name : str, optional
+            Name of the loss function.
+        **kwargs : dict
+            Additional keyword arguments for the loss function.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.pad_value = pad_value
+
+    def call(self, y_true, y_pred):
+        """
+        Calculate padding loss between true and predicted tensors.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            True tensor values.
+        y_pred : tf.Tensor
+            Predicted tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Padding loss.
+        """
+
+        true_mask = self.generate_mask(y_true, pad_value=self.pad_value)
+        pred_mask = self.generate_mask(y_pred, pad_value=self.pad_value)
+
+        true_mask = tf.keras.backend.flatten(true_mask)
+        pred_mask = tf.keras.backend.flatten(pred_mask)
+
+        intersection = tf.reduce_sum(true_mask * pred_mask)
+        union = tf.reduce_sum(true_mask) + tf.reduce_sum(pred_mask) - intersection
+        pad_loss = 1 - (intersection / (union + 1e-8))
+
+        return pad_loss
+
+    def generate_mask(self, input_data, pad_value):
+        """
+        Create a mask for padded areas in the input data.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            The input tensor.
+        pad_value : float, or int,
+            The padding value.
+
+        Returns
+        -------
+        tf.Tensor
+            Boolean mask tensor.
+        """
+
+        def _get_mask(input_data, pad_value, transpose):
+            shape = tf.shape(input_data)[1:-1]
+
+            if transpose:
+                shape = shape[::-1]
+                input_data = tf.transpose(input_data, perm=[0, 2, 1, 3])
+
+            input_mean = tf.reduce_mean(input_data, axis=[2, 3])
+
+            data_reversed = tf.reverse(input_mean, axis=[1])
+            padding_mask = tf.equal(data_reversed, tf.cast(pad_value, input_data.dtype))
+
+            lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
+            origin_lens = tf.where(tf.equal(lengths, 0), shape[0], shape[0] - lengths)
+
+            scale = tf.cast(origin_lens, tf.float32) / (tf.cast(shape[0], tf.float32) + 1e-8)
+            target_lens = tf.cast(shape[0], tf.float32) * scale
+
+            mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=shape[0])
+            mask = tf.expand_dims(tf.expand_dims(mask, axis=-1), axis=-1)
+            mask = tf.tile(mask, multiples=[1, 1, shape[1], 1])
+
+            if transpose:
+                mask = tf.transpose(mask, perm=[0, 2, 1, 3])
+
+            return mask
+
+        v_mask = _get_mask(input_data, pad_value, transpose=False)
+        h_mask = _get_mask(input_data, pad_value, transpose=True)
+
+        mask = tf.cast(tf.logical_and(v_mask, h_mask), dtype=input_data.dtype)
+
+        return mask
