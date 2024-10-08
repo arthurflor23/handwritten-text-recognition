@@ -5,9 +5,10 @@ import numpy as np
 import editdistance
 import tensorflow as tf
 
+from sarah.models.components.losses import BetaVAELoss
 from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
-from sarah.models.components.losses import BetaVAELoss
+from sarah.models.components.losses import PaddingLoss
 from sarah.models.components.metrics import EditDistance
 from sarah.models.components.metrics import KernelInceptionDistance
 
@@ -577,6 +578,7 @@ class BaseSynthesisModel(BaseModel):
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
+        self.pad_loss = PaddingLoss(pad_value=-1)
 
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
         self.monitor = self.kid.name
