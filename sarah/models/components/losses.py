@@ -210,39 +210,52 @@ class BetaVAELoss(tf.keras.losses.Loss):
 
 class PaddingLoss(tf.keras.losses.Loss):
     """
-    Computes Intersection over Union (IoU) of padded regions between tensors.
+    Implements a multi loss combining BCE, Focal Loss, and Dice Loss.
 
     References
     ----------
-    Generalized Intersection over Union: A Metric and A Loss for Bounding Box Regression
-        https://arxiv.org/abs/1902.09630
+    Focal Loss for Dense Object Detection
+        https://arxiv.org/abs/1708.02002
 
-    The Lovász-Softmax loss:
-        A tractable surrogate for the optimization ofthe intersection-over-union measure in neural networks
-        https://arxiv.org/abs/1705.08790
+    Generalised Dice overlap as a deep learning loss function for highly unbalanced segmentations
+        https://arxiv.org/abs/1707.03237v3
+
+    HistoSeg : Quick attention with multi-loss function for multi-structure segmentation in digital histology images
+        https://arxiv.org/pdf/2209.00729v1
     """
 
-    def __init__(self, pad_value=0, name='pad_loss', **kwargs):
+    def __init__(self,
+                 pad_value=0,
+                 alpha=0.25,
+                 gamma=2.0,
+                 name='pad_loss',
+                 **kwargs):
         """
-        Initialize the PaddingLoss instance.
+        Initializes the multi-loss combining BCE, Focal Loss, and Dice Loss.
 
         Parameters
         ----------
-        pad_value : float or int, optional
-            Value used for padding.
-        name : str, optional
-            Name of the loss function.
+        pad_value : float or int
+            Padding value.
+        alpha : float
+            Focal Loss weighting factor.
+        gamma : float
+            Focal Loss focusing parameter.
+        name : str
+            Loss function name.
         **kwargs : dict
-            Additional keyword arguments for the loss function.
+            Additional keyword arguments.
         """
 
         super().__init__(name=name, **kwargs)
 
         self.pad_value = pad_value
+        self.alpha = alpha
+        self.gamma = gamma
 
     def call(self, y_true, y_pred):
         """
-        Calculate padding loss between true and predicted tensors.
+        Calculate multi loss between true and predicted tensors.
 
         Parameters
         ----------
@@ -257,17 +270,94 @@ class PaddingLoss(tf.keras.losses.Loss):
             Padding loss.
         """
 
-        true_mask = self.generate_mask(y_true, pad_value=self.pad_value)
-        pred_mask = self.generate_mask(y_pred, pad_value=self.pad_value)
+        m_true = self.generate_mask(y_true, pad_value=self.pad_value)
+        m_pred = self.generate_mask(y_pred, pad_value=self.pad_value)
 
-        true_mask = tf.keras.backend.flatten(true_mask)
-        pred_mask = tf.keras.backend.flatten(pred_mask)
+        bce_loss = self.compute_bce_loss(m_true, m_pred)
+        focal_loss = self.compute_focal_loss(m_true, m_pred)
+        dice_loss = self.compute_dice_loss(m_true, m_pred)
 
-        intersection = tf.reduce_sum(true_mask * pred_mask)
-        union = tf.reduce_sum(true_mask) + tf.reduce_sum(pred_mask) - intersection
-        pad_loss = 1 - (intersection / (union + 1e-8))
+        pad_loss = (bce_loss + focal_loss) + dice_loss
 
         return pad_loss
+
+    def compute_bce_loss(self, y_true, y_pred):
+        """
+        Computes Binary Crossentropy (BCE) Loss.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            True tensor values.
+        y_pred : tf.Tensor
+            Predicted tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            BCE loss value.
+        """
+
+        positive_loss = y_true * tf.math.log(y_pred + 1e-8)
+        negative_loss = (1 - y_true) * tf.math.log(1 - y_pred + 1e-8)
+
+        bce_loss = -(positive_loss + negative_loss)
+        bce_loss = tf.reduce_mean(bce_loss)
+
+        return bce_loss
+
+    def compute_focal_loss(self, y_true, y_pred):
+        """
+        Computes Focal Loss for handling class imbalance.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            True tensor values.
+        y_pred : tf.Tensor
+            Predicted tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Focal loss value.
+        """
+
+        p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+        focal_weight = self.alpha * tf.pow(1.0 - p_t, self.gamma)
+
+        focal_loss = -focal_weight * tf.math.log(p_t + 1e-8)
+        focal_loss = tf.reduce_mean(focal_loss)
+
+        return focal_loss
+
+    def compute_dice_loss(self, y_true, y_pred):
+        """
+        Computes Dice Loss to measure similarity between true and predicted masks.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            True tensor values.
+        y_pred : tf.Tensor
+            Predicted tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Dice loss value.
+        """
+
+        y_true_f = tf.keras.backend.flatten(y_true)
+        y_pred_f = tf.keras.backend.flatten(y_pred)
+
+        intersection = tf.reduce_sum(y_true_f * y_pred_f)
+        union = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f)
+
+        dice_coeff = (2. * intersection + 1e-8) / (union + 1e-8)
+        dice_loss = 1 - dice_coeff
+
+        return dice_loss
 
     def generate_mask(self, input_data, pad_value):
         """
