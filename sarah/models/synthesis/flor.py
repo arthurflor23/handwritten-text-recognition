@@ -4,6 +4,7 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
+from sarah.models.components.layers import SelfAttention
 from sarah.models.components.layers import Reparameterization
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_v2 import RecognitionModel
@@ -263,22 +264,29 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             real_s_real_t_ctc = self.recognition(real_s_real_t_images, training=True)
+            # real_s_real_t_ctc_loss = self.ctc_loss(text_data, real_s_real_t_ctc)
+
             real_s_fake_t_ctc = self.recognition(real_s_fake_t_images, training=True)
+            # real_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, real_s_fake_t_ctc)
+
             fake_s_fake_t_ctc = self.recognition(fake_s_fake_t_images, training=True)
+            # fake_s_fake_t_ctc_loss = self.ctc_loss(aug_text_data, fake_s_fake_t_ctc)
+
+            # g_ctc_loss = real_s_real_t_ctc_loss + real_s_fake_t_ctc_loss + fake_s_fake_t_ctc_loss
 
             real_texts = tf.concat([text_data, aug_text_data, aug_text_data], axis=0)
             fake_texts = tf.concat([real_s_real_t_ctc, real_s_fake_t_ctc, fake_s_fake_t_ctc], axis=0)
 
             g_ctc_loss = self.ctc_loss(real_texts, fake_texts)
 
-            # content reconstruction
-            g_rec_loss = self.bva_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
-
             # padding loss
             g_pad_loss = tf.constant(0.0)
-            g_pad_loss += self.pad_loss(image_data, real_s_real_t_images) * 5
-            g_pad_loss += self.pad_loss(image_data, real_s_fake_t_images) * 5
-            g_pad_loss += self.pad_loss(image_data, fake_s_fake_t_images) * 5
+            g_pad_loss += self.pad_loss(image_data, real_s_real_t_images)
+            g_pad_loss += self.pad_loss(image_data, real_s_fake_t_images)
+            g_pad_loss += self.pad_loss(image_data, fake_s_fake_t_images)
+
+            # content reconstruction
+            g_rec_loss = self.bva_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
 
             # style reconstruction
             fake_features_data, _ = self.style_backbone(fake_s_fake_t_images, training=True)
@@ -297,8 +305,8 @@ class SynthesisModel(BaseSynthesisModel):
 
             # contextual
             g_ctx_loss = tf.constant(0.0)
-            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats) * 5
-            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats) * 5
+            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats)
+            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats)
 
             # generator loss
             g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_pad_loss + g_rec_loss + g_res_loss + g_wid_loss
@@ -668,51 +676,31 @@ class GeneratorModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        def residual_block_up(x, y, filters, upsample=None):
+        def residual_block_up(x, y, filters, up=None):
             h = ConditionalBatchNormalization()([x, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
-            if upsample:
-                # h = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(h)
-                # x = tf.keras.layers.UpSampling2D(size=upsample, interpolation='nearest')(x)
+            if up:
+                # h = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(h)
+                # x = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(x)
 
                 h = tf.keras.layers.SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters=filters,
-                                                    kernel_size=2,
-                                                    strides=upsample,
-                                                    padding='same',
-                                                    kernel_initializer='glorot_uniform'))(h)
+                    tf.keras.layers.Conv2DTranspose(filters=filters, kernel_size=2, strides=up, padding='same'))(h)
 
                 x = tf.keras.layers.SpectralNormalization(
-                    tf.keras.layers.Conv2DTranspose(filters=filters,
-                                                    kernel_size=2,
-                                                    strides=upsample,
-                                                    padding='same',
-                                                    kernel_initializer='glorot_uniform'))(x)
+                    tf.keras.layers.Conv2DTranspose(filters=filters, kernel_size=2, strides=up, padding='same'))(x)
 
             h = tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       strides=1,
-                                       padding='same',
-                                       kernel_initializer='glorot_uniform'))(h)
+                tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same'))(h)
 
             h = ConditionalBatchNormalization()([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       strides=1,
-                                       padding='same',
-                                       kernel_initializer='glorot_uniform'))(h)
+                tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same'))(h)
 
             x = tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=1,
-                                       strides=1,
-                                       padding='valid',
-                                       kernel_initializer='glorot_uniform'))(x)
+                tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid'))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -720,8 +708,7 @@ class GeneratorModel(BaseModel):
         text_flattened = tf.keras.layers.Flatten()(text_input)
 
         text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                                   output_dim=self.text_dim,
-                                                   embeddings_initializer='glorot_uniform')(text_flattened)
+                                                   output_dim=self.text_dim)(text_flattened)
 
         latent_input = tf.keras.layers.Input(shape=(self.latent_dim,))
 
@@ -732,8 +719,7 @@ class GeneratorModel(BaseModel):
         spatial_input = tf.keras.layers.Input(shape=(2, 4))
 
         spatial_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
-                                                      output_dim=self.spatial_dim,
-                                                      embeddings_initializer='glorot_uniform')(spatial_input)
+                                                      output_dim=self.spatial_dim)(spatial_input)
 
         spatial_flattened = tf.keras.layers.Flatten()(spatial_embedding)
 
@@ -741,38 +727,35 @@ class GeneratorModel(BaseModel):
                                                arguments={'y': [1, text_embedding.shape[1], 1]},
                                                name='spatial_tile')(spatial_flattened)
 
-        latent_concat = tf.keras.layers.Concatenate(axis=-1)([latent_tiled, text_embedding, spatial_tiled])
+        text_concat = tf.keras.layers.Concatenate(axis=-1)([text_embedding, latent_tiled, spatial_tiled])
 
-        latent_text = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0],
-                                  kernel_initializer='glorot_uniform'))(latent_concat)
+        text_dense = tf.keras.layers.SpectralNormalization(
+            tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0]))(text_concat)
 
-        block = tf.keras.layers.Reshape(target_shape=(latent_text.shape[1] * 4, 4, -1))(latent_text)
+        block = tf.keras.layers.Reshape(target_shape=(text_dense.shape[1] * 4, 4, -1))(text_dense)
 
         latent_dense = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks),
-                                  kernel_initializer='glorot_uniform'))(latent_input)
+            tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks)))(latent_input)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
                                                arguments={'y': len(self.blocks)},
                                                name='latent_chunks')(latent_dense)
 
         for i, filters in enumerate(self.blocks):
+            # if i == 1:
+            #     block = SelfAttention()(block)
+
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
 
-            upsample = strides if 2 in strides else None
-            block = residual_block_up(block, latent_chunks[i], filters, upsample=upsample)
+            up = strides if 2 in strides else None
+            block = residual_block_up(block, latent_chunks[i], filters, up=up)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.Activation(activation='swish')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Conv2D(filters=1,
-                                   kernel_size=3,
-                                   strides=1,
-                                   padding='same',
-                                   kernel_initializer='glorot_uniform'))(outputs)
+            tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(outputs)
 
         outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
 
@@ -848,42 +831,31 @@ class DiscriminatorModel(BaseModel):
             and configurations. It is typically called in the constructor to create the model structure.
         """
 
-        def residual_block_down(x, filters, preactive=True, downsample=None):
+        def residual_block_down(x, filters, preactive=True, down=None):
             h = tf.keras.layers.Identity()(x)
 
             if preactive:
                 h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       padding='same',
-                                       kernel_initializer='glorot_uniform'))(h)
+                tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same'))(h)
+
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.SpectralNormalization(
-                tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       padding='same',
-                                       kernel_initializer='glorot_uniform'))(h)
+                tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same'))(h)
 
             if preactive:
                 x = tf.keras.layers.SpectralNormalization(
-                    tf.keras.layers.Conv2D(filters=filters,
-                                           kernel_size=1,
-                                           padding='valid',
-                                           kernel_initializer='glorot_uniform'))(x)
+                    tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid'))(x)
 
-            if downsample:
-                h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(h)
-                x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=downsample, padding='same')(x)
+            if down:
+                h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(h)
+                x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(x)
 
             if not preactive:
                 x = tf.keras.layers.SpectralNormalization(
-                    tf.keras.layers.Conv2D(filters=filters,
-                                           kernel_size=1,
-                                           padding='valid',
-                                           kernel_initializer='glorot_uniform'))(x)
+                    tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid'))(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -891,16 +863,19 @@ class DiscriminatorModel(BaseModel):
         block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
+            # if i == len(self.blocks) - 1:
+            #     block = SelfAttention()(block)
+
             strides = (2 if i < len(self.blocks) - 1 and block.shape[1] > 4 else 1,
                        2 if i < len(self.blocks) - 1 and block.shape[2] > 4 else 1)
 
-            downsample = strides if 2 in strides else None
-            block = residual_block_down(block, filters, preactive=(i > 0), downsample=downsample)
+            down = strides if 2 in strides else None
+            block = residual_block_down(block, filters, preactive=(i > 0), down=down)
 
         outputs = tf.keras.layers.Activation(activation='swish')(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce_sum')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=1, kernel_initializer='glorot_uniform'))(outputs)
+            tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(name=self.name, inputs=image_inputs, outputs=outputs)
