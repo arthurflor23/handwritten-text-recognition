@@ -111,7 +111,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
 class ExtractPatches(tf.keras.layers.Layer):
     """
-    A Tensorflow Keras layer to extract patches from input images.
+    Layer to extract patches from input images.
     """
 
     def __init__(self, patch_shape=None, **kwargs):
@@ -137,7 +137,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -220,7 +220,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -321,7 +321,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -432,7 +432,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -524,7 +524,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
 
 class OctConv2D(tf.keras.layers.Layer):
     """
-    Implements octave convolutional layer for TensorFlow.
+    Implements octave convolutional layer.
     This layer processes input feature maps by splitting them into high and low frequency components
 
     References
@@ -587,7 +587,7 @@ class OctConv2D(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -819,7 +819,7 @@ class SelfAttention(tf.keras.layers.Layer):
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
