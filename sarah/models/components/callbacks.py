@@ -203,7 +203,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
         if self.global_step > 0 and self.global_step % self.save_freq == 0:
             for _ in range(self.sample_steps):
-                _, (image_data, text_data, _, spatial_data) = next(self.sample_gen)
+                _, (image_data, text_data, _, mask_data) = next(self.sample_gen)
 
                 self._save_images(self.global_step, image_data, name='authentic')
 
@@ -213,11 +213,11 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 latent_data = self.model.style_encoder(features_data, training=False)
                 latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-                fake_guided = self.model.generator([latent_data, text_data, spatial_data], training=False)
+                fake_guided = self.model.generator([latent_data, text_data, mask_data], training=False)
                 self._save_images(self.global_step, fake_guided, name='guided')
 
                 random_latent_data = tf.random.normal(shape=(len(image_data), self.latent_dim))
-                fake_random = self.model.generator([random_latent_data, text_data, spatial_data], training=False)
+                fake_random = self.model.generator([random_latent_data, text_data, mask_data], training=False)
                 self._save_images(self.global_step, fake_random, name='random')
 
         self.global_step += 1
