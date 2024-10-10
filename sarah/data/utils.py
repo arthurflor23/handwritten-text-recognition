@@ -66,6 +66,39 @@ def format_text(text):
     return text
 
 
+def batch_masking(batch_data, target_shape):
+    """
+    Generate masks for a batch of images.
+
+    Parameters
+    ----------
+    data : ndarray
+        Batch of images.
+    target_shape : tuple
+        Maximum dimensions.
+
+    Returns
+    -------
+    ndarray
+        Masks indicating content areas.
+    """
+
+    max_width, max_height = target_shape[:2]
+    masks = []
+
+    if batch_data and len(batch_data) > 0:
+        if isinstance(batch_data[0], str):
+            mask = np.ones((max_height, max_width))
+            masks = np.array([mask for _ in batch_data]) * 255
+        else:
+            for x in batch_data:
+                mask = np.zeros((max_height, max_width))
+                mask[:x.shape[0], :x.shape[1]] = 255
+                masks.append(mask)
+
+    return np.array(masks, dtype=np.uint8)
+
+
 def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     """
     Pads a batch of data to a uniform shape.
@@ -106,7 +139,7 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
 
 def batch_processing(batch_data, mode=None):
     """
-    Processes a data batch for model input .
+    Processes a data batch for model input.
 
     Parameters
     ----------
