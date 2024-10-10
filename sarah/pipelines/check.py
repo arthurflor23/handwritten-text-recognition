@@ -85,8 +85,8 @@ def check(args):
             print('Path image')
             print(image_source_data[i], '\n')
 
-            print('Content data  :', spatial_data[i][0])
-            print('Padding data  :', spatial_data[i][1], '\n')
+            print('Spatial data  :', spatial_data[i], '\n')
+
             print('Source writer :', writer_source_data[i])
             print('Encoded writer:', writer_encoded_data[i], '\n')
 
