@@ -4,8 +4,8 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
+from sarah.models.components.layers import SelfAttention
 from sarah.models.components.layers import Reparameterization
-from sarah.models.components.layers import SpatiallyAdaptiveNormalization
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_v2 import RecognitionModel
 
@@ -79,6 +79,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         latent_dim = 128
         text_dim = 32
+        spatial_dim = 4
         patch_shape = [32, 32, 1]
         discriminator_blocks = [64, 128, 256, 256]
         generator_blocks = [256, 128, 64, 64]
@@ -104,6 +105,7 @@ class SynthesisModel(BaseSynthesisModel):
                                         lexical_shape=self.lexical_shape,
                                         latent_dim=latent_dim,
                                         text_dim=text_dim,
+                                        spatial_dim=spatial_dim,
                                         blocks=generator_blocks)
 
         self.discriminator = DiscriminatorModel(name='discriminator',
@@ -130,7 +132,7 @@ class SynthesisModel(BaseSynthesisModel):
         x_data, y_data = input_data
 
         (aug_image_data, aug_text_data, _, _) = x_data
-        (image_data, text_data, writer_data, mask_data) = y_data
+        (image_data, text_data, writer_data, spatial_data) = y_data
 
         self.discriminator.trainable = True
         self.patch_discriminator.trainable = True
@@ -147,9 +149,9 @@ class SynthesisModel(BaseSynthesisModel):
             real_features_data, _ = self.style_backbone(image_data, training=True)
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
-            real_s_real_t_images = self.generator([real_latent_data, text_data, mask_data], training=True)
-            real_s_fake_t_images = self.generator([real_latent_data, aug_text_data, mask_data], training=True)
-            fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data, mask_data], training=True)
+            real_s_real_t_images = self.generator([real_latent_data, text_data, spatial_data], training=True)
+            real_s_fake_t_images = self.generator([real_latent_data, aug_text_data, spatial_data], training=True)
+            fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data, spatial_data], training=True)
 
             fake_images = tf.concat([real_s_real_t_images, real_s_fake_t_images, fake_s_fake_t_images], axis=0)
 
@@ -227,7 +229,7 @@ class SynthesisModel(BaseSynthesisModel):
         x_data, y_data = input_data
 
         (_, aug_text_data, _, _) = x_data
-        (image_data, text_data, writer_data, mask_data) = y_data
+        (image_data, text_data, writer_data, spatial_data) = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
         random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
@@ -244,9 +246,9 @@ class SynthesisModel(BaseSynthesisModel):
             real_features_data, real_feats = self.style_backbone(image_data, training=True)
             real_latent_data, mu, logvar = self.style_encoder(real_features_data, training=True)
 
-            real_s_real_t_images = self.generator([real_latent_data, text_data, mask_data], training=True)
-            real_s_fake_t_images = self.generator([real_latent_data, aug_text_data, mask_data], training=True)
-            fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data, mask_data], training=True)
+            real_s_real_t_images = self.generator([real_latent_data, text_data, spatial_data], training=True)
+            real_s_fake_t_images = self.generator([real_latent_data, aug_text_data, spatial_data], training=True)
+            fake_s_fake_t_images = self.generator([random_latent_data, aug_text_data, spatial_data], training=True)
 
             fake_images = tf.concat([real_s_real_t_images, real_s_fake_t_images, fake_s_fake_t_images], axis=0)
 
@@ -277,11 +279,11 @@ class SynthesisModel(BaseSynthesisModel):
 
             g_ctc_loss = self.ctc_loss(real_texts, fake_texts)
 
-            # # padding loss
-            # g_pad_loss = tf.constant(0.0)
-            # g_pad_loss += self.pad_loss(image_data, real_s_real_t_images)
-            # g_pad_loss += self.pad_loss(image_data, real_s_fake_t_images)
-            # g_pad_loss += self.pad_loss(image_data, fake_s_fake_t_images)
+            # padding loss
+            g_pad_loss = tf.constant(0.0)
+            g_pad_loss += self.pad_loss(image_data, real_s_real_t_images)
+            g_pad_loss += self.pad_loss(image_data, real_s_fake_t_images)
+            g_pad_loss += self.pad_loss(image_data, fake_s_fake_t_images)
 
             # content reconstruction
             g_rec_loss = self.bva_loss(image_data, (real_s_real_t_images, real_latent_data, mu, logvar))
@@ -303,11 +305,11 @@ class SynthesisModel(BaseSynthesisModel):
 
             # contextual
             g_ctx_loss = tf.constant(0.0)
-            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats) * 5
-            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats) * 5
+            g_ctx_loss += self.ctx_loss(real_feats, real_t_feats)
+            g_ctx_loss += self.ctx_loss(real_feats, fake_t_feats)
 
             # generator loss
-            g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_rec_loss + g_res_loss + g_wid_loss  # + g_pad_loss
+            g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_pad_loss + g_rec_loss + g_res_loss + g_wid_loss
 
         g_gradients = tape.gradient(g_loss, self.style_encoder.trainable_weights +
                                     self.generator.trainable_weights)
@@ -319,7 +321,7 @@ class SynthesisModel(BaseSynthesisModel):
             'g_adv_loss': g_adv_loss,
             'g_ctc_loss': g_ctc_loss,
             'g_ctx_loss': g_ctx_loss,
-            # 'g_pad_loss': g_pad_loss,
+            'g_pad_loss': g_pad_loss,
             'g_rec_loss': g_rec_loss,
             'g_res_loss': g_res_loss,
             'g_wid_loss': g_wid_loss,
@@ -348,11 +350,11 @@ class SynthesisModel(BaseSynthesisModel):
         self.global_steps.assign_add(delta=1)
 
         # kid metric
-        _, (image_data, text_data, _, mask_data) = input_data
+        _, (image_data, text_data, _, spatial_data) = input_data
 
         features_data, _ = self.style_backbone(image_data, training=False)
         latent_data, _, _ = self.style_encoder(features_data, training=False)
-        generated_images = self.generator([latent_data, text_data, mask_data], training=False)
+        generated_images = self.generator([latent_data, text_data, spatial_data], training=False)
 
         self.kid.update_state(image_data, generated_images)
         self.metrics_tracker.update({self.kid.name: self.kid.result()})
@@ -601,6 +603,7 @@ class GeneratorModel(BaseModel):
                  lexical_shape,
                  latent_dim,
                  text_dim,
+                 spatial_dim,
                  blocks,
                  name='generator',
                  **kwargs):
@@ -617,6 +620,8 @@ class GeneratorModel(BaseModel):
             Dimension of the latent space.
         text_dim : int
             Size of the embedding for text space.
+        spatial_dim : int
+            Size of the embedding for spatial data.
         blocks : list or tuple
             Blocks of channels for the model's architecture.
         name : str, optional
@@ -631,6 +636,7 @@ class GeneratorModel(BaseModel):
         self.lexical_shape = lexical_shape
         self.latent_dim = latent_dim
         self.text_dim = text_dim
+        self.spatial_dim = spatial_dim
         self.blocks = blocks
 
         self.build_model()
@@ -656,6 +662,7 @@ class GeneratorModel(BaseModel):
             'lexical_shape': self.lexical_shape,
             'latent_dim': self.latent_dim,
             'text_dim': self.text_dim,
+            'spatial_dim': self.spatial_dim,
             'blocks': self.blocks,
         })
 
@@ -670,8 +677,7 @@ class GeneratorModel(BaseModel):
         """
 
         def residual_block_up(x, y, filters, up=None):
-            # h = ConditionalBatchNormalization()([x, y])
-            h = SpatiallyAdaptiveNormalization()([x, y])
+            h = ConditionalBatchNormalization()([x, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up:
@@ -687,8 +693,7 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.SpectralNormalization(
                 tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same'))(h)
 
-            # h = ConditionalBatchNormalization()([h, y])
-            h = SpatiallyAdaptiveNormalization()([h, y])
+            h = ConditionalBatchNormalization()([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.SpectralNormalization(
@@ -698,8 +703,6 @@ class GeneratorModel(BaseModel):
                 tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid'))(x)
 
             return tf.keras.layers.Add()([h, x])
-
-        mask_input = tf.keras.layers.Input(shape=self.image_shape)
 
         text_input = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
         text_flattened = tf.keras.layers.Flatten()(text_input)
@@ -713,27 +716,40 @@ class GeneratorModel(BaseModel):
                                               arguments={'y': [1, text_embedding.shape[1], 1]},
                                               name='latent_tile')(latent_input)
 
-        text_concat = tf.keras.layers.Concatenate(axis=-1)([text_embedding, latent_tiled])
+        spatial_input = tf.keras.layers.Input(shape=(2, 4))
+
+        spatial_embedding = tf.keras.layers.Embedding(input_dim=max(self.image_shape) + 1,
+                                                      output_dim=self.spatial_dim)(spatial_input)
+
+        spatial_flattened = tf.keras.layers.Flatten()(spatial_embedding)
+
+        spatial_tiled = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
+                                               arguments={'y': [1, text_embedding.shape[1], 1]},
+                                               name='spatial_tile')(spatial_flattened)
+
+        text_concat = tf.keras.layers.Concatenate(axis=-1)([text_embedding, latent_tiled, spatial_tiled])
 
         text_dense = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * 2 * self.blocks[0]))(text_concat)
 
         block = tf.keras.layers.Reshape(target_shape=(text_dense.shape[1] * 4, 4, -1))(text_dense)
 
-        # latent_dense = tf.keras.layers.SpectralNormalization(
-        #     tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks)))(latent_input)
+        latent_dense = tf.keras.layers.SpectralNormalization(
+            tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks)))(latent_input)
 
-        # latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
-        #                                        arguments={'y': len(self.blocks)},
-        #                                        name='latent_chunks')(latent_dense)
+        latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
+                                               arguments={'y': len(self.blocks)},
+                                               name='latent_chunks')(latent_dense)
 
         for i, filters in enumerate(self.blocks):
+            # if i == 1:
+            #     block = SelfAttention()(block)
+
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
 
             up = strides if 2 in strides else None
-            block = residual_block_up(block, mask_input, filters, up=up)
-            # block = residual_block_up(block, latent_chunks[i], filters, up=up)
+            block = residual_block_up(block, latent_chunks[i], filters, up=up)
 
         outputs = tf.keras.layers.BatchNormalization()(block)
         outputs = tf.keras.layers.Activation(activation='swish')(outputs)
@@ -743,10 +759,7 @@ class GeneratorModel(BaseModel):
 
         outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
 
-        self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input, mask_input], outputs=outputs)
-
-        self.model.summary()
-        exit()
+        self.model = tf.keras.Model(name=self.name, inputs=[latent_input, text_input, spatial_input], outputs=outputs)
 
 
 class DiscriminatorModel(BaseModel):
@@ -850,6 +863,9 @@ class DiscriminatorModel(BaseModel):
         block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, filters in enumerate(self.blocks):
+            # if i == len(self.blocks) - 1:
+            #     block = SelfAttention()(block)
+
             strides = (2 if i < len(self.blocks) - 1 and block.shape[1] > 4 else 1,
                        2 if i < len(self.blocks) - 1 and block.shape[2] > 4 else 1)
 

@@ -28,9 +28,7 @@ class Compose():
                  tokenizer=None,
                  discriminator_steps=1,
                  generator_steps=1,
-                 synthetic_data_ratio=1.0,
-                 synthetic_text_ratio=0.5,
-                 synthetic_style_ratio=0.5,
+                 synthetic_data_ratio=0.99,
                  experiment_name=None,
                  gpu=0,
                  seed=None):
@@ -55,10 +53,6 @@ class Compose():
             The skipping steps for generator training.
         synthetic_data_ratio : float, optional
             Ratio determining the synthesis influence.
-        synthetic_text_ratio : float, optional
-            Ratio determining the synthesis of custom text.
-        synthetic_style_ratio : float, optional
-            Ratio determining the synthesis of custom style.
         experiment_name : str, optional
             Name of the MLflow experiment.
         gpu : int, optional
@@ -131,8 +125,6 @@ class Compose():
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
                         'synthetic_data_ratio': synthetic_data_ratio,
-                        'synthetic_text_ratio': synthetic_text_ratio,
-                        'synthetic_style_ratio': synthetic_style_ratio,
                     }
 
                 self.model = RecognitionModel(name='recognition',

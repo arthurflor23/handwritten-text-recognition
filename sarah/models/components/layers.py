@@ -8,9 +8,6 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     References
     ----------
-    A Learned Representation For Artistic Style
-        https://arxiv.org/abs/1610.07629
-
     Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
         https://arxiv.org/abs/1502.03167
 
@@ -976,76 +973,3 @@ class SelfAttention(tf.keras.layers.Layer):
             o = self.o_conv(o)
 
         return self.beta * o + inputs
-
-
-class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
-    """
-    ...
-
-    References
-    ----------
-    Semantic Image Synthesis with Spatially-Adaptive Normalization
-        https://arxiv.org/abs/1903.07291
-    """
-
-    def __init__(self, filters=128, kernel_size=3, **kwargs):
-        """
-        ...
-        """
-
-        super().__init__(**kwargs)
-
-        self.filters = filters
-        self.kernel_size = kernel_size
-
-    def build(self, input_shape):
-
-        # number of channels in the inputs and in the segmentation map
-        channels_seg = self.segmap.shape[-1]
-        channels_inputs = input_shape[-1]
-
-        # initialization BatchNorm weights
-        self.gamma_BN = self.add_weight(shape=(input_shape[0],),
-                                        initializer='ones',
-                                        trainable=True)
-
-        self.beta_BN = self.add_weight(shape=(input_shape[0],),
-                                       initializer='zeros',
-                                       trainable=True)
-
-        # initializate kernels for the convolutions
-        self.kernel_alpha = self.add_weight(shape=(self.kernel_size, self.kernel_size, channels_seg, self.filters),
-                                            initializer='random_normal',
-                                            trainable=True)
-
-        self.kernel_gamma = self.add_weight(shape=(self.kernel_size, self.kernel_size, self.filters, channels_inputs),
-                                            initializer='random_normal',
-                                            trainable=True)
-
-        self.kernel_beta = self.add_weight(shape=(self.kernel_size, self.kernel_size, self.filters, channels_inputs),
-                                           initializer='random_normal',
-                                           trainable=True)
-
-    def call(self, inputs):
-
-        # normalize the inputs
-        mean, variance = tf.nn.moments(inputs, axes=[1, 2], keepdims=True)
-        norm_inputs = tf.nn.batch_normalization(inputs, mean, variance,
-                                                offset=self.beta_BN, scale=self.gamma_BN,
-                                                variance_epsilon=1e-5)
-
-        # resize the segmap
-        _, inputs_height, inputs_width, _ = inputs.shape
-        segmap_resized = tf.image.resize(self.segmap, size=[inputs_height, inputs_width], method='nearest')
-
-        # first convolution with activation
-        actv = tf.nn.relu(tf.nn.conv2d(segmap_resized, self.kernel_alpha, strides=[1, 1, 1, 1], padding='SAME'))
-
-        # calculate gamma and beta
-        beta = tf.nn.conv2d(actv, self.kernel_beta, strides=[1, 1, 1, 1], padding='SAME')
-        gamma = tf.nn.conv2d(actv, self.kernel_gamma, strides=[1, 1, 1, 1], padding='SAME')
-
-        # outputs
-        outputs = norm_inputs * (1 + gamma) + beta
-
-        return outputs
