@@ -4,21 +4,18 @@ import tensorflow as tf
 class ConditionalBatchNormalization(tf.keras.layers.Layer):
     """
     Conditional Batch Normalization layer.
-    Applies batch normalization conditioned on external data, useful in conditional generative models.
+    Applies batch normalization conditioned on external data.
 
     References
     ----------
     A Learned Representation For Artistic Style
         https://arxiv.org/abs/1610.07629
 
-    Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
-        https://arxiv.org/abs/1502.03167
-
     Modulating early visual processing by language
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, momentum=0.99, epsilon=1e-3, **kwargs):
+    def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -36,8 +33,6 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.momentum = momentum
         self.epsilon = epsilon
-        self.mean = None
-        self.variance = None
 
     def get_config(self):
         """
@@ -54,8 +49,6 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         config.update({
             'momentum': self.momentum,
             'epsilon': self.epsilon,
-            'mean': self.mean,
-            'variance': self.variance,
         })
 
         return config
@@ -70,20 +63,20 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
             Shape of the input tensors.
         """
 
-        self.num_channels = input_shape[0][-1]
+        self.channels = input_shape[0][-1]
 
-        self.beta = tf.keras.layers.Dense(self.num_channels, use_bias=False)
-        self.gamma = tf.keras.layers.Dense(self.num_channels, use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(self.channels,
+                                                kernel_initializer='zeros',
+                                                use_bias=False)
 
-        self.mean = self.add_weight(name=f"{self.name}_mean",
-                                    shape=(self.num_channels,),
-                                    initializer='zeros',
-                                    trainable=False)
+        self.gamma_dense = tf.keras.layers.Dense(self.channels,
+                                                 kernel_initializer='ones',
+                                                 use_bias=False)
 
-        self.variance = self.add_weight(name=f"{self.name}_variance",
-                                        shape=(self.num_channels,),
-                                        initializer='ones',
-                                        trainable=False)
+        self.batch_norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
+                                                             epsilon=self.epsilon,
+                                                             center=False,
+                                                             scale=False)
 
     def call(self, inputs, training=False):
         """
