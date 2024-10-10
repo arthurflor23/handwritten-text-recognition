@@ -166,7 +166,9 @@ class BaseRecognitionModel(BaseModel):
                  style_backbone=None,
                  style_encoder=None,
                  generator=None,
-                 synthetic_data_ratio=0.99,
+                 synthetic_data_ratio=1.0,
+                 synthetic_text_ratio=0.5,
+                 synthetic_style_ratio=0.5,
                  seed=None,
                  **kwargs):
         """
@@ -186,6 +188,10 @@ class BaseRecognitionModel(BaseModel):
             Generator model for image generation.
         synthetic_data_ratio : float, optional
             Probability to use synthetic data.
+        synthetic_text_ratio : float, optional
+            Probability to use synthetic text.
+        synthetic_style_ratio : float, optional
+            Probability to use synthetic style.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -200,6 +206,8 @@ class BaseRecognitionModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthetic_data_ratio = synthetic_data_ratio
+        self.synthetic_text_ratio = synthetic_text_ratio
+        self.synthetic_style_ratio = synthetic_style_ratio
         self.seed = seed
 
         self.style_backbone = style_backbone
@@ -258,20 +266,26 @@ class BaseRecognitionModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        aug_image_data, aug_text_data, _, _ = x_data
         image_data, text_data, _, mask_data = y_data
 
-        images, texts, mask = aug_image_data, text_data, aug_mask_data
+        images, texts, mask = aug_image_data, text_data, mask_data
 
         if self.style_backbone and self.style_encoder and self.generator:
             if np.random.random() <= self.synthetic_data_ratio:
-                images, texts, mask = image_data, aug_text_data, mask_data
+                images = image_data
 
-                features_data = self.style_backbone(images, training=False)
-                features_data = features_data[0] if isinstance(features_data, list) else features_data
+                if np.random.random() <= self.synthetic_text_ratio:
+                    texts = aug_text_data
 
-                latent_data = self.style_encoder(features_data, training=False)
-                latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+                if np.random.random() <= self.synthetic_style_ratio:
+                    latent_data = tf.random.normal(shape=(len(image_data), self.style_encoder.latent_dim))
+                else:
+                    features_data = self.style_backbone(images, training=False)
+                    features_data = features_data[0] if isinstance(features_data, list) else features_data
+
+                    latent_data = self.style_encoder(features_data, training=False)
+                    latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
                 images = self.generator([latent_data, texts, mask], training=False)
 

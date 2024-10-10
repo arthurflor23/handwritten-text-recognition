@@ -60,7 +60,9 @@ if __name__ == '__main__':
     parser.add_argument('--generator-steps', default=1, type=int, help='Generator step skips in training')
 
     # recognition
-    parser.add_argument('--synthetic-data-ratio', default=0.99, type=float, help='Synthetic data ratio for training')
+    parser.add_argument('--synthetic-data-ratio', default=1.0, type=float, help='Synthetic data ratio for training')
+    parser.add_argument('--synthetic-text-ratio', default=0.5, type=float, help='Synthetic text ratio for training')
+    parser.add_argument('--synthetic-style-ratio', default=0.5, type=float, help='Synthetic style ratio for training')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
