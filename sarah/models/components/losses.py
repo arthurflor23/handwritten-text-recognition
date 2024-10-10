@@ -255,12 +255,12 @@ class PaddingLoss(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         """
-        Calculate multi loss between true and predicted tensors.
+        Calculate multi loss between mask and predicted tensors.
 
         Parameters
         ----------
         y_true : tf.Tensor
-            True tensor values.
+            Mask tensor values.
         y_pred : tf.Tensor
             Predicted tensor values.
 
@@ -270,14 +270,13 @@ class PaddingLoss(tf.keras.losses.Loss):
             Padding loss.
         """
 
-        m_true = self.generate_mask(y_true, pad_value=self.pad_value)
-        m_pred = self.generate_mask(y_pred, pad_value=self.pad_value)
+        mask_pred = self.generate_mask(y_pred, pad_value=self.pad_value)
 
-        bce_loss = self.compute_bce_loss(m_true, m_pred)
-        focal_loss = self.compute_focal_loss(m_true, m_pred)
-        dice_loss = self.compute_dice_loss(m_true, m_pred)
+        bce_loss = self.compute_bce_loss(y_true, mask_pred)
+        focal_loss = self.compute_focal_loss(y_true, mask_pred)
+        dice_loss = self.compute_dice_loss(y_true, mask_pred)
 
-        pad_loss = (bce_loss + focal_loss) + dice_loss
+        pad_loss = bce_loss + focal_loss + dice_loss
 
         return pad_loss
 
@@ -288,9 +287,9 @@ class PaddingLoss(tf.keras.losses.Loss):
         Parameters
         ----------
         y_true : tf.Tensor
-            True tensor values.
+            Mask tensor values.
         y_pred : tf.Tensor
-            Predicted tensor values.
+            Predicted mask tensor values.
 
         Returns
         -------
@@ -313,9 +312,9 @@ class PaddingLoss(tf.keras.losses.Loss):
         Parameters
         ----------
         y_true : tf.Tensor
-            True tensor values.
+            Mask tensor values.
         y_pred : tf.Tensor
-            Predicted tensor values.
+            Predicted mask tensor values.
 
         Returns
         -------
@@ -338,9 +337,9 @@ class PaddingLoss(tf.keras.losses.Loss):
         Parameters
         ----------
         y_true : tf.Tensor
-            True tensor values.
+            Mask tensor values.
         y_pred : tf.Tensor
-            Predicted tensor values.
+            Predicted mask tensor values.
 
         Returns
         -------
