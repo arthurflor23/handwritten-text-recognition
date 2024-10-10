@@ -3,8 +3,8 @@ import tensorflow as tf
 
 class ConditionalBatchNormalization(tf.keras.layers.Layer):
     """
-    Conditional Batch Normalization for TensorFlow models.
-    Enhances conditional GANs by using unique parameters for each condition.
+    Conditional Batch Normalization layer.
+    Applies batch normalization conditioned on external data, useful in conditional generative models.
 
     References
     ----------
@@ -41,12 +41,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def get_config(self):
         """
-        Return the config of the layer.
+        Return the configuration of the layer.
 
         Returns
         -------
         dict
-            A dictionary containing the configuration of the layer.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -62,12 +62,12 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Initializes layer weights.
+        Create the weights of the layer.
 
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input to the layer.
+            Shape of the input tensors.
         """
 
         self.num_channels = input_shape[0][-1]
@@ -87,7 +87,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         """
-        Call the layer with the specified inputs.
+        Forward pass of the layer.
 
         Parameters
         ----------
