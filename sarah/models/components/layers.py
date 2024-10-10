@@ -85,40 +85,26 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Input tensor.
+            A tuple containing the input tensor and the conditional tensor.
         training : bool, optional
             Whether in training mode.
 
         Returns
         -------
         tf.Tensor
-            The normalized output tensor.
+            Output tensor after applying conditional batch normalization.
         """
 
         x, conditional = inputs
 
-        beta = self.beta(conditional)
-        gamma = self.gamma(conditional)
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
 
-        beta = tf.reshape(beta, shape=[-1, 1, 1, self.num_channels])
-        gamma = tf.reshape(gamma, shape=[-1, 1, 1, self.num_channels])
+        beta = tf.reshape(beta, [-1, 1, 1, self.channels])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
 
-        if training:
-            mean, variance = tf.nn.moments(x=x, axes=[0, 1, 2], keepdims=False)
-
-            self.mean.assign(self.mean * self.momentum + mean * (1 - self.momentum))
-            self.variance.assign(self.variance * self.momentum + variance * (1 - self.momentum))
-
-        else:
-            mean = self.mean
-            variance = self.variance
-
-        outputs = tf.nn.batch_normalization(x=x,
-                                            mean=mean,
-                                            variance=variance,
-                                            offset=beta,
-                                            scale=gamma,
-                                            variance_epsilon=self.epsilon)
+        normed = self.batch_norm(x, training=training)
+        outputs = normed * gamma + beta
 
         return outputs
 
