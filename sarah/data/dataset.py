@@ -426,16 +426,6 @@ class Dataset():
             The generator of batches and the steps per epoch.
         """
 
-        def get_spatial_data(data):
-            spatial_data = []
-
-            if isinstance(data[0], str):
-                spatial_data = [[0, self.image_shape[0], 0, self.image_shape[1]] for _ in data]
-            else:
-                spatial_data = [[0, x.shape[1], 0, x.shape[0]] for x in data]
-
-            return np.array(spatial_data)
-
         def batch_generator(data, multigrams):
             data_length, multigrams_length = len(data), len(multigrams)
 
@@ -464,11 +454,11 @@ class Dataset():
                 image_data, text_data, writer_data = map(
                     list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
 
-                spatial_data = get_spatial_data(image_data)
+                mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
 
                 aug_image_data = None
                 aug_text_data = None
-                aug_spatial_data = None
+                aug_mask_data = None
 
                 if batch_encoded:
                     writer_data = np.array(writer_data)
@@ -478,11 +468,11 @@ class Dataset():
                                                          target_width=len(x['text']) * self.char_width,
                                                          target_shape=self.image_shape) for x in batch]
 
-                    spatial_data = get_spatial_data(image_data)
+                    mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
 
                     aug_image_data = image_data.copy()
                     aug_text_data = text_data.copy()
-                    aug_spatial_data = spatial_data.copy()
+                    aug_mask_data = mask_data.copy()
 
                     if multigrams_length:
                         g_index = np.random.randint(0, multigrams_length - len(batch))
@@ -491,7 +481,7 @@ class Dataset():
                     if augmentor:
                         aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
                         aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
-                        aug_spatial_data = get_spatial_data(aug_image_data)
+                        aug_mask_data = utils.batch_masking(aug_image_data, target_shape=self.image_shape)
 
                     if batch_padding:
                         image_data = utils.batch_padding(image_data, self.image_shape, self.pad_value, np.uint8)
@@ -504,11 +494,14 @@ class Dataset():
                         image_data = utils.batch_processing(image_data, mode='image')
                         aug_image_data = utils.batch_processing(aug_image_data, mode='image')
 
+                        mask_data = utils.batch_processing(mask_data, mode='image')
+                        aug_mask_data = utils.batch_processing(aug_mask_data, mode='image')
+
                         text_data = utils.batch_processing(text_data, mode='text')
                         aug_text_data = utils.batch_processing(aug_text_data, mode='text')
 
-                x_data = (aug_image_data, aug_text_data, writer_data, aug_spatial_data)
-                y_data = (image_data, text_data, writer_data, spatial_data)
+                x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data)
+                y_data = (image_data, text_data, writer_data, mask_data)
 
                 yield x_data, y_data
 
