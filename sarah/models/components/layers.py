@@ -8,6 +8,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     References
     ----------
+    A Learned Representation For Artistic Style
+        https://arxiv.org/abs/1610.07629
+
     Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
         https://arxiv.org/abs/1502.03167
 
