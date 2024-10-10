@@ -955,3 +955,91 @@ class SelfAttention(tf.keras.layers.Layer):
             o = self.o_conv(o)
 
         return self.beta * o + inputs
+
+
+class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
+    """
+    Spatially Adaptive Normalization layer.
+    Applies spatially adaptive normalization conditioned on masks.
+
+    References
+    ----------
+    Semantic Image Synthesis with Spatially-Adaptive Normalization
+        https://arxiv.org/abs/1903.07291
+    """
+
+    def __init__(self, filters=128, kernel_size=3, **kwargs):
+        """
+        Initialize the layer.
+
+        Parameters
+        ----------
+        filters : int, optional
+            Number of filters for the convolution layers.
+        kernel_size : int, optional
+            Size of the convolution kernel.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.filters = filters
+        self.kernel_size = kernel_size
+
+    def build(self, input_shape):
+        """
+        Create the weights of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        self.channels = input_shape[0][-1]
+
+        self.seg_conv = tf.keras.layers.Conv2D(filters=self.filters,
+                                               kernel_size=self.kernel_size,
+                                               padding='same',
+                                               activation='relu')
+
+        self.seg_conv_gamma = tf.keras.layers.Conv2D(filters=self.channels,
+                                                     kernel_size=self.kernel_size,
+                                                     padding='same')
+
+        self.seg_conv_beta = tf.keras.layers.Conv2D(filters=self.channels,
+                                                    kernel_size=self.kernel_size,
+                                                    padding='same')
+
+    def call(self, inputs):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            A tuple containing the input tensor and the mask.
+
+        Returns
+        -------
+        tf.Tensor
+            Output tensor after applying spatially adaptive normalization.
+        """
+
+        x, mask = inputs
+
+        mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
+        norm_inputs = (x - mean) / tf.sqrt(variance + 1e-5)
+
+        x_dims = tf.shape(x)[1:3]
+        segmap = tf.image.resize(mask, size=x_dims, method='nearest')
+
+        seg_features = self.seg_conv(segmap)
+
+        gamma = self.seg_conv_gamma(seg_features)
+        beta = self.seg_conv_beta(seg_features)
+
+        outputs = norm_inputs * (1 + gamma) + beta
+
+        return outputs
