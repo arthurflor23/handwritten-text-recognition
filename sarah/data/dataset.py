@@ -430,17 +430,9 @@ class Dataset():
             spatial_data = []
 
             if isinstance(data[0], str):
-                spatial_data = [[
-                    [0, self.image_shape[1],
-                     0, self.image_shape[0]],
-                ] for _ in data]
+                spatial_data = [[0, self.image_shape[0], 0, self.image_shape[1]] for _ in data]
             else:
-                spatial_data = [[
-                    [0, x.shape[0],
-                     0, x.shape[1]],
-                    [x.shape[0], self.image_shape[1] - x.shape[0],
-                     x.shape[1], self.image_shape[0] - x.shape[1]],
-                ] for x in data]
+                spatial_data = [[0, x.shape[1], 0, x.shape[0]] for x in data]
 
             return np.array(spatial_data)
 
