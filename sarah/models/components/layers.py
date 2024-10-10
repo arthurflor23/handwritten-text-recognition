@@ -112,6 +112,17 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 class ExtractPatches(tf.keras.layers.Layer):
     """
     Layer to extract patches from input images.
+
+    References
+    ----------
+    HiGAN+: Handwriting Imitation GAN with Disentangled Representations
+        https://dl.acm.org/doi/10.1145/3550070
+
+    Image-to-Image Translation with Conditional Adversarial Networks
+        https://arxiv.org/abs/1611.07004
+    
+    Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
+        https://arxiv.org/abs/1609.04802
     """
 
     def __init__(self, patch_shape=None, **kwargs):
@@ -165,14 +176,14 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         x = inputs
 
-        if self.patch_shape is not None:
+        if self.patch_shape:
             patches = tf.image.extract_patches(images=x,
-                                               sizes=[1] + self.patch_shape,
-                                               strides=[1] + self.patch_shape,
+                                               sizes=[1, self.patch_shape[0], self.patch_shape[1], 1],
+                                               strides=[1, self.patch_shape[0], self.patch_shape[1], 1],
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
-            x = tf.reshape(patches, shape=[-1] + self.patch_shape)
+            x = tf.reshape(patches, shape=[-1, self.patch_shape[0], self.patch_shape[1], 1])
 
         return x
 
