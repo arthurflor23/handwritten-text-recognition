@@ -65,13 +65,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.channels = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(self.channels,
-                                                kernel_initializer='zeros',
-                                                use_bias=False)
-
-        self.gamma_dense = tf.keras.layers.Dense(self.channels,
-                                                 kernel_initializer='ones',
-                                                 use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
+        self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
         self.batch_norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              epsilon=self.epsilon,
@@ -1041,7 +1036,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         x, mask = inputs
 
         mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
-        norm_inputs = (x - mean) / tf.sqrt(variance + 1e-5)
+        normed = (x - mean) / tf.sqrt(variance + 1e-5)
 
         x_dims = tf.shape(x)[1:3]
         segmap = tf.image.resize(mask, size=x_dims, method='nearest')
@@ -1051,6 +1046,6 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         gamma = self.seg_conv_gamma(seg_features)
         beta = self.seg_conv_beta(seg_features)
 
-        outputs = norm_inputs * (1 + gamma) + beta
+        outputs = normed * (1 + gamma) + beta
 
         return outputs
