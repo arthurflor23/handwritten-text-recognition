@@ -246,7 +246,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input to the layer.
+            Shape of the input tensors.
         """
 
         super().build(input_shape)
@@ -347,7 +347,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input to the layer.
+            Shape of the input tensors.
         """
 
         super().build(input_shape)
@@ -462,7 +462,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input to the layer.
+            Shape of the input tensors.
         """
 
         super().build(input_shape)
@@ -570,6 +570,8 @@ class OctConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
         """
 
         super().__init__(**kwargs)
@@ -618,7 +620,7 @@ class OctConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input to the layer.
+            Shape of the input tensors.
         """
 
         super().build(input_shape)
@@ -706,7 +708,7 @@ class OctConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple or list
-            The shape of the input to the layer.
+            The Shape of the input tensors.
 
         Returns
         -------
@@ -992,6 +994,25 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         self.filters = filters
         self.kernel_size = kernel_size
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
+        })
+
+        return config
 
     def build(self, input_shape):
         """
