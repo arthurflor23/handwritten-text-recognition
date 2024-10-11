@@ -974,7 +974,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1903.07291
     """
 
-    def __init__(self, filters=128, kernel_size=3, **kwargs):
+    def __init__(self, filters=32, kernel_size=3, **kwargs):
         """
         Initialize the layer.
 
