@@ -737,10 +737,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
         https://arxiv.org/abs/1810.04805
     """
 
-    def __init__(self,
-                 time_axis=1,
-                 initializer='glorot_uniform',
-                 **kwargs):
+    def __init__(self, time_axis=1, **kwargs):
         """
         Initializes the position embedding layer.
 
@@ -748,8 +745,6 @@ class PositionEmbedding(tf.keras.layers.Layer):
         ----------
         time_axis : int, optional
             Axis of the input tensor for embedding.
-        initializer : regularizer, optional
-            Initializer for embedding weights.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -757,7 +752,6 @@ class PositionEmbedding(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.time_axis = time_axis
-        self.initializer = initializer
 
     def get_config(self):
         """
@@ -773,7 +767,6 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
         config.update({
             'time_axis': self.time_axis,
-            'initializer': self.initializer,
         })
 
         return config
