@@ -726,6 +726,102 @@ class OctConv2D(tf.keras.layers.Layer):
         return [high_out_shape, low_out_shape]
 
 
+class PositionEmbedding(tf.keras.layers.Layer):
+    """
+    Positional Embedding layer.
+    Adds a positional embedding to the input tensor along the specified sequence axis.
+
+    References
+    ----------
+    BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
+        https://arxiv.org/abs/1810.04805
+    """
+
+    def __init__(self,
+                 time_axis=1,
+                 initializer='glorot_uniform',
+                 **kwargs):
+        """
+        Initializes the position embedding layer.
+
+        Parameters
+        ----------
+        time_axis : int, optional
+            Axis of the input tensor for embedding.
+        initializer : regularizer, optional
+            Initializer for embedding weights.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.time_axis = time_axis
+        self.initializer = initializer
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'time_axis': self.time_axis,
+            'initializer': self.initializer,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.position_embeddings = self.add_weight(name=f"{self.name}_weights",
+                                                   shape=input_shape[1:])
+
+    def call(self, inputs):
+        """
+        Processes the input tensors through the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        tf.Tensor
+            Output tensor after applying position embedding.
+        """
+
+        input_shape = tf.shape(inputs)
+        actual_seq_len = input_shape[self.time_axis]
+
+        position_embeddings = self.position_embeddings[:actual_seq_len, :]
+
+        new_shape = [1] * len(inputs.shape)
+        new_shape[self.time_axis] = actual_seq_len
+        new_shape[-1] = position_embeddings.shape[-1]
+
+        position_embeddings = tf.reshape(position_embeddings, new_shape)
+
+        return tf.broadcast_to(position_embeddings, input_shape)
+
+
 class Reparameterization(tf.keras.layers.Layer):
     """
     Layer that applies the reparameterization trick for Gaussian sampling.
@@ -1028,8 +1124,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         self.seg_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                kernel_size=self.kernel_size,
-                                               padding='same',
-                                               activation='relu')
+                                               padding='same')
 
         self.seg_conv_gamma = tf.keras.layers.Conv2D(filters=self.channels,
                                                      kernel_size=self.kernel_size,
@@ -1063,6 +1158,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         segmap = tf.image.resize(mask, size=x_dims, method='nearest')
 
         seg_features = self.seg_conv(segmap)
+        seg_features = tf.keras.layers.Activation('swish')(seg_features)
 
         gamma = self.seg_conv_gamma(seg_features)
         beta = self.seg_conv_beta(seg_features)
