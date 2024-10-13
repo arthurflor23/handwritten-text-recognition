@@ -593,7 +593,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctx_loss = CTXLoss()
 
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
-        self.monitor = 'loss'
+        self.monitor = self.kid.name
 
         self.build_model()
         self.built = True
