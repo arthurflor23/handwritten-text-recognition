@@ -205,4 +205,209 @@ class BetaVAELoss(tf.keras.losses.Loss):
         kl_loss = tf.reduce_sum(kl_loss) / m
         kl_loss = kl_loss / b
 
-        return rec_loss + self.beta * kl_loss
+        return rec_loss + (self.beta * kl_loss)
+
+
+class MaskLoss(tf.keras.losses.Loss):
+    """
+    Implements a multi loss combining BCE, Focal, and Dice Loss.
+
+    References
+    ----------
+    Focal Loss for Dense Object Detection
+        https://arxiv.org/abs/1708.02002
+
+    Generalised Dice overlap as a deep learning loss function for highly unbalanced segmentations
+        https://arxiv.org/abs/1707.03237v3
+
+    HistoSeg : Quick attention with multi-loss function for multi-structure segmentation in digital histology images
+        https://arxiv.org/pdf/2209.00729v1
+    """
+
+    def __init__(self,
+                 mask_value=0,
+                 beta=0.1,
+                 normed=True,
+                 name='msk_loss',
+                 **kwargs):
+        """
+        Initializes the multi-loss combining BCE, Focal, and Dice Loss.
+
+        Parameters
+        ----------
+        mask_value : float or int
+            Mask value.
+        beta : float, optional
+            Weight for the KL divergence term.
+        normed : bool, optional
+            Whether in normed mode.
+        name : str
+            Loss function name.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.mask_value = mask_value
+        self.normed = normed
+        self.beta = beta
+
+        if self.normed:
+            self.mask_value = (self.mask_value / 127.5) - 1
+
+    def call(self, y_true, y_pred):
+        """
+        Calculate multi loss between mask and predicted tensors.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Mask tensor values.
+        y_pred : tf.Tensor
+            Predicted tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Mask loss.
+        """
+
+        mask_pred = self.generate_mask(y_pred, mask_value=self.mask_value)
+
+        bce_loss = self.compute_bce_loss(y_true, mask_pred)
+        focal_loss = self.compute_focal_loss(y_true, mask_pred)
+        dice_loss = self.compute_dice_loss(y_true, mask_pred)
+
+        msk_loss = bce_loss + focal_loss + dice_loss
+
+        return self.beta * msk_loss
+
+    def compute_bce_loss(self, y_true, y_pred):
+        """
+        Computes Binary Crossentropy (BCE) Loss.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Mask tensor values.
+        y_pred : tf.Tensor
+            Predicted mask tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            BCE loss value.
+        """
+
+        positive_loss = y_true * tf.math.log(y_pred + 1e-8)
+        negative_loss = (1 - y_true) * tf.math.log(1 - y_pred + 1e-8)
+
+        bce_loss = -(positive_loss + negative_loss)
+        bce_loss = tf.reduce_mean(bce_loss)
+
+        return bce_loss
+
+    def compute_focal_loss(self, y_true, y_pred):
+        """
+        Computes Focal Loss for handling class imbalance.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Mask tensor values.
+        y_pred : tf.Tensor
+            Predicted mask tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Focal loss value.
+        """
+
+        p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+        focal_weight = 0.25 * tf.pow(1.0 - p_t, 2.0)
+
+        focal_loss = -focal_weight * tf.math.log(p_t + 1e-8)
+        focal_loss = tf.reduce_mean(focal_loss)
+
+        return focal_loss
+
+    def compute_dice_loss(self, y_true, y_pred):
+        """
+        Computes Dice Loss to measure similarity between true and predicted masks.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Mask tensor values.
+        y_pred : tf.Tensor
+            Predicted mask tensor values.
+
+        Returns
+        -------
+        tf.Tensor
+            Dice loss value.
+        """
+
+        y_true_f = tf.keras.backend.flatten(y_true)
+        y_pred_f = tf.keras.backend.flatten(y_pred)
+
+        intersection = tf.reduce_sum(y_true_f * y_pred_f)
+        union = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f)
+
+        dice_coeff = (2. * intersection + 1e-8) / (union + 1e-8)
+        dice_loss = 1 - dice_coeff
+
+        return dice_loss
+
+    def generate_mask(self, input_data, mask_value):
+        """
+        Create a mask for padded areas in the input data.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            The input tensor.
+        mask_value : float, or int,
+            The mask value.
+
+        Returns
+        -------
+        tf.Tensor
+            Boolean mask tensor.
+        """
+
+        def _get_mask(input_data, mask_value, transpose):
+            shape = tf.shape(input_data)[1:-1]
+
+            if transpose:
+                shape = shape[::-1]
+                input_data = tf.transpose(input_data, perm=[0, 2, 1, 3])
+
+            input_mean = tf.reduce_mean(input_data, axis=[2, 3])
+
+            data_reversed = tf.reverse(input_mean, axis=[1])
+            padding_mask = tf.equal(data_reversed, tf.cast(mask_value, input_data.dtype))
+
+            lengths = tf.argmax(tf.cast(~padding_mask, tf.int32), axis=1, output_type=tf.int32)
+            origin_lens = tf.where(tf.equal(lengths, 0), shape[0], shape[0] - lengths)
+
+            scale = tf.cast(origin_lens, tf.float32) / (tf.cast(shape[0], tf.float32) + 1e-8)
+            target_lens = tf.cast(shape[0], tf.float32) * scale
+
+            mask = tf.sequence_mask(tf.math.ceil(target_lens), maxlen=shape[0])
+            mask = tf.expand_dims(tf.expand_dims(mask, axis=-1), axis=-1)
+            mask = tf.tile(mask, multiples=[1, 1, shape[1], 1])
+
+            if transpose:
+                mask = tf.transpose(mask, perm=[0, 2, 1, 3])
+
+            return mask
+
+        v_mask = _get_mask(input_data, mask_value, transpose=False)
+        h_mask = _get_mask(input_data, mask_value, transpose=True)
+
+        mask = tf.cast(tf.logical_and(v_mask, h_mask), dtype=input_data.dtype)
+
+        return mask
