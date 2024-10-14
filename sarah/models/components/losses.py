@@ -226,7 +226,6 @@ class MaskLoss(tf.keras.losses.Loss):
 
     def __init__(self,
                  mask_value=0,
-                 beta=0.1,
                  normed=True,
                  name='msk_loss',
                  **kwargs):
@@ -237,8 +236,6 @@ class MaskLoss(tf.keras.losses.Loss):
         ----------
         mask_value : float or int
             Mask value.
-        beta : float, optional
-            Weight for the KL divergence term.
         normed : bool, optional
             Whether in normed mode.
         name : str
@@ -250,7 +247,6 @@ class MaskLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.mask_value = mask_value
-        self.beta = beta
         self.normed = normed
 
         if self.normed:
@@ -281,7 +277,7 @@ class MaskLoss(tf.keras.losses.Loss):
 
         msk_loss = bce_loss + focal_loss + dice_loss
 
-        return self.beta * msk_loss
+        return msk_loss
 
     def compute_bce_loss(self, y_true, y_pred):
         """
