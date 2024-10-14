@@ -250,8 +250,8 @@ class MaskLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.mask_value = mask_value
-        self.normed = normed
         self.beta = beta
+        self.normed = normed
 
         if self.normed:
             self.mask_value = (self.mask_value / 127.5) - 1
