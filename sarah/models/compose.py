@@ -10,8 +10,8 @@ import numpy as np
 import tensorflow as tf
 
 from datetime import datetime
-from sarah.models.components.callbacks import CSVLogger
 from sarah.models.components.callbacks import GANMonitor
+from sarah.models.components.callbacks import TrainingLogger
 
 
 class Compose():
@@ -281,19 +281,14 @@ class Compose():
                 monitor = f"val_{self.model.monitor}"
 
             callbacks = [
-                CSVLogger(
-                    filepath=os.path.join(run_info['artifact_path'], 'epochs.csv'),
+                TrainingLogger(
                     mode='min',
                     monitor=monitor,
-                    separator=',',
-                ),
-                tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
-                    mode='min',
-                    monitor=monitor,
-                    save_freq='epoch',
+                    model_path=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
                     save_best_only=True,
                     save_weights_only=True,
+                    csv_path=os.path.join(run_info['artifact_path'], 'epochs.csv'),
+                    csv_separator=',',
                     verbose=verbose,
                 ),
                 tf.keras.callbacks.EarlyStopping(
