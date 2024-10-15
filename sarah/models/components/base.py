@@ -194,7 +194,7 @@ class BaseRecognitionModel(BaseModel):
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
-            Additional keyword arguments.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -231,12 +231,12 @@ class BaseRecognitionModel(BaseModel):
 
     def get_config(self):
         """
-        Retrieves the configuration of the model for serialization.
+        Return the configuration of the model.
 
         Returns
         -------
         dict
-            A dictionary containing the configuration of the model.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -250,17 +250,17 @@ class BaseRecognitionModel(BaseModel):
 
     def train_step(self, input_data):
         """
-        Perform the training step on the provided batch of data.
+        Executes a training step.
 
         Parameters
         ----------
         input_data : list or tuple
-            A batch of data (x_data, y_data).
+            Batch of (x_data, y_data).
 
         Returns
         -------
         dict
-            A dictionary containing metrics and losses.
+            Training metrics and losses.
         """
 
         x_data, y_data = input_data
@@ -304,17 +304,17 @@ class BaseRecognitionModel(BaseModel):
 
     def test_step(self, input_data):
         """
-        Perform the testing step on the provided batch of data.
+        Executes a testing step.
 
         Parameters
         ----------
         input_data : list or tuple
-            A batch of data (x_data, y_data).
+            Batch of (x_data, y_data).
 
         Returns
         -------
         dict
-            A dictionary containing evaluation metrics.
+            Training metrics and losses.
         """
 
         _, (image_data, text_data, _, _) = input_data
@@ -331,19 +331,19 @@ class BaseRecognitionModel(BaseModel):
 
     def call(self, x_data, training=False):
         """
-        Processes input images and transcribes handwritten texts from them.
+        Processes input images and transcribes handwritten texts.
 
         Parameters
         ----------
-        input_data : list or tuple
-            A batch of data (x_data).
+        x_data : list or tuple
+            Input batch (x_data).
         training : bool, optional
-            Indicates whether the call is for training or inference.
+            Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            The generated images.
+            Generated images.
         """
 
         image_data = x_data[0] if isinstance(x_data, tuple) else x_data
@@ -535,7 +535,7 @@ class BaseSynthesisModel(BaseModel):
                  seed=None,
                  **kwargs):
         """
-        Initialize the synthesis model with specified parameters for each submodel.
+        Initialize synthesis model.
 
         Parameters
         ----------
@@ -552,7 +552,7 @@ class BaseSynthesisModel(BaseModel):
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
-            Additional keyword arguments.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -600,12 +600,12 @@ class BaseSynthesisModel(BaseModel):
 
     def get_config(self):
         """
-        Retrieves the configuration of the model for serialization.
+        Return the configuration of the model.
 
         Returns
         -------
         dict
-            A dictionary containing the configuration of the model.
+            Configuration dictionary.
         """
 
         config = super().get_config()
@@ -620,17 +620,17 @@ class BaseSynthesisModel(BaseModel):
 
     def test_step(self, input_data):
         """
-        Perform the testing step on the provided batch of data.
+        Executes a testing step.
 
         Parameters
         ----------
         input_data : list or tuple
-            A batch of data (x_data, y_data).
+            Batch of (x_data, y_data).
 
         Returns
         -------
         dict
-            A dictionary containing evaluation metrics.
+            Training metrics and losses.
         """
 
         _, (image_data, text_data, _, mask_data) = input_data
@@ -651,20 +651,19 @@ class BaseSynthesisModel(BaseModel):
 
     def call(self, x_data, training=False):
         """
-        Processes input images and text through the style encoder,
-            and generator to produce generated images.
+        Passes input images and text through the style encoder and generator.
 
         Parameters
         ----------
-        input_data : list or tuple
-            A batch of data (x_data).
+        x_data : list or tuple
+            Input batch (x_data).
         training : bool, optional
-            Indicates whether the call is for training or inference.
+            Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            The generated images.
+            Generated images.
         """
 
         image_data, text_data, _, mask_data = x_data
