@@ -183,7 +183,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         filepath = os.path.join(self.filepath, str(step))
         os.makedirs(filepath, exist_ok=True)
 
-        images = np.asarray((images + 1.0) * 127.5, dtype=np.uint8)
+        images = np.array((images + 1.0) * 127.5, dtype=np.uint8)
         images = images.transpose((0, 2, 1, 3))
 
         for j, image in enumerate(images):

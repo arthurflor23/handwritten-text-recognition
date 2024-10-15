@@ -463,7 +463,7 @@ class Compose():
             return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
-        predictions = np.asarray((predictions + 1.0) * 127.5, dtype=np.uint8)
+        predictions = np.array((predictions + 1.0) * 127.5, dtype=np.uint8)
 
         return predictions
 
