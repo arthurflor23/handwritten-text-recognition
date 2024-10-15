@@ -23,7 +23,7 @@ class CTCLoss(tf.keras.losses.Loss):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for the loss function.
+            Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -95,7 +95,7 @@ class CTXLoss(tf.keras.losses.Loss):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for the loss function.
+            Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -167,7 +167,7 @@ class BetaVAELoss(tf.keras.losses.Loss):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments for the loss function.
+            Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
