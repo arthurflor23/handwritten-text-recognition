@@ -28,7 +28,7 @@ class EditDistance(tf.keras.metrics.Metric):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments.
+            Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
@@ -130,7 +130,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         name : str, optional
             A name for the instance.
         **kwargs : dict
-            Additional keyword arguments.
+            Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
