@@ -21,7 +21,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         epsilon : float, optional
             Small float added to variance to avoid dividing by zero.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -77,7 +77,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         inputs : tf.Tensor
             A tuple containing the input tensor and the conditional tensor.
         training : bool, optional
-            Whether in training mode.
+            Whether the call is for training or inference.
 
         Returns
         -------
@@ -121,7 +121,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         epsilon : float, optional
             Small float added to variance to avoid dividing by zero.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -179,7 +179,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         inputs : tf.Tensor
             A tuple containing the input tensor and the conditional tensor.
         training : bool, optional
-            Whether in training mode.
+            Whether the call is for training or inference.
 
         Returns
         -------
@@ -603,7 +603,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         inputs : tf.Tensor
             Input tensor.
         training : bool, optional
-            Whether in training mode.
+            Whether the call is for training or inference.
 
         Returns
         -------
@@ -668,7 +668,7 @@ class OctConv2D(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -843,7 +843,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
         time_axis : int, optional
             Axis of the input tensor for embedding.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -993,7 +993,7 @@ class SelfAttention(tf.keras.layers.Layer):
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -1109,7 +1109,7 @@ class SelfAttention(tf.keras.layers.Layer):
         inputs : tf.Tensor
             Input tensor.
         training : bool, optional
-            Whether in training mode.
+            Whether the call is for training or inference.
 
         Returns
         -------
@@ -1175,7 +1175,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         epsilon : float, optional
             Small float added to variance to avoid dividing by zero.
         **kwargs : dict
-            Additional keyword arguments for the layer.
+            Additional arguments.
         """
 
         super().__init__(**kwargs)
@@ -1244,7 +1244,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         inputs : tuple of tf.Tensor
             A tuple containing the input tensor and the mask.
         training : bool, optional
-            Whether in training mode.
+            Whether the call is for training or inference.
 
         Returns
         -------
