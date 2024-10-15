@@ -140,7 +140,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                  filepath,
                  sample_gen,
                  sample_steps,
-                 latent_dim,
+                 style_dim,
                  save_freq=200):
         """
         Initialize the callback.
@@ -153,8 +153,8 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Generator yielding sample data batches.
         sample_steps : int
             Number of steps per sample run.
-        latent_dim : int
-            Dimensionality of the latent space.
+        style_dim : int
+            Dimensionality of the style latent space.
         save_freq : int, optional
             Frequency (in steps) to save images.
         """
@@ -162,7 +162,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         self.filepath = filepath
         self.sample_gen = sample_gen
         self.sample_steps = sample_steps
-        self.latent_dim = latent_dim
+        self.style_dim = style_dim
         self.save_freq = save_freq
         self.global_step = 0
 
@@ -210,14 +210,14 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 features_data = self.model.style_backbone(image_data, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-                latent_data = self.model.style_encoder(features_data, training=False)
-                latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+                style_data = self.model.style_encoder(features_data, training=False)
+                style_data = style_data[0] if isinstance(style_data, list) else style_data
 
-                fake_guided = self.model.generator([latent_data, text_data, mask_data], training=False)
+                fake_guided = self.model.generator([text_data, style_data, mask_data], training=False)
                 self._save_images(self.global_step, fake_guided, name='guided')
 
-                random_latent_data = tf.random.normal(shape=(len(image_data), self.latent_dim))
-                fake_random = self.model.generator([random_latent_data, text_data, mask_data], training=False)
+                random_style_data = tf.random.normal(shape=(len(image_data), self.style_dim))
+                fake_random = self.model.generator([text_data, random_style_data, mask_data], training=False)
                 self._save_images(self.global_step, fake_random, name='random')
 
         self.global_step += 1
