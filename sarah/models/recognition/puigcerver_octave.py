@@ -20,12 +20,12 @@ class RecognitionModel(BaseRecognitionModel):
 
     def compile(self, learning_rate=None):
         """
-        Compiles neural network model.
+        Compiles the model.
 
         Parameters
         ----------
         learning_rate : float, optional
-            The learning rate for the optimizer.
+            Optimizer learning rate.
         """
 
         super().compile(run_eagerly=False)
@@ -37,10 +37,7 @@ class RecognitionModel(BaseRecognitionModel):
 
     def build_model(self):
         """
-        Builds the neural network model.
-
-        This method sets up the architecture of the model by defining layers, their connections,
-            and configurations. It is typically called in the constructor to create the model structure.
+        Builds the model architecture.
         """
 
         # encoder model
