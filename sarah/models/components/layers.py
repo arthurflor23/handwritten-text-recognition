@@ -1,6 +1,99 @@
 import tensorflow as tf
 
 
+class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
+    """
+    Adaptive Instance Normalization Layer.
+    Adjusts the mean and variance of the input tensor based on a conditional tensor.
+
+    References
+    ----------
+    Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization
+        https://arxiv.org/abs/1703.06868v2
+    """
+
+    def __init__(self, epsilon=1e-5, **kwargs):
+        """
+        Initializes the adaptive instance normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional keyword arguments for the layer.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Create the weights of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.channels = input_shape[0][-1]
+
+        self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
+        self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
+
+    def call(self, inputs):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            A tuple containing the input tensor and the conditional tensor.
+
+        Returns
+        -------
+        tf.Tensor
+            Tensor after applying AdaIN.
+        """
+
+        x, conditional = inputs
+
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
+
+        beta = tf.reshape(beta, [-1, 1, 1, self.channels])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
+
+        mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
+        normed = (x - mean) / tf.sqrt(variance + self.epsilon)
+
+        outputs = normed * gamma + beta
+
+        return outputs
+
+
 class ConditionalBatchNormalization(tf.keras.layers.Layer):
     """
     Conditional Batch Normalization layer.
@@ -8,14 +101,11 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     References
     ----------
-    A Learned Representation For Artistic Style
-        https://arxiv.org/abs/1610.07629
-
     Modulating early visual processing by language
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, momentum=0.99, epsilon=1e-3, **kwargs):
+    def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -63,6 +153,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
             Shape of the input tensors.
         """
 
+        super().build(input_shape)
+
         self.channels = input_shape[0][-1]
 
         self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
@@ -87,7 +179,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor after applying conditional batch normalization.
+            Tensor after applying CBN.
         """
 
         x, conditional = inputs
@@ -1065,7 +1157,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1903.07291
     """
 
-    def __init__(self, filters=32, kernel_size=3, **kwargs):
+    def __init__(self, filters=32, kernel_size=3, epsilon=1e-5, **kwargs):
         """
         Initialize the layer.
 
@@ -1075,6 +1167,8 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
             Number of filters for the convolution layers.
         kernel_size : int, optional
             Size of the convolution kernel.
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
         **kwargs : dict
             Additional keyword arguments for the layer.
         """
@@ -1083,6 +1177,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         self.filters = filters
         self.kernel_size = kernel_size
+        self.epsilon = epsilon
 
     def get_config(self):
         """
@@ -1099,6 +1194,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         config.update({
             'filters': self.filters,
             'kernel_size': self.kernel_size,
+            'epsilon': self.epsilon,
         })
 
         return config
@@ -1112,6 +1208,8 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         input_shape : tuple
             Shape of the input tensors.
         """
+
+        super().build(input_shape)
 
         self.channels = input_shape[0][-1]
 
@@ -1139,13 +1237,13 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor after applying spatially adaptive normalization.
+            Tensor after applying SPADE normalization.
         """
 
         x, mask = inputs
 
         mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
-        normed = (x - mean) / tf.sqrt(variance + 1e-5)
+        normed = (x - mean) / tf.sqrt(variance + self.epsilon)
 
         x_dims = tf.shape(x)[1:3]
         segmap = tf.image.resize(mask, size=x_dims, method='nearest')
