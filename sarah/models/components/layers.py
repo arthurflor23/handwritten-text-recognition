@@ -63,7 +63,12 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
-    def call(self, inputs):
+        self.norm = tf.keras.layers.GroupNormalization(groups=-1,
+                                                       epsilon=self.epsilon,
+                                                       center=False,
+                                                       scale=False)
+
+    def call(self, inputs, training=False):
         """
         Forward pass of the layer.
 
@@ -71,6 +76,8 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             A tuple containing the input tensor and the conditional tensor.
+        training : bool, optional
+            Whether in training mode.
 
         Returns
         -------
@@ -86,9 +93,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         beta = tf.reshape(beta, [-1, 1, 1, self.channels])
         gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
 
-        mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
-        normed = (x - mean) / tf.sqrt(variance + self.epsilon)
-
+        normed = self.norm(x, training=training)
         outputs = normed * gamma + beta
 
         return outputs
@@ -160,10 +165,10 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
-        self.batch_norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
-                                                             epsilon=self.epsilon,
-                                                             center=False,
-                                                             scale=False)
+        self.norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
+                                                       epsilon=self.epsilon,
+                                                       center=False,
+                                                       scale=False)
 
     def call(self, inputs, training=False):
         """
@@ -190,7 +195,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         beta = tf.reshape(beta, [-1, 1, 1, self.channels])
         gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
 
-        normed = self.batch_norm(x, training=training)
+        normed = self.norm(x, training=training)
         outputs = normed * gamma + beta
 
         return outputs
@@ -1225,7 +1230,12 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
                                                     kernel_size=self.kernel_size,
                                                     padding='same')
 
-    def call(self, inputs):
+        self.norm = tf.keras.layers.GroupNormalization(groups=-1,
+                                                       epsilon=self.epsilon,
+                                                       center=False,
+                                                       scale=False)
+
+    def call(self, inputs, training=False):
         """
         Forward pass of the layer.
 
@@ -1233,6 +1243,8 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         ----------
         inputs : tuple of tf.Tensor
             A tuple containing the input tensor and the mask.
+        training : bool, optional
+            Whether in training mode.
 
         Returns
         -------
@@ -1242,8 +1254,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         x, mask = inputs
 
-        mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
-        normed = (x - mean) / tf.sqrt(variance + self.epsilon)
+        normed = self.norm(x, training=training)
 
         x_dims = tf.shape(x)[1:3]
         segmap = tf.image.resize(mask, size=x_dims, method='nearest')
