@@ -7,6 +7,7 @@ from sarah.models.components.layers import ConditionalBatchNormalization
 from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import PositionEmbedding
 from sarah.models.components.layers import Reparameterization
+from sarah.models.components.layers import SelfAttention
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_v2 import RecognitionModel as HTRModel
 
@@ -523,8 +524,9 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
-        # style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
 
         style = tf.keras.layers.Dense(units=256)(style)
         style = tf.keras.layers.Activation(activation='swish')(style)
@@ -599,8 +601,9 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
-        # style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
 
         mask_input = tf.keras.layers.Input(shape=self.mask_shape)
         mask = tf.keras.layers.Identity()(mask_input)
@@ -783,6 +786,9 @@ class GeneratorModel(BaseModel):
             block = residual_block_up(block, latent_chunks[i], filters, up=up)
             # print(up)
 
+            if i + 1 == len(self.blocks) // 2:
+                block = SelfAttention(h=filters // 8, pooling=True)(block)
+
         # outputs = tf.keras.layers.BatchNormalization()(block)
         # outputs = tf.keras.layers.Activation(activation='swish')(block)
 
@@ -897,6 +903,9 @@ class DiscriminatorModel(BaseModel):
 
             down = strides if 2 in strides else None
             block = residual_block_down(block, filters, preactive=(i > 0), down=down)
+
+            if i + 1 == len(self.blocks) // 2:
+                block = SelfAttention(h=filters // 8, pooling=True)(block)
 
         outputs = tf.keras.layers.Activation(activation='swish')(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
