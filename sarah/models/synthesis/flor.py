@@ -62,11 +62,13 @@ class SynthesisModel(BaseSynthesisModel):
         Builds the model architecture.
         """
 
-        text_dim = 128
+        text_dim = 64
         latent_dim = 128
         patch_shape = [32, 32]
-        discriminator_blocks = [64, 128, 256, 256]
-        generator_blocks = [256, 256, 128, 64]
+
+        base_channels = 64
+        generator_blocks = [4, 4, 2, 1]      # [256, 256, att->, 128, 64]
+        discriminator_blocks = [1, 2, 4, 4]  # [64, 128, <-att, 256, 256]
 
         htr = HTRModel(image_shape=self.image_shape, lexical_shape=self.lexical_shape)
 
@@ -92,14 +94,17 @@ class SynthesisModel(BaseSynthesisModel):
                                         lexical_shape=self.lexical_shape,
                                         text_dim=text_dim,
                                         latent_dim=latent_dim,
+                                        base_channels=base_channels,
                                         blocks=generator_blocks)
 
         self.discriminator = DiscriminatorModel(name='discriminator',
                                                 image_shape=self.image_shape,
+                                                base_channels=base_channels,
                                                 blocks=discriminator_blocks)
 
         self.patch_discriminator = DiscriminatorModel(name='patch_discriminator',
                                                       image_shape=self.image_shape,
+                                                      base_channels=base_channels,
                                                       blocks=discriminator_blocks,
                                                       patch_shape=patch_shape)
 
@@ -524,9 +529,7 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
-        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
-        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
+        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
 
         style = tf.keras.layers.Dense(units=256)(style)
         style = tf.keras.layers.Activation(activation='swish')(style)
@@ -601,24 +604,23 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
-        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
-        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
+        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
 
         mask_input = tf.keras.layers.Input(shape=self.mask_shape)
-        mask = tf.keras.layers.Identity()(mask_input)
+        # mask = tf.keras.layers.Identity()(mask_input)
 
-        for _ in range(6):
-            mask = tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='same')(mask)
-            mask = tf.keras.layers.Activation(activation='swish')(mask)
+        # for _ in range(6):
+        #     mask = tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='same')(mask)
+        #     mask = tf.keras.layers.Activation(activation='swish')(mask)
 
-            if 1 in mask.shape[1:-1]:
-                break
+        #     if 1 in mask.shape[1:-1]:
+        #         break
 
-        mask = tf.keras.layers.Flatten()(mask)
-        mask = tf.keras.layers.Dense(units=feature_inputs.shape[-1])(mask)
+        # mask = tf.keras.layers.Flatten()(mask)
+        # mask = tf.keras.layers.Dense(units=feature_inputs.shape[-1])(mask)
 
-        latent = tf.keras.layers.Concatenate(axis=-1)([style, mask])
+        # latent = tf.keras.layers.Concatenate(axis=-1)([style, mask])
+        latent = tf.keras.layers.Identity()(style)
 
         latent = tf.keras.layers.Dense(units=256)(latent)
         latent = tf.keras.layers.Activation(activation='swish')(latent)
@@ -644,6 +646,7 @@ class GeneratorModel(BaseModel):
                  lexical_shape,
                  text_dim,
                  latent_dim,
+                 base_channels,
                  blocks,
                  name='generator',
                  **kwargs):
@@ -660,8 +663,10 @@ class GeneratorModel(BaseModel):
             Text embedding size.
         latent_dim : int
             Dimension of the style latent space.
+        base_channels : int
+            Base channels for upsampling channels.
         blocks : list or tuple
-            Architecture blocks (channels).
+            Architecture blocks (resolution).
         name : str, optional
             Model instance name.
         **kwargs : dict
@@ -674,6 +679,7 @@ class GeneratorModel(BaseModel):
         self.lexical_shape = lexical_shape
         self.text_dim = text_dim
         self.latent_dim = latent_dim
+        self.base_channels = base_channels
         self.blocks = blocks
 
         self.build_model()
@@ -699,6 +705,7 @@ class GeneratorModel(BaseModel):
             'lexical_shape': self.lexical_shape,
             'text_dim': self.text_dim,
             'latent_dim': self.latent_dim,
+            'base_channels': self.base_channels,
             'blocks': self.blocks,
         })
 
@@ -756,18 +763,16 @@ class GeneratorModel(BaseModel):
         #################################
         block = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
 
-        # for _ in range(4):
-        #     block = tf.keras.layers.SpectralNormalization(tf.keras.layers.Dense(units=256))(block)
-        #     block = tf.keras.layers.Activation(activation='swish')(block)
-
         block = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=4 * 4 * self.blocks[0]))(block)
+            tf.keras.layers.Dense(units=4 * 4 * self.blocks[0] * self.base_channels))(block)
 
-        block = tf.keras.layers.Reshape(target_shape=(1024, 4, 4, -1))(block)
-        block = tf.keras.layers.Reshape(target_shape=(-1, 1024, 4))(block)
+        block = tf.keras.layers.Reshape(target_shape=(-1, 4, 4 * self.blocks[0] * self.base_channels))(block)
 
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm1')(block)
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(block)
+        # block = tf.keras.layers.Reshape(target_shape=((self.blocks[0] * 2) * self.base_channels, 4, 4, -1))(block)
+        # block = tf.keras.layers.Reshape(target_shape=(-1, (self.blocks[0] * 2) * self.base_channels, 4))(block)
+
+        # block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm1')(block)
+        # block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(block)
         #################################
 
         #################################
@@ -778,19 +783,22 @@ class GeneratorModel(BaseModel):
                                                arguments={'y': len(self.blocks)},
                                                name='latent_chunks')(latent_chunks)
 
-        for i, filters in enumerate(self.blocks):
+        for i, x in enumerate(self.blocks):
+            if i == len(self.blocks) // 2:
+                block = SelfAttention(h=(x * self.base_channels) // 2, pooling=True)(block)
+
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
 
             up = strides if 2 in strides else None
-            block = residual_block_up(block, latent_chunks[i], filters, up=up)
+            block = residual_block_up(block, latent_chunks[i], (x * self.base_channels), up=up)
             # print(up)
 
-            if i + 1 == len(self.blocks) // 2:
-                block = SelfAttention(h=filters // 8, pooling=True)(block)
-
         # outputs = tf.keras.layers.BatchNormalization()(block)
-        # outputs = tf.keras.layers.Activation(activation='swish')(block)
+        # outputs = tf.keras.layers.Activation(activation='swish')(outputs)
+
+        # outputs = tf.keras.layers.SpectralNormalization(
+        #     tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1, kernel_size=1, strides=1, padding='same'))(block)
@@ -810,6 +818,7 @@ class DiscriminatorModel(BaseModel):
 
     def __init__(self,
                  image_shape,
+                 base_channels,
                  blocks,
                  patch_shape=None,
                  name='discriminator',
@@ -821,8 +830,10 @@ class DiscriminatorModel(BaseModel):
         ----------
         image_shape : list or tuple
             Input image shape.
+        base_channels : int
+            Base channels for downsampling channels.
         blocks : list or tuple
-            Architecture blocks (channels).
+            Architecture blocks (resolution).
         patch_shape : list, tuple or None
             Patch shape, if applicable.
         name : str, optional
@@ -834,6 +845,7 @@ class DiscriminatorModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
+        self.base_channels = base_channels
         self.blocks = blocks
         self.patch_shape = patch_shape
 
@@ -857,6 +869,7 @@ class DiscriminatorModel(BaseModel):
 
         config.update({
             'image_shape': self.image_shape,
+            'base_channels': self.base_channels,
             'blocks': self.blocks,
             'patch_shape': self.patch_shape,
         })
@@ -897,15 +910,12 @@ class DiscriminatorModel(BaseModel):
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
         block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
-        for i, filters in enumerate(self.blocks):
+        for i, x in enumerate(self.blocks):
             strides = (2 if i < len(self.blocks) - 1 and block.shape[1] > 4 else 1,
                        2 if i < len(self.blocks) - 1 and block.shape[2] > 4 else 1)
 
             down = strides if 2 in strides else None
-            block = residual_block_down(block, filters, preactive=(i > 0), down=down)
-
-            if i + 1 == len(self.blocks) // 2:
-                block = SelfAttention(h=filters // 8, pooling=True)(block)
+            block = residual_block_down(block, (x * self.base_channels), preactive=(i > 0), down=down)
 
         outputs = tf.keras.layers.Activation(activation='swish')(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
