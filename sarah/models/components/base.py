@@ -669,7 +669,7 @@ class BaseSynthesisModel(BaseModel):
         image_data, text_data, _, mask_data = x_data
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
-            style_data = tf.random.normal(shape=(len(text_data), self.style_encoder.style_dim))
+            style_data = tf.random.normal(shape=(len(image_data), self.style_encoder.style_dim))
         else:
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
