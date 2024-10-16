@@ -278,15 +278,15 @@ class BaseRecognitionModel(BaseModel):
                     texts = aug_text_data
 
                 if np.random.random() <= self.synthetic_style_ratio:
-                    style = tf.random.normal(shape=(len(image_data), self.style_encoder.style_dim))
+                    latent = tf.random.normal(shape=(len(image_data), self.style_encoder.latent_dim))
                 else:
                     features_data = self.style_backbone(images, training=False)
                     features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-                    style = self.style_encoder(features_data, training=False)
-                    style = style[0] if isinstance(style, list) else style
+                    latent = self.style_encoder([features_data, mask], training=False)
+                    latent = latent[0] if isinstance(latent, list) else latent
 
-                images = self.generator([texts, style, mask], training=False)
+                images = self.generator([texts, latent], training=False)
 
         with tf.GradientTape() as tape:
             ctc_logits = self.recognition(images, training=True)
@@ -638,10 +638,10 @@ class BaseSynthesisModel(BaseModel):
         features_data = self.style_backbone(image_data)
         features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-        style_data = self.style_encoder(features_data)
-        style_data = style_data[0] if isinstance(style_data, list) else style_data
+        latent_data = self.style_encoder([features_data, mask_data])
+        latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([text_data, style_data, mask_data])
+        generated_images = self.generator([text_data, latent_data])
 
         self.kid.update_state(image_data, generated_images)
 
@@ -669,15 +669,15 @@ class BaseSynthesisModel(BaseModel):
         image_data, text_data, _, mask_data = x_data
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
-            style_data = tf.random.normal(shape=(len(image_data), self.style_encoder.style_dim))
+            latent_data = tf.random.normal(shape=(len(image_data), self.style_encoder.latent_dim))
         else:
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-            style_data = self.style_encoder(features_data, training=training)
-            style_data = style_data[0] if isinstance(style_data, list) else style_data
+            latent_data = self.style_encoder([features_data, mask_data], training=training)
+            latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([text_data, style_data, mask_data], training=training)
+        generated_images = self.generator([text_data, latent_data], training=training)
 
         return generated_images
 

@@ -322,7 +322,7 @@ class Compose():
                         filepath=os.path.join(run_info['artifact_path'], 'synthesis', 'training'),
                         sample_gen=monitor_sample_gen,
                         sample_steps=monitor_sample_steps,
-                        style_dim=self.model.style_encoder.style_dim,
+                        latent_dim=self.model.style_encoder.latent_dim,
                     ),
                 ])
 
