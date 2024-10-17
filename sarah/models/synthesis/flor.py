@@ -14,7 +14,7 @@ from sarah.models.recognition.flor_v2 import RecognitionModel as HTRModel
 
 class SynthesisModel(BaseSynthesisModel):
     """
-    Integrates multiple submodels for handwriting recognition, writer identification, 
+    Integrates multiple submodels for handwriting recognition, writer identification,
         style encoding, generation, and discrimination.
 
     References
@@ -62,13 +62,16 @@ class SynthesisModel(BaseSynthesisModel):
         Builds the model architecture.
         """
 
-        text_dim = 64
-        latent_dim = 128
+        text_dim = 32
+        latent_dim = 256
         patch_shape = [32, 32]
 
         base_channels = 64
         generator_blocks = [4, 4, 2, 1]      # [256, 256, att->, 128, 64]
         discriminator_blocks = [1, 2, 4, 4]  # [64, 128, <-att, 256, 256]
+
+        # generator_blocks = [4, 2, 1, 1]      # [256, 128, att->, 64, 64]
+        # discriminator_blocks = [1, 2, 4, 4]  # [64, 128, <-att, 256, 256]
 
         htr = HTRModel(image_shape=self.image_shape, lexical_shape=self.lexical_shape)
 
@@ -529,7 +532,9 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
 
         style = tf.keras.layers.Dense(units=256)(style)
         style = tf.keras.layers.Activation(activation='swish')(style)
@@ -604,23 +609,24 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        # style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
+        style = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(feature_inputs)
+        style = tf.keras.layers.GroupNormalization(groups=-1)(style)
 
         mask_input = tf.keras.layers.Input(shape=self.mask_shape)
-        # mask = tf.keras.layers.Identity()(mask_input)
+        mask = tf.keras.layers.Identity()(mask_input)
 
-        # for _ in range(6):
-        #     mask = tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='same')(mask)
-        #     mask = tf.keras.layers.Activation(activation='swish')(mask)
+        for _ in range(6):
+            mask = tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='same')(mask)
+            mask = tf.keras.layers.Activation(activation='swish')(mask)
 
-        #     if 1 in mask.shape[1:-1]:
-        #         break
+            if 1 in mask.shape[1:-1]:
+                break
 
-        # mask = tf.keras.layers.Flatten()(mask)
-        # mask = tf.keras.layers.Dense(units=feature_inputs.shape[-1])(mask)
+        mask = tf.keras.layers.Flatten()(mask)
+        mask = tf.keras.layers.Dense(units=feature_inputs.shape[-1])(mask)
 
-        # latent = tf.keras.layers.Concatenate(axis=-1)([style, mask])
-        latent = tf.keras.layers.Identity()(style)
+        latent = tf.keras.layers.Concatenate(axis=-1)([style, mask])
 
         latent = tf.keras.layers.Dense(units=256)(latent)
         latent = tf.keras.layers.Activation(activation='swish')(latent)
@@ -766,13 +772,13 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * self.blocks[0] * self.base_channels))(block)
 
-        block = tf.keras.layers.Reshape(target_shape=(-1, 4, 4 * self.blocks[0] * self.base_channels))(block)
+        # block = tf.keras.layers.Reshape(target_shape=(-1, 4, 4 * self.blocks[0] * self.base_channels))(block)
 
-        # block = tf.keras.layers.Reshape(target_shape=((self.blocks[0] * 2) * self.base_channels, 4, 4, -1))(block)
-        # block = tf.keras.layers.Reshape(target_shape=(-1, (self.blocks[0] * 2) * self.base_channels, 4))(block)
+        block = tf.keras.layers.Reshape(target_shape=(4 * self.blocks[0] * self.base_channels, 4, 4, -1))(block)
+        block = tf.keras.layers.Reshape(target_shape=(-1, 4 * self.blocks[0] * self.base_channels, 4))(block)
 
-        # block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm1')(block)
-        # block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(block)
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm1')(block)
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(block)
         #################################
 
         #################################
@@ -785,7 +791,7 @@ class GeneratorModel(BaseModel):
 
         for i, x in enumerate(self.blocks):
             if i == len(self.blocks) // 2:
-                block = SelfAttention(h=(x * self.base_channels) // 2, pooling=True)(block)
+                block = SelfAttention(h=32, pooling=True)(block)
 
             strides = (2 if block.shape[1] < self.image_shape[0] else 1,
                        2 if block.shape[2] < self.image_shape[1] else 1)
@@ -917,9 +923,15 @@ class DiscriminatorModel(BaseModel):
             down = strides if 2 in strides else None
             block = residual_block_down(block, (x * self.base_channels), preactive=(i > 0), down=down)
 
+            if i + 1 == len(self.blocks) // 2:
+                block = SelfAttention(h=16, pooling=True)(block)
+
         outputs = tf.keras.layers.Activation(activation='swish')(block)
         outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
 
         outputs = tf.keras.layers.SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(name=self.name, inputs=image_inputs, outputs=outputs)
+
+        # self.model.summary()
+        # exit()
