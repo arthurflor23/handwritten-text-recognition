@@ -38,30 +38,35 @@ class GANMonitor(tf.keras.callbacks.Callback):
         self.sample_steps = sample_steps
         self.latent_dim = latent_dim
         self.save_freq = save_freq
-        self.global_step = 0
 
-    def _save_images(self, step, images, name):
+    def on_train_begin(self, logs=None):
         """
-        Save a batch of images.
+        Called at the beginning of training.
 
         Parameters
         ----------
-        step : int
-            Current step number.
-        images : np.ndarray
-            Array of images to be saved.
-        name : str
-            Base name for the saved image files.
+        logs : dict, optional
+            Metrics at the start of training.
         """
 
-        filepath = os.path.join(self.filepath, str(step))
-        os.makedirs(filepath, exist_ok=True)
+        self.epoch_index = 0
+        self.global_step = 0
+        self.local_step = 0
 
-        images = np.array((images + 1.0) * 127.5, dtype=np.uint8)
-        images = images.transpose((0, 2, 1, 3))
+    def on_epoch_begin(self, epoch, logs=None):
+        """
+        Called at the beginning of each epoch.
 
-        for j, image in enumerate(images):
-            cv2.imwrite(os.path.join(filepath, f"{j + 1}_{name}.png"), image)
+        Parameters
+        ----------
+        epoch : int
+            Index of the current epoch.
+        logs : dict, optional
+            Metrics at the start of the epoch.
+        """
+
+        self.epoch_index += 1
+        self.local_step = 0
 
     def on_batch_end(self, batch, logs=None):
         """
@@ -76,10 +81,13 @@ class GANMonitor(tf.keras.callbacks.Callback):
         """
 
         if self.global_step > 0 and self.global_step % self.save_freq == 0:
+            subpath = f"{str(self.global_step)}_{str(self.local_step)}_{str(self.epoch_index)}"
+            filepath = os.path.join(self.filepath, subpath)
+
             for _ in range(self.sample_steps):
                 _, (image_data, text_data, _, mask_data) = next(self.sample_gen)
 
-                self._save_images(self.global_step, image_data, name='authentic')
+                self._save_images(filepath, image_data, name='authentic')
 
                 features_data = self.model.style_backbone(image_data, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
@@ -88,13 +96,36 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
                 fake_guided = self.model.generator([text_data, latent_data], training=False)
-                self._save_images(self.global_step, fake_guided, name='guided')
+                self._save_images(filepath, fake_guided, name='guided')
 
                 random_latent_data = tf.random.normal(shape=(len(image_data), self.latent_dim))
                 fake_random = self.model.generator([text_data, random_latent_data], training=False)
-                self._save_images(self.global_step, fake_random, name='random')
+                self._save_images(filepath, fake_random, name='random')
 
         self.global_step += 1
+        self.local_step += 1
+
+    def _save_images(self, filepath, images, name):
+        """
+        Save a batch of images.
+
+        Parameters
+        ----------
+        filepath : str
+            Path where images will be saved.
+        images : np.ndarray
+            Array of images to be saved.
+        name : str
+            Base name for the saved image files.
+        """
+
+        os.makedirs(filepath, exist_ok=True)
+
+        images = np.array((images + 1.0) * 127.5, dtype=np.uint8)
+        images = images.transpose((0, 2, 1, 3))
+
+        for j, image in enumerate(images):
+            cv2.imwrite(os.path.join(filepath, f"{j + 1}_{name}.png"), image)
 
 
 class TrainingLogger(tf.keras.callbacks.Callback):
