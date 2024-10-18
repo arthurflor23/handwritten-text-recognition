@@ -250,7 +250,7 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         self.epochs.append({'epoch': self.epoch_index, **{x: y for x, y in zip(opts, lrs)}})
 
         if self.model_path:
-            if self.save_best_only and self.mode and self.monitor:
+            if self.save_best_only and self.mode and self.monitor in logs.keys():
                 df = self._get_current_dataframe()
                 current = df[self.monitor].iloc[-1]
 
@@ -292,7 +292,7 @@ class TrainingLogger(tf.keras.callbacks.Callback):
 
         df = self._get_current_dataframe()
 
-        if self.mode and self.monitor:
+        if self.mode and self.monitor in logs.keys():
             df['checkpoint'] = getattr(df[self.monitor], f"cum{self.mode}")()
             df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
             df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
