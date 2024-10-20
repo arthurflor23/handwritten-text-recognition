@@ -39,10 +39,13 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
+        encoder = tf.keras.layers.Lambda(
+            lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(encoder_input)
+
         encoder = tf.keras.layers.Conv2D(filters=16,
                                          kernel_size=(3, 3),
                                          strides=(1, 1),
-                                         padding='same')(encoder_input)
+                                         padding='same')(encoder)
 
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)

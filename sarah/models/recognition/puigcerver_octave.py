@@ -43,8 +43,11 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        inputs = [encoder_input, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder_input)]
-        high, low = OctConv2D(alpha=0.25, filters=16)(inputs)
+        encoder = tf.keras.layers.Lambda(
+            lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(encoder_input)
+
+        encoder = [encoder, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder)]
+        high, low = OctConv2D(alpha=0.25, filters=16)(encoder)
 
         high = tf.keras.layers.BatchNormalization()(high)
         low = tf.keras.layers.BatchNormalization()(low)
