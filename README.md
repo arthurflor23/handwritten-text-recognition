@@ -97,7 +97,7 @@ The project has several command-line parameters that can be used to customize it
 -   `--source`: Source data (e.g., iam, rimes).
 -   `--source-input-path`: Path for source data input.
 -   `--text-level`: Text structure level (e.g., line, paragraph).
--   `--image-shape`: Image dimensions (width, height, channels).
+-   `--image-shape`: Image dimensions (height, width, channels).
 -   `--pad-value`: Padding value for images.
 -   `--char-width`: Character width for normalization.
 -   `--training-ratio`: Training partition ratio.
