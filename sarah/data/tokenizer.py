@@ -186,8 +186,8 @@ class Tokenizer():
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
             self.lexical_shape = (
-                next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
                 next_power_of_two(self.metadata['max_lines_per_page']),
+                next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
                 len(self.chars) + 1,
             )
 
