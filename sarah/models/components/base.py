@@ -384,13 +384,13 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
-        x = np.log(x + 1e-8)
-
         beam_width = max(top_paths, beam_width)
         predictions, probabilities = [], []
 
         batch_index = 0
         batch_size = int(np.ceil(len(x) / steps))
+
+        x = np.log(x + 1e-8)
 
         for step in range(steps):
             progbar.update(step)
