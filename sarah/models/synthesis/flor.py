@@ -690,8 +690,8 @@ class GeneratorModel(BaseModel):
             num_blocks = len(self.blocks)
             text_length = self.lexical_shape[0] * self.lexical_shape[1]
 
-            h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
-            w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (text_length * 4)))
+            h_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / 4))
+            w_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / (text_length * 4)))
 
             h_stride = [1] * num_blocks
             w_stride = [1] * num_blocks
@@ -765,12 +765,11 @@ class GeneratorModel(BaseModel):
 
         #######################################
         text_input = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
-
-        text = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1)), name='perm_text')(text_input)
-        text = tf.keras.layers.Flatten()(text)
+        text = tf.keras.layers.Flatten()(text_input)
 
         embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                              output_dim=self.text_dim)(text)
+                                              output_dim=self.text_dim,
+                                              mask_zero=True)(text)
 
         # embedding = tf.keras.layers.Add()([embedding, PositionEmbedding()(embedding)])
         #######################################
@@ -795,7 +794,7 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Reshape(target_shape=(text.shape[1] * 4, 4, 4, -1))(block)
         block = tf.keras.layers.Reshape(target_shape=(-1, text.shape[1] * 4, 4))(block)
 
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm_block')(block)
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm')(block)
         #######################################
 
         #######################################
@@ -807,8 +806,8 @@ class GeneratorModel(BaseModel):
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
-            up = (up[0] if block.shape[1] < self.image_shape[1] else 1,
-                  up[1] if block.shape[2] < self.image_shape[0] else 1)
+            up = (up[0] if block.shape[1] < self.image_shape[0] else 1,
+                  up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
@@ -823,7 +822,6 @@ class GeneratorModel(BaseModel):
             tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(block)
 
         outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_output')(outputs)
         #######################################
 
         self.model = tf.keras.Model(name=self.name,
@@ -880,8 +878,8 @@ class DiscriminatorModel(BaseModel):
                 num_blocks = len(self.blocks)
                 text_length = self.lexical_shape[0] * self.lexical_shape[1]
 
-                h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
-                w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (text_length * 4)))
+                h_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / 4))
+                w_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / (text_length * 4)))
 
                 h_stride = [1] * num_blocks
                 w_stride = [1] * num_blocks
@@ -955,8 +953,7 @@ class DiscriminatorModel(BaseModel):
 
         image_inputs = tf.keras.layers.Input(shape=self.image_shape)
 
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(image_inputs)
-        block = ExtractPatches(patch_shape=self.patch_shape)(block)
+        block = ExtractPatches(patch_shape=self.patch_shape)(image_inputs)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
             down = (down[0] if block.shape[1] > 4 else 1,
