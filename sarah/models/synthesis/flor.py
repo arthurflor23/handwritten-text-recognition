@@ -66,7 +66,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         text_dim = 32
         latent_dim = 128
-        # patch_shape = [32, 32]
+        patch_shape = [32, 32]
 
         generator_blocks = [256, 128, 64, 32]
         discriminator_blocks = [32, 64, 128, 256]
@@ -99,18 +99,17 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator = DiscriminatorModel(name='discriminator',
                                                 image_shape=self.image_shape,
-                                                lexical_shape=self.lexical_shape,
-                                                blocks=discriminator_blocks)
+                                                blocks=discriminator_blocks,
+                                                lexical_shape=self.lexical_shape)
 
-        # self.patch_discriminator = DiscriminatorModel(name='patch_discriminator',
-        #                                               image_shape=self.image_shape,
-        #                                               lexical_shape=self.lexical_shape,
-        #                                               blocks=discriminator_blocks,
-        #                                               patch_shape=patch_shape)
+        self.patch_discriminator = DiscriminatorModel(name='patch_discriminator',
+                                                      image_shape=self.image_shape,
+                                                      blocks=discriminator_blocks,
+                                                      patch_shape=patch_shape)
 
         self.metrics_tracker = MetricsTracker()
 
-    def _discriminator_step(self, input_data):
+    def discriminator_step(self, input_data):
         """
         Updates the discriminator.
 
@@ -126,7 +125,7 @@ class SynthesisModel(BaseSynthesisModel):
         (image_data, text_data, writer_data, mask_data) = y_data
 
         self.discriminator.trainable = True
-        # self.patch_discriminator.trainable = True
+        self.patch_discriminator.trainable = True
         self.recognition.trainable = True
         self.style_backbone.trainable = True
         self.identification.trainable = True
@@ -148,7 +147,7 @@ class SynthesisModel(BaseSynthesisModel):
             fake_images = tf.concat([real_real_images, real_fake_images, fake_fake_images], axis=0)
 
             # discriminator and patch discriminator
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as d_tape:
                 # fake images
                 fake_adv = self.discriminator(fake_images, training=True)
                 fake_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_adv))
@@ -167,7 +166,7 @@ class SynthesisModel(BaseSynthesisModel):
                 d_adv_loss = fake_adv_loss + real_adv_loss
                 # d_adv_loss = fake_adv_loss + real_adv_loss + fake_patch_adv_loss + real_patch_adv_loss
 
-            d_gradients = tape.gradient(d_adv_loss, self.discriminator.trainable_variables)
+            d_gradients = d_tape.gradient(d_adv_loss, self.discriminator.trainable_variables)
             self.d_optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_variables))
 
             # d_gradients = tape.gradient(d_adv_loss,
@@ -179,22 +178,22 @@ class SynthesisModel(BaseSynthesisModel):
             #                                      self.patch_discriminator.trainable_weights))
 
             # handwriting recognition
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as r_tape:
                 ctc_logits = self.recognition(image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
-            r_gradients = tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
+            r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
             # writer identification
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as w_tape:
                 wid_features_data, _ = self.style_backbone(image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
-            w_gradients = tape.gradient(d_wid_loss,
-                                        self.style_backbone.trainable_weights +
-                                        self.identification.trainable_weights)
+            w_gradients = w_tape.gradient(d_wid_loss,
+                                          self.style_backbone.trainable_weights +
+                                          self.identification.trainable_weights)
 
             self.w_optimizer.apply_gradients(zip(w_gradients,
                                                  self.style_backbone.trainable_weights +
@@ -206,7 +205,7 @@ class SynthesisModel(BaseSynthesisModel):
             'd_wid_loss': d_wid_loss,
         })
 
-    def _generator_step(self, input_data):
+    def generator_step(self, input_data):
         """
         Updates the generator.
 
@@ -225,14 +224,14 @@ class SynthesisModel(BaseSynthesisModel):
         random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
 
         self.discriminator.trainable = False
-        # self.patch_discriminator.trainable = False
+        self.patch_discriminator.trainable = False
         self.recognition.trainable = False
         self.style_backbone.trainable = False
         self.identification.trainable = False
         self.style_encoder.trainable = True
         self.generator.trainable = True
 
-        with tf.GradientTape() as tape:
+        with tf.GradientTape() as g_tape:
             real_features, real_feats = self.style_backbone(image_data, training=True)
             real_latent_data, mu, logvar = self.style_encoder([real_features, mask_data], training=True)
 
@@ -286,9 +285,9 @@ class SynthesisModel(BaseSynthesisModel):
             # generator loss
             g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_rec_loss + g_res_loss + g_wid_loss
 
-        g_gradients = tape.gradient(g_loss,
-                                    self.style_encoder.trainable_weights +
-                                    self.generator.trainable_weights)
+        g_gradients = g_tape.gradient(g_loss,
+                                      self.style_encoder.trainable_weights +
+                                      self.generator.trainable_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
@@ -319,9 +318,11 @@ class SynthesisModel(BaseSynthesisModel):
             Training metrics and losses.
         """
 
+        self.discriminator_step(input_data)
+
         tf.cond(pred=tf.math.equal(tf.math.mod(self.global_steps, self.generator_steps), 0),
-                true_fn=lambda: (self._discriminator_step(input_data), self._generator_step(input_data)),
-                false_fn=lambda: (self._discriminator_step(input_data), None))
+                true_fn=lambda: self.generator_step(input_data),
+                false_fn=lambda: None)
 
         self.global_steps.assign_add(delta=1)
 
@@ -419,7 +420,7 @@ class RecognitionModel(BaseModel):
         Parameters
         ----------
         lexical_shape : list or tuple
-            Shape of text sequences and vocabulary encoding.
+            Shape of text sequences and vocabulary.
         model : tf.keras.Model
             Model for feature decoding.
         name : str, optional
@@ -650,6 +651,7 @@ class GeneratorModel(BaseModel):
                  text_dim,
                  latent_dim,
                  blocks,
+                 strides=None,
                  name='generator',
                  **kwargs):
         """
@@ -660,13 +662,15 @@ class GeneratorModel(BaseModel):
         image_shape : list or tuple
             Output image shape.
         lexical_shape : list or tuple
-            Shape of text sequences and vocabulary encoding.
+            Shape of text sequences and vocabulary.
         text_dim : int
             Text embedding size.
         latent_dim : int
             Dimension of the style latent space.
         blocks : list or tuple
             Architecture blocks (resolution).
+        strides : list or tuple, optional
+            List of upsampling strides (WxH).
         name : str, optional
             Model instance name.
         **kwargs : dict
@@ -680,24 +684,26 @@ class GeneratorModel(BaseModel):
         self.text_dim = text_dim
         self.latent_dim = latent_dim
         self.blocks = blocks
+        self.strides = strides
 
-        self.num_blocks = len(self.blocks)
-        self.text_length = self.lexical_shape[0] * self.lexical_shape[1]
+        if not self.strides:
+            num_blocks = len(self.blocks)
+            text_length = self.lexical_shape[0] * self.lexical_shape[1]
 
-        h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
-        w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (self.text_length * 4)))
+            h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
+            w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (text_length * 4)))
 
-        h_stride = [1] * self.num_blocks
-        w_stride = [1] * self.num_blocks
+            h_stride = [1] * num_blocks
+            w_stride = [1] * num_blocks
 
-        for i in range(h_steps):
-            h_stride[i % self.num_blocks] = 2
+            for i in range(h_steps):
+                h_stride[i % num_blocks] = 2
 
-        for i in range(w_steps):
-            w_stride[i % self.num_blocks] = 2
+            for i in range(w_steps):
+                w_stride[i % num_blocks] = 2
 
-        self.strides = list(zip(h_stride, w_stride))
-        self.strides.reverse()
+            self.strides = list(zip(h_stride, w_stride))
+            self.strides.reverse()
 
         self.build_model()
 
@@ -723,6 +729,7 @@ class GeneratorModel(BaseModel):
             'text_dim': self.text_dim,
             'latent_dim': self.latent_dim,
             'blocks': self.blocks,
+            'strides': self.strides,
         })
 
         return config
@@ -759,10 +766,11 @@ class GeneratorModel(BaseModel):
         #######################################
         text_input = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
 
-        embedding = tf.keras.layers.Flatten()(text_input)
+        text = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1)), name='perm_text')(text_input)
+        text = tf.keras.layers.Flatten()(text)
 
         embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                              output_dim=self.text_dim)(embedding)
+                                              output_dim=self.text_dim)(text)
 
         # embedding = tf.keras.layers.Add()([embedding, PositionEmbedding()(embedding)])
         #######################################
@@ -782,48 +790,45 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * self.blocks[0] * 2))(block)
 
-        block = tf.keras.layers.Reshape(target_shape=(4, self.text_length * 4, -1))(block)
+        # block = tf.keras.layers.Reshape(target_shape=(4, text.shape[1] * 4, -1))(block)
+
+        block = tf.keras.layers.Reshape(target_shape=(text.shape[1] * 4, 4, 4, -1))(block)
+        block = tf.keras.layers.Reshape(target_shape=(-1, text.shape[1] * 4, 4))(block)
+
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm_block')(block)
         #######################################
 
         #######################################
         latent_chunks = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks))(latent)
+            tf.keras.layers.Dense(units=self.latent_dim * len(self.blocks)))(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
-                                               arguments={'y': self.num_blocks},
+                                               arguments={'y': len(self.blocks)},
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
-            # up = (2 if block.shape[1] < self.image_shape[1] else 1,
-            #       2 if block.shape[2] < self.image_shape[0] and i > 0 else 1)
+            up = (up[0] if block.shape[1] < self.image_shape[1] else 1,
+                  up[1] if block.shape[2] < self.image_shape[0] else 1)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
-            # print(up)
 
         block = GatedConv2DResidual(h=self.blocks[-1]//2)(block)
 
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=self.blocks[-1]//2, kernel_size=3, strides=1, padding='same'))(block)
 
-        # block = tf.keras.layers.BatchNormalization()(block)
         block = tf.keras.layers.Activation(activation='swish')(block)
 
         outputs = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(block)
 
-        # outputs = tf.keras.layers.SpectralNormalization(
-        #     tf.keras.layers.Conv2D(filters=1, kernel_size=1, strides=1, padding='same'))(block)
-
         outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(outputs)
+        outputs = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_output')(outputs)
         #######################################
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input],
                                     outputs=outputs)
-
-        # self.model.summary()
-        # exit()
 
 
 class DiscriminatorModel(BaseModel):
@@ -833,8 +838,9 @@ class DiscriminatorModel(BaseModel):
 
     def __init__(self,
                  image_shape,
-                 lexical_shape,
                  blocks,
+                 strides=None,
+                 lexical_shape=None,
                  patch_shape=None,
                  name='discriminator',
                  **kwargs):
@@ -845,10 +851,12 @@ class DiscriminatorModel(BaseModel):
         ----------
         image_shape : list or tuple
             Input image shape.
-        lexical_shape : list or tuple
-            Shape of text sequences and vocabulary encoding.
         blocks : list or tuple
             Architecture blocks (resolution).
+        strides : list or tuple
+            List of downsampling strides (WxH).
+        lexical_shape : list or tuple
+            Shape of text sequences and vocabulary.
         patch_shape : list, tuple or None
             Patch shape, if applicable.
         name : str, optional
@@ -860,26 +868,31 @@ class DiscriminatorModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-        self.lexical_shape = lexical_shape
         self.blocks = blocks
+        self.strides = strides
+        self.lexical_shape = lexical_shape
         self.patch_shape = patch_shape
 
-        self.num_blocks = len(self.blocks)
-        self.text_length = self.lexical_shape[0] * self.lexical_shape[1]
+        if not self.strides:
+            self.strides = [(2, 2)] * len(self.blocks)
 
-        h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
-        w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (self.text_length * 4)))
+            if self.lexical_shape:
+                num_blocks = len(self.blocks)
+                text_length = self.lexical_shape[0] * self.lexical_shape[1]
 
-        h_stride = [1] * self.num_blocks
-        w_stride = [1] * self.num_blocks
+                h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
+                w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (text_length * 4)))
 
-        for i in range(h_steps):
-            h_stride[i % self.num_blocks] = 2
+                h_stride = [1] * num_blocks
+                w_stride = [1] * num_blocks
 
-        for i in range(w_steps):
-            w_stride[i % self.num_blocks] = 2
+                for i in range(h_steps):
+                    h_stride[i % num_blocks] = 2
 
-        self.strides = list(zip(h_stride, w_stride))
+                for i in range(w_steps):
+                    w_stride[i % num_blocks] = 2
+
+                self.strides = list(zip(h_stride, w_stride))
 
         self.build_model()
 
@@ -901,8 +914,9 @@ class DiscriminatorModel(BaseModel):
 
         config.update({
             'image_shape': self.image_shape,
-            'lexical_shape': self.lexical_shape,
             'blocks': self.blocks,
+            'strides': self.strides,
+            'lexical_shape': self.lexical_shape,
             'patch_shape': self.patch_shape,
         })
 
@@ -945,8 +959,8 @@ class DiscriminatorModel(BaseModel):
         block = ExtractPatches(patch_shape=self.patch_shape)(block)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
-            # down = (2 if block.shape[1] > 4 else 1,
-            #         2 if block.shape[2] > 4 else 1)
+            down = (down[0] if block.shape[1] > 4 else 1,
+                    down[1] if block.shape[2] > 4 else 1)
 
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
@@ -959,6 +973,3 @@ class DiscriminatorModel(BaseModel):
         self.model = tf.keras.Model(name=self.name,
                                     inputs=image_inputs,
                                     outputs=outputs)
-
-        # self.model.summary()
-        # exit()
