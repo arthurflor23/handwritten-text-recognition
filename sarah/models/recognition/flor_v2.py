@@ -46,9 +46,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
-
-        encoder = tf.keras.layers.Lambda(
-            lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(encoder_input)
+        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_in')(encoder_input)
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
@@ -122,6 +120,8 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
         decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
+        decoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_out')(decoder)
+
         self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
 
         # recognition model
