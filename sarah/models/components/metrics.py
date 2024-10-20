@@ -49,8 +49,8 @@ class EditDistance(tf.keras.metrics.Metric):
             Tensor of predicted labels.
         """
 
-        y_true = tf.reshape(y_true, (tf.shape(y_true)[0], -1))
-        y_pred = tf.reshape(y_pred, (tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
+        y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
+        y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
         logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
