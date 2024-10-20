@@ -83,7 +83,7 @@ def batch_masking(batch_data, target_shape):
         Masks indicating content areas.
     """
 
-    max_width, max_height = target_shape[:2]
+    max_height, max_width = target_shape[:2]
     masks = []
 
     if batch_data and len(batch_data) > 0:
@@ -121,7 +121,7 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     """
 
     if target_shape:
-        max_width, max_height = target_shape[:2]
+        max_height, max_width = target_shape[:2]
     else:
         max_height = max(len(height) for height in batch_data)
         max_width = max(len(width) for height in batch_data for width in height)
@@ -157,12 +157,8 @@ def batch_processing(batch_data, mode=None):
     batch_data = np.array(batch_data)
 
     if mode == 'image':
-        batch_data = batch_data.transpose((0, 2, 1))
         batch_data = np.expand_dims(batch_data, axis=-1)
         batch_data = (batch_data.astype(np.float32) / 127.5) - 1
-
-    elif mode == 'text':
-        batch_data = batch_data.transpose((0, 2, 1))
 
     return batch_data
 
@@ -253,12 +249,12 @@ def resize_image(image, target_width=None, target_shape=None):
         return None
 
     if target_width and target_shape:
-        new_h, new_w = target_shape[1], min(target_width, target_shape[0])
+        new_h, new_w = target_shape[0], min(target_width, target_shape[1])
         image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
     elif target_shape:
         h, w = image.shape
-        target_w, target_h = target_shape[:2]
+        target_h, target_w = target_shape[:2]
 
         if h > target_h or w > target_w:
             aspect_ratio = w / h

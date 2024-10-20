@@ -385,7 +385,6 @@ class BaseRecognitionModel(BaseModel):
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='decode', verbose=verbose)
 
         x = np.log(x + 1e-8)
-        x = x.transpose((0, 2, 1, 3))
 
         beam_width = max(top_paths, beam_width)
         predictions, probabilities = [], []
@@ -403,7 +402,7 @@ class BaseRecognitionModel(BaseModel):
             sequence_length = [batch.shape[2]] * batch.shape[0]
 
             for i in range(batch.shape[1]):
-                inputs = tf.transpose(batch[:, i, :, :], perm=[1, 0, 2])
+                inputs = np.transpose(batch[:, i, :, :], axes=(1, 0, 2))
                 decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
                                                                            sequence_length=sequence_length,
                                                                            beam_width=beam_width,
@@ -418,8 +417,8 @@ class BaseRecognitionModel(BaseModel):
                 top_path_decoded.append(decoded_pads)
                 top_path_probabilities.append(tf.exp(log_probabilities))
 
-            batch_decoded = np.transpose(tf.stack(top_path_decoded, axis=1), (2, 0, 1, 3))
-            batch_probabilities = np.transpose(tf.stack(top_path_probabilities, axis=1), (0, 2, 1))
+            batch_decoded = np.transpose(tf.stack(top_path_decoded, axis=1), axes=(2, 0, 1, 3))
+            batch_probabilities = np.transpose(tf.stack(top_path_probabilities, axis=1), axes=(0, 2, 1))
 
             if tokenizer is not None:
                 batch_decoded = [[tokenizer.decode_text(top_path) for top_path in x] for x in batch_decoded]
