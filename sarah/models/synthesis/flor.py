@@ -8,7 +8,6 @@ from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import GatedConv2DResidual
 from sarah.models.components.layers import PositionEmbedding
 from sarah.models.components.layers import Reparameterization
-from sarah.models.components.layers import SelfAttention
 from sarah.models.components.metrics import MetricsTracker
 from sarah.models.recognition.flor_v2 import RecognitionModel as HTRModel
 
@@ -54,8 +53,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.95)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.95)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
@@ -69,18 +68,18 @@ class SynthesisModel(BaseSynthesisModel):
         latent_dim = 128
         # patch_shape = [32, 32]
 
-        generator_blocks = [256, 128, 64, 64]
-        discriminator_blocks = [64, 64, 128, 256]
+        generator_blocks = [256, 128, 64, 32]
+        discriminator_blocks = [32, 64, 128, 256]
 
         self.style_backbone = BackboneModel(name='style_backbone',
                                             image_shape=self.image_shape,
                                             model=HTRModel(image_shape=self.image_shape,
-                                                           lexical_shape=self.lexical_shape))
+                                                           lexical_shape=self.lexical_shape).encoder)
 
         self.recognition = RecognitionModel(name='recognition',
                                             lexical_shape=self.lexical_shape,
                                             model=HTRModel(image_shape=self.image_shape,
-                                                           lexical_shape=self.lexical_shape))
+                                                           lexical_shape=self.lexical_shape).recognition)
 
         self.identification = IdentificationModel(name='identification',
                                                   features_shape=self.style_backbone.model.output[0].shape[1:],
@@ -100,10 +99,12 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator = DiscriminatorModel(name='discriminator',
                                                 image_shape=self.image_shape,
+                                                lexical_shape=self.lexical_shape,
                                                 blocks=discriminator_blocks)
 
         # self.patch_discriminator = DiscriminatorModel(name='patch_discriminator',
         #                                               image_shape=self.image_shape,
+        #                                               lexical_shape=self.lexical_shape,
         #                                               blocks=discriminator_blocks,
         #                                               patch_shape=patch_shape)
 
@@ -126,9 +127,9 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator.trainable = True
         # self.patch_discriminator.trainable = True
+        self.recognition.trainable = True
         self.style_backbone.trainable = True
         self.identification.trainable = True
-        self.recognition.trainable = True
         self.style_encoder.trainable = False
         self.generator.trainable = False
 
@@ -179,7 +180,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             with tf.GradientTape() as tape:
-                ctc_logits = self.recognition(aug_image_data, training=True)
+                ctc_logits = self.recognition(image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
@@ -225,9 +226,9 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator.trainable = False
         # self.patch_discriminator.trainable = False
+        self.recognition.trainable = False
         self.style_backbone.trainable = False
         self.identification.trainable = False
-        self.recognition.trainable = False
         self.style_encoder.trainable = True
         self.generator.trainable = True
 
@@ -365,7 +366,7 @@ class BackboneModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-        self.model = model.encoder
+        self.model = model
 
         self.build_model()
 
@@ -430,7 +431,9 @@ class RecognitionModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.lexical_shape = lexical_shape
-        self.model = model.recognition
+        self.model = model
+
+        self.build_model()
 
         if hasattr(self, 'model'):
             self.summary = self.model.summary
@@ -451,6 +454,15 @@ class RecognitionModel(BaseModel):
         config.update({
             'lexical_shape': self.lexical_shape,
         })
+
+    def build_model(self):
+        """
+        Builds the model architecture.
+        """
+
+        self.model = tf.keras.Model(name=self.name,
+                                    inputs=self.model.input,
+                                    outputs=self.model.output)
 
 
 class IdentificationModel(BaseModel):
@@ -788,25 +800,16 @@ class GeneratorModel(BaseModel):
             block = residual_block(block, latent_chunks[i], filters, up=up)
             # print(up)
 
-            # if i + 1 >= self.num_blocks - 1:
-            #     block = GatedConv2DResidual(h=filters)(block)
-            #     # print(block.shape, filters)
-
-            # if i % 2 == 0:
-            #     block = GatedConv2DResidual()(block)
-
-        block = GatedConv2DResidual()(block)
+        block = GatedConv2DResidual(h=self.blocks[-1]//2)(block)
 
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Conv2D(filters=self.blocks[-1]//2, kernel_size=3, strides=1, padding='same'))(block)
-        #######################################
 
-        #######################################
-        # outputs = tf.keras.layers.BatchNormalization()(block)
-        outputs = tf.keras.layers.Activation(activation='swish')(block)
+        # block = tf.keras.layers.BatchNormalization()(block)
+        block = tf.keras.layers.Activation(activation='swish')(block)
 
         outputs = tf.keras.layers.SpectralNormalization(
-            tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(outputs)
+            tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same'))(block)
 
         # outputs = tf.keras.layers.SpectralNormalization(
         #     tf.keras.layers.Conv2D(filters=1, kernel_size=1, strides=1, padding='same'))(block)
@@ -830,6 +833,7 @@ class DiscriminatorModel(BaseModel):
 
     def __init__(self,
                  image_shape,
+                 lexical_shape,
                  blocks,
                  patch_shape=None,
                  name='discriminator',
@@ -841,6 +845,8 @@ class DiscriminatorModel(BaseModel):
         ----------
         image_shape : list or tuple
             Input image shape.
+        lexical_shape : list or tuple
+            Shape of text sequences and vocabulary encoding.
         blocks : list or tuple
             Architecture blocks (resolution).
         patch_shape : list, tuple or None
@@ -854,8 +860,26 @@ class DiscriminatorModel(BaseModel):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
+        self.lexical_shape = lexical_shape
         self.blocks = blocks
         self.patch_shape = patch_shape
+
+        self.num_blocks = len(self.blocks)
+        self.text_length = self.lexical_shape[0] * self.lexical_shape[1]
+
+        h_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / 4))
+        w_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / (self.text_length * 4)))
+
+        h_stride = [1] * self.num_blocks
+        w_stride = [1] * self.num_blocks
+
+        for i in range(h_steps):
+            h_stride[i % self.num_blocks] = 2
+
+        for i in range(w_steps):
+            w_stride[i % self.num_blocks] = 2
+
+        self.strides = list(zip(h_stride, w_stride))
 
         self.build_model()
 
@@ -877,6 +901,7 @@ class DiscriminatorModel(BaseModel):
 
         config.update({
             'image_shape': self.image_shape,
+            'lexical_shape': self.lexical_shape,
             'blocks': self.blocks,
             'patch_shape': self.patch_shape,
         })
@@ -919,17 +944,16 @@ class DiscriminatorModel(BaseModel):
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(image_inputs)
         block = ExtractPatches(patch_shape=self.patch_shape)(block)
 
-        for i, filters in enumerate(self.blocks):
-            down = (2 if block.shape[1] > 4 else 1,
-                    2 if block.shape[2] > 4 else 1)
+        for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
+            # down = (2 if block.shape[1] > 4 else 1,
+            #         2 if block.shape[2] > 4 else 1)
 
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
         block = residual_block(block, self.blocks[-1], preactive=True, down=None)
+        block = tf.keras.layers.Activation(activation='swish')(block)
 
-        outputs = tf.keras.layers.Activation(activation='swish')(block)
-        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(outputs)
-
+        outputs = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(block)
         outputs = tf.keras.layers.SpectralNormalization(tf.keras.layers.Dense(units=1))(outputs)
 
         self.model = tf.keras.Model(name=self.name,
