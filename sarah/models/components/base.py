@@ -283,10 +283,10 @@ class BaseRecognitionModel(BaseModel):
                     features_data = self.style_backbone(images, training=False)
                     features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-                    latent = self.style_encoder([features_data, mask], training=False)
+                    latent = self.style_encoder(features_data, training=False)
                     latent = latent[0] if isinstance(latent, list) else latent
 
-                images = self.generator([texts, latent], training=False)
+                images = self.generator([texts, latent, mask], training=False)
 
         with tf.GradientTape() as tape:
             ctc_logits = self.recognition(images, training=True)
@@ -637,10 +637,10 @@ class BaseSynthesisModel(BaseModel):
         features_data = self.style_backbone(image_data)
         features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-        latent_data = self.style_encoder([features_data, mask_data])
+        latent_data = self.style_encoder(features_data)
         latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([text_data, latent_data])
+        generated_images = self.generator([text_data, latent_data, mask_data])
 
         self.kid.update_state(image_data, generated_images)
 
@@ -673,10 +673,10 @@ class BaseSynthesisModel(BaseModel):
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-            latent_data = self.style_encoder([features_data, mask_data], training=training)
+            latent_data = self.style_encoder(features_data, training=training)
             latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
 
-        generated_images = self.generator([text_data, latent_data], training=training)
+        generated_images = self.generator([text_data, latent_data, mask_data], training=training)
 
         return generated_images
 
