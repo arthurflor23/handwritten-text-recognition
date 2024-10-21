@@ -1,8 +1,11 @@
 import os
 import sys
 import argparse
+import warnings
 
 sys.path.append(os.getcwd())
+
+warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 import pipelines  # noqa: E402
