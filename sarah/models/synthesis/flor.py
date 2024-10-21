@@ -768,8 +768,7 @@ class GeneratorModel(BaseModel):
         text = tf.keras.layers.Flatten()(text_input)
 
         embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                              output_dim=self.text_dim,
-                                              mask_zero=True)(text)
+                                              output_dim=self.text_dim)(text)
 
         # embedding = tf.keras.layers.Add()([embedding, PositionEmbedding()(embedding)])
         #######################################
@@ -789,12 +788,8 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=4 * 4 * self.blocks[0] * 2))(block)
 
-        # block = tf.keras.layers.Reshape(target_shape=(4, text.shape[1] * 4, -1))(block)
-
-        block = tf.keras.layers.Reshape(target_shape=(text.shape[1] * 4, 4, 4, -1))(block)
-        block = tf.keras.layers.Reshape(target_shape=(-1, text.shape[1] * 4, 4))(block)
-
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 3, 1, 2)), name='perm')(block)
+        block = tf.keras.layers.Reshape(target_shape=(text.shape[1] * 4, 4, -1))(block)
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
         #######################################
 
         #######################################
