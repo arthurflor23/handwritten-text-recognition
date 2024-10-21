@@ -836,8 +836,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
     def __init__(self,
                  max_length,
-                 initializer='glorot_uniform',
                  seq_axis=1,
+                 embeddings_initializer='glorot_uniform',
                  mask_zero=False,
                  **kwargs):
         """
@@ -847,10 +847,10 @@ class PositionEmbedding(tf.keras.layers.Layer):
         ----------
         max_length : int
             Define max sequence length.
-        initializer : initializer, optional
-            Kernel weights initializer.
         seq_axis : int, optional
             Axis of the input tensor for embedding.
+        embeddings_initializer : initializer, optional
+            Kernel weights initializer.
         mask_zero : bool, optional
             Whether or not the value 0 is a special padding value.
         **kwargs : dict
@@ -860,8 +860,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.max_length = max_length
-        self.initializer = initializer
         self.seq_axis = seq_axis
+        self.embeddings_initializer = embeddings_initializer
         self.mask_zero = mask_zero
 
     def get_config(self):
@@ -878,8 +878,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
         config.update({
             'max_length': self.max_length,
-            'initializer': self.initializer,
             'seq_axis': self.seq_axis,
+            'embeddings_initializer': self.embeddings_initializer,
             'mask_zero': self.mask_zero,
         })
 
@@ -899,7 +899,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
         self.position_embeddings = self.add_weight(name=f"{self.name}_weights",
                                                    shape=[self.max_length, input_shape[-1]],
-                                                   initializer=self.initializer)
+                                                   initializer=self.embeddings_initializer)
 
     def call(self, inputs):
         """
