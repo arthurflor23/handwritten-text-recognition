@@ -834,21 +834,35 @@ class PositionEmbedding(tf.keras.layers.Layer):
         https://arxiv.org/abs/1810.04805
     """
 
-    def __init__(self, time_axis=1, **kwargs):
+    def __init__(self,
+                 max_length,
+                 initializer='glorot_uniform',
+                 seq_axis=1,
+                 mask_zero=False,
+                 **kwargs):
         """
         Initializes the position embedding layer.
 
         Parameters
         ----------
-        time_axis : int, optional
+        max_length : int
+            Define max sequence length.
+        initializer : initializer, optional
+            Kernel weights initializer.
+        seq_axis : int, optional
             Axis of the input tensor for embedding.
+        mask_zero : bool, optional
+            Whether or not the value 0 is a special padding value.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.time_axis = time_axis
+        self.max_length = max_length
+        self.initializer = initializer
+        self.seq_axis = seq_axis
+        self.mask_zero = mask_zero
 
     def get_config(self):
         """
@@ -863,7 +877,10 @@ class PositionEmbedding(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'time_axis': self.time_axis,
+            'max_length': self.max_length,
+            'initializer': self.initializer,
+            'seq_axis': self.seq_axis,
+            'mask_zero': self.mask_zero,
         })
 
         return config
@@ -881,7 +898,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
         super().build(input_shape)
 
         self.position_embeddings = self.add_weight(name=f"{self.name}_weights",
-                                                   shape=input_shape[1:])
+                                                   shape=[self.max_length, input_shape[-1]],
+                                                   initializer=self.initializer)
 
     def call(self, inputs):
         """
@@ -899,17 +917,42 @@ class PositionEmbedding(tf.keras.layers.Layer):
         """
 
         input_shape = tf.shape(inputs)
-        actual_seq_len = input_shape[self.time_axis]
+        actual_seq_len = input_shape[self.seq_axis]
 
         position_embeddings = self.position_embeddings[:actual_seq_len, :]
 
         new_shape = [1] * len(inputs.shape)
-        new_shape[self.time_axis] = actual_seq_len
+        new_shape[self.seq_axis] = actual_seq_len
         new_shape[-1] = position_embeddings.shape[-1]
 
         position_embeddings = tf.reshape(position_embeddings, new_shape)
 
         return tf.broadcast_to(position_embeddings, input_shape)
+
+    def compute_mask(self, inputs, mask=None):
+        """
+        Computes an output mask tensor based on input values.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input tensor.
+        mask : tf.Tensor, optional
+            Existing mask tensor.
+
+        Returns
+        -------
+        tf.Tensor or None
+            Output mask tensor or None if mask_zero is False.
+        """
+
+        if not self.mask_zero:
+            return None
+
+        if mask is not None:
+            return mask
+
+        return tf.keras.ops.not_equal(inputs, 0)
 
 
 class Reparameterization(tf.keras.layers.Layer):
