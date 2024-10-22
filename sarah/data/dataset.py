@@ -529,6 +529,7 @@ class Dataset():
             end_samples = self.samples[subset][data_partition][-samples:]
 
             data = list(beg_samples) + list(mid_samples) + list(end_samples)
+            batch_size = len(data)
 
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
