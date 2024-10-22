@@ -19,6 +19,7 @@ class Dataset():
                  image_shape=(1024, 64, 1),
                  pad_value=0,
                  char_width=0,
+                 order_by_length=False,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -43,6 +44,8 @@ class Dataset():
             Padding value for images.
         char_width : int, optional
             The width per character.
+        order_by_length : bool, optional
+            Whether to sort the data by text length.
         training_ratio : float or int, optional
             The training ratio for resample.
         validation_ratio : float or int, optional
@@ -71,6 +74,7 @@ class Dataset():
         self.image_shape = image_shape
         self.pad_value = pad_value
         self.char_width = char_width
+        self.order_by_length = order_by_length
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -318,7 +322,10 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                source, encoded = zip(*results)
+                if self.order_by_length:
+                    source, encoded = zip(*sorted(results, key=lambda x: len(x[0]['text']), reverse=True))
+                else:
+                    source, encoded = zip(*results)
 
                 samples['source'][partition] = np.array(source, dtype=object)
                 samples['encoded'][partition] = np.array(encoded, dtype=object)
@@ -378,7 +385,12 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                source, encoded = zip(*[(s, e) for x in results for s, e in zip(x[0], x[1])])
+                flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
+
+                if self.order_by_length:
+                    source, encoded = zip(*sorted(flattened, key=lambda x: len(x[0]), reverse=True))
+                else:
+                    source, encoded = zip(*flattened)
 
                 for s, e in zip(source, encoded):
                     multigrams['source'].append({'text': s})
@@ -433,7 +445,7 @@ class Dataset():
             batch_index = 0
 
             while True:
-                if self.char_width:
+                if self.order_by_length:
                     if shuffle:
                         batch_index = np.random.randint(0, data_length - batch_size)
                     elif batch_index >= data_length:
