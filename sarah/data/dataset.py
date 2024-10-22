@@ -519,8 +519,16 @@ class Dataset():
 
         subset = 'encoded' if batch_encoded else 'source'
 
-        data = self.samples[subset][data_partition] if samples is None \
-            else self.samples[subset][data_partition][:samples]
+        if samples is None:
+            data = self.samples[subset][data_partition]
+        else:
+            mid = (len(self.samples[subset][data_partition]) // 2) - ((samples // 3) // 2)
+
+            beg_samples = self.samples[subset][data_partition][:samples]
+            mid_samples = self.samples[subset][data_partition][mid:mid + samples]
+            end_samples = self.samples[subset][data_partition][-samples:]
+
+            data = list(beg_samples) + list(mid_samples) + list(end_samples)
 
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
