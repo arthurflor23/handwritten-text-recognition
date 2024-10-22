@@ -24,6 +24,7 @@ def run(args):
                       image_shape=args.image_shape,
                       pad_value=args.pad_value,
                       char_width=args.char_width,
+                      order_by_length=args.order_by_length,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
