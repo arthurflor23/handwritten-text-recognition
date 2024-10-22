@@ -446,7 +446,7 @@ class Dataset():
 
             while True:
                 if self.order_by_length:
-                    if shuffle:
+                    if samples is None and shuffle:
                         batch_index = np.random.randint(0, data_length - batch_size)
                     elif batch_index >= data_length:
                         batch_index = 0
@@ -456,7 +456,8 @@ class Dataset():
                 else:
                     if batch_index >= data_length:
                         batch_index = 0
-                    if batch_index == 0 and shuffle:
+
+                    if samples is None and shuffle and batch_index == 0:
                         np.random.shuffle(indices)
 
                     batch = data[indices[batch_index:batch_index + batch_size]]
