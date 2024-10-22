@@ -523,14 +523,24 @@ class Dataset():
         if samples is None:
             data = self.samples[subset][data_partition]
         else:
-            mid = (len(self.samples[subset][data_partition]) // 2) - ((samples // 3) // 2)
+            q1_len = (samples // 4) + (1 if (samples % 4) > 0 else 0)
+            q2_len = (samples // 4) + (1 if (samples % 4) > 1 else 0)
+            q3_len = (samples // 4) + (1 if (samples % 4) > 2 else 0)
+            q4_len = (samples // 4)
 
-            beg_samples = self.samples[subset][data_partition][:samples]
-            mid_samples = self.samples[subset][data_partition][mid:mid + samples]
-            end_samples = self.samples[subset][data_partition][-samples:]
+            data_len = len(self.samples[subset][data_partition])
 
-            data = list(beg_samples) + list(mid_samples) + list(end_samples)
-            batch_size = len(data)
+            q1_start = 0
+            q2_start = data_len // 4
+            q3_start = data_len // 2
+            q4_start = (3 * data_len) // 4
+
+            q1_samples = self.samples[subset][data_partition][q1_start:q1_start + q1_len]
+            q2_samples = self.samples[subset][data_partition][q2_start:q2_start + q2_len]
+            q3_samples = self.samples[subset][data_partition][q3_start:q3_start + q3_len]
+            q4_samples = self.samples[subset][data_partition][q4_start:q4_start + q4_len]
+
+            data = list(q1_samples) + list(q2_samples) + list(q3_samples) + list(q4_samples)
 
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
