@@ -1,11 +1,8 @@
 import os
 import sys
 import argparse
-import warnings
 
 sys.path.append(os.getcwd())
-
-warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 import pipelines  # noqa: E402
@@ -36,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--image-shape', default=(64, 1024, 1), nargs=3, type=int, help='Image dimensions (h, w, c)')
     parser.add_argument('--pad-value', default=0, type=int, help='Padding value for images')
     parser.add_argument('--char-width', default=0, type=int, help='Character width for normalization')
+    parser.add_argument('--order-by-length', default=False, action='store_true', help='Sort data by text length')
     parser.add_argument('--training-ratio', default=None, help='Training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Test partition ratio')
