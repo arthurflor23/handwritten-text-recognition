@@ -439,7 +439,8 @@ class Dataset():
         """
 
         def batch_generator(data, multigrams):
-            data_length, multigrams_length = len(data), len(multigrams)
+            data_length = len(data)
+            multigrams_length = len(multigrams)
 
             indices = np.arange(data_length)
             batch_index = 0
@@ -541,6 +542,7 @@ class Dataset():
             q4_samples = self.samples[subset][data_partition][q4_start:q4_start + q4_len]
 
             data = list(q1_samples) + list(q2_samples) + list(q3_samples) + list(q4_samples)
+            data = np.array(data)
 
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
