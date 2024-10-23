@@ -507,8 +507,8 @@ class Dataset():
                         image_data = utils.batch_processing(image_data, mode='image')
                         aug_image_data = utils.batch_processing(aug_image_data, mode='image')
 
-                        mask_data = utils.batch_processing(mask_data, mode='image')
-                        aug_mask_data = utils.batch_processing(aug_mask_data, mode='image')
+                        mask_data = utils.batch_processing(mask_data, mode='mask')
+                        aug_mask_data = utils.batch_processing(aug_mask_data, mode='mask')
 
                         text_data = utils.batch_processing(text_data, mode='text')
                         aug_text_data = utils.batch_processing(aug_text_data, mode='text')

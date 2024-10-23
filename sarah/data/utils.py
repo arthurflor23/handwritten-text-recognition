@@ -160,6 +160,10 @@ def batch_processing(batch_data, mode=None):
         batch_data = np.expand_dims(batch_data, axis=-1)
         batch_data = (batch_data.astype(np.float32) / 127.5) - 1
 
+    elif mode == 'mask':
+        batch_data = np.expand_dims(batch_data, axis=-1)
+        batch_data = (batch_data.astype(np.float32) / 255.)
+
     return batch_data
 
 
