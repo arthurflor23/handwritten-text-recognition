@@ -30,9 +30,10 @@ class SpellingModel():
         self.model = 'gpt-4o-mini'
         self.max_tokens = 8192
 
-        self.instruction = ('Correct only obvious spelling mistakes in words within tags, while keep'
-                            ' the number of tags the same. Do not add extra text or change correct texts.'
-                            ' Maintain the unique and historical style of the text.')
+        self.instruction = ('Correct only obvious spelling mistakes in words within tags. '
+                            'Keep the number of tags the same. '
+                            'Do not add extra text or change correct text. '
+                            'Maintain the unique and historical style of the text.')
 
         openai.api_key = self._get_api_key()
 
