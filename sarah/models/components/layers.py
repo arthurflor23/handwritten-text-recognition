@@ -48,7 +48,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Create the weights of the layer.
+        Initializes layer weights.
 
         Parameters
         ----------
@@ -150,7 +150,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Create the weights of the layer.
+        Initializes layer weights.
 
         Parameters
         ----------
@@ -1249,7 +1249,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Create the weights of the layer.
+        Initializes layer weights.
 
         Parameters
         ----------
