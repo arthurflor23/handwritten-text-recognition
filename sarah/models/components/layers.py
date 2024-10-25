@@ -201,6 +201,259 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         return outputs
 
 
+class ContentAlignment(tf.keras.layers.Layer):
+    """
+    Extracts, resizes, and aligns the input content to match a target mask.
+    """
+
+    def __init__(self, min_value=-1, max_value=1, **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        min_value : float, optional
+            The minimum value of the input data.
+        max_value : float, optional
+            The maximum value of the input data.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'min_value': self.min_value,
+            'max_value': self.max_value,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.target_shape = input_shape[1]
+
+    @tf.function()
+    def call(self, inputs, training=False):
+        """
+        Applies content alignment to the input image.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            A tuple containing the input tensor and the mask.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Aligned image tensor.
+        """
+
+        input_data, target_mask = inputs
+
+        data_mask = self.compute_content_mask(input_data, pad_value=self.min_value)
+
+        data_content_height = self.compute_mask_length(data_mask, mask_value=0, axis=2)
+        data_content_width = self.compute_mask_length(data_mask, mask_value=0, axis=1)
+
+        target_content_height = self.compute_mask_length(target_mask, mask_value=0, axis=2)
+        target_content_width = self.compute_mask_length(target_mask, mask_value=0, axis=1)
+
+        def content_alignment(args):
+            img, content_h, content_w, target_content_h, target_content_w = args
+
+            if tf.equal(content_h, tf.shape(img)[0]):
+                target_content_h = self.target_shape[1]
+
+            if tf.equal(content_w, tf.shape(img)[1]):
+                target_content_w = self.target_shape[2]
+
+            image = img[:content_h, :content_w, :]
+            image = tf.image.resize(image, size=(target_content_h, target_content_w), method='nearest')
+
+            remaining_h = self.target_shape[1] - tf.shape(image)[0]
+            remaining_w = self.target_shape[2] - tf.shape(image)[1]
+
+            if tf.greater(remaining_h, 0):
+                chunk = img[content_h:, :tf.shape(image)[1], :]
+
+                chunk = tf.cond(
+                    tf.greater(tf.shape(chunk)[0], 0),
+                    lambda: tf.image.resize(chunk, size=(remaining_h, tf.shape(image)[1]), method='nearest'),
+                    lambda: tf.cast(tf.fill([remaining_h, tf.shape(image)[1], 1], self.min_value), dtype=img.dtype)
+                )
+
+                image = tf.concat([image, chunk], axis=0)
+
+            if tf.greater(remaining_w, 0):
+                chunk = img[:tf.shape(image)[0], content_w:, :]
+
+                chunk = tf.cond(
+                    tf.greater(tf.shape(chunk)[1], 0),
+                    lambda: tf.image.resize(chunk, size=(tf.shape(image)[0], remaining_w), method='nearest'),
+                    lambda: tf.cast(tf.fill([tf.shape(image)[0], remaining_w, 1], self.min_value), dtype=img.dtype)
+                )
+
+                image = tf.concat([image, chunk], axis=1)
+
+            return tf.stop_gradient(image)
+
+        args = (input_data, data_content_height, data_content_width, target_content_height, target_content_width)
+        outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
+
+        if not training:
+            outputs = (outputs - self.min_value) / (self.max_value - self.min_value) * 255
+            outputs = (outputs * target_mask) / 255 * (self.max_value - self.min_value) + self.min_value
+
+        return outputs
+
+    def compute_content_mask(self, input_data, pad_value):
+        """
+        Computes content mask from input data.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            Input data tensor.
+        pad_value : float
+            Padding value.
+
+        Returns
+        -------
+        tf.Tensor
+            Content mask tensor.
+        """
+
+        h_mask = self.compute_axis_mask(input_data, pad_value, axis=1)
+        w_mask = self.compute_axis_mask(input_data, pad_value, axis=2)
+
+        mask = tf.cast(tf.logical_and(h_mask, w_mask), dtype=tf.int32)
+
+        return tf.stop_gradient(mask)
+
+    def compute_axis_mask(self, input_data, pad_value, axis):
+        """
+        Computes mask along a specific axis.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            Input data tensor.
+        pad_value : float
+            Padding value.
+        axis : int, optional
+            Axis to compute mask.
+
+        Returns
+        -------
+        tf.Tensor
+            Content mask tensor.
+        """
+
+        if axis == 1:
+            base_axis = 2
+            max_length = tf.shape(input_data)[1]
+            tile_multiples = [1, 1, tf.shape(input_data)[2], 1]
+
+        elif axis == 2:
+            base_axis = 1
+            max_length = tf.shape(input_data)[2]
+            tile_multiples = [1, tf.shape(input_data)[1], 1, 1]
+
+        else:
+            raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
+
+        data_reduced = tf.reduce_mean(input_data, axis=[base_axis, 3])
+        data_reversed = tf.reverse(data_reduced, axis=[1])
+
+        padding_mask = tf.cast(tf.not_equal(data_reversed, tf.cast(pad_value, input_data.dtype)), tf.int32)
+
+        padding_length = tf.argmax(padding_mask, axis=1, output_type=tf.int32)
+        content_length = tf.where(tf.equal(padding_length, 0), max_length, max_length - padding_length)
+
+        mask = tf.sequence_mask(content_length, maxlen=max_length)
+        mask = tf.expand_dims(tf.expand_dims(mask, axis=base_axis), axis=-1)
+        mask = tf.tile(mask, multiples=tile_multiples)
+
+        return tf.stop_gradient(mask)
+
+    def compute_mask_length(self, input_data, mask_value, axis):
+        """
+        Computes mask content length along an axis.
+
+        Parameters
+        ----------
+        input_data : tf.Tensor
+            Input data tensor.
+        mask_value : float
+            Mask value.
+        axis : int
+            Axis to compute length.
+
+        Returns
+        -------
+        tf.Tensor
+            Content lengths.
+        """
+
+        if axis not in (1, 2):
+            raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
+
+        data_reduced = tf.reduce_sum(input_data, axis=[axis, 3])
+
+        content = tf.cast(tf.not_equal(data_reduced, mask_value), tf.int32)
+        content_length = tf.reduce_sum(content, axis=1)
+
+        return tf.stop_gradient(content_length)
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The Shape of the input tensors.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        if not self.built:
+            self.build(input_shape)
+
+        return input_shape[1]
+
+
 class ExtractPatches(tf.keras.layers.Layer):
     """
     Layer to extract patches from input images.
