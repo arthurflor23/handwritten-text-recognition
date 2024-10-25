@@ -298,32 +298,35 @@ class ContentAlignment(tf.keras.layers.Layer):
             image = img[:content_h, :content_w, :]
             image = tf.image.resize(image, size=(target_content_h, target_content_w), method='nearest')
 
-            remaining_h = self.target_shape[1] - tf.shape(image)[0]
-            remaining_w = self.target_shape[2] - tf.shape(image)[1]
+            shape = tf.shape(image)
+            rem_h = self.target_shape[1] - shape[0]
 
-            if tf.greater(remaining_h, 0):
-                chunk = img[content_h:, :tf.shape(image)[1], :]
+            if tf.greater(rem_h, 0):
+                chunk = img[content_h:, :shape[1], :]
 
                 chunk = tf.cond(
                     tf.greater(tf.shape(chunk)[0], 0),
-                    lambda: tf.image.resize(chunk, size=(remaining_h, tf.shape(image)[1]), method='nearest'),
-                    lambda: tf.cast(tf.fill([remaining_h, tf.shape(image)[1], 1], self.min_value), dtype=img.dtype)
+                    lambda: tf.image.resize(chunk, size=(rem_h, shape[1]), method='nearest'),
+                    lambda: tf.stop_gradient(tf.cast(tf.fill([rem_h, shape[1], 1], self.min_value), dtype=img.dtype))
                 )
 
                 image = tf.concat([image, chunk], axis=0)
 
-            if tf.greater(remaining_w, 0):
-                chunk = img[:tf.shape(image)[0], content_w:, :]
+            shape = tf.shape(image)
+            rem_w = self.target_shape[2] - shape[1]
+
+            if tf.greater(rem_w, 0):
+                chunk = img[:shape[0], content_w:, :]
 
                 chunk = tf.cond(
                     tf.greater(tf.shape(chunk)[1], 0),
-                    lambda: tf.image.resize(chunk, size=(tf.shape(image)[0], remaining_w), method='nearest'),
-                    lambda: tf.cast(tf.fill([tf.shape(image)[0], remaining_w, 1], self.min_value), dtype=img.dtype)
+                    lambda: tf.image.resize(chunk, size=(shape[0], rem_w), method='nearest'),
+                    lambda: tf.stop_gradient(tf.cast(tf.fill([shape[0], rem_w, 1], self.min_value), dtype=img.dtype))
                 )
 
                 image = tf.concat([image, chunk], axis=1)
 
-            return tf.stop_gradient(image)
+            return image
 
         args = (input_data, data_content_height, data_content_width, target_content_height, target_content_width)
         outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
@@ -377,6 +380,8 @@ class ContentAlignment(tf.keras.layers.Layer):
             Content mask tensor.
         """
 
+        data = tf.where(input_data > self.max_value * 0.01, self.max_value, self.min_value)
+
         if axis == 1:
             base_axis = 2
             max_length = tf.shape(input_data)[1]
@@ -390,10 +395,8 @@ class ContentAlignment(tf.keras.layers.Layer):
         else:
             raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
 
-        data_reduced = tf.reduce_mean(input_data, axis=[base_axis, 3])
-        data_reversed = tf.reverse(data_reduced, axis=[1])
-
-        padding_mask = tf.cast(tf.not_equal(data_reversed, tf.cast(pad_value, input_data.dtype)), tf.int32)
+        reduced_data = tf.reverse(tf.reduce_mean(data, axis=[base_axis, 3]), axis=[1])
+        padding_mask = tf.cast(tf.not_equal(reduced_data, tf.cast(pad_value, reduced_data.dtype)), tf.int32)
 
         padding_length = tf.argmax(padding_mask, axis=1, output_type=tf.int32)
         content_length = tf.where(tf.equal(padding_length, 0), max_length, max_length - padding_length)
