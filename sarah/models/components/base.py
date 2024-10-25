@@ -10,6 +10,7 @@ from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
 from sarah.models.components.metrics import EditDistance
 from sarah.models.components.metrics import KernelInceptionDistance
+from sarah.models.components.utils import MetricsTracker
 
 
 class BaseModel(tf.keras.Model):
@@ -574,7 +575,9 @@ class BaseSynthesisModel(BaseModel):
 
         self.discriminator_steps = discriminator_steps
         self.generator_steps = generator_steps
+
         self.global_steps = tf.Variable(0, dtype=tf.int64)
+        self.metrics_tracker = MetricsTracker()
 
         self.names = [
             'recognition',
@@ -591,7 +594,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
 
-        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
+        self.kid = KernelInceptionDistance()
         self.monitor = self.kid.name
 
         self.build_model()
