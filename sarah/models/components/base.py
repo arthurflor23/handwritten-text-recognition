@@ -515,7 +515,7 @@ class BaseRecognitionModel(BaseModel):
             progbar.update(step + 1)
 
         evaluations = sorted(evaluations, key=lambda x: x['predictions'][0]['cer'])
-        metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
+        metrics = {k: float(np.mean(metrics[k])) for k in metrics}
 
         return metrics, evaluations
 
@@ -728,6 +728,6 @@ class BaseSynthesisModel(BaseModel):
 
             progbar.update(step + 1)
 
-        metrics = {k: np.mean(metrics[k], dtype=float) for k in metrics}
+        metrics = {k: float(np.mean(metrics[k])) for k in metrics}
 
         return metrics, evaluations
