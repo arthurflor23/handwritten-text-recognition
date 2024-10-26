@@ -594,7 +594,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
 
-        self.kid = KernelInceptionDistance()
+        self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
         self.monitor = self.kid.name
 
         self.build_model()
