@@ -206,24 +206,43 @@ class ContentAlignment(tf.keras.layers.Layer):
     Extracts, resizes, and aligns the input content to match a target mask.
     """
 
-    def __init__(self, min_value=-1, max_value=1, **kwargs):
+    def __init__(self,
+                 char_height_ratio,
+                 char_width_ratio,
+                 image_min_value=-1,
+                 image_max_value=1,
+                 text_padding_value=0,
+                 mask_padding_value=0,
+                 **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        min_value : float, optional
-            The minimum value of the input data.
-        max_value : float, optional
-            The maximum value of the input data.
+        char_height_ratio : int
+            The height factor of the character in the image.
+        char_width_ratio : int
+            The width factor of the character in the image.
+        image_min_value : int, optional
+            Minimum value of the input images.
+        image_max_value : int, optional
+            Maximum value of the input images.
+        text_padding_value : int, optional
+            Padding value for text inputs.
+        mask_padding_value : int, optional
+            Padding value for mask inputs.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.min_value = min_value
-        self.max_value = max_value
+        self.char_height_ratio = char_height_ratio
+        self.char_width_ratio = char_width_ratio
+        self.image_min_value = image_min_value
+        self.image_max_value = image_max_value
+        self.text_padding_value = text_padding_value
+        self.mask_padding_value = mask_padding_value
 
     def get_config(self):
         """
@@ -238,8 +257,12 @@ class ContentAlignment(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'min_value': self.min_value,
-            'max_value': self.max_value,
+            'char_height_ratio': self.char_height_ratio,
+            'char_width_ratio': self.char_width_ratio,
+            'image_min_value': self.image_min_value,
+            'image_max_value': self.image_max_value,
+            'text_padding_value': self.text_padding_value,
+            'mask_padding_value': self.mask_padding_value,
         })
 
         return config
@@ -256,7 +279,8 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.target_shape = input_shape[1]
+        self.input_shape = input_shape[0]
+        self.target_shape = input_shape[-1]
 
     @tf.function()
     def call(self, inputs, training=False):
@@ -276,70 +300,56 @@ class ContentAlignment(tf.keras.layers.Layer):
             Aligned image tensor.
         """
 
-        input_data, target_mask = inputs
+        input_data, input_text, input_mask = inputs
 
-        data_mask = self.compute_content_mask(input_data, pad_value=self.min_value)
+        text_height = self.get_content_length(input_text, self.text_padding_value, axis=1)
+        text_height = tf.clip_by_value(text_height * self.char_height_ratio, 0, self.input_shape[1])
 
-        data_content_height = self.compute_mask_length(data_mask, mask_value=0, axis=2)
-        data_content_width = self.compute_mask_length(data_mask, mask_value=0, axis=1)
+        text_width = self.get_content_length(input_text, self.text_padding_value, axis=2)
+        text_width = tf.clip_by_value(text_width * self.char_width_ratio, 0, self.input_shape[2])
 
-        target_content_height = self.compute_mask_length(target_mask, mask_value=0, axis=2)
-        target_content_width = self.compute_mask_length(target_mask, mask_value=0, axis=1)
+        mask_height = self.get_content_length(input_mask, self.mask_padding_value, axis=1)
+        mask_width = self.get_content_length(input_mask, self.mask_padding_value, axis=2)
 
         def content_alignment(args):
-            img, content_h, content_w, target_content_h, target_content_w = args
+            img, text_h, text_w, mask_h, mask_w = args
+            image = tf.image.resize(img[:text_h, :text_w, :], size=(mask_h, mask_w), method='nearest')
 
-            if tf.equal(content_h, tf.shape(img)[0]):
-                target_content_h = self.target_shape[1]
+            if tf.shape(img)[1] > text_w and self.target_shape[2] > mask_w:
+                size = [mask_h, self.target_shape[2] - mask_w]
+                chunk = tf.image.resize(img[:text_h, text_w:, :], size=size, method='nearest')
+                image = tf.concat([image, chunk], axis=1)
 
-            if tf.equal(content_w, tf.shape(img)[1]):
-                target_content_w = self.target_shape[2]
+            if tf.shape(image)[1] < self.target_shape[2]:
+                repeats = self.target_shape[2] - tf.shape(image)[1]
+                chunk = tf.repeat(image[:, -1:, :], repeats=repeats, axis=1)
+                image = tf.concat([image, chunk], axis=1)
 
-            image = img[:content_h, :content_w, :]
-            image = tf.image.resize(image, size=(target_content_h, target_content_w), method='nearest')
-
-            shape = tf.shape(image)
-            rem_h = self.target_shape[1] - shape[0]
-
-            if tf.greater(rem_h, 0):
-                chunk = img[content_h:, :shape[1], :]
-
-                chunk = tf.cond(
-                    tf.greater(tf.shape(chunk)[0], 0),
-                    lambda: tf.image.resize(chunk, size=(rem_h, shape[1]), method='nearest'),
-                    lambda: tf.stop_gradient(tf.cast(tf.fill([rem_h, shape[1], 1], self.min_value), dtype=img.dtype))
-                )
-
+            if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
+                size = [self.target_shape[1] - mask_h, self.target_shape[2]]
+                chunk = tf.image.resize(img[text_h:, :text_w, :], size=size, method='nearest')
                 image = tf.concat([image, chunk], axis=0)
 
-            shape = tf.shape(image)
-            rem_w = self.target_shape[2] - shape[1]
-
-            if tf.greater(rem_w, 0):
-                chunk = img[:shape[0], content_w:, :]
-
-                chunk = tf.cond(
-                    tf.greater(tf.shape(chunk)[1], 0),
-                    lambda: tf.image.resize(chunk, size=(shape[0], rem_w), method='nearest'),
-                    lambda: tf.stop_gradient(tf.cast(tf.fill([shape[0], rem_w, 1], self.min_value), dtype=img.dtype))
-                )
-
-                image = tf.concat([image, chunk], axis=1)
+            if tf.shape(image)[0] < self.target_shape[1]:
+                repeats = self.target_shape[1] - tf.shape(image)[0]
+                chunk = tf.repeat(image[-1:, :, :], repeats=repeats, axis=0)
+                image = tf.concat([image, chunk], axis=0)
 
             return image
 
-        args = (input_data, data_content_height, data_content_width, target_content_height, target_content_width)
+        args = (input_data, text_height, text_width, mask_height, mask_width)
         outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
 
         if not training:
-            outputs = (outputs - self.min_value) / (self.max_value - self.min_value) * 255
-            outputs = (outputs * target_mask) / 255 * (self.max_value - self.min_value) + self.min_value
+            delta = self.image_max_value - self.image_min_value
+            outputs = (outputs - self.image_min_value) / delta * 255
+            outputs = (outputs * input_mask) / 255 * delta + self.image_min_value
 
         return outputs
 
-    def compute_content_mask(self, input_data, pad_value):
+    def get_content_length(self, input_data, pad_value, axis):
         """
-        Computes content mask from input data.
+        Computes content length along an axis.
 
         Parameters
         ----------
@@ -347,76 +357,6 @@ class ContentAlignment(tf.keras.layers.Layer):
             Input data tensor.
         pad_value : float
             Padding value.
-
-        Returns
-        -------
-        tf.Tensor
-            Content mask tensor.
-        """
-
-        h_mask = self.compute_axis_mask(input_data, pad_value, axis=1)
-        w_mask = self.compute_axis_mask(input_data, pad_value, axis=2)
-
-        mask = tf.cast(tf.logical_and(h_mask, w_mask), dtype=tf.int32)
-
-        return tf.stop_gradient(mask)
-
-    def compute_axis_mask(self, input_data, pad_value, axis):
-        """
-        Computes mask along a specific axis.
-
-        Parameters
-        ----------
-        input_data : tf.Tensor
-            Input data tensor.
-        pad_value : float
-            Padding value.
-        axis : int, optional
-            Axis to compute mask.
-
-        Returns
-        -------
-        tf.Tensor
-            Content mask tensor.
-        """
-
-        data = tf.where(input_data > self.max_value * 0.01, self.max_value, self.min_value)
-
-        if axis == 1:
-            base_axis = 2
-            max_length = tf.shape(input_data)[1]
-            tile_multiples = [1, 1, tf.shape(input_data)[2], 1]
-
-        elif axis == 2:
-            base_axis = 1
-            max_length = tf.shape(input_data)[2]
-            tile_multiples = [1, tf.shape(input_data)[1], 1, 1]
-
-        else:
-            raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
-
-        reduced_data = tf.reverse(tf.reduce_mean(data, axis=[base_axis, 3]), axis=[1])
-        padding_mask = tf.cast(tf.not_equal(reduced_data, tf.cast(pad_value, reduced_data.dtype)), tf.int32)
-
-        padding_length = tf.argmax(padding_mask, axis=1, output_type=tf.int32)
-        content_length = tf.where(tf.equal(padding_length, 0), max_length, max_length - padding_length)
-
-        mask = tf.sequence_mask(content_length, maxlen=max_length)
-        mask = tf.expand_dims(tf.expand_dims(mask, axis=base_axis), axis=-1)
-        mask = tf.tile(mask, multiples=tile_multiples)
-
-        return tf.stop_gradient(mask)
-
-    def compute_mask_length(self, input_data, mask_value, axis):
-        """
-        Computes mask content length along an axis.
-
-        Parameters
-        ----------
-        input_data : tf.Tensor
-            Input data tensor.
-        mask_value : float
-            Mask value.
         axis : int
             Axis to compute length.
 
@@ -426,15 +366,23 @@ class ContentAlignment(tf.keras.layers.Layer):
             Content lengths.
         """
 
-        if axis not in (1, 2):
+        input_rank = len(tf.shape(input_data))
+
+        if axis not in [1, 2]:
             raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
+        elif input_rank <= 1 or input_rank >= 5:
+            raise ValueError('Unsupported rank. Only rank<5 and rank>1 are supported.')
 
-        data_reduced = tf.reduce_sum(input_data, axis=[axis, 3])
+        if input_rank == 2:
+            input_data = tf.expand_dims(input_data, axis=1)
+        elif input_rank == 4:
+            input_data = tf.squeeze(input_data, axis=-1)
 
-        content = tf.cast(tf.not_equal(data_reduced, mask_value), tf.int32)
-        content_length = tf.reduce_sum(content, axis=1)
+        reduced = tf.reduce_sum(input_data, axis=(2 if axis == 1 else 1))
+        content = tf.cast(tf.not_equal(reduced, pad_value), tf.int32)
+        lengths = tf.reduce_sum(content, axis=1)
 
-        return tf.stop_gradient(content_length)
+        return lengths
 
     def compute_output_shape(self, input_shape):
         """
@@ -454,7 +402,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
-        return input_shape[1]
+        return input_shape[-1]
 
 
 class ExtractPatches(tf.keras.layers.Layer):
