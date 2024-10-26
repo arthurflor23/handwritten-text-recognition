@@ -266,10 +266,10 @@ class BaseRecognitionModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, _ = x_data
-        image_data, text_data, _, mask_data = y_data
+        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        image_data, text_data, _, _ = y_data
 
-        images, texts, mask = aug_image_data, text_data, mask_data
+        images, texts, mask = aug_image_data, text_data, aug_mask_data
 
         if self.style_backbone and self.style_encoder and self.generator:
             if np.random.random() <= self.synthetic_data_ratio:
