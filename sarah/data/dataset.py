@@ -250,7 +250,9 @@ class Dataset():
                     if ratios[i] is None:
                         continue
 
-                    np.random.shuffle(data[i])
+                    if ratios[i] > 0:
+                        np.random.shuffle(data[i])
+
                     index = round((ratios[i] + 1e-8) * len(data[i])) \
                         if isinstance(ratios[i], float) else ratios[i]
 
