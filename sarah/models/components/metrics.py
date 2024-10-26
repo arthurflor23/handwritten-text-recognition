@@ -117,13 +117,13 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
-    def __init__(self, scale=127.5, offset=127.5, name='kid', **kwargs):
+    def __init__(self, scale, offset=0.0, name='kid', **kwargs):
         """
         Initialize the KID metric instance.
 
         Parameters
         ----------
-        scale : float, optional
+        scale : float
             Scaling factor for preprocessing.
         offset : float, optional
             Offset value for preprocessing.
