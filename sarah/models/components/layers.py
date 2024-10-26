@@ -302,11 +302,17 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         input_data, input_text, input_mask = inputs
 
-        text_height = self.get_content_length(input_text, self.text_padding_value, axis=1)
-        text_height = tf.clip_by_value(text_height * self.char_height_ratio, 0, self.input_shape[1])
+        text_height = self.get_content_length(input_data=input_text,
+                                              pad_value=self.text_padding_value,
+                                              scale_by=self.char_height_ratio,
+                                              clip_by=self.input_shape[1],
+                                              axis=1)
 
-        text_width = self.get_content_length(input_text, self.text_padding_value, axis=2)
-        text_width = tf.clip_by_value(text_width * self.char_width_ratio, 0, self.input_shape[2])
+        text_width = self.get_content_length(input_data=input_text,
+                                             pad_value=self.text_padding_value,
+                                             scale_by=self.char_width_ratio,
+                                             clip_by=self.input_shape[2],
+                                             axis=2)
 
         mask_height = self.get_content_length(input_mask, self.mask_padding_value, axis=1)
         mask_width = self.get_content_length(input_mask, self.mask_padding_value, axis=2)
@@ -318,22 +324,22 @@ class ContentAlignment(tf.keras.layers.Layer):
             if tf.shape(img)[1] > text_w and self.target_shape[2] > mask_w:
                 size = [mask_h, self.target_shape[2] - mask_w]
                 chunk = tf.image.resize(img[:text_h, text_w:, :], size=size, method='nearest')
-                image = tf.concat([image, chunk], axis=1)
+                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=1)
 
             if tf.shape(image)[1] < self.target_shape[2]:
                 repeats = self.target_shape[2] - tf.shape(image)[1]
                 chunk = tf.repeat(image[:, -1:, :], repeats=repeats, axis=1)
-                image = tf.concat([image, chunk], axis=1)
+                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=1)
 
             if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
                 size = [self.target_shape[1] - mask_h, self.target_shape[2]]
                 chunk = tf.image.resize(img[text_h:, :text_w, :], size=size, method='nearest')
-                image = tf.concat([image, chunk], axis=0)
+                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=0)
 
             if tf.shape(image)[0] < self.target_shape[1]:
                 repeats = self.target_shape[1] - tf.shape(image)[0]
                 chunk = tf.repeat(image[-1:, :, :], repeats=repeats, axis=0)
-                image = tf.concat([image, chunk], axis=0)
+                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=0)
 
             return image
 
@@ -342,12 +348,12 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         if not training:
             delta = self.image_max_value - self.image_min_value
-            outputs = (outputs - self.image_min_value) / delta * 255
-            outputs = (outputs * input_mask) / 255 * delta + self.image_min_value
+            outputs = ((outputs - self.image_min_value) / delta) * 255
+            outputs = (((outputs * input_mask) / 255) * delta) + self.image_min_value
 
         return outputs
 
-    def get_content_length(self, input_data, pad_value, axis):
+    def get_content_length(self, input_data, pad_value, scale_by=None, clip_by=None, axis=1):
         """
         Computes content length along an axis.
 
@@ -357,6 +363,10 @@ class ContentAlignment(tf.keras.layers.Layer):
             Input data tensor.
         pad_value : float
             Padding value.
+        scale_by : float, optional
+            Factor to scale the length values.
+        clip_by : float, optional
+            Maximum value to clip the lengths.
         axis : int
             Axis to compute length.
 
@@ -382,7 +392,13 @@ class ContentAlignment(tf.keras.layers.Layer):
         content = tf.cast(tf.not_equal(reduced, pad_value), tf.int32)
         lengths = tf.reduce_sum(content, axis=1)
 
-        return lengths
+        if scale_by is not None:
+            lengths = lengths * scale_by
+
+        if clip_by is not None:
+            lengths = tf.clip_by_value(lengths, 0, clip_by)
+
+        return tf.stop_gradient(lengths)
 
     def compute_output_shape(self, input_shape):
         """
