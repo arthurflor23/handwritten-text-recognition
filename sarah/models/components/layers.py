@@ -324,22 +324,28 @@ class ContentAlignment(tf.keras.layers.Layer):
             if tf.shape(img)[1] > text_w and self.target_shape[2] > mask_w:
                 size = [mask_h, self.target_shape[2] - mask_w]
                 chunk = tf.image.resize(img[:text_h, text_w:, :], size=size, method='nearest')
-                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=1)
+
+                image = tf.concat([image, chunk], axis=1)
 
             if tf.shape(image)[1] < self.target_shape[2]:
                 repeats = self.target_shape[2] - tf.shape(image)[1]
-                chunk = tf.repeat(image[:, -1:, :], repeats=repeats, axis=1)
-                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=1)
+                chunk = tf.fill([tf.shape(image)[0], repeats, 1], self.image_min_value)
+                chunk = tf.stop_gradient(tf.cast(chunk, dtype=image.dtype))
+
+                image = tf.concat([image, chunk], axis=1)
 
             if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
                 size = [self.target_shape[1] - mask_h, self.target_shape[2]]
                 chunk = tf.image.resize(img[text_h:, :text_w, :], size=size, method='nearest')
-                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=0)
+
+                image = tf.concat([image, chunk], axis=0)
 
             if tf.shape(image)[0] < self.target_shape[1]:
                 repeats = self.target_shape[1] - tf.shape(image)[0]
-                chunk = tf.repeat(image[-1:, :, :], repeats=repeats, axis=0)
-                image = tf.concat([image, tf.cast(chunk, dtype=image.dtype)], axis=0)
+                chunk = tf.fill([repeats, tf.shape(image)[1], 1], self.image_min_value)
+                chunk = tf.stop_gradient(tf.cast(chunk, dtype=image.dtype))
+
+                image = tf.concat([image, chunk], axis=0)
 
             return image
 
