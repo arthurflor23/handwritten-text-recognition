@@ -667,13 +667,12 @@ class GeneratorModel(BaseModel):
         self.base_height = 4
         self.base_width = 4
 
-        self.text_length = self.lexical_shape[0] * self.lexical_shape[1]
-        self.patch_height = self.lexical_shape[0] * self.base_height
-        self.patch_width = self.lexical_shape[1] * self.base_width
+        self.start_height = self.lexical_shape[0] * self.base_height
+        self.start_width = self.lexical_shape[1] * self.base_width
 
         if not self.strides:
-            h_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / self.patch_height))
-            w_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / self.patch_width))
+            h_steps = int(tf.keras.ops.log2(self.image_shape[0] / self.start_height))
+            w_steps = int(tf.keras.ops.log2(self.image_shape[1] / self.start_width))
 
             h_stride = [1] * self.num_blocks
             w_stride = [1] * self.num_blocks
@@ -765,7 +764,7 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.SpectralNormalization(
             tf.keras.layers.Dense(units=self.base_width * self.base_height * self.blocks[0] * 2))(embedding)
 
-        block = tf.keras.layers.Reshape(target_shape=(self.patch_width, self.patch_height, -1))(block)
+        block = tf.keras.layers.Reshape(target_shape=(self.start_width, self.start_height, -1))(block)
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
         latent_chunks = tf.keras.layers.SpectralNormalization(
@@ -858,12 +857,11 @@ class DiscriminatorModel(BaseModel):
             self.strides = [(2, 2)] * len(self.blocks)
 
             if self.lexical_shape:
-                self.text_length = self.lexical_shape[0] * self.lexical_shape[1]
-                self.patch_height = self.lexical_shape[0] * self.base_height
-                self.patch_width = self.lexical_shape[1] * self.base_width
+                self.start_height = self.lexical_shape[0] * self.base_height
+                self.start_width = self.lexical_shape[1] * self.base_width
 
-                h_steps = int(tf.experimental.numpy.log2(self.image_shape[0] / self.patch_height))
-                w_steps = int(tf.experimental.numpy.log2(self.image_shape[1] / self.patch_width))
+                h_steps = int(tf.keras.ops.log2(self.image_shape[0] / self.start_height))
+                w_steps = int(tf.keras.ops.log2(self.image_shape[1] / self.start_width))
 
                 h_stride = [1] * self.num_blocks
                 w_stride = [1] * self.num_blocks
