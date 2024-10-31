@@ -1,48 +1,74 @@
 import tensorflow as tf
 
 
-class MetricsTracker():
+class MetricTracker():
     """
-    A metrics tracker and manager over time.
+    Tracks and adapts weighted losses over training.
     """
 
     def __init__(self, metrics=None):
         """
-        Initialize the tracker instance.
+        Initializes metrics tracker.
 
         Parameters
         ----------
-        metrics : list, optional
-            List of metric names.
+        metrics : list of str, optional
+            Names of metrics to initialize.
         """
 
         self.metrics = {}
+        self.weights = {}
 
         if metrics is not None:
             self.add(metrics)
 
     def add(self, metrics):
         """
-        Add new metrics to the tracker.
+        Adds new metrics to track.
 
         Parameters
         ----------
-        metrics : list
-            List of metric names to add.
+        metrics : list of str
+            Metric names to add.
         """
 
         for name in metrics:
             if name not in self.metrics:
                 self.metrics[name] = tf.keras.metrics.Mean()
 
+                self.weights[name] = tf.keras.Variable(name=f"weight_{name}",
+                                                       initializer=1.0,
+                                                       dtype=tf.float32,
+                                                       trainable=True)
+
+    def reset(self):
+        """
+        Resets all tracked metrics.
+        """
+
+        for metric in self.metrics.values():
+            metric.reset_states()
+
+    def result(self):
+        """
+        Computes averages of all tracked metrics.
+
+        Returns
+        -------
+        dict
+            Dictionary of average values per metric.
+        """
+
+        return {name: metric.result() for name, metric in self.metrics.items()}
+
     def update(self, metrics):
         """
-        Update the metrics with new values.
+        Updates metrics with new values.
 
         Parameters
         ----------
-        metrics : dict
-            Dictionary with metric names as keys and their new values.
+        metrics : dict of tf.Tensor
+            Metric names and values to update.
         """
 
         for name, value in metrics.items():
@@ -53,22 +79,31 @@ class MetricsTracker():
                     true_fn=lambda: None,
                     false_fn=lambda: self.metrics[name].update_state(value))
 
-    def result(self):
+    def weight(self, metrics):
         """
-        Return the current average results of all metrics.
+        Calculates adaptive weighted metrics.
+
+        Parameters
+        ----------
+        metrics : dict of tf.Tensor
+            Metric names and values to compute weights.
 
         Returns
         -------
-        dict
-            Dictionary containing the current average of each metric.
+        dict of tf.Tensor
+            Dictionary of weighted individual metrics.
         """
 
-        return {name: metric.result() for name, metric in self.metrics.items()}
+        weighted_losses = {}
+        trainable_weights = []
 
-    def reset(self):
-        """
-        Reset the state of the metrics.
-        """
+        for name, value in metrics.items():
+            if name not in self.metrics:
+                self.add([name])
 
-        for metric in self.metrics.values():
-            metric.reset_states()
+            sigma = tf.nn.relu(self.weights[name]) + 1e-8
+            weighted_losses[name] = (1 / (2 * tf.square(sigma))) * value + tf.math.log(sigma)
+
+            trainable_weights.append(self.weights[name])
+
+        return weighted_losses, trainable_weights
