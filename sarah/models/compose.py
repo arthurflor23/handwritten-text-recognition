@@ -836,6 +836,9 @@ class Compose():
             with open(metadata_file, 'r') as f:
                 yaml_file = yaml.safe_load(f)
 
+            if yaml_file is None:
+                continue
+
             experiment_id = metadata_file.split('/')[1]
             update_needed = False
 
