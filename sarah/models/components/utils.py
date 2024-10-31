@@ -102,7 +102,7 @@ class MetricTracker():
                 self.add([name])
 
             sigma = tf.square(self.weights[name]) + 1e-8
-            weighted_losses[name] = (1 / (2 * sigma)) * value + tf.math.log(sigma)
+            weighted_losses[name] = ((0.5 / sigma) * value) + tf.math.log(1 + sigma)
 
             trainable_weights.append(self.weights[name])
 
