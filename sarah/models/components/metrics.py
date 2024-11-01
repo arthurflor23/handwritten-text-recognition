@@ -273,13 +273,13 @@ class MetricTracker():
         for metric in self.metrics.values():
             metric.reset_states()
 
-    def result(self, val=False):
+    def result(self, val_metrics=False):
         """
-        Computes averages of all tracked metrics.
+        Returns the current values fo the metrics.
 
         Parameters
         ----------
-        val : bool, optional
+        val_metrics : bool, optional
             Whether to return validation metrics or not.
 
         Returns
@@ -291,7 +291,7 @@ class MetricTracker():
         results = {}
 
         for name, value in self.metrics.items():
-            if val == name.startswith('val_'):
+            if val_metrics == name.startswith('val_'):
                 results[name.lstrip('val_')] = value.result()
 
         return results
