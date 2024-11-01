@@ -223,3 +223,123 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         """
 
         self.tracker.reset_state()
+
+
+class MetricTracker():
+    """
+    Tracks and adapts weighted losses over training.
+    """
+
+    def __init__(self, metrics=None):
+        """
+        Initializes metrics tracker.
+
+        Parameters
+        ----------
+        metrics : list of str, optional
+            Names of metrics to initialize.
+        """
+
+        self.metrics = {}
+        self.weights = {}
+
+        if metrics is not None:
+            self.add(metrics)
+
+    def add(self, metrics):
+        """
+        Adds new metrics to track.
+
+        Parameters
+        ----------
+        metrics : list of str
+            Metric names to add.
+        """
+
+        for name in metrics:
+            if name not in self.metrics:
+                self.metrics[name] = tf.keras.metrics.Mean()
+
+                self.weights[name] = tf.keras.Variable(name=f"weight_{name}",
+                                                       initializer=1.0,
+                                                       dtype=tf.float32,
+                                                       trainable=True)
+
+    def reset(self):
+        """
+        Resets all tracked metrics.
+        """
+
+        for metric in self.metrics.values():
+            metric.reset_states()
+
+    def result(self, val=False):
+        """
+        Computes averages of all tracked metrics.
+
+        Parameters
+        ----------
+        val : bool, optional
+            Whether to return validation metrics or not.
+
+        Returns
+        -------
+        dict
+            Dictionary of average values per metric.
+        """
+
+        results = {}
+
+        for name, value in self.metrics.items():
+            if val == name.startswith('val_'):
+                results[name.lstrip('val_')] = value.result()
+
+        return results
+
+    def update(self, metrics):
+        """
+        Updates metrics with new values.
+
+        Parameters
+        ----------
+        metrics : dict of tf.Tensor
+            Metric names and values to update.
+        """
+
+        for name, value in metrics.items():
+            if name not in self.metrics:
+                self.add([name])
+
+            tf.cond(pred=tf.reduce_any(tf.math.is_nan(value)),
+                    true_fn=lambda: None,
+                    false_fn=lambda: self.metrics[name].update_state(value))
+
+    def weight(self, metrics):
+        """
+        Calculates adaptive weighted metrics.
+
+        Parameters
+        ----------
+        metrics : dict of tf.Tensor
+            Metric names and values to compute weights.
+
+        Returns
+        -------
+        dict of tf.Tensor
+            Dictionary of weighted individual metrics.
+        """
+
+        weighted_losses = {}
+        trainable_weights = []
+
+        for name, value in metrics.items():
+            if name not in self.metrics:
+                self.add([name])
+
+            weighted_loss = 0.5 / (self.weights[name] ** 2) * value
+            regularization = tf.math.log(1 + self.weights[name] ** 2)
+
+            weighted_losses[name] = weighted_loss + regularization
+            trainable_weights.append(self.weights[name])
+
+        return weighted_losses, trainable_weights
