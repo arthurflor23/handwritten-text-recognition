@@ -334,7 +334,7 @@ class BaseRecognitionModel(BaseModel):
             f"val_{self.edit_distance.name}": self.edit_distance.result(),
         })
 
-        return self.metric_tracker.result(val=True)
+        return self.metric_tracker.result(val_metrics=True)
 
     def call(self, x_data, training=False):
         """
@@ -661,7 +661,7 @@ class BaseSynthesisModel(BaseModel):
             f"val_{self.kid.name}": self.kid.result(),
         })
 
-        return self.metric_tracker.result(val=True)
+        return self.metric_tracker.result(val_metrics=True)
 
     def call(self, x_data, training=False):
         """
