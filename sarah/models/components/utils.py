@@ -101,9 +101,10 @@ class MetricTracker():
             if name not in self.metrics:
                 self.add([name])
 
-            sigma = tf.square(self.weights[name]) + 1e-8
-            weighted_losses[name] = ((0.5 / sigma) * value) + tf.math.log(1 + sigma)
+            weighted_loss = 0.5 / (self.weights[name] ** 2) * value
+            regularization = tf.math.log(1 + self.weights[name] ** 2)
 
+            weighted_losses[name] = weighted_loss + regularization
             trainable_weights.append(self.weights[name])
 
         return weighted_losses, trainable_weights
