@@ -8,9 +8,9 @@ import tensorflow as tf
 from sarah.models.components.losses import BetaVAELoss
 from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
-from sarah.models.components.losses import EditDistance
-from sarah.models.components.losses import KernelInceptionDistance
-from sarah.models.components.losses import LossTracker
+from sarah.models.components.metrics import EditDistance
+from sarah.models.components.metrics import KernelInceptionDistance
+from sarah.models.components.utils import MeasureTracker
 
 
 class BaseModel(tf.keras.Model):
@@ -225,7 +225,7 @@ class BaseRecognitionModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
 
-        self.loss_tracker = LossTracker()
+        self.measure_tracker = MeasureTracker()
         self.monitor = self.edit_distance.name
 
         self.build_model()
@@ -297,14 +297,14 @@ class BaseRecognitionModel(BaseModel):
         gradients = tape.gradient(ctc_loss, self.recognition.trainable_weights)
         self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
 
-        edit_distance = self.edit_distance(texts, ctc_logits)
+        self.edit_distance.update_state(texts, ctc_logits)
 
-        self.loss_tracker.update({
+        self.measure_tracker.update({
             self.ctc_loss.name: ctc_loss,
-            self.edit_distance.name: edit_distance,
+            self.edit_distance.name: self.edit_distance.result(),
         })
 
-        return self.loss_tracker.result()
+        return self.measure_tracker.result()
 
     def test_step(self, input_data):
         """
@@ -324,16 +324,16 @@ class BaseRecognitionModel(BaseModel):
         _, (image_data, text_data, _, _) = input_data
 
         ctc_logits = self.recognition(image_data)
-
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
-        edit_distance = self.edit_distance(text_data, ctc_logits)
 
-        self.loss_tracker.update({
+        self.edit_distance.update_state(text_data, ctc_logits)
+
+        self.measure_tracker.update({
             f"val_{self.ctc_loss.name}": ctc_loss,
-            f"val_{self.edit_distance.name}": edit_distance,
+            f"val_{self.edit_distance.name}": self.edit_distance.result(),
         })
 
-        return self.loss_tracker.result(val_loss=True)
+        return self.measure_tracker.result(val_only=True)
 
     def call(self, x_data, training=False):
         """
@@ -602,7 +602,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctx_loss = CTXLoss()
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
 
-        self.loss_tracker = LossTracker()
+        self.measure_tracker = MeasureTracker()
         self.monitor = self.kid.name
 
         self.build_model()
@@ -653,13 +653,13 @@ class BaseSynthesisModel(BaseModel):
 
         generated_images = self.generator([text_data, latent_data, mask_data])
 
-        kid = self.kid(image_data, generated_images)
+        self.kid.update_state(image_data, generated_images)
 
-        self.loss_tracker.update({
-            f"val_{self.kid.name}": kid,
+        self.measure_tracker.update({
+            f"val_{self.kid.name}": self.kid.result(),
         })
 
-        return self.loss_tracker.result(val_loss=True)
+        return self.measure_tracker.result(val_only=True)
 
     def call(self, x_data, training=False):
         """
