@@ -10,7 +10,7 @@ from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
 from sarah.models.components.metrics import EditDistance
 from sarah.models.components.metrics import KernelInceptionDistance
-from sarah.models.components.utils import MetricTracker
+from sarah.models.components.metrics import MetricTracker
 
 
 class BaseModel(tf.keras.Model):
@@ -215,6 +215,8 @@ class BaseRecognitionModel(BaseModel):
         self.generator = generator
         self.recognition = None
 
+        self.metric_tracker = MetricTracker()
+
         self.names = [
             'style_backbone',
             'style_encoder',
@@ -298,10 +300,12 @@ class BaseRecognitionModel(BaseModel):
 
         self.edit_distance.update_state(texts, ctc_logits)
 
-        return {
+        self.metric_tracker.update({
             self.ctc_loss.name: ctc_loss,
             self.edit_distance.name: self.edit_distance.result(),
-        }
+        })
+
+        return self.metric_tracker.result()
 
     def test_step(self, input_data):
         """
@@ -325,10 +329,12 @@ class BaseRecognitionModel(BaseModel):
 
         self.edit_distance.update_state(text_data, ctc_logits)
 
-        return {
-            self.ctc_loss.name: ctc_loss,
-            self.edit_distance.name: self.edit_distance.result(),
-        }
+        self.metric_tracker.update({
+            f"val_{self.ctc_loss.name}": ctc_loss,
+            f"val_{self.edit_distance.name}": self.edit_distance.result(),
+        })
+
+        return self.metric_tracker.result(val=True)
 
     def call(self, x_data, training=False):
         """
@@ -651,9 +657,11 @@ class BaseSynthesisModel(BaseModel):
 
         self.kid.update_state(image_data, generated_images)
 
-        return {
-            self.kid.name: self.kid.result(),
-        }
+        self.metric_tracker.update({
+            f"val_{self.kid.name}": self.kid.result(),
+        })
+
+        return self.metric_tracker.result(val=True)
 
     def call(self, x_data, training=False):
         """
