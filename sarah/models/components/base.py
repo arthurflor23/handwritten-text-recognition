@@ -215,8 +215,6 @@ class BaseRecognitionModel(BaseModel):
         self.generator = generator
         self.recognition = None
 
-        self.metric_tracker = MetricTracker()
-
         self.names = [
             'style_backbone',
             'style_encoder',
@@ -228,6 +226,8 @@ class BaseRecognitionModel(BaseModel):
 
         self.edit_distance = EditDistance()
         self.monitor = self.edit_distance.name
+
+        self.metric_tracker = MetricTracker()
 
         self.build_model()
         self.built = True
@@ -587,8 +587,6 @@ class BaseSynthesisModel(BaseModel):
                                               dtype=tf.int64,
                                               trainable=False)
 
-        self.metric_tracker = MetricTracker()
-
         self.names = [
             'recognition',
             'style_backbone',
@@ -600,12 +598,14 @@ class BaseSynthesisModel(BaseModel):
         ]
 
         self.bva_loss = BetaVAELoss()
-        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy()
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
 
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
         self.monitor = self.kid.name
+
+        self.metric_tracker = MetricTracker()
 
         self.build_model()
         self.built = True
