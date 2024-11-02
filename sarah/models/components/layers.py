@@ -12,7 +12,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1703.06868v2
     """
 
-    def __init__(self, epsilon=1e-5, **kwargs):
+    def __init__(self, epsilon=1e-3, **kwargs):
         """
         Initializes the adaptive instance normalization layer.
 
@@ -110,7 +110,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
+    def __init__(self, momentum=0.99, epsilon=1e-3, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -1431,7 +1431,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1903.07291
     """
 
-    def __init__(self, filters=32, kernel_size=3, epsilon=1e-5, **kwargs):
+    def __init__(self, filters=32, kernel_size=3, epsilon=1e-3, **kwargs):
         """
         Initialize the layer.
 
