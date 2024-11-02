@@ -83,7 +83,7 @@ class MeasureTracker():
 
         for name in self.values.keys():
             if val_only == name.startswith('val_'):
-                v_name = name.lstrip('val_')
+                v_name = name.removeprefix('val_')
 
                 if reduction == 'mean':
                     results[v_name] = self.means[name].result()
