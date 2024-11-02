@@ -506,7 +506,7 @@ class ExtractPatches(tf.keras.layers.Layer):
                                                sizes=sizes,
                                                strides=strides,
                                                rates=[1, 1, 1, 1],
-                                               padding='VALID')
+                                               padding='SAME')
 
             images = tf.reshape(patches, shape=[-1, self.patch_shape[0], self.patch_shape[1], 1])
 
