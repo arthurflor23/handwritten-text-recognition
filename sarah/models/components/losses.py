@@ -149,10 +149,7 @@ class CTXLoss(tf.keras.losses.Loss):
         https://arxiv.org/abs/1803.02077
     """
 
-    def __init__(self,
-                 sigma=0.5,
-                 name='ctx_loss',
-                 **kwargs):
+    def __init__(self, sigma=0.5, name='ctx_loss', **kwargs):
         """
         Initialize the CTXLoss instance.
 
