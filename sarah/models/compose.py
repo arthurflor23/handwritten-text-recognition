@@ -853,7 +853,7 @@ class Compose():
             for key in artifact_path_keys:
                 new_path = os.path.dirname(os.path.abspath(metadata_file))
                 new_path = os.path.join(new_path, artifact_path_keys[key])
-                new_path = f"file://{new_path}".rstrip('/')
+                new_path = f"file://{new_path}".removesuffix('/')
 
                 if yaml_file.get(key, new_path) != new_path:
                     yaml_file[key] = new_path
