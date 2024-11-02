@@ -443,7 +443,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         https://arxiv.org/abs/1609.04802
     """
 
-    def __init__(self, patch_shape=None, stride_factor=1, **kwargs):
+    def __init__(self, patch_shape=None, steps=[8, 8], **kwargs):
         """
         Initializes Patches layer.
 
@@ -451,8 +451,8 @@ class ExtractPatches(tf.keras.layers.Layer):
         ----------
         patch_shape : list, tuple or None
             The target patch size to create.
-        stride_factor : int, optional
-            Stride factor value for the patches.
+        steps : list or tuple, optional
+            Stride steps for the patches.
         **kwargs
             Additional keyword arguments for the Layer.
         """
@@ -460,7 +460,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.patch_shape = patch_shape
-        self.stride_factor = stride_factor
+        self.steps = steps
 
     def get_config(self):
         """
@@ -476,7 +476,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         config.update({
             'patch_shape': self.patch_shape,
-            'stride_factor': self.stride_factor,
+            'steps': self.steps,
         })
 
         return config
@@ -499,12 +499,9 @@ class ExtractPatches(tf.keras.layers.Layer):
         images = inputs
 
         if self.patch_shape:
-            sizes = [1, self.patch_shape[0], self.patch_shape[1], 1]
-            strides = [1, self.patch_shape[0]//self.stride_factor, self.patch_shape[1]//self.stride_factor, 1]
-
             patches = tf.image.extract_patches(images=images,
-                                               sizes=sizes,
-                                               strides=strides,
+                                               sizes=[1, self.patch_shape[0], self.patch_shape[1], 1],
+                                               strides=[1, self.steps[0], self.steps[1], 1],
                                                rates=[1, 1, 1, 1],
                                                padding='VALID')
 
