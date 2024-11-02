@@ -60,7 +60,7 @@ class Source():
             'washington',
         ]
 
-        filenames = [x for x in os.listdir(curr_dir) if x.rstrip('.py') in include_list]
+        filenames = [x for x in os.listdir(curr_dir) if x.removesuffix('.py') in include_list]
         filenames.sort()
 
         data = {'training': [], 'validation': [], 'test': []}
