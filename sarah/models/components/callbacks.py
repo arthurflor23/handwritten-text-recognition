@@ -182,7 +182,7 @@ class TrainingLogger(tf.keras.callbacks.Callback):
 
         if self.model_path:
             suffix = '.weights.h5' if self.save_weights_only else '.keras'
-            self.model_path = f"{self.model_path.rstrip(suffix)}{suffix}"
+            self.model_path = f"{self.model_path.removesuffix(suffix)}{suffix}"
 
     def on_train_begin(self, logs=None):
         """
