@@ -65,7 +65,9 @@ class EditDistance(tf.keras.metrics.Metric):
         edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
         edit_distance = tf.reduce_mean(edit_distance)
 
-        self.tracker.update_state(edit_distance)
+        tf.cond(pred=tf.math.is_nan(edit_distance),
+                true_fn=lambda: self.tracker.update_state(self.result()),
+                false_fn=lambda: self.tracker.update_state(edit_distance))
 
     def result(self):
         """
@@ -99,12 +101,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
     Rethinking the Inception Architecture for Computer Vision
         https://arxiv.org/abs/1512.00567
-
-    InceptionV3
-        https://keras.io/api/applications/inceptionv3/
-
-    ImageNet
-        https://www.tensorflow.org/datasets/catalog/imagenet2012
     """
 
     def __init__(self, scale, offset=0.0, name='kid', **kwargs):
@@ -169,11 +165,11 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + 1e-8)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
-        value = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
+        kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
 
-        tf.cond(pred=tf.math.is_nan(value),
-                true_fn=lambda: (self.tracker.update_state(self.result())),
-                false_fn=lambda: (self.tracker.update_state(value)))
+        tf.cond(pred=tf.math.is_nan(kid),
+                true_fn=lambda: self.tracker.update_state(self.result()),
+                false_fn=lambda: self.tracker.update_state(kid))
 
     def polynomial_kernel(self, features_1, features_2):
         """
