@@ -11,32 +11,56 @@ class MeasureTracker():
         https://arxiv.org/abs/1705.07115
     """
 
-    def __init__(self):
+    def __init__(self, measures=None):
         """
         Initializes trackers.
-        """
-
-        self.history = {}
-        self.tracker = {}
-        self.weights = {}
-
-    def add(self, name):
-        """
-        Adds a new measure to track if not already present.
 
         Parameters
         ----------
-        name : str
-            Name of the measure to track.
+        measures : list of str, optional
+            Measure names to initialize.
         """
 
-        if name not in self.history:
-            self.history[name] = []
-            self.tracker[name] = tf.keras.metrics.Mean()
-            self.weights[name] = tf.keras.Variable(name=f"weight_{name}",
-                                                   initializer=1.0,
-                                                   dtype=tf.float32,
-                                                   trainable=True)
+        self.means = {}
+        self.values = {}
+        self.weights = {}
+
+        if measures is not None:
+            self.add(measures)
+
+    def add(self, measures):
+        """
+        Adds new measures to track if not already present.
+
+        Parameters
+        ----------
+        measures : list of str
+            Measure names to add.
+        """
+
+        for name in measures:
+            if name not in self.values:
+                self.means[name] = tf.keras.metrics.Mean()
+
+                self.values[name] = tf.keras.Variable(name=f"{name}_value",
+                                                      initializer=0.0,
+                                                      dtype=tf.float32,
+                                                      trainable=False)
+
+                self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
+                                                       initializer=1.0,
+                                                       dtype=tf.float32,
+                                                       trainable=True)
+
+    def reset(self):
+        """
+        Resets all tracked measures to their initial states.
+        """
+
+        for name in self.values.keys():
+            self.means[name].reset_states()
+            self.values[name].assign(0.0)
+            self.weights[name].assign(1.0)
 
     def result(self, val_only=False, reduction=None):
         """
@@ -57,14 +81,14 @@ class MeasureTracker():
 
         results = {}
 
-        for name, values in self.history.items():
+        for name in self.values.keys():
             if val_only == name.startswith('val_'):
-                result_name = name.lstrip('val_')
+                v_name = name.lstrip('val_')
 
                 if reduction == 'mean':
-                    results[result_name] = self.tracker[name].result()
+                    results[v_name] = self.means[name].result()
                 else:
-                    results[result_name] = values[-1]
+                    results[v_name] = self.values[name]
 
         return results
 
@@ -79,12 +103,12 @@ class MeasureTracker():
         """
 
         def _update(name, value):
-            self.history[name].append(value)
-            self.tracker[name].update_state(value)
+            self.means[name].update_state(value)
+            self.values[name].assign(value)
 
         for name, value in measures.items():
-            if name not in self.history:
-                self.add(name)
+            if name not in self.values:
+                self.add([name])
 
             tf.cond(pred=tf.reduce_any(tf.math.is_nan(value)),
                     true_fn=lambda: None,
@@ -109,11 +133,11 @@ class MeasureTracker():
         trainable_weights = []
 
         for name, value in measures.items():
-            if name not in self.history:
-                self.add(name)
+            if name not in self.values:
+                self.add([name])
 
-            weighted_value = 0.5 / (self.weights[name] ** 2) * value
-            regularization = tf.math.log(1 + self.weights[name] ** 2)
+            weighted_value = (0.5 / (self.weights[name] ** 2)) * value
+            regularization = tf.math.log(1 + (self.weights[name] ** 2))
 
             weighted_measures[name] = weighted_value + regularization
             trainable_weights.append(self.weights[name])
