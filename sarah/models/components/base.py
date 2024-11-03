@@ -597,7 +597,7 @@ class BaseSynthesisModel(BaseModel):
         ]
 
         self.bva_loss = BetaVAELoss()
-        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy()
+        self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
