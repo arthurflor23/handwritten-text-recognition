@@ -443,7 +443,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         https://arxiv.org/abs/1609.04802
     """
 
-    def __init__(self, patch_shape=None, step_factor=1, **kwargs):
+    def __init__(self, patch_shape=None, step_factor=2, **kwargs):
         """
         Initializes Patches layer.
 
