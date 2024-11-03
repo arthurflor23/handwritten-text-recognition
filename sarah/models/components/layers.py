@@ -443,7 +443,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         https://arxiv.org/abs/1609.04802
     """
 
-    def __init__(self, patch_shape=None, stride_factor=(2, 2), padding='valid', **kwargs):
+    def __init__(self, patch_shape=None, strides=(2, 2), padding='valid', **kwargs):
         """
         Initializes Patches layer.
 
@@ -451,7 +451,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         ----------
         patch_shape : list, tuple or None
             The target patch size to create.
-        stride_factor : list or tuple, optional
+        strides : list or tuple, optional
             Stride factors for the patches.
         padding : str, optional
             Padding method ('valid' or 'same').
@@ -462,7 +462,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.patch_shape = patch_shape
-        self.stride_factor = stride_factor
+        self.strides = strides
         self.padding = padding
 
     def get_config(self):
@@ -479,7 +479,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         config.update({
             'patch_shape': self.patch_shape,
-            'stride_factor': self.stride_factor,
+            'strides': self.strides,
             'padding': self.padding,
         })
 
@@ -502,7 +502,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         if self.patch_shape:
             sizes = [1, self.patch_shape[0], self.patch_shape[1], 1]
-            strides = [1, self.patch_shape[0] // self.stride_factor[0], self.patch_shape[1] // self.stride_factor[1], 1]
+            strides = [1, self.patch_shape[0] // self.strides[0], self.patch_shape[1] // self.strides[1], 1]
 
             patches = tf.image.extract_patches(images=inputs,
                                                sizes=sizes,
