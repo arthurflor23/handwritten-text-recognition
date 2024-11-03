@@ -451,7 +451,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         ----------
         patch_shape : list, tuple or None
             The target patch size to create.
-        step_factor : list or tuple, optional
+        step_factor : int, optional
             Step factor for the patch strides.
         **kwargs
             Additional keyword arguments for the Layer.
