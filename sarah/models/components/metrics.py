@@ -127,7 +127,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         self.offset = offset
         self.kid_image_size = (299, 299, 3)
 
-        self.encoder = tf.keras.Sequential([
+        self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
             tf.keras.layers.Rescaling(scale=self.scale, offset=self.offset),
@@ -149,8 +149,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
             Batch of generated images.
         """
 
-        real_features = self.encoder(y_true, training=False)
-        generated_features = self.encoder(y_pred, training=False)
+        real_features = self.inception_encoder(y_true, training=False)
+        generated_features = self.inception_encoder(y_pred, training=False)
 
         kernel_real = self.polynomial_kernel(real_features, real_features)
         kernel_generated = self.polynomial_kernel(generated_features, generated_features)
