@@ -332,9 +332,9 @@ class SynthesisModel(BaseSynthesisModel):
         # kid metric
         _, (image_data, text_data, _, mask_data) = input_data
 
-        features_data, _ = self.style_backbone(image_data, training=False)
-        latent_data, _, _ = self.style_encoder(features_data, training=False)
-        generated_images = self.generator([text_data, latent_data, mask_data], training=False)
+        features_data, _ = self.style_backbone(image_data, training=True)
+        latent_data, _, _ = self.style_encoder(features_data, training=True)
+        generated_images = self.generator([text_data, latent_data, mask_data], training=True)
 
         self.kid.update_state(image_data, generated_images)
 
@@ -376,10 +376,6 @@ class BackboneModel(BaseModel):
         self.model = model
 
         self.build_model()
-
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
 
     def get_config(self):
         """
@@ -442,10 +438,6 @@ class RecognitionModel(BaseModel):
 
         self.build_model()
 
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
-
     def get_config(self):
         """
         Return the configuration of the model.
@@ -503,10 +495,6 @@ class IdentificationModel(BaseModel):
         self.writers_shape = writers_shape
 
         self.build_model()
-
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
 
     def get_config(self):
         """
@@ -579,10 +567,6 @@ class StyleEncoderModel(BaseModel):
         self.latent_dim = latent_dim
 
         self.build_model()
-
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
 
     def get_config(self):
         """
@@ -674,8 +658,9 @@ class GeneratorModel(BaseModel):
         self.strides = strides
 
         self.num_blocks = len(self.blocks)
-        self.base_patch = (4, 4)
+        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 2
 
+        self.base_patch = (4, 4)
         self.base_shape = (self.lexical_shape[0] * self.base_patch[0],
                            self.lexical_shape[1] * self.base_patch[1])
 
@@ -859,6 +844,8 @@ class DiscriminatorModel(BaseModel):
         self.patch_shape = patch_shape
 
         self.num_blocks = len(self.blocks)
+        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 2
+
         self.base_patch = (4, 4)
 
         if not self.strides:
@@ -883,10 +870,6 @@ class DiscriminatorModel(BaseModel):
                 self.strides = list(zip(h_stride, w_stride))
 
         self.build_model()
-
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
 
     def get_config(self):
         """
