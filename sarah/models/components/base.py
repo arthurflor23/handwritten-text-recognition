@@ -53,6 +53,26 @@ class BaseModel(tf.keras.Model):
 
         return info
 
+    def call(self, inputs, training=False):
+        """
+        Perform a forward pass on the model with the given inputs.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input data to be passed through the model.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        output
+            The output of the model after processing the inputs.
+        """
+
+        if hasattr(self, 'model'):
+            return self.model(inputs, training=training)
+
     def get_summary(self):
         """
         Provides summary of model architectures.
