@@ -322,9 +322,9 @@ class ContentAlignment(tf.keras.layers.Layer):
                 image = tf.concat([image, chunk], axis=1)
 
             if self.target_shape[2] > tf.shape(image)[1]:
-                repeats = self.target_shape[2] - tf.shape(image)[1]
-                chunk = tf.repeat(image[:, -1:, :], repeats=repeats, axis=1)
-                image = tf.concat([image, chunk], axis=1)
+                size = [tf.shape(image)[0], self.target_shape[2] - tf.shape(image)[1], 1]
+                chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
+                image = tf.concat([image, tf.stop_gradient(chunk)], axis=1)
 
             if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
                 size = [self.target_shape[1] - mask_h, self.target_shape[2]]
@@ -332,9 +332,9 @@ class ContentAlignment(tf.keras.layers.Layer):
                 image = tf.concat([image, chunk], axis=0)
 
             if self.target_shape[1] > tf.shape(image)[0]:
-                repeats = self.target_shape[1] - tf.shape(image)[0]
-                chunk = tf.repeat(image[-1:, :, :], repeats=repeats, axis=0)
-                image = tf.concat([image, chunk], axis=0)
+                size = [self.target_shape[1] - tf.shape(image)[0], tf.shape(image)[1], 1]
+                chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
+                image = tf.concat([image, tf.stop_gradient(chunk)], axis=0)
 
             return image
 
