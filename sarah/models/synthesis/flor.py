@@ -135,7 +135,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         for _ in range(self.discriminator_steps):
             random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-            random_latent_data = tf.random.normal(shape=random_latent_shape)
+            random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
 
             real_features_data, _ = self.style_backbone(image_data, training=True)
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
@@ -218,7 +218,7 @@ class SynthesisModel(BaseSynthesisModel):
         (image_data, text_data, writer_data, mask_data) = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-        random_latent_data = tf.random.normal(shape=random_latent_shape)
+        random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
 
         self.discriminator.trainable = False
         self.patch_discriminator.trainable = False
@@ -682,10 +682,6 @@ class GeneratorModel(BaseModel):
 
         self.build_model()
 
-        if hasattr(self, 'model'):
-            self.summary = self.model.summary
-            self.call = self.model.call
-
     def get_config(self):
         """
         Return the configuration of the model.
@@ -778,7 +774,7 @@ class GeneratorModel(BaseModel):
             up = (up[0] if block.shape[1] < self.image_shape[0] * 2 else 1,
                   up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
 
-            if i == self.num_blocks - 1:
+            if block.shape[1] * block.shape[2] == self.nonlocal_size:
                 block = GatedConv2DResidual()(block)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
@@ -932,8 +928,8 @@ class DiscriminatorModel(BaseModel):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
-            # if i == 1:
-            #     block = GatedConv2DResidual()(block)
+            if block.shape[1] * block.shape[2] == self.nonlocal_size:
+                block = GatedConv2DResidual()(block)
 
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
