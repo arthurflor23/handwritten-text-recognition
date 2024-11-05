@@ -385,7 +385,6 @@ class ContentAlignment(tf.keras.layers.Layer):
         content = tf.cast(tf.not_equal(reduced, pad_value), tf.int32)
 
         lengths = tf.reduce_sum(content, axis=1)
-        lengths = tf.stop_gradient(lengths)
 
         if scale_by is not None:
             lengths = lengths * scale_by
