@@ -1500,7 +1500,15 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1903.07291
     """
 
-    def __init__(self, filters=32, kernel_size=3, spectral_norm=False, epsilon=1e-5, **kwargs):
+    def __init__(self,
+                 filters=32,
+                 kernel_size=3,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 spectral_norm=False,
+                 epsilon=1e-5,
+                 **kwargs):
         """
         Initialize the layer.
 
@@ -1510,6 +1518,12 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
             Number of filters for the convolution layers.
         kernel_size : int, optional
             Size of the convolution kernel.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
         spectral_norm : bool, optional
             Whether to apply spectral normalization.
         epsilon : float, optional
@@ -1522,6 +1536,9 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         self.filters = filters
         self.kernel_size = kernel_size
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
         self.spectral_norm = spectral_norm
         self.epsilon = epsilon
 
@@ -1540,6 +1557,9 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
         config.update({
             'filters': self.filters,
             'kernel_size': self.kernel_size,
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
             'spectral_norm': self.spectral_norm,
             'epsilon': self.epsilon,
         })
@@ -1562,15 +1582,24 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
 
         self.seg_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                kernel_size=self.kernel_size,
-                                               padding='same')
+                                               padding='same',
+                                               kernel_initializer=self.kernel_initializer,
+                                               kernel_regularizer=self.kernel_regularizer,
+                                               kernel_constraint=self.kernel_constraint)
 
         self.seg_conv_gamma = tf.keras.layers.Conv2D(filters=self.channels,
                                                      kernel_size=self.kernel_size,
-                                                     padding='same')
+                                                     padding='same',
+                                                     kernel_initializer=self.kernel_initializer,
+                                                     kernel_regularizer=self.kernel_regularizer,
+                                                     kernel_constraint=self.kernel_constraint)
 
         self.seg_conv_beta = tf.keras.layers.Conv2D(filters=self.channels,
                                                     kernel_size=self.kernel_size,
-                                                    padding='same')
+                                                    padding='same',
+                                                    kernel_initializer=self.kernel_initializer,
+                                                    kernel_regularizer=self.kernel_regularizer,
+                                                    kernel_constraint=self.kernel_constraint)
 
         if self.spectral_norm:
             self.seg_conv = tf.keras.layers.SpectralNormalization(layer=self.seg_conv,
