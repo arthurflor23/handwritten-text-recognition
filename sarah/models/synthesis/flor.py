@@ -55,8 +55,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
@@ -403,7 +403,7 @@ class BackboneModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.model.input,
-                                    outputs=[self.model.output, feats[-5:]])
+                                    outputs=[self.model.output, feats[-3:]])
 
 
 class RecognitionModel(BaseModel):
@@ -520,11 +520,7 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.Activation(activation='swish')(feature_inputs)
         style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
-
-        style = tf.keras.layers.Dense(units=256)(style)
-        style = tf.keras.layers.Activation(activation='swish')(style)
 
         style = tf.keras.layers.Dense(units=256)(style)
         style = tf.keras.layers.Activation(activation='swish')(style)
@@ -592,7 +588,6 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        # style = tf.keras.layers.Activation(activation='swish')(feature_inputs)
         style = tf.keras.layers.GlobalAveragePooling2D()(feature_inputs)
 
         style = tf.keras.layers.Dense(units=256)(style)
@@ -658,7 +653,7 @@ class GeneratorModel(BaseModel):
         self.strides = strides
 
         self.num_blocks = len(self.blocks)
-        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 2
+        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 8
 
         self.base_patch = (4, 4)
         self.base_shape = (self.lexical_shape[0] * self.base_patch[0],
@@ -774,7 +769,7 @@ class GeneratorModel(BaseModel):
             up = (up[0] if block.shape[1] < self.image_shape[0] * 2 else 1,
                   up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
 
-            if block.shape[1] * block.shape[2] == self.nonlocal_size:
+            if block.shape[1] * block.shape[2] >= self.nonlocal_size:
                 block = GatedConv2DResidual()(block)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
@@ -840,7 +835,7 @@ class DiscriminatorModel(BaseModel):
         self.patch_shape = patch_shape
 
         self.num_blocks = len(self.blocks)
-        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 2
+        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 8
 
         self.base_patch = (4, 4)
 
@@ -922,18 +917,19 @@ class DiscriminatorModel(BaseModel):
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
 
-        block = ExtractPatches(patch_shape=self.patch_shape, strides=(1, 2), padding='valid')(image_input)
+        block = ExtractPatches(patch_shape=self.patch_shape, strides=(2, 4), padding='valid')(image_input)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
-            if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                block = GatedConv2DResidual()(block)
-
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
-        block = residual_block(block, self.blocks[-1], preactive=True, down=None)
+            if block.shape[1] * block.shape[2] >= self.nonlocal_size:
+                block = GatedConv2DResidual()(block)
+
+        if not self.patch_shape:
+            block = residual_block(block, self.blocks[-1], preactive=True, down=None)
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(block)
