@@ -307,27 +307,6 @@ class SynthesisModel(BaseSynthesisModel):
             'loss': g_loss,
         })
 
-        #     # generator loss
-        #     g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_rec_loss + g_res_loss + g_wid_loss
-
-        # g_gradients = g_tape.gradient(g_loss,
-        #                               self.style_encoder.trainable_weights +
-        #                               self.generator.trainable_weights)
-
-        # self.g_optimizer.apply_gradients(zip(g_gradients,
-        #                                      self.style_encoder.trainable_weights +
-        #                                      self.generator.trainable_weights))
-
-        # self.measure_tracker.update({
-        #     'g_adv_loss': g_adv_loss,
-        #     'g_ctc_loss': g_ctc_loss,
-        #     'g_ctx_loss': g_ctx_loss,
-        #     'g_rec_loss': g_rec_loss,
-        #     'g_res_loss': g_res_loss,
-        #     'g_wid_loss': g_wid_loss,
-        #     'loss': g_loss,
-        # })
-
     def train_step(self, input_data):
         """
         Executes a training step.
@@ -425,7 +404,7 @@ class BackboneModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=self.model.input,
-                                    outputs=[self.model.output, feats[-5:]])
+                                    outputs=[self.model.output, feats[-3:]])
 
 
 class RecognitionModel(BaseModel):
@@ -807,7 +786,6 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                # print(block.shape, self.nonlocal_size)
                 block = GatedConv2DResidual(kernel_initializer='glorot_uniform',
                                             spectral_norm=True)(block)
 
@@ -830,9 +808,6 @@ class GeneratorModel(BaseModel):
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
                                     outputs=outputs)
-
-        # self.model.summary()
-        # exit()
 
 
 class DiscriminatorModel(BaseModel):
@@ -980,10 +955,9 @@ class DiscriminatorModel(BaseModel):
 
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
-            # if block.shape[1] * block.shape[2] == self.nonlocal_size:
-            #     # print(block.shape, self.nonlocal_size)
-            #     block = GatedConv2DResidual(kernel_initializer='glorot_uniform',
-            #                                 spectral_norm=True)(block)
+            if block.shape[1] * block.shape[2] == self.nonlocal_size:
+                block = GatedConv2DResidual(kernel_initializer='glorot_uniform',
+                                            spectral_norm=True)(block)
 
         if not self.patch_shape:
             block = residual_block(block, self.blocks[-1], preactive=True, down=None)
@@ -997,6 +971,3 @@ class DiscriminatorModel(BaseModel):
         self.model = tf.keras.Model(name=self.name,
                                     inputs=image_input,
                                     outputs=outputs)
-
-        # self.model.summary()
-        # exit()
