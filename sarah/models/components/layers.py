@@ -496,7 +496,7 @@ class ExtractPatches(tf.keras.layers.Layer):
 
         return config
 
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         """
         Splits the input image into patches.
 
@@ -504,6 +504,8 @@ class ExtractPatches(tf.keras.layers.Layer):
         ----------
         inputs : tensor
             The input tensor representing images.
+        training : bool, optional
+            Whether the call is for training or inference.
 
         Returns
         -------
@@ -511,19 +513,24 @@ class ExtractPatches(tf.keras.layers.Layer):
             A tensor containing the extracted patches.
         """
 
-        if self.patch_shape:
-            sizes = [1, self.patch_shape[0], self.patch_shape[1], 1]
-            strides = [1, self.patch_shape[0] // self.strides[0], self.patch_shape[1] // self.strides[1], 1]
+        if not self.patch_shape:
+            return inputs
 
-            patches = tf.image.extract_patches(images=inputs,
-                                               sizes=sizes,
-                                               strides=strides,
-                                               rates=[1, 1, 1, 1],
-                                               padding=self.padding.upper())
+        sizes = [1, self.patch_shape[0], self.patch_shape[1], 1]
+        strides = [1, self.patch_shape[0] // self.strides[0], self.patch_shape[1] // self.strides[1], 1]
 
-            return tf.reshape(patches, shape=[-1, self.patch_shape[0], self.patch_shape[1], 1])
+        patches = tf.image.extract_patches(images=inputs,
+                                           sizes=sizes,
+                                           strides=strides,
+                                           rates=[1, 1, 1, 1],
+                                           padding=self.padding.upper())
 
-        return inputs
+        patches = tf.reshape(patches, shape=[-1, self.patch_shape[0], self.patch_shape[1], 1])
+
+        if training:
+            patches = tf.stop_gradient(patches)
+
+        return patches
 
 
 class GatedConv2D(tf.keras.layers.Layer):
