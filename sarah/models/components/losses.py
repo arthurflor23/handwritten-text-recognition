@@ -82,7 +82,7 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, name='ctc_loss', **kwargs):
+    def __init__(self, name='ctc_loss', reduction='mean', **kwargs):
         """
         Initialize the CTCLoss instance.
 
@@ -90,11 +90,15 @@ class CTCLoss(tf.keras.losses.Loss):
         ----------
         name : str, optional
             A name for the instance.
+        reduction : str, optional
+            Define reduction mode.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(name=name, **kwargs)
+
+        self.reduction = reduction
 
     def call(self, y_true, y_pred):
         """
@@ -128,7 +132,11 @@ class CTCLoss(tf.keras.losses.Loss):
                                   logits_time_major=True,
                                   blank_index=-1)
 
-        ctc_loss = tf.reduce_mean(ctc_loss)
+        if self.reduction == 'mean':
+            ctc_loss = tf.reduce_mean(ctc_loss)
+
+        elif self.reduction == 'sum':
+            ctc_loss = tf.reduce_sum(ctc_loss)
 
         return ctc_loss
 
