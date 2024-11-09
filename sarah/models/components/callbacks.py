@@ -247,10 +247,10 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         lrs = [float(tf.keras.backend.get_value(x.learning_rate)) for x in lrs if x]
 
         self.epochs.append({'epoch': self.epoch_index, **{x: y for x, y in zip(opts, lrs)}})
+        df = self._dataframe(self.epochs, save=True)
 
         if self.model_path:
             if self.save_best_only and self.mode and self.monitor in logs.keys():
-                df = self._get_current_dataframe()
                 current = df[self.monitor].iloc[-1]
 
                 if current < self.best:
@@ -289,16 +289,7 @@ class TrainingLogger(tf.keras.callbacks.Callback):
             Metrics at the end of training.
         """
 
-        df = self._get_current_dataframe()
-
-        if self.mode and self.monitor in logs.keys():
-            df['checkpoint'] = getattr(df[self.monitor], f"cum{self.mode}")()
-            df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
-            df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
-
-        if self.csv_path:
-            os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
-            df.to_csv(self.csv_path, sep=self.csv_separator, index=False)
+        df = self._dataframe(self.epochs, save=False)
 
         non_metrics = ['epoch', 'lr', 'learning_rate', 'optimizer', 'checkpoint']
         metrics = [x for x in df.columns if not any(y in x for y in non_metrics)]
@@ -306,13 +297,34 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         self.history = df[metrics].to_dict(orient='list')
         self.model.history = self
 
-    def _get_current_dataframe(self):
+    def _dataframe(self, epochs, save=False):
         """
-        Retrieves the current training metrics as a DataFrame.
+        Generates a DataFrame of training metrics.
+
+        Parameters
+        ----------
+        epochs : list of dict
+            Recorded training metrics for each epoch.
+        save : bool, optional
+            If True, saves the DataFrame to the CSV path provided.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            DataFrame containing the processed training metrics.
         """
 
-        df = pd.DataFrame(self.epochs)
+        df = pd.DataFrame(epochs)
         df = df.groupby('epoch').mean().reset_index()
         df = df.sort_values(by='epoch').reset_index(drop=True)
+
+        if self.mode and self.monitor in df.columns:
+            df['checkpoint'] = getattr(df[self.monitor], f"cum{self.mode}")()
+            df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
+            df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
+
+        if save and self.csv_path:
+            os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+            df.to_csv(self.csv_path, sep=self.csv_separator, index=False)
 
         return df
