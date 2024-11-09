@@ -82,7 +82,7 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, name='ctc_loss', reduction='mean', **kwargs):
+    def __init__(self, name='ctc_loss', reduction='sum_over_batch_size', **kwargs):
         """
         Initialize the CTCLoss instance.
 
@@ -132,7 +132,7 @@ class CTCLoss(tf.keras.losses.Loss):
                                   logits_time_major=True,
                                   blank_index=-1)
 
-        if self.reduction == 'mean':
+        if self.reduction == 'sum_over_batch_size':
             ctc_loss = tf.reduce_mean(ctc_loss)
 
         elif self.reduction == 'sum':
