@@ -300,7 +300,8 @@ class BaseRecognitionModel(BaseModel):
                     texts = aug_text_data
 
                 if np.random.random() <= self.synthetic_style_ratio:
-                    latent = tf.random.normal(shape=(len(image_data), self.style_encoder.latent_dim))
+                    latent_shape = (len(image_data), self.style_encoder.latent_dim)
+                    latent = tf.random.truncated_normal(shape=latent_shape)
                 else:
                     features_data = self.style_backbone(images, training=False)
                     features_data = features_data[0] if isinstance(features_data, list) else features_data
@@ -701,7 +702,8 @@ class BaseSynthesisModel(BaseModel):
         image_data, text_data, _, mask_data = x_data
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
-            latent_data = tf.random.normal(shape=(len(image_data), self.style_encoder.latent_dim))
+            latent_shape = (len(image_data), self.style_encoder.latent_dim)
+            latent_data = tf.random.truncated_normal(shape=latent_shape)
         else:
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
