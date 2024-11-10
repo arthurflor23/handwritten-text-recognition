@@ -62,6 +62,7 @@ def run(args):
                       discriminator_steps=args.discriminator_steps,
                       generator_steps=args.generator_steps,
                       synthetic_data_ratio=args.synthetic_data_ratio,
+                      synthetic_image_ratio=args.synthetic_image_ratio,
                       synthetic_text_ratio=args.synthetic_text_ratio,
                       synthetic_style_ratio=args.synthetic_style_ratio,
                       experiment_name=args.experiment_name,
