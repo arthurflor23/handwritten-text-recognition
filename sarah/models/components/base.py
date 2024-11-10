@@ -186,7 +186,8 @@ class BaseRecognitionModel(BaseModel):
                  style_backbone=None,
                  style_encoder=None,
                  generator=None,
-                 synthetic_data_ratio=1.0,
+                 synthetic_data_ratio=0.99,
+                 synthetic_image_ratio=0.5,
                  synthetic_text_ratio=0.5,
                  synthetic_style_ratio=0.5,
                  seed=None,
@@ -208,6 +209,8 @@ class BaseRecognitionModel(BaseModel):
             Generator model for image generation.
         synthetic_data_ratio : float, optional
             Probability to use synthetic data.
+        synthetic_image_ratio : float, optional
+            Probability to use synthetic image.
         synthetic_text_ratio : float, optional
             Probability to use synthetic text.
         synthetic_style_ratio : float, optional
@@ -226,6 +229,7 @@ class BaseRecognitionModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthetic_data_ratio = synthetic_data_ratio
+        self.synthetic_image_ratio = synthetic_image_ratio
         self.synthetic_text_ratio = synthetic_text_ratio
         self.synthetic_style_ratio = synthetic_style_ratio
         self.seed = seed
@@ -293,13 +297,17 @@ class BaseRecognitionModel(BaseModel):
         images, texts, mask = aug_image_data, text_data, aug_mask_data
 
         if self.style_backbone and self.style_encoder and self.generator:
-            if np.random.random() <= self.synthetic_data_ratio:
-                images = image_data
+            probs = np.random.random(4)
 
-                if np.random.random() <= self.synthetic_text_ratio:
+            if probs[0] <= self.synthetic_data_ratio:
+
+                if probs[1] > self.synthetic_image_ratio:
+                    images = image_data
+
+                if probs[2] <= self.synthetic_text_ratio:
                     texts = aug_text_data
 
-                if np.random.random() <= self.synthetic_style_ratio:
+                if probs[3] <= self.synthetic_style_ratio:
                     latent_shape = (len(image_data), self.style_encoder.latent_dim)
                     latent = tf.random.truncated_normal(shape=latent_shape)
                 else:
@@ -311,12 +319,12 @@ class BaseRecognitionModel(BaseModel):
 
                 images = self.generator([texts, latent, mask], training=False)
 
-        with tf.GradientTape() as tape:
+        with tf.GradientTape() as r_tape:
             ctc_logits = self.recognition(images, training=True)
             ctc_loss = self.ctc_loss(texts, ctc_logits)
 
-        gradients = tape.gradient(ctc_loss, self.recognition.trainable_weights)
-        self.optimizer.apply_gradients(zip(gradients, self.recognition.trainable_weights))
+        r_gradients = r_tape.gradient(ctc_loss, self.recognition.trainable_weights)
+        self.optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
         self.edit_distance.update_state(texts, ctc_logits)
 
