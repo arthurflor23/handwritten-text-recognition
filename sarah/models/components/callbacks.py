@@ -242,13 +242,16 @@ class TrainingLogger(tf.keras.callbacks.Callback):
 
         self.on_batch_end(None, logs=logs)
 
-        opts = [x for x in dir(self.model) if 'optimizer' in x.lower()]
-        opts = [x for x in opts if opts != 'optimizer'] if len(opts) > 1 else opts
+        opt = [x for x in dir(self.model) if 'optimizer' in x.lower()]
+        opt = [x for x in opt if x != 'optimizer'] if len(opt) > 1 else opt
 
-        lrs = [getattr(self.model, x, None) for x in opts]
-        lrs = [float(tf.keras.backend.get_value(x.learning_rate)) for x in lrs if x]
+        lr = [getattr(self.model, x, None) for x in opt]
+        lr = [float(tf.keras.backend.get_value(x.learning_rate)) for x in lr if x]
 
-        self.epochs.append({'epoch': self.epoch_index, **{x: y for x, y in zip(opts, lrs)}})
+        optimizer = {x: y for x, y in zip(opt, lr)}
+
+        self.epochs.append({'epoch': self.epoch_index, **optimizer})
+
         df = self._dataframe(self.epochs, save=True)
 
         if self.model_path:
@@ -317,7 +320,8 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         """
 
         df = pd.DataFrame(epochs)
-        df = df.groupby('epoch').mean().reset_index()
+
+        df = df.groupby('epoch').mean().astype(float).reset_index()
         df = df.sort_values(by='epoch').reset_index(drop=True)
 
         if self.mode and self.monitor in df.columns:
@@ -327,6 +331,6 @@ class TrainingLogger(tf.keras.callbacks.Callback):
 
         if save and self.csv_path:
             os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
-            df.to_csv(self.csv_path, sep=self.csv_separator, index=False)
+            df.round(8).to_csv(self.csv_path, sep=self.csv_separator, index=False)
 
         return df
