@@ -34,9 +34,6 @@ class SynthesisModel(BaseSynthesisModel):
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
 
-    Multi-Task Learning Using Uncertainty to Weigh Losses for Scene Geometry and Semantics
-        https://arxiv.org/abs/1705.07115
-
     ScrabbleGAN: Semi-Supervised Varying Length Handwritten Text Generation
         https://arxiv.org/abs/2003.10557
     """
@@ -56,11 +53,11 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
     def build_model(self):
         """
