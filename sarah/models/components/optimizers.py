@@ -37,11 +37,11 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             Additional arguments.
         """
 
-        super().__init__(name, **kwargs)
+        lr = float(tf.keras.backend.get_value(optimizer.learning_rate))
+
+        super().__init__(learning_rate=lr, **kwargs)
 
         self.optimizer = optimizer
-        self._learning_rate = optimizer.learning_rate
-
         self.normalization = normalization
         self.epsilon = epsilon
 
@@ -79,7 +79,7 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
 
         return config
 
-    def apply_gradients(self, grads_and_vars, skip_gradients_aggregation=False, name=None):
+    def apply_gradients(self, grads_and_vars):
         """
         Apply normalized gradients to variables.
 
@@ -87,10 +87,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
         ----------
         grads_and_vars : list
             List of (gradient, variable) pairs.
-        skip_gradients_aggregation : bool, optional
-            If True, skip gradient normalization.
-        name : str, optional
-            Name for the operation.
 
         Returns
         -------
@@ -98,11 +94,10 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             The operation that applies gradients.
         """
 
-        if not skip_gradients_aggregation:
-            grads_and_vars = [(grad / (self.fn(grad) + self.epsilon), var)
-                              for grad, var in grads_and_vars if grad is not None]
+        grads_and_vars = [(grad / (self.fn(grad) + self.epsilon), var)
+                          for grad, var in grads_and_vars if grad is not None]
 
-        return self.optimizer.apply_gradients(grads_and_vars, name=name)
+        return self.optimizer.apply_gradients(grads_and_vars)
 
     def _average_l1_l2_norm(self, grad):
         """
