@@ -1,19 +1,24 @@
 import tensorflow as tf
 
 
-class GradientNorm(tf.keras.optimizers.Optimizer):
+class GradientNormalization(tf.keras.optimizers.Optimizer):
     """
     Gradient-normalizing optimizer wrapper.
 
     This wrapper normalizes gradients based on the specified norm type and
         wraps around an existing `tf.keras.optimizers.Optimizer` instance.
+
+    References
+    ----------
+    Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network
+        https://arxiv.org/abs/1707.04822
     """
 
     def __init__(self,
                  optimizer,
-                 normalization='avg_l2',
+                 normalization='l2',
                  epsilon=1e-7,
-                 name='gradient_norm_optimizer',
+                 name='gradient_normalization',
                  **kwargs):
         """
         Initialize the class instance.
@@ -268,7 +273,7 @@ class GradientNorm(tf.keras.optimizers.Optimizer):
         """
 
         optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
-        normalization = config.pop('normalization', 'avg_l2')
+        normalization = config.pop('normalization', 'l2')
         epsilon = config.pop('epsilon', 1e-7)
 
         return cls(optimizer, normalization, epsilon, **config)
