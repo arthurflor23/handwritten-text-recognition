@@ -16,9 +16,8 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
 
     def __init__(self,
                  optimizer,
-                 normalization='l2',
+                 normalization='std',
                  epsilon=1e-7,
-                 name='gradient_normalization',
                  **kwargs):
         """
         Initialize the class instance.
@@ -31,8 +30,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             Type of gradient normalization to apply.
         epsilon : float, optional
             Small constant for numerical stability.
-        name : str, optional
-            Name of the optimizer instance.
         **kwargs : dict
             Additional arguments.
         """
@@ -268,7 +265,7 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
         """
 
         optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
-        normalization = config.pop('normalization', 'l2')
+        normalization = config.pop('normalization', 'std')
         epsilon = config.pop('epsilon', 1e-7)
 
         return cls(optimizer, normalization, epsilon, **config)
