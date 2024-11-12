@@ -524,6 +524,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 spectral_norm=False,
                  **kwargs):
         """
         Initializes the layer.
@@ -536,6 +537,8 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        spectral_norm : bool, optional
+            Whether to apply spectral normalization.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -545,6 +548,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.spectral_norm = spectral_norm
 
     def get_config(self):
         """
@@ -562,6 +566,7 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'spectral_norm': self.spectral_norm,
         })
 
         return config
@@ -586,6 +591,10 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
+
+        if self.spectral_norm:
+            self.s_conv = tf.keras.layers.SpectralNormalization(layer=self.s_conv,
+                                                                name=self.s_conv.name)
 
     def call(self, inputs):
         """
@@ -625,6 +634,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 spectral_norm=False,
                  **kwargs):
         """
         Initializes the layer.
@@ -637,6 +647,8 @@ class GatedConv2DDual(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        spectral_norm : bool, optional
+            Whether to apply spectral normalization.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -646,6 +658,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.spectral_norm = spectral_norm
 
     def get_config(self):
         """
@@ -663,6 +676,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'spectral_norm': self.spectral_norm,
         })
 
         return config
@@ -687,6 +701,10 @@ class GatedConv2DDual(tf.keras.layers.Layer):
                                               kernel_regularizer=self.kernel_regularizer,
                                               kernel_constraint=self.kernel_constraint,
                                               use_bias=True)
+
+        if self.spectral_norm:
+            self.sl_conv = tf.keras.layers.SpectralNormalization(layer=self.sl_conv,
+                                                                 name=self.sl_conv.name)
 
     def call(self, inputs):
         """
@@ -723,6 +741,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  gamma_initializer='ones',
+                 spectral_norm=False,
                  dropout=0.0,
                  **kwargs):
         """
@@ -742,6 +761,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             Beta weights initializer.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        spectral_norm : bool, optional
+            Whether to apply spectral normalization.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -756,6 +777,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.gamma_initializer = gamma_initializer
+        self.spectral_norm = spectral_norm
         self.dropout = dropout
 
     def get_config(self):
@@ -777,6 +799,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'gamma_initializer': self.gamma_initializer,
+            'spectral_norm': self.spectral_norm,
             'dropout': self.dropout,
         })
 
@@ -805,6 +828,10 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
+        if self.spectral_norm:
+            self.s_conv = tf.keras.layers.SpectralNormalization(layer=self.s_conv,
+                                                                name=self.s_conv.name)
+
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
@@ -813,6 +840,10 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=True)
+
+            if self.spectral_norm:
+                self.o_conv = tf.keras.layers.SpectralNormalization(layer=self.o_conv,
+                                                                    name=self.o_conv.name)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1243,6 +1274,7 @@ class SelfAttention(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 spectral_norm=False,
                  pooling=False,
                  dropout=0.0,
                  **kwargs):
@@ -1261,6 +1293,8 @@ class SelfAttention(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        spectral_norm : bool, optional
+            Whether to apply spectral normalization.
         pooling : bool, optional
             Whether apply max pooling or not.
         dropout : float, optional
@@ -1276,6 +1310,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.spectral_norm = spectral_norm
         self.pooling = pooling
         self.dropout = dropout
 
@@ -1297,6 +1332,7 @@ class SelfAttention(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'spectral_norm': self.spectral_norm,
             'pooling': self.pooling,
             'dropout': self.dropout,
         })
@@ -1355,6 +1391,16 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
+        if self.spectral_norm:
+            self.f_conv = tf.keras.layers.SpectralNormalization(layer=self.f_conv,
+                                                                name=self.f_conv.name)
+
+            self.g_conv = tf.keras.layers.SpectralNormalization(layer=self.g_conv,
+                                                                name=self.g_conv.name)
+
+            self.h_conv = tf.keras.layers.SpectralNormalization(layer=self.h_conv,
+                                                                name=self.h_conv.name)
+
         if self.filters != self.h:
             self.o_conv = conv_layer(filters=self.filters,
                                      kernel_size=1,
@@ -1363,6 +1409,10 @@ class SelfAttention(tf.keras.layers.Layer):
                                      kernel_regularizer=self.kernel_regularizer,
                                      kernel_constraint=self.kernel_constraint,
                                      use_bias=False)
+
+            if self.spectral_norm:
+                self.o_conv = tf.keras.layers.SpectralNormalization(layer=self.o_conv,
+                                                                    name=self.o_conv.name)
 
         if self.pooling:
             self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
