@@ -12,7 +12,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1703.06868v2
     """
 
-    def __init__(self, epsilon=1e-5, **kwargs):
+    def __init__(self, epsilon=1e-3, **kwargs):
         """
         Initializes the adaptive instance normalization layer.
 
@@ -110,7 +110,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1707.00683v3
     """
 
-    def __init__(self, momentum=0.9, epsilon=1e-5, **kwargs):
+    def __init__(self, momentum=0.99, epsilon=1e-3, **kwargs):
         """
         Initializes the conditional batch normalization layer.
 
@@ -385,6 +385,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         content = tf.cast(tf.not_equal(reduced, pad_value), tf.int32)
 
         lengths = tf.reduce_sum(content, axis=1)
+        lengths = tf.stop_gradient(lengths)
 
         if scale_by is not None:
             lengths = lengths * scale_by
@@ -392,7 +393,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         if clip_by is not None:
             lengths = tf.clip_by_value(lengths, 0, clip_by)
 
-        return tf.stop_gradient(lengths)
+        return lengths
 
     def compute_output_shape(self, input_shape):
         """
@@ -1491,7 +1492,7 @@ class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 epsilon=1e-5,
+                 epsilon=1e-3,
                  **kwargs):
         """
         Initialize the layer.
