@@ -99,7 +99,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 self._save_images(filepath, fake_guided, name='guided')
 
                 random_latent_data = (len(image_data), self.latent_dim)
-                random_latent_data = tf.random.truncated_normal(shape=random_latent_data)
+                random_latent_data = tf.random.normal(shape=random_latent_data)
 
                 fake_random = self.model.generator([text_data, random_latent_data, mask_data], training=False)
                 self._save_images(filepath, fake_random, name='random')
