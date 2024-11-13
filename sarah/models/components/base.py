@@ -309,7 +309,7 @@ class BaseRecognitionModel(BaseModel):
 
                 if probs[3] <= self.synthetic_style_ratio:
                     latent_shape = (len(image_data), self.style_encoder.latent_dim)
-                    latent = tf.random.truncated_normal(shape=latent_shape)
+                    latent = tf.random.normal(shape=latent_shape)
                 else:
                     features_data = self.style_backbone(images, training=False)
                     features_data = features_data[0] if isinstance(features_data, list) else features_data
@@ -711,7 +711,7 @@ class BaseSynthesisModel(BaseModel):
 
         if tf.math.reduce_all(tf.equal(image_data, -1.)):
             latent_shape = (len(image_data), self.style_encoder.latent_dim)
-            latent_data = tf.random.truncated_normal(shape=latent_shape)
+            latent_data = tf.random.normal(shape=latent_shape)
         else:
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
