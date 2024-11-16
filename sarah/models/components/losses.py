@@ -170,6 +170,7 @@ class KLDivergence(tf.keras.losses.Loss):
                  warmup_steps=10000,
                  annealing_ratio=0.5,
                  schedule_type='linear',
+                 beta_weight=1e-4,
                  name='cyclical_vae_loss',
                  **kwargs):
         """
@@ -177,16 +178,18 @@ class KLDivergence(tf.keras.losses.Loss):
 
         Parameters
         ----------
-        max_beta : float
+        max_beta : float, optional
             Maximum value of beta.
-        total_cycles : int
+        total_cycles : int, optional
             Number of cycles in the annealing schedule.
-        warmup_steps : int
+        warmup_steps : int, optional
             Number of steps per cycle.
-        annealing_ratio : float
+        annealing_ratio : float, optional
             Proportion used to increase beta within a cycle.
-        schedule_type : str
+        schedule_type : str, optional
             Schedule type for beta annealing ('linear', 'sigmoid', or 'cosine').
+        beta_weight : float, or None, optional
+            Beta weight for straightforward loss.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -200,6 +203,7 @@ class KLDivergence(tf.keras.losses.Loss):
         self.warmup_steps = warmup_steps
         self.annealing_ratio = annealing_ratio
         self.schedule_type = schedule_type
+        self.beta_weight = beta_weight
         self.step = 0
 
     def cyclical_beta(self):
@@ -254,6 +258,6 @@ class KLDivergence(tf.keras.losses.Loss):
         """
 
         kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
-        beta = self.cyclical_beta()
+        beta = self.beta_weight or self.cyclical_beta()
 
         return beta * kld_loss
