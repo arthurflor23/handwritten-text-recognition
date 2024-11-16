@@ -124,22 +124,24 @@ class CTXLoss(tf.keras.losses.Loss):
             The computed contextual loss.
         """
 
-        ref_norm = tf.nn.l2_normalize(y_true, axis=-1)
-        gen_norm = tf.nn.l2_normalize(y_pred, axis=-1)
+        ref_norm = tf.nn.l2_normalize(y_true + 1e-8, axis=-1)
+        gen_norm = tf.nn.l2_normalize(y_pred + 1e-8, axis=-1)
 
         cosine_dist = tf.matmul(ref_norm, gen_norm, transpose_b=True)
         cosine_dist = 1.0 - cosine_dist
 
         d_min = tf.math.reduce_min(cosine_dist, axis=1, keepdims=True)
-        d_tilde = cosine_dist / (d_min + 1e-5)
+
+        d_tilde = cosine_dist / (d_min + 1e-8)
+        d_tilde = tf.clip_by_value(d_tilde, clip_value_min=0., clip_value_max=10.)
 
         w = tf.math.exp((1 - d_tilde) / self.sigma)
-        ctx_ij = w / tf.math.reduce_sum(w, axis=1, keepdims=True)
+        ctx_ij = w / (tf.math.reduce_sum(w, axis=1, keepdims=True) + 1e-8)
 
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
-        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
+        ctx = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
 
-        ctx_loss = tf.clip_by_value(ctx_loss, clip_value_min=0., clip_value_max=10000.)
+        ctx_loss = tf.clip_by_value(ctx, clip_value_min=0., clip_value_max=100.)
 
         return ctx_loss
 
