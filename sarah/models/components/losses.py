@@ -139,6 +139,8 @@ class CTXLoss(tf.keras.losses.Loss):
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
         ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
 
+        ctx_loss = tf.clip_by_value(ctx_loss, clip_value_min=0., clip_value_max=10000.)
+
         return ctx_loss
 
 
@@ -165,6 +167,7 @@ class KLDivergence(tf.keras.losses.Loss):
     """
 
     def __init__(self,
+                 beta=1e-4,
                  max_beta=1.0,
                  total_cycles=4,
                  warmup_steps=10000,
@@ -177,6 +180,8 @@ class KLDivergence(tf.keras.losses.Loss):
 
         Parameters
         ----------
+        beta : float, or None, optional
+            Beta weight for straightforward loss.
         max_beta : float, optional
             Maximum value of beta.
         total_cycles : int, optional
@@ -195,6 +200,7 @@ class KLDivergence(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
+        self.beta = beta
         self.max_beta = max_beta
         self.total_cycles = total_cycles
         self.warmup_steps = warmup_steps
@@ -254,6 +260,6 @@ class KLDivergence(tf.keras.losses.Loss):
         """
 
         kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
-        beta = self.cyclical_beta()
+        beta = self.beta or self.cyclical_beta()
 
         return beta * kld_loss
