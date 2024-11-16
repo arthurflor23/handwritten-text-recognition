@@ -157,6 +157,9 @@ class KLDivergence(tf.keras.losses.Loss):
     Cyclical Annealing Schedule: A Simple Approach to Mitigating KL Vanishing
         https://arxiv.org/abs/1903.10145
 
+    Toward Multimodal Image-to-Image Translation
+        https://arxiv.org/abs/1711.11586
+
     Understanding disentangling in β-VAE
         https://arxiv.org/abs/1804.03599
     """
