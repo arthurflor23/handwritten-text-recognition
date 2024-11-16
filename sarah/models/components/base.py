@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
-from sarah.models.components.losses import CyclicalVAELoss
+from sarah.models.components.losses import KLDivergence
 from sarah.models.components.metrics import EditDistance
 from sarah.models.components.metrics import KernelInceptionDistance
 from sarah.models.components.utils import MeasureTracker
@@ -628,8 +628,8 @@ class BaseSynthesisModel(BaseModel):
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
-        self.cva_loss = CyclicalVAELoss()
         self.kid = KernelInceptionDistance(scale=127.5, offset=127.5)
+        self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
         self.monitor = self.kid.name
