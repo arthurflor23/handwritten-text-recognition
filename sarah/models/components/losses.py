@@ -142,9 +142,9 @@ class CTXLoss(tf.keras.losses.Loss):
         return ctx_loss
 
 
-class CyclicalVAELoss(tf.keras.losses.Loss):
+class KLDivergence(tf.keras.losses.Loss):
     """
-    Loss function for beta-VAE, combining normalized reconstruction error and KL divergence.
+    Loss function for beta-VAE using KL divergence with cyclical annealing.
 
     References
     ----------
@@ -164,13 +164,13 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
     def __init__(self,
                  max_beta=1.0,
                  total_cycles=4,
-                 warmup_steps=4000,
+                 warmup_steps=10000,
                  annealing_ratio=0.5,
                  schedule_type='linear',
                  name='cyclical_vae_loss',
                  **kwargs):
         """
-        Initialize the BetaVAELoss instance.
+        Initialize the class instance.
 
         Parameters
         ----------
@@ -214,6 +214,7 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
         if current_cycle >= self.total_cycles:
             return self.max_beta
 
+        self.step += 1
         annealing_steps = int(self.warmup_steps * self.annealing_ratio)
 
         if self.step % self.warmup_steps <= annealing_steps:
@@ -232,29 +233,24 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
 
         return beta
 
-    def call(self, y_true, y_pred):
+    def call(self, mu, logvar):
         """
-        Compute the loss given the original and reconstructed images.
+        Compute scaled KL divergence loss.
 
         Parameters
         ----------
-        y_true : tf.Tensor
-            Original input images.
-        y_pred : tuple
-            Tuple containing generated images, mean (mu), and log-variance (logvar).
+        mu : tf.Tensor
+            Mean of the latent variable distribution.
+        logvar : tf.Tensor
+            Log-variance of the latent variable distribution.
 
         Returns
         -------
         tf.Tensor
-            Total loss combining reconstruction error and KL divergence.
+            Scaled KL divergence loss.
         """
 
-        y_gen, mu, logvar = y_pred
-
-        rec_loss = tf.reduce_mean(tf.square(y_true - y_gen))
-        kl_loss = -0.5 * tf.reduce_mean(1 + logvar - tf.square(mu) - tf.exp(logvar))
-
+        kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
         beta = self.cyclical_beta()
-        self.step += 1
 
-        return rec_loss + (beta * kl_loss)
+        return beta * kld_loss
