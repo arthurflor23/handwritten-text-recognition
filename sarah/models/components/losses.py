@@ -164,7 +164,8 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
     def __init__(self,
                  max_beta=1.0,
                  total_cycles=4,
-                 cycle_length=10000,
+                 cycle_length=5000,
+                 annealing_ratio=0.5,
                  schedule_type='cosine',
                  name='cyclical_vae_loss',
                  **kwargs):
@@ -179,6 +180,8 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
             Number of cycles in the annealing schedule.
         cycle_length : int
             Number of steps per cycle.
+        annealing_ratio : float
+            Proportion used to increase beta within a cycle.
         schedule_type : str
             Schedule type for beta annealing ('linear', 'sigmoid', or 'cosine').
         name : str, optional
@@ -192,6 +195,7 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
         self.max_beta = max_beta
         self.total_cycles = total_cycles
         self.cycle_length = cycle_length
+        self.annealing_ratio = annealing_ratio
         self.schedule_type = schedule_type
         self.step = 0
 
@@ -205,20 +209,26 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
             The value of beta for the current step.
         """
 
-        cycle_progress = (self.step % self.cycle_length) / self.cycle_length
         current_cycle = self.step // self.cycle_length
 
         if current_cycle >= self.total_cycles:
-            return 0.0
+            return self.max_beta
 
-        if self.schedule_type == 'linear':
-            beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
-        elif self.schedule_type == 'sigmoid':
-            beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
-        elif self.schedule_type == 'cosine':
-            beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
+        annealing_steps = int(self.cycle_length * self.annealing_ratio)
+
+        if self.step % self.cycle_length <= annealing_steps:
+            cycle_progress = (self.step % self.cycle_length) / annealing_steps
+
+            if self.schedule_type == 'linear':
+                beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
+            elif self.schedule_type == 'sigmoid':
+                beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
+            elif self.schedule_type == 'cosine':
+                beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
+            else:
+                raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
         else:
-            raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
+            beta = self.max_beta
 
         return beta
 
@@ -241,8 +251,8 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
 
         y_gen, mu, logvar = y_pred
 
-        rec_loss = tf.reduce_mean(tf.reduce_sum(tf.square(y_true - y_gen), axis=[1, 2, 3]))
-        kl_loss = -0.5 * tf.reduce_mean(tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
+        rec_loss = tf.reduce_mean(tf.square(y_true - y_gen))
+        kl_loss = -0.5 * tf.reduce_mean(1 + logvar - tf.square(mu) - tf.exp(logvar))
 
         beta = self.cyclical_beta()
         self.step += 1
