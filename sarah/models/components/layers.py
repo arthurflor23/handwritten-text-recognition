@@ -1245,7 +1245,7 @@ class Reparameterization(tf.keras.layers.Layer):
             A sampled latent variable after applying the reparameterization trick.
         """
 
-        mu, logvar = tf.unstack(inputs)
+        mu, logvar = inputs
 
         std = tf.exp(0.5 * logvar)
         eps = tf.random.normal(shape=tf.shape(mu))
