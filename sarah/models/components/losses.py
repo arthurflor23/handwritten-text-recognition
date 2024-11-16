@@ -1,74 +1,6 @@
 import tensorflow as tf
 
 
-class BetaVAELoss(tf.keras.losses.Loss):
-    """
-    Loss function for beta-VAE, combining normalized reconstruction error and KL divergence.
-
-    References
-    ----------
-    Auto-Encoding Variational Bayes
-        https://arxiv.org/abs/1312.6114
-
-    beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework
-        https://openreview.net/forum?id=Sy2fzU9gl
-
-    Understanding disentangling in β-VAE
-        https://arxiv.org/abs/1804.03599
-    """
-
-    def __init__(self, beta=1e-4, name='beta_vae_loss', **kwargs):
-        """
-        Initialize the BetaVAELoss instance.
-
-        Parameters
-        ----------
-        beta : float, optional
-            Weight for the KL divergence term.
-        name : str, optional
-            A name for the instance.
-        **kwargs : dict
-            Additional arguments.
-        """
-
-        super().__init__(name=name, **kwargs)
-
-        self.beta = beta
-
-    def call(self, y_true, y_pred):
-        """
-        Compute the loss given the original and reconstructed images.
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            Original input images.
-        y_pred : tuple
-            Tuple containing generated images, latent z, mean (mu), and log-variance (logvar).
-
-        Returns
-        -------
-        tf.Tensor
-            Total loss combining reconstruction error and KL divergence.
-        """
-
-        generated_images, z, mu, logvar = y_pred
-
-        N = tf.cast(tf.reduce_prod(tf.shape(y_true)[1:]), tf.float32)
-        b = tf.cast(tf.shape(z)[0], tf.float32)
-        m = tf.cast(tf.shape(z)[1], tf.float32)
-
-        rec_loss = tf.reduce_sum(tf.square(y_true - generated_images))
-        rec_loss = rec_loss / N
-        rec_loss = rec_loss / b
-
-        kl_loss = -0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1)
-        kl_loss = tf.reduce_sum(kl_loss) / m
-        kl_loss = kl_loss / b
-
-        return rec_loss + (self.beta * kl_loss)
-
-
 class CTCLoss(tf.keras.losses.Loss):
     """
     Connectionist Temporal Classification (CTC) loss for sequence recognition task.
@@ -208,3 +140,111 @@ class CTXLoss(tf.keras.losses.Loss):
         ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
 
         return ctx_loss
+
+
+class CyclicalVAELoss(tf.keras.losses.Loss):
+    """
+    Loss function for beta-VAE, combining normalized reconstruction error and KL divergence.
+
+    References
+    ----------
+    Auto-Encoding Variational Bayes
+        https://arxiv.org/abs/1312.6114
+
+    beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework
+        https://openreview.net/forum?id=Sy2fzU9gl
+
+    Cyclical Annealing Schedule: A Simple Approach to Mitigating KL Vanishing
+        https://arxiv.org/abs/1903.10145
+
+    Understanding disentangling in β-VAE
+        https://arxiv.org/abs/1804.03599
+    """
+
+    def __init__(self,
+                 max_beta=1.0,
+                 total_cycles=4,
+                 cycle_length=10000,
+                 schedule_type='cosine',
+                 name='cyclical_vae_loss',
+                 **kwargs):
+        """
+        Initialize the BetaVAELoss instance.
+
+        Parameters
+        ----------
+        max_beta : float
+            Maximum value of beta.
+        total_cycles : int
+            Number of cycles in the annealing schedule.
+        cycle_length : int
+            Number of steps per cycle.
+        schedule_type : str
+            Schedule type for beta annealing ('linear', 'sigmoid', or 'cosine').
+        name : str, optional
+            A name for the instance.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.max_beta = max_beta
+        self.total_cycles = total_cycles
+        self.cycle_length = cycle_length
+        self.schedule_type = schedule_type
+        self.step = 0
+
+    def cyclical_beta(self):
+        """
+        Compute the cyclical beta value based on the current schedule type.
+
+        Returns
+        -------
+        float
+            The value of beta for the current step.
+        """
+
+        cycle_progress = (self.step % self.cycle_length) / self.cycle_length
+        current_cycle = self.step // self.cycle_length
+
+        if current_cycle >= self.total_cycles:
+            return 0.0
+
+        if self.schedule_type == 'linear':
+            beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
+        elif self.schedule_type == 'sigmoid':
+            beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
+        elif self.schedule_type == 'cosine':
+            beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
+        else:
+            raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
+
+        return beta
+
+    def call(self, y_true, y_pred):
+        """
+        Compute the loss given the original and reconstructed images.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Original input images.
+        y_pred : tuple
+            Tuple containing generated images, mean (mu), and log-variance (logvar).
+
+        Returns
+        -------
+        tf.Tensor
+            Total loss combining reconstruction error and KL divergence.
+        """
+
+        y_gen, mu, logvar = y_pred
+
+        rec_loss = tf.reduce_mean(tf.reduce_sum(tf.square(y_true - y_gen), axis=[1, 2, 3]))
+        kl_loss = -0.5 * tf.reduce_mean(tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
+
+        beta = self.cyclical_beta()
+        self.step += 1
+
+        return rec_loss + (beta * kl_loss)
