@@ -164,9 +164,9 @@ class CyclicalVAELoss(tf.keras.losses.Loss):
     def __init__(self,
                  max_beta=1.0,
                  total_cycles=4,
-                 cycle_length=5000,
+                 cycle_length=4000,
                  annealing_ratio=0.5,
-                 schedule_type='cosine',
+                 schedule_type='linear',
                  name='cyclical_vae_loss',
                  **kwargs):
         """
