@@ -142,22 +142,35 @@ class CTXLoss(tf.keras.losses.Loss):
             The computed contextual loss.
         """
 
-        ref_norm = tf.nn.l2_normalize(y_true + 1e-8, axis=-1)
-        gen_norm = tf.nn.l2_normalize(y_pred + 1e-8, axis=-1)
+        y_true_flat = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
+        y_pred_flat = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1))
 
-        cosine_dist = tf.matmul(ref_norm, gen_norm, transpose_b=True)
-        cosine_dist = 1.0 - cosine_dist
+        if self.distance == 'cosine':
+            y_true_flat = tf.nn.l2_normalize(y_true_flat, axis=-1, epsilon=self.epsilon)
+            y_pred_flat = tf.nn.l2_normalize(y_pred_flat, axis=-1, epsilon=self.epsilon)
 
-        d_min = tf.math.reduce_min(cosine_dist, axis=1, keepdims=True)
+            cosine_similarity = tf.matmul(y_true_flat, y_pred_flat, transpose_b=True)
+            distance = 1.0 - cosine_similarity
+        else:
+            y_true_expanded = tf.expand_dims(y_true_flat, axis=1)
+            y_pred_expanded = tf.expand_dims(y_pred_flat, axis=0)
+            diff = y_true_expanded - y_pred_expanded
 
-        d_tilde = cosine_dist / (d_min + 1e-8)
+            if self.distance == 'l1':
+                distance = tf.reduce_sum(tf.abs(diff), axis=-1)
+
+            elif self.distance == 'l2':
+                distance = tf.reduce_sum(tf.square(diff), axis=-1)
+
+        d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
+        d_tilde = distance / (d_min + self.epsilon)
         d_tilde = tf.clip_by_value(d_tilde, clip_value_min=0., clip_value_max=10.)
 
         w = tf.math.exp((1 - d_tilde) / self.sigma)
-        ctx_ij = w / (tf.math.reduce_sum(w, axis=1, keepdims=True) + 1e-8)
+        ctx_ij = w / (tf.math.reduce_sum(w, axis=1, keepdims=True) + self.epsilon)
 
-        ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1), axis=1)
-        ctx = tf.math.reduce_mean(-tf.math.log(ctx + 1e-8))
+        ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1))
+        ctx = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
 
         ctx_loss = tf.clip_by_value(ctx, clip_value_min=0., clip_value_max=100.)
 
