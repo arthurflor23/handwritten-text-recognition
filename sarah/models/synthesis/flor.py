@@ -1016,7 +1016,7 @@ class DiscriminatorModel(BaseModel):
             block = residual_block(block, self.blocks[-1], preactive=True, down=None)
 
         block = tf.keras.layers.Activation(activation='swish')(block)
-        block = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=[1, 2]), name='reduce')(block)
+        block = tf.keras.layers.GlobalAveragePooling2D()(block)
 
         outputs = tf.keras.layers.Dense(units=1, kernel_initializer=self.initializer)(block)
 
