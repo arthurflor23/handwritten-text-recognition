@@ -146,8 +146,8 @@ class CTXLoss(tf.keras.losses.Loss):
         y_pred_flat = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1))
 
         if self.distance == 'cosine':
-            y_true_flat = tf.nn.l2_normalize(y_true_flat, axis=-1, epsilon=self.epsilon)
-            y_pred_flat = tf.nn.l2_normalize(y_pred_flat, axis=-1, epsilon=self.epsilon)
+            y_true_flat = tf.nn.l2_normalize(y_true_flat, axis=-1)
+            y_pred_flat = tf.nn.l2_normalize(y_pred_flat, axis=-1)
 
             cosine_similarity = tf.matmul(y_true_flat, y_pred_flat, transpose_b=True)
             distance = 1.0 - cosine_similarity
