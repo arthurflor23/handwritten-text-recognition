@@ -14,16 +14,22 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, name='ctc_loss', reduction='sum_over_batch_size', **kwargs):
+    def __init__(self,
+                 reduction='sum_over_batch_size',
+                 epsilon=1e-5,
+                 name='ctc_loss',
+                 **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
-        name : str, optional
-            A name for the instance.
         reduction : str, optional
             Define reduction mode.
+        epsilon : float, optional
+            Small constant for numerical stability.
+        name : str, optional
+            A name for the instance.
         **kwargs : dict
             Additional arguments.
         """
@@ -31,6 +37,7 @@ class CTCLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.reduction = reduction
+        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -53,7 +60,7 @@ class CTCLoss(tf.keras.losses.Loss):
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
+        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
 
         logit_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
 
@@ -89,14 +96,23 @@ class CTXLoss(tf.keras.losses.Loss):
         https://arxiv.org/abs/1803.02077
     """
 
-    def __init__(self, sigma=0.5, name='ctx_loss', **kwargs):
+    def __init__(self,
+                 distance='cosine',
+                 sigma=0.5,
+                 epsilon=1e-5,
+                 name='ctx_loss',
+                 **kwargs):
         """
         Initialize the CTXLoss instance.
 
         Parameters
         ----------
+        distance : str, optional
+            Distance measure to use: 'cosine', 'l1', or 'l2'.
         sigma : float, optional
             Sharpness parameter of the similarity function.
+        epsilon : float, optional
+            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -105,7 +121,9 @@ class CTXLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
+        self.distance = distance
         self.sigma = sigma
+        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -169,12 +187,12 @@ class KLDivergence(tf.keras.losses.Loss):
     """
 
     def __init__(self,
-                 beta=1e-4,
                  max_beta=1.0,
                  total_cycles=4,
                  warmup_steps=10000,
                  annealing_ratio=0.5,
                  schedule_type='linear',
+                 non_cyclical_beta=None,
                  name='cyclical_vae_loss',
                  **kwargs):
         """
@@ -182,8 +200,6 @@ class KLDivergence(tf.keras.losses.Loss):
 
         Parameters
         ----------
-        beta : float, or None, optional
-            Beta weight for straightforward loss.
         max_beta : float, optional
             Maximum value of beta.
         total_cycles : int, optional
@@ -194,6 +210,8 @@ class KLDivergence(tf.keras.losses.Loss):
             Proportion used to increase beta within a cycle.
         schedule_type : str, optional
             Schedule type for beta annealing ('linear', 'sigmoid', or 'cosine').
+        non_cyclical_beta : float, or None, optional
+            Beta weight for non cyclical loss.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -202,12 +220,12 @@ class KLDivergence(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-        self.beta = beta
         self.max_beta = max_beta
         self.total_cycles = total_cycles
         self.warmup_steps = warmup_steps
         self.annealing_ratio = annealing_ratio
         self.schedule_type = schedule_type
+        self.non_cyclical_beta = non_cyclical_beta
         self.step = 0
 
     def cyclical_beta(self):
@@ -262,6 +280,6 @@ class KLDivergence(tf.keras.losses.Loss):
         """
 
         kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
-        beta = self.beta or self.cyclical_beta()
+        beta = self.non_cyclical_beta or self.cyclical_beta()
 
         return beta * kld_loss
