@@ -17,7 +17,11 @@ class EditDistance(tf.keras.metrics.Metric):
         https://arxiv.org/abs/1601.06581
     """
 
-    def __init__(self, beam_width=1, name='dist', **kwargs):
+    def __init__(self,
+                 beam_width=1,
+                 epsilon=1e-5,
+                 name='dist',
+                 **kwargs):
         """
         Initialize the EditDistance instance.
 
@@ -25,6 +29,8 @@ class EditDistance(tf.keras.metrics.Metric):
         ----------
         beam_width : int, optional
             The width of the beam for CTC beam search decoder.
+        epsilon : float, optional
+            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -36,6 +42,7 @@ class EditDistance(tf.keras.metrics.Metric):
         self.tracker = tf.keras.metrics.Mean()
 
         self.beam_width = beam_width
+        self.epsilon = epsilon
 
     def update_state(self, y_true, y_pred):
         """
@@ -53,7 +60,7 @@ class EditDistance(tf.keras.metrics.Metric):
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + 1e-8), perm=[1, 0, 2])
+        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
 
         sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
 
@@ -103,7 +110,12 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://arxiv.org/abs/1512.00567
     """
 
-    def __init__(self, scale, offset=0.0, name='kid', **kwargs):
+    def __init__(self,
+                 scale,
+                 offset=0.0,
+                 epsilon=1e-5,
+                 name='kid',
+                 **kwargs):
         """
         Initialize the KID metric instance.
 
@@ -113,6 +125,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
             Scaling factor for preprocessing.
         offset : float, optional
             Offset value for preprocessing.
+        epsilon : float, optional
+            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -125,6 +139,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         self.scale = scale
         self.offset = offset
+        self.epsilon = epsilon
         self.kid_image_size = (299, 299, 3)
 
         self.inception_encoder = tf.keras.Sequential([
@@ -159,10 +174,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / ((batch_size * (batch_size - 1.0)) + 1e-8)
+        mean_kernel_real = sum_kernel_real / ((batch_size * (batch_size - 1.0)) + self.epsilon)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + 1e-8)
+        mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + self.epsilon)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
         kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
@@ -189,7 +204,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         """
 
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
-        return (features_1 @ tf.transpose(features_2) / (feature_dimensions + 1e-8) + 1.0) ** 3.0
+        return (features_1 @ tf.transpose(features_2) / (feature_dimensions + self.epsilon) + 1.0) ** 3.0
 
     def result(self):
         """
