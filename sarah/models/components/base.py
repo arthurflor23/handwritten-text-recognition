@@ -425,8 +425,6 @@ class BaseRecognitionModel(BaseModel):
         batch_index = 0
         batch_size = int(np.ceil(len(x) / steps))
 
-        x = np.log(x + 1e-8)
-
         for step in range(steps):
             progbar.update(step)
 
