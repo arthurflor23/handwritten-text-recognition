@@ -14,14 +14,12 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self, reduction='sum_over_batch_size', name='ctc_loss', **kwargs):
+    def __init__(self, name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
         Parameters
         ----------
-        reduction : str, optional
-            Define reduction mode.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -29,8 +27,6 @@ class CTCLoss(tf.keras.losses.Loss):
         """
 
         super().__init__(name=name, **kwargs)
-
-        self.reduction = reduction
 
     @tf.function(jit_compile=True)
     def call(self, y_true, y_pred):
@@ -62,11 +58,7 @@ class CTCLoss(tf.keras.losses.Loss):
                                          output_length=output_length,
                                          mask_index=0)
 
-        if self.reduction == 'sum_over_batch_size':
-            ctc_loss = tf.reduce_mean(ctc_loss)
-
-        elif self.reduction == 'sum':
-            ctc_loss = tf.reduce_sum(ctc_loss)
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
