@@ -17,11 +17,7 @@ class EditDistance(tf.keras.metrics.Metric):
         https://arxiv.org/abs/1601.06581
     """
 
-    def __init__(self,
-                 beam_width=1,
-                 epsilon=1e-5,
-                 name='dist',
-                 **kwargs):
+    def __init__(self, beam_width=1, name='dist', **kwargs):
         """
         Initialize the EditDistance instance.
 
@@ -29,8 +25,6 @@ class EditDistance(tf.keras.metrics.Metric):
         ----------
         beam_width : int, optional
             The width of the beam for CTC beam search decoder.
-        epsilon : float, optional
-            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -39,10 +33,8 @@ class EditDistance(tf.keras.metrics.Metric):
 
         super().__init__(name=name, **kwargs)
 
-        self.tracker = tf.keras.metrics.Mean()
-
         self.beam_width = beam_width
-        self.epsilon = epsilon
+        self.tracker = tf.keras.metrics.Mean()
 
     def update_state(self, y_true, y_pred):
         """
@@ -60,9 +52,9 @@ class EditDistance(tf.keras.metrics.Metric):
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
         labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
+        logits = tf.transpose(y_pred, perm=[1, 0, 2])
 
-        sequence_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
+        sequence_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
 
         decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=tf.cast(logits, dtype=tf.float32),
                                                    sequence_length=tf.cast(sequence_length, dtype=tf.int32),
@@ -133,12 +125,11 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         super().__init__(name=name, **kwargs)
 
-        self.tracker = tf.keras.metrics.Mean()
-
         self.scale = scale
         self.offset = offset
         self.epsilon = epsilon
         self.kid_image_size = (299, 299, 3)
+        self.tracker = tf.keras.metrics.Mean()
 
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
