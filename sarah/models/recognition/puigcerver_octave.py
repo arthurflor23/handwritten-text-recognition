@@ -42,7 +42,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
-        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_in')(encoder_input)
+        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(encoder_input)
 
         encoder = [encoder, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder)]
         high, low = OctConv2D(alpha=0.25, filters=16)(encoder)
@@ -131,12 +131,10 @@ class RecognitionModel(BaseRecognitionModel):
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
-        decoder = tf.keras.layers.Activation(activation='softmax')(decoder)
 
         decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
-        decoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm_out')(decoder)
+        decoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(decoder)
 
         self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
 
