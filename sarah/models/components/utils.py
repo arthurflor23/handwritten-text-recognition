@@ -102,17 +102,12 @@ class MeasureTracker():
             Dictionary of measure names and values.
         """
 
-        def _update(name, value):
-            self.means[name].update_state(value)
-            self.values[name].assign(value)
-
         for name, value in measures.items():
             if name not in self.values:
                 self.add([name])
 
-            tf.cond(pred=tf.reduce_any(tf.math.is_nan(value)),
-                    true_fn=lambda: None,
-                    false_fn=lambda: _update(name, value))
+            self.means[name].update_state(value)
+            self.values[name].assign(value)
 
     def weight(self, measures):
         """
