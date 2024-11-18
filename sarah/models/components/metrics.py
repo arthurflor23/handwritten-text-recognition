@@ -72,9 +72,7 @@ class EditDistance(tf.keras.metrics.Metric):
         edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
         edit_distance = tf.reduce_mean(edit_distance)
 
-        tf.cond(pred=tf.math.is_nan(edit_distance),
-                true_fn=lambda: self.tracker.update_state(self.result()),
-                false_fn=lambda: self.tracker.update_state(edit_distance))
+        self.tracker.update_state(edit_distance)
 
     def result(self):
         """
@@ -182,9 +180,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
 
-        tf.cond(pred=tf.math.is_nan(kid),
-                true_fn=lambda: self.tracker.update_state(self.result()),
-                false_fn=lambda: self.tracker.update_state(kid))
+        self.tracker.update_state(kid)
 
     def polynomial_kernel(self, features_1, features_2):
         """
