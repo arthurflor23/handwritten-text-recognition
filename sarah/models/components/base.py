@@ -435,19 +435,15 @@ class BaseRecognitionModel(BaseModel):
             sequence_length = [batch.shape[2]] * batch.shape[0]
 
             for i in range(batch.shape[1]):
-                inputs = np.transpose(batch[:, i, :, :], axes=(1, 0, 2))
-                decoded, log_probabilities = tf.nn.ctc_beam_search_decoder(inputs=inputs,
-                                                                           sequence_length=sequence_length,
-                                                                           beam_width=beam_width,
-                                                                           top_paths=top_paths)
+                decoded, log_probabilities = tf.keras.ops.ctc_decode(inputs=batch[:, i, :, :],
+                                                                     sequence_lengths=sequence_length,
+                                                                     strategy='beam_search',
+                                                                     beam_width=beam_width,
+                                                                     top_paths=top_paths,
+                                                                     merge_repeated=True,
+                                                                     mask_index=0)
 
-                decoded_pads = []
-                for j in range(len(decoded)):
-                    decoded[j] = tf.sparse.to_dense(decoded[j], default_value=-1)
-                    paddings = [[0, 0], [0, batch.shape[2] - tf.reduce_max(tf.shape(decoded[j])[1])]]
-                    decoded_pads.append(tf.pad(decoded[j], paddings=paddings, constant_values=-1))
-
-                top_path_decoded.append(decoded_pads)
+                top_path_decoded.append(decoded)
                 top_path_probabilities.append(tf.exp(log_probabilities))
 
             batch_decoded = np.transpose(tf.stack(top_path_decoded, axis=1), axes=(2, 0, 1, 3))
