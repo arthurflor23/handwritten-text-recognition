@@ -32,6 +32,7 @@ class CTCLoss(tf.keras.losses.Loss):
 
         self.reduction = reduction
 
+    @tf.function(jit_compile=True)
     def call(self, y_true, y_pred):
         """
         Compute the CTC loss between the true labels and predicted labels.
