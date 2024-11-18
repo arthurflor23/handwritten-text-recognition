@@ -14,11 +14,7 @@ class CTCLoss(tf.keras.losses.Loss):
         https://dl.acm.org/doi/10.1145/1143844.1143891
     """
 
-    def __init__(self,
-                 reduction='sum_over_batch_size',
-                 epsilon=1e-5,
-                 name='ctc_loss',
-                 **kwargs):
+    def __init__(self, reduction='sum_over_batch_size', name='ctc_loss', **kwargs):
         """
         Initialize the CTCLoss instance.
 
@@ -26,8 +22,6 @@ class CTCLoss(tf.keras.losses.Loss):
         ----------
         reduction : str, optional
             Define reduction mode.
-        epsilon : float, optional
-            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -37,7 +31,6 @@ class CTCLoss(tf.keras.losses.Loss):
         super().__init__(name=name, **kwargs)
 
         self.reduction = reduction
-        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -59,17 +52,14 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        labels = tf.sparse.from_dense(y_true)
-        logits = tf.transpose(tf.math.log(y_pred + self.epsilon), perm=[1, 0, 2])
+        target_length = tf.reduce_sum(tf.cast(tf.not_equal(y_true, 0), tf.int32), axis=-1)
+        output_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
 
-        logit_length = tf.fill([tf.shape(y_pred)[0]], tf.shape(y_pred)[1])
-
-        ctc_loss = tf.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
-                                  logits=tf.cast(logits, dtype=tf.float32),
-                                  label_length=None,
-                                  logit_length=tf.cast(logit_length, dtype=tf.int32),
-                                  logits_time_major=True,
-                                  blank_index=-1)
+        ctc_loss = tf.keras.ops.ctc_loss(target=tf.cast(y_true, dtype=tf.int32),
+                                         output=tf.cast(y_pred, dtype=tf.float32),
+                                         target_length=target_length,
+                                         output_length=output_length,
+                                         mask_index=0)
 
         if self.reduction == 'sum_over_batch_size':
             ctc_loss = tf.reduce_mean(ctc_loss)
