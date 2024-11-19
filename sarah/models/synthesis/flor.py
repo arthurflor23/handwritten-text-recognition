@@ -9,7 +9,6 @@ from sarah.models.components.layers import GatedConv2DResidual
 from sarah.models.components.layers import PositionEmbedding
 from sarah.models.components.layers import Reparameterization
 from sarah.models.components.layers import SelfAttention
-from sarah.models.components.optimizers import GradientNormalization
 from sarah.models.recognition.flor_v2 import RecognitionModel as HTRModel
 
 
@@ -54,17 +53,11 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = GradientNormalization(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-        self.w_optimizer = GradientNormalization(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.g_optimizer = GradientNormalization(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
-
-        self.d_optimizer = GradientNormalization(
-            tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999))
+        self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
 
     def build_model(self):
         """
@@ -78,12 +71,12 @@ class SynthesisModel(BaseSynthesisModel):
         generator_blocks = [256, 128, 64, 32]
         discriminator_blocks = [32, 64, 128, 256]
 
-        self.style_backbone = BackboneModel(name='style_backbone',
-                                            image_shape=self.image_shape)
-
         self.recognition = RecognitionModel(name='recognition',
                                             image_shape=self.image_shape,
                                             lexical_shape=self.lexical_shape)
+
+        self.style_backbone = BackboneModel(name='style_backbone',
+                                            image_shape=self.image_shape)
 
         self.identification = IdentificationModel(name='identification',
                                                   features_shape=self.style_backbone.model.output[0].shape[1:],
@@ -109,6 +102,31 @@ class SynthesisModel(BaseSynthesisModel):
                                                       image_shape=self.image_shape,
                                                       blocks=discriminator_blocks,
                                                       patch_shape=patch_shape)
+
+    def train_step(self, input_data):
+        """
+        Executes a training step.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            Batch of (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            Training metrics and losses.
+        """
+
+        self.discriminator_step(input_data)
+
+        tf.cond(pred=tf.math.equal(tf.math.mod(self.global_steps, self.generator_steps), 0),
+                true_fn=lambda: self.generator_step(input_data),
+                false_fn=lambda: None)
+
+        self.global_steps.assign_add(value=1)
+
+        return self.measure_tracker.result()
 
     def discriminator_step(self, input_data):
         """
@@ -255,6 +273,15 @@ class SynthesisModel(BaseSynthesisModel):
             fake_texts = self.recognition(fake_images, training=False)
             g_ctc_loss = self.ctc_loss(real_texts, fake_texts)
 
+            # writer identifier
+            real_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
+            real_writer_data = tf.repeat(writer_data, repeats=2, axis=0)
+
+            real_latent_features, real_latent_feats = self.style_backbone(real_latent_images, training=False)
+            real_latent_wid_logits = self.identification(real_latent_features, training=False)
+
+            g_wid_loss = self.cls_loss(real_writer_data, real_latent_wid_logits)
+
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
 
@@ -267,15 +294,6 @@ class SynthesisModel(BaseSynthesisModel):
 
             g_res_loss = tf.reduce_mean(tf.math.abs(fake_style_latent_data - random_latent_data))
 
-            # writer identifier
-            real_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
-            real_writer_data = tf.repeat(writer_data, repeats=2, axis=0)
-
-            real_latent_features, real_latent_feats = self.style_backbone(real_latent_images, training=False)
-            real_latent_wid_logits = self.identification(real_latent_features, training=False)
-
-            g_wid_loss = self.cls_loss(real_writer_data, real_latent_wid_logits)
-
             # contextual
             g_ctx_loss = tf.constant(0.0)
 
@@ -286,7 +304,7 @@ class SynthesisModel(BaseSynthesisModel):
                 g_ctx_loss += self.ctx_loss(real_feat, feats[1])
 
             # generator loss
-            g_loss = g_adv_loss + g_ctc_loss + g_ctx_loss + g_kld_loss + g_rec_loss + g_res_loss + g_wid_loss
+            g_loss = g_adv_loss + g_ctc_loss + g_wid_loss + g_kld_loss + g_rec_loss + g_res_loss + g_ctx_loss
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
@@ -303,184 +321,14 @@ class SynthesisModel(BaseSynthesisModel):
         self.measure_tracker.update({
             'g_adv_loss': g_adv_loss,
             'g_ctc_loss': g_ctc_loss,
-            'g_ctx_loss': g_ctx_loss,
+            'g_wid_loss': g_wid_loss,
             'g_kld_loss': g_kld_loss,
             'g_rec_loss': g_rec_loss,
             'g_res_loss': g_res_loss,
-            'g_wid_loss': g_wid_loss,
+            'g_ctx_loss': g_ctx_loss,
             self.kid.name: kid,
             'loss': g_loss,
         })
-
-    def train_step(self, input_data):
-        """
-        Executes a training step.
-
-        Parameters
-        ----------
-        input_data : list or tuple
-            Batch of (x_data, y_data).
-
-        Returns
-        -------
-        dict
-            Training metrics and losses.
-        """
-
-        self.discriminator_step(input_data)
-
-        tf.cond(pred=tf.math.equal(tf.math.mod(self.global_steps, self.generator_steps), 0),
-                true_fn=lambda: self.generator_step(input_data),
-                false_fn=lambda: None)
-
-        self.global_steps.assign_add(value=1)
-
-        return self.measure_tracker.result()
-
-
-class BackboneModel(BaseModel):
-    """
-    Extracts style patterns from input images for generative tasks.
-    """
-
-    def __init__(self,
-                 image_shape,
-                 name='style_backbone',
-                 **kwargs):
-        """
-        Initialize the backbone model.
-
-        Parameters
-        ----------
-        image_shape : list or tuple
-            Input image shape.
-        name : str, optional
-            Model instance name.
-        **kwargs : dict
-            Additional arguments.
-        """
-
-        super().__init__(name=name, **kwargs)
-
-        self.image_shape = image_shape
-
-        self.initializer = 'glorot_uniform'  # tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
-        self.build_model()
-
-    def get_config(self):
-        """
-        Return the configuration of the model.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'image_shape': self.image_shape,
-        })
-
-    def build_model(self):
-        """
-        Builds the model architecture.
-        """
-
-        feats = []
-
-        encoder_input = tf.keras.Input(shape=self.image_shape)
-        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(encoder_input)
-
-        encoder = tf.keras.layers.Conv2D(filters=16,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-
-        encoder = GatedConv2DResidual(h=16, kernel_initializer=self.initializer)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
-
-        encoder = GatedConv2DResidual(h=24, kernel_initializer=self.initializer, dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=48,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
-
-        encoder = GatedConv2DResidual(h=32, kernel_initializer=self.initializer, dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
-
-        encoder = GatedConv2DResidual(h=48, kernel_initializer=self.initializer, dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=96,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
-
-        feats.append(encoder)
-        encoder = GatedConv2DResidual(h=56, kernel_initializer=self.initializer, dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=112,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
-
-        feats.append(encoder)
-        encoder = GatedConv2DResidual(h=64, kernel_initializer=self.initializer, dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=128,
-                                         kernel_size=3,
-                                         padding='same',
-                                         kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
-
-        feats.append(encoder)
-        encoder = SelfAttention(kernel_initializer=self.initializer, dropout=0.1)(encoder)
-
-        encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
-
-        encoder = tf.keras.layers.Dense(units=256, kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-
-        encoder = tf.keras.layers.Dense(units=256, kernel_initializer=self.initializer)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-
-        self.model = tf.keras.Model(name=self.name,
-                                    inputs=encoder_input,
-                                    outputs=[encoder, feats])
 
 
 class RecognitionModel(BaseModel):
@@ -534,6 +382,119 @@ class RecognitionModel(BaseModel):
         })
 
 
+class BackboneModel(BaseModel):
+    """
+    Extracts style patterns from input images for generative tasks.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 name='style_backbone',
+                 **kwargs):
+        """
+        Initialize the backbone model.
+
+        Parameters
+        ----------
+        image_shape : list or tuple
+            Input image shape.
+        name : str, optional
+            Model instance name.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.image_shape = image_shape
+
+        self.build_model()
+
+    def get_config(self):
+        """
+        Return the configuration of the model.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'image_shape': self.image_shape,
+        })
+
+    def build_model(self):
+        """
+        Builds the model architecture.
+        """
+
+        feats = []
+
+        encoder_input = tf.keras.Input(shape=self.image_shape)
+        encoder = tf.keras.layers.Identity()(encoder_input)
+
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+
+        encoder = GatedConv2DResidual(h=16)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+
+        encoder = GatedConv2DResidual(h=24, dropout=0.1)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+
+        feats.append(encoder)
+        encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+
+        feats.append(encoder)
+        encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+
+        feats.append(encoder)
+        encoder = GatedConv2DResidual(h=56, dropout=0.1)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+
+        feats.append(encoder)
+        encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
+
+        encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+
+        feats.append(encoder)
+        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
+
+        self.model = tf.keras.Model(name=self.name,
+                                    inputs=encoder_input,
+                                    outputs=[encoder, feats])
+
+
 class IdentificationModel(BaseModel):
     """
     Classifies handwriting images to identify the writer based on style features.
@@ -564,7 +525,6 @@ class IdentificationModel(BaseModel):
         self.features_shape = features_shape
         self.writers_shape = writers_shape
 
-        self.initializer = 'glorot_uniform'  # tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
         self.build_model()
 
     def get_config(self):
@@ -591,8 +551,13 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        outputs = tf.keras.layers.Dense(units=self.writers_shape[0],
-                                        kernel_initializer=self.initializer)(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        style = tf.keras.layers.Dense(units=256)(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=feature_inputs,
@@ -629,7 +594,6 @@ class StyleEncoderModel(BaseModel):
         self.features_shape = features_shape
         self.latent_dim = latent_dim
 
-        self.initializer = 'glorot_uniform'  # tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
         self.build_model()
 
     def get_config(self):
@@ -656,11 +620,14 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim,
-                                   kernel_initializer=self.initializer)(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='swish')(style)
 
-        logvar = tf.keras.layers.Dense(units=self.latent_dim,
-                                       kernel_initializer=self.initializer)(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
 
         outputs = Reparameterization()([mu, logvar])
 
@@ -738,7 +705,6 @@ class GeneratorModel(BaseModel):
             self.strides = list(zip(h_stride, w_stride))
             self.strides.reverse()
 
-        self.initializer = 'glorot_uniform'  # tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
         self.build_model()
 
     def get_config(self):
@@ -779,26 +745,13 @@ class GeneratorModel(BaseModel):
                 h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
                 x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
-            h = tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       strides=1,
-                                       padding='same',
-                                       kernel_initializer=self.initializer)(h)
+            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
             h = AdaptiveInstanceNormalization()([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
-            h = tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       strides=1,
-                                       padding='same',
-                                       kernel_initializer=self.initializer)(h)
-
-            x = tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=1,
-                                       strides=1,
-                                       padding='valid',
-                                       kernel_initializer=self.initializer)(x)
+            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
+            x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid')(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -824,14 +777,12 @@ class GeneratorModel(BaseModel):
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
 
-        block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2,
-                                      kernel_initializer=self.initializer)(embedding)
+        block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
-        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks,
-                                              kernel_initializer=self.initializer)(latent)
+        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
                                                arguments={'y': self.num_blocks},
@@ -842,20 +793,15 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                block = GatedConv2DResidual(kernel_initializer=self.initializer)(block)
+                block = GatedConv2DResidual()(block)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
-        block = GatedConv2DResidual(kernel_initializer=self.initializer)(block)
+        block = GatedConv2DResidual()(block)
         block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
 
         block = tf.keras.layers.Activation(activation='swish')(block)
-
-        block = tf.keras.layers.Conv2D(filters=1,
-                                       kernel_size=3,
-                                       strides=1,
-                                       padding='same',
-                                       kernel_initializer=self.initializer)(block)
+        block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same')(block)
 
         outputs = tf.keras.layers.Activation(activation='tanh')(block)
 
@@ -935,7 +881,6 @@ class DiscriminatorModel(BaseModel):
 
                 self.strides = list(zip(h_stride, w_stride))
 
-        self.initializer = 'glorot_uniform'  # tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
         self.build_model()
 
     def get_config(self):
@@ -969,33 +914,20 @@ class DiscriminatorModel(BaseModel):
             if preactive:
                 h = tf.keras.layers.Activation(activation='swish')(h)
 
-            h = tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       padding='same',
-                                       kernel_initializer=self.initializer)(h)
+            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same')(h)
 
             h = tf.keras.layers.Activation(activation='swish')(h)
-
-            h = tf.keras.layers.Conv2D(filters=filters,
-                                       kernel_size=3,
-                                       padding='same',
-                                       kernel_initializer=self.initializer)(h)
+            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same')(h)
 
             if preactive:
-                x = tf.keras.layers.Conv2D(filters=filters,
-                                           kernel_size=1,
-                                           padding='valid',
-                                           kernel_initializer=self.initializer)(x)
+                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
             if down and sum(down) > 2:
                 h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(h)
                 x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(x)
 
             if not preactive:
-                x = tf.keras.layers.Conv2D(filters=filters,
-                                           kernel_size=1,
-                                           padding='valid',
-                                           kernel_initializer=self.initializer)(x)
+                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
             return tf.keras.layers.Add()([h, x])
 
@@ -1010,7 +942,7 @@ class DiscriminatorModel(BaseModel):
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                block = GatedConv2DResidual(kernel_initializer=self.initializer)(block)
+                block = GatedConv2DResidual()(block)
 
         if not self.patch_shape:
             block = residual_block(block, self.blocks[-1], preactive=True, down=None)
@@ -1018,7 +950,7 @@ class DiscriminatorModel(BaseModel):
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
 
-        outputs = tf.keras.layers.Dense(units=1, kernel_initializer=self.initializer)(block)
+        outputs = tf.keras.layers.Dense(units=1)(block)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=image_input,
