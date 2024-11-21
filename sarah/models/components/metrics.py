@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from sarah.models.components.layers import ExtractPatches
+
 
 class EditDistance(tf.keras.metrics.Metric):
     """
@@ -107,8 +109,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
     """
 
     def __init__(self,
-                 scale,
-                 offset=0.0,
+                 image_shape,
                  epsilon=1e-5,
                  name='kid',
                  **kwargs):
@@ -117,10 +118,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         Parameters
         ----------
-        scale : float
-            Scaling factor for preprocessing.
-        offset : float, optional
-            Offset value for preprocessing.
+        image_shape : list or tuple
+            Input image shape.
         epsilon : float, optional
             Small constant for numerical stability.
         name : str, optional
@@ -131,18 +130,20 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         super().__init__(name=name, **kwargs)
 
-        self.scale = scale
-        self.offset = offset
+        self.image_shape = image_shape
         self.epsilon = epsilon
+
         self.kid_image_size = (299, 299, 3)
         self.tracker = tf.keras.metrics.Mean()
 
+        self.height = int(tf.math.ceil(self.image_shape[0] / self.kid_image_size[0]) * self.kid_image_size[0])
+        self.width = int(tf.math.ceil(self.image_shape[1] / self.kid_image_size[1]) * self.kid_image_size[1])
+
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
+            tf.keras.layers.Resizing(height=self.height, width=self.width),
+            ExtractPatches(patch_shape=self.kid_image_size[:2], strides=(1, 1), padding='same'),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
-            tf.keras.layers.Rescaling(scale=self.scale, offset=self.offset),
-            tf.keras.layers.Resizing(height=self.kid_image_size[0], width=self.kid_image_size[1]),
-            tf.keras.layers.Lambda(tf.keras.applications.inception_v3.preprocess_input),
             tf.keras.applications.InceptionV3(include_top=False, input_shape=self.kid_image_size, weights='imagenet'),
             tf.keras.layers.GlobalAveragePooling2D(),
         ], name='inception_encoder')
