@@ -451,7 +451,7 @@ class ExtractPatches(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.patch_shape = patch_shape
-        self.strides = strides
+        self.strides = (strides, strides) if isinstance(strides, int) else strides
         self.padding = padding
 
     def get_config(self):
