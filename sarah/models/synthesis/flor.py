@@ -53,8 +53,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=4e-4, beta_1=0.5, beta_2=0.999)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=4e-4, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
@@ -303,31 +303,42 @@ class SynthesisModel(BaseSynthesisModel):
                 g_ctx_loss += self.ctx_loss(real_feat, feats[0])
                 g_ctx_loss += self.ctx_loss(real_feat, feats[1])
 
+            # kid
+            self.kid.update_state(image_data, real_real_images)
+
             # generator loss
-            g_loss = g_adv_loss + g_ctc_loss + g_wid_loss + g_kld_loss + g_rec_loss + g_res_loss + g_ctx_loss
+            gen_loss = {
+                'g_adv_loss': g_adv_loss,
+                'g_ctx_loss': g_ctx_loss,
+                'g_kld_loss': g_kld_loss,
+            }
+
+            aux_loss = {
+                'g_ctc_loss': g_ctc_loss,
+                'g_rec_loss': g_rec_loss,
+                'g_res_loss': g_res_loss,
+                'g_wid_loss': g_wid_loss,
+                self.kid.name: self.kid.result(),
+            }
+
+            weighted_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss)
+
+            g_loss = sum(gen_loss.values()) + sum(weighted_aux_loss.values())
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
-                                      self.generator.trainable_weights)
+                                      self.generator.trainable_weights +
+                                      trainable_loss_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
-                                             self.generator.trainable_weights))
-
-        # kid
-        self.kid.update_state(image_data, real_real_images)
-        kid = self.kid.result()
+                                             self.generator.trainable_weights +
+                                             trainable_loss_weights))
 
         self.measure_tracker.update({
-            'g_adv_loss': g_adv_loss,
-            'g_ctc_loss': g_ctc_loss,
-            'g_wid_loss': g_wid_loss,
-            'g_kld_loss': g_kld_loss,
-            'g_rec_loss': g_rec_loss,
-            'g_res_loss': g_res_loss,
-            'g_ctx_loss': g_ctx_loss,
-            self.kid.name: kid,
-            'loss': g_loss,
+            **gen_loss,
+            **aux_loss,
+            'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
         })
 
 
@@ -441,6 +452,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         encoder = GatedConv2DResidual(h=16)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -454,15 +466,14 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        feats.append(encoder)
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        feats.append(encoder)
         encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
@@ -470,15 +481,14 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        feats.append(encoder)
         encoder = GatedConv2DResidual(h=56, dropout=0.1)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        feats.append(encoder)
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
@@ -486,9 +496,16 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        feats.append(encoder)
         encoder = SelfAttention(dropout=0.1)(encoder)
+        feats.append(encoder)
+
         encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
+
+        encoder = tf.keras.layers.Dense(units=256)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+
+        encoder = tf.keras.layers.Dense(units=256)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=encoder_input,
@@ -551,13 +568,7 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='swish')(style)
-
-        style = tf.keras.layers.Dense(units=256)(style)
-        style = tf.keras.layers.Activation(activation='swish')(style)
-
-        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
+        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(feature_inputs)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=feature_inputs,
@@ -620,14 +631,8 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        style = tf.keras.layers.Dense(units=256)(feature_inputs)
-        style = tf.keras.layers.Activation(activation='swish')(style)
-
-        style = tf.keras.layers.Dense(units=256)(style)
-        style = tf.keras.layers.Activation(activation='swish')(style)
-
-        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
 
         outputs = Reparameterization()([mu, logvar])
 
