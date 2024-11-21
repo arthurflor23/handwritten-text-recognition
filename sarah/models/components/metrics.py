@@ -141,8 +141,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
-            tf.keras.layers.Resizing(height=self.height, width=self.width),
-            ExtractPatches(patch_shape=self.kid_image_size[:2], strides=(1, 1), padding='same'),
+            tf.keras.layers.Resizing(height=self.height, width=self.width, interpolation='nearest'),
+            ExtractPatches(patch_shape=self.kid_image_size[:2], strides=(1, 1), padding='valid'),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
             tf.keras.applications.InceptionV3(include_top=False, input_shape=self.kid_image_size, weights='imagenet'),
             tf.keras.layers.GlobalAveragePooling2D(),
