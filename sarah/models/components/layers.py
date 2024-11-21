@@ -422,12 +422,6 @@ class ExtractPatches(tf.keras.layers.Layer):
 
     References
     ----------
-    HiGAN+: Handwriting Imitation GAN with Disentangled Representations
-        https://dl.acm.org/doi/10.1145/3550070
-
-    Image-to-Image Translation with Conditional Adversarial Networks
-        https://arxiv.org/abs/1611.07004
-
     Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
         https://arxiv.org/abs/1609.04802
     """

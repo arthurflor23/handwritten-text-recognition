@@ -12,11 +12,8 @@ class EditDistance(tf.keras.metrics.Metric):
     A Guided Tour to Approximate String Matching
         https://dl.acm.org/doi/10.1145/375360.375365
 
-    A Novel Connectionist System for Unconstrained Handwriting Recognition
-        https://ieeexplore.ieee.org/document/4531750
-
-    Character-Level Incremental Speech Recognition with Recurrent Neural Networks
-        https://arxiv.org/abs/1601.06581
+    Binary Codes Capable of Correcting Deletions, Insertions, and Reversals
+        https://nymity.ch/sybilhunting/pdf/Levenshtein1966a.pdf
     """
 
     def __init__(self, beam_width=1, name='dist', **kwargs):
