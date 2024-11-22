@@ -623,7 +623,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
         self.kid = KernelInceptionDistance(image_shape=self.image_shape)
-        self.kld_loss = KLDivergence(non_cyclical_beta=1e-4)
+        self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
         self.monitor = self.kid.name
