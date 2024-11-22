@@ -53,8 +53,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=4e-4, beta_1=0.5, beta_2=0.999)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=4e-4, beta_1=0.5, beta_2=0.999)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
@@ -300,11 +300,8 @@ class SynthesisModel(BaseSynthesisModel):
             for real_feat, real_latent_feat in zip(real_feats, real_latent_feats):
                 feats = tf.split(real_latent_feat, num_or_size_splits=2, axis=0)
 
-                g_ctx_loss += self.ctx_loss(real_feat, feats[0])
-                g_ctx_loss += self.ctx_loss(real_feat, feats[1])
-
-            # kid
-            self.kid.update_state(image_data, real_real_images)
+                g_ctx_loss += self.ctx_loss(real_feat, feats[0]) * 5
+                g_ctx_loss += self.ctx_loss(real_feat, feats[1]) * 5
 
             # generator loss
             gen_loss = {
@@ -318,7 +315,6 @@ class SynthesisModel(BaseSynthesisModel):
                 'g_rec_loss': g_rec_loss,
                 'g_res_loss': g_res_loss,
                 'g_wid_loss': g_wid_loss,
-                self.kid.name: self.kid.result(),
             }
 
             weighted_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss)
@@ -335,9 +331,13 @@ class SynthesisModel(BaseSynthesisModel):
                                              self.generator.trainable_weights +
                                              trainable_loss_weights))
 
+        # kid
+        self.kid.update_state(image_data, real_real_images)
+
         self.measure_tracker.update({
             **gen_loss,
             **aux_loss,
+            self.kid.name: self.kid.result(),
             'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
         })
 
@@ -452,7 +452,6 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         encoder = GatedConv2DResidual(h=16)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -461,6 +460,7 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=24, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -469,7 +469,6 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -478,6 +477,7 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
