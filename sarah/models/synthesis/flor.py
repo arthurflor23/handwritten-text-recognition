@@ -300,14 +300,14 @@ class SynthesisModel(BaseSynthesisModel):
             for real_feat, real_latent_feat in zip(real_feats, real_latent_feats):
                 feats = tf.split(real_latent_feat, num_or_size_splits=2, axis=0)
 
-                g_ctx_loss += self.ctx_loss(real_feat, feats[0]) * 5
-                g_ctx_loss += self.ctx_loss(real_feat, feats[1]) * 5
+                g_ctx_loss += self.ctx_loss(real_feat, feats[0])
+                g_ctx_loss += self.ctx_loss(real_feat, feats[1])
 
             # generator loss
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
-                'g_ctx_loss': g_ctx_loss,
-                'g_kld_loss': g_kld_loss,
+                'g_ctx_loss': g_ctx_loss * 10,
+                'g_kld_loss': g_kld_loss * 1e-4,
             }
 
             aux_loss = {
@@ -460,7 +460,6 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=24, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -477,7 +476,6 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -495,6 +493,7 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
