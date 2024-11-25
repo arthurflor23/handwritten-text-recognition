@@ -190,10 +190,10 @@ class BaseRecognitionModel(BaseModel):
                  style_backbone=None,
                  style_encoder=None,
                  generator=None,
-                 synthetic_data_ratio=0.99,
-                 synthetic_image_ratio=0.5,
-                 synthetic_text_ratio=0.5,
-                 synthetic_style_ratio=0.5,
+                 synthetic_data_ratio=0.66,
+                 synthetic_image_ratio=0.66,
+                 synthetic_text_ratio=0.33,
+                 synthetic_style_ratio=0.33,
                  seed=None,
                  **kwargs):
         """
