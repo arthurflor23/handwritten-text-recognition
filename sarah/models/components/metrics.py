@@ -173,7 +173,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + self.epsilon)
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
 
-        kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
+        kid = ((mean_kernel_real + mean_kernel_generated) - (2.0 * mean_kernel_cross))
 
         self.tracker.update_state(kid)
 
