@@ -53,8 +53,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, beta_1=0.5, beta_2=0.999)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
@@ -156,11 +156,11 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
 
             real_features_data, _ = self.style_backbone(image_data, training=False)
-            real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
+            real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
 
-            real_real_images = self.generator([text_data, real_latent_data, mask_data], training=True)
-            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=True)
-            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=True)
+            real_real_images = self.generator([text_data, real_latent_data, mask_data], training=False)
+            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=False)
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=False)
 
             real_images = tf.concat([image_data, aug_image_data], axis=0)
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
@@ -174,30 +174,30 @@ class SynthesisModel(BaseSynthesisModel):
                 fake_adv = self.discriminator(fake_images, training=True)
                 fake_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_adv))
 
-                # fake_patch_adv = self.patch_discriminator(fake_images, training=True)
-                # fake_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_adv))
+                fake_patch_adv = self.patch_discriminator(fake_images, training=True)
+                fake_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_adv))
 
                 # real images
                 real_adv = self.discriminator(real_images, training=True)
                 real_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_adv))
 
-                # real_patch_adv = self.patch_discriminator(real_images, training=True)
-                # real_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_adv))
+                real_patch_adv = self.patch_discriminator(real_images, training=True)
+                real_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_adv))
 
                 # discriminator loss
-                d_adv_loss = fake_adv_loss + real_adv_loss  # + fake_patch_adv_loss + real_patch_adv_loss
+                d_adv_loss = fake_adv_loss + real_adv_loss + fake_patch_adv_loss + real_patch_adv_loss
 
             d_gradients = d_tape.gradient(d_adv_loss,
-                                          self.discriminator.trainable_weights)
-            #   self.patch_discriminator.trainable_variables)
+                                          self.discriminator.trainable_weights +
+                                          self.patch_discriminator.trainable_variables)
 
             self.d_optimizer.apply_gradients(zip(d_gradients,
-                                                 self.discriminator.trainable_weights))
-            #  self.patch_discriminator.trainable_variables))
+                                                 self.discriminator.trainable_weights +
+                                                 self.patch_discriminator.trainable_variables))
 
             # handwriting recognition
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(image_data, training=True)
+                ctc_logits = self.recognition(aug_image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
@@ -205,7 +205,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.style_backbone(image_data, training=True)
+                wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
@@ -264,10 +264,10 @@ class SynthesisModel(BaseSynthesisModel):
             fake_adv = self.discriminator(fake_images, training=False)
             fake_adv_loss = -tf.reduce_mean(fake_adv)
 
-            # fake_patch_adv = self.patch_discriminator(fake_images, training=False)
-            # fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv)
+            fake_patch_adv = self.patch_discriminator(fake_images, training=False)
+            fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv)
 
-            g_adv_loss = fake_adv_loss  # + fake_patch_adv_loss
+            g_adv_loss = fake_adv_loss + fake_patch_adv_loss
 
             # handwriting recognition
             fake_texts = self.recognition(fake_images, training=False)
@@ -286,7 +286,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_kld_loss = self.kld_loss(mu, logvar)
 
             # content reconstruction
-            g_rec_loss = tf.reduce_mean(tf.square(image_data - real_real_images))
+            g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
 
             # style reconstruction
             fake_style_features, _ = self.style_backbone(fake_fake_images, training=False)
@@ -304,41 +304,33 @@ class SynthesisModel(BaseSynthesisModel):
                 g_ctx_loss += self.ctx_loss(real_feat, feats[1])
 
             # generator loss
-            gen_loss = {
+            losses = {
                 'g_adv_loss': g_adv_loss,
-                'g_ctx_loss': g_ctx_loss * 10,
-                'g_kld_loss': g_kld_loss * 0.0001,
-            }
-
-            aux_loss = {
                 'g_ctc_loss': g_ctc_loss,
+                'g_ctx_loss': g_ctx_loss * 10,
+                'g_kld_loss': g_kld_loss * 0.001,
                 'g_rec_loss': g_rec_loss,
                 'g_res_loss': g_res_loss,
                 'g_wid_loss': g_wid_loss,
             }
 
-            weighted_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss)
-
-            g_loss = sum(gen_loss.values()) + sum(weighted_aux_loss.values())
+            g_loss = sum(losses.values())
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
-                                      self.generator.trainable_weights +
-                                      trainable_loss_weights)
+                                      self.generator.trainable_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
-                                             self.generator.trainable_weights +
-                                             trainable_loss_weights))
+                                             self.generator.trainable_weights))
 
         # kid
         self.kid.update_state(image_data, real_real_images)
 
         self.measure_tracker.update({
-            **gen_loss,
-            **aux_loss,
+            **losses,
             self.kid.name: self.kid.result(),
-            'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
+            'loss': g_loss,
         })
 
 
@@ -465,6 +457,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -481,10 +474,10 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=56, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
@@ -493,23 +486,15 @@ class BackboneModel(BaseModel):
 
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
-        feats.append(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
-
-        encoder = SelfAttention(dropout=0.1)(encoder)
         feats.append(encoder)
 
+        encoder = SelfAttention(dropout=0.1)(encoder)
         encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
-
-        encoder = tf.keras.layers.Dense(units=256)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-
-        encoder = tf.keras.layers.Dense(units=256)(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=encoder_input,
@@ -572,7 +557,13 @@ class IdentificationModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        style = tf.keras.layers.Dense(units=256)(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        outputs = tf.keras.layers.Dense(units=self.writers_shape[0])(style)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=feature_inputs,
@@ -635,8 +626,14 @@ class StyleEncoderModel(BaseModel):
 
         feature_inputs = tf.keras.layers.Input(shape=self.features_shape)
 
-        mu = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
-        logvar = tf.keras.layers.Dense(units=self.latent_dim)(feature_inputs)
+        style = tf.keras.layers.Dense(units=256)(feature_inputs)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        style = tf.keras.layers.Dense(units=256)(style)
+        style = tf.keras.layers.Activation(activation='swish')(style)
+
+        mu = tf.keras.layers.Dense(units=self.latent_dim)(style)
+        logvar = tf.keras.layers.Dense(units=self.latent_dim)(style)
 
         outputs = Reparameterization()([mu, logvar])
 
