@@ -39,7 +39,7 @@ class BaseModel(tf.keras.Model):
             if model is None:
                 continue
 
-            trainable_variables = [tf.size(x) for x in model.trainable_variables]
+            trainable_variables = [tf.size(x) for x in model.trainable_variables if 'seed' not in x.path]
             non_trainable_variables = [tf.size(x) for x in model.non_trainable_variables if 'seed' not in x.path]
 
             trainable_count = sum(trainable_variables)
