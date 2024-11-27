@@ -46,11 +46,6 @@ class CTCLoss(tf.keras.losses.Loss):
             The computed CTC loss.
         """
 
-        splits = 0
-        if isinstance(y_pred, list):
-            splits = len(y_pred)
-            y_pred = tf.concat(y_pred, axis=0)
-
         y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
@@ -63,10 +58,7 @@ class CTCLoss(tf.keras.losses.Loss):
                                          output_length=output_length,
                                          mask_index=0)
 
-        if splits > 0:
-            ctc_loss = [tf.reduce_mean(x) for x in tf.split(ctc_loss, num_or_size_splits=splits, axis=0)]
-        else:
-            ctc_loss = tf.reduce_mean(ctc_loss)
+        ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
