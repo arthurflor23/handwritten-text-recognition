@@ -63,11 +63,10 @@ class CTCLoss(tf.keras.losses.Loss):
                                          output_length=output_length,
                                          mask_index=0)
 
-        if splits == 0:
-            ctc_loss = tf.reduce_mean(ctc_loss)
-        else:
+        if splits > 0:
             ctc_loss = [tf.reduce_mean(x) for x in tf.split(ctc_loss, num_or_size_splits=splits, axis=0)]
-            ctc_loss = tf.reduce_sum(ctc_loss)
+        else:
+            ctc_loss = tf.reduce_mean(ctc_loss)
 
         return ctc_loss
 
