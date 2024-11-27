@@ -53,8 +53,8 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
         self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
@@ -155,12 +155,12 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
             random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
 
-            real_features_data, _ = self.style_backbone(image_data, training=False)
-            real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
+            real_features_data, _ = self.style_backbone(image_data, training=True)
+            real_latent_data, _, _ = self.style_encoder(real_features_data, training=True)
 
-            real_real_images = self.generator([text_data, real_latent_data, mask_data], training=False)
-            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=False)
-            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=False)
+            real_real_images = self.generator([text_data, real_latent_data, mask_data], training=True)
+            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=True)
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=True)
 
             real_images = tf.concat([image_data, aug_image_data], axis=0)
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
@@ -250,7 +250,7 @@ class SynthesisModel(BaseSynthesisModel):
         self.generator.trainable = True
 
         with tf.GradientTape() as g_tape:
-            real_features, real_feats = self.style_backbone(image_data, training=False)
+            real_features, real_feats = self.style_backbone(image_data, training=True)
             real_latent_data, mu, logvar = self.style_encoder(real_features, training=True)
 
             real_real_images = self.generator([text_data, real_latent_data, mask_data], training=True)
@@ -261,24 +261,24 @@ class SynthesisModel(BaseSynthesisModel):
             real_texts = tf.concat([text_data, aug_text_data, aug_text_data], axis=0)
 
             # discriminator and patch discriminator
-            fake_adv = self.discriminator(fake_images, training=False)
+            fake_adv = self.discriminator(fake_images, training=True)
             fake_adv_loss = -tf.reduce_mean(fake_adv)
 
-            fake_patch_adv = self.patch_discriminator(fake_images, training=False)
+            fake_patch_adv = self.patch_discriminator(fake_images, training=True)
             fake_patch_adv_loss = -tf.reduce_mean(fake_patch_adv)
 
             g_adv_loss = fake_adv_loss + fake_patch_adv_loss
 
             # handwriting recognition
-            fake_texts = self.recognition(fake_images, training=False)
+            fake_texts = self.recognition(fake_images, training=True)
             g_ctc_loss = self.ctc_loss(real_texts, fake_texts)
 
             # writer identifier
             real_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
             real_writer_data = tf.repeat(writer_data, repeats=2, axis=0)
 
-            real_latent_features, real_latent_feats = self.style_backbone(real_latent_images, training=False)
-            real_latent_wid_logits = self.identification(real_latent_features, training=False)
+            real_latent_features, real_latent_feats = self.style_backbone(real_latent_images, training=True)
+            real_latent_wid_logits = self.identification(real_latent_features, training=True)
 
             g_wid_loss = self.cls_loss(real_writer_data, real_latent_wid_logits)
 
@@ -289,7 +289,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
 
             # style reconstruction
-            fake_style_features, _ = self.style_backbone(fake_fake_images, training=False)
+            fake_style_features, _ = self.style_backbone(fake_fake_images, training=True)
             fake_style_latent_data, _, _ = self.style_encoder(fake_style_features, training=True)
 
             g_res_loss = tf.reduce_mean(tf.math.abs(fake_style_latent_data - random_latent_data))
@@ -329,7 +329,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.measure_tracker.update({
             **losses,
-            self.kid.name: self.kid.result(),
+            self.kid.name: self.kid.result() * 1000,
             'loss': g_loss,
         })
 
@@ -457,7 +457,6 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
-        feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -483,6 +482,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
