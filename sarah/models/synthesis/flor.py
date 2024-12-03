@@ -197,7 +197,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(aug_image_data, training=True)
+                ctc_logits = self.recognition(image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
@@ -205,7 +205,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
+                wid_features_data, _ = self.style_backbone(image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
@@ -258,7 +258,6 @@ class SynthesisModel(BaseSynthesisModel):
             fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=True)
 
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
-            real_texts = tf.concat([text_data, aug_text_data, aug_text_data], axis=0)
 
             # discriminator and patch discriminator
             fake_adv = self.discriminator(fake_images, training=True)
@@ -270,8 +269,16 @@ class SynthesisModel(BaseSynthesisModel):
             g_adv_loss = fake_adv_loss + fake_patch_adv_loss
 
             # handwriting recognition
-            fake_texts = self.recognition(fake_images, training=True)
-            g_ctc_loss = self.ctc_loss(real_texts, fake_texts)
+            real_real_ctc = self.recognition(real_real_images, training=True)
+            real_real_loss = self.ctc_loss(text_data, real_real_ctc)
+
+            fake_real_ctc = self.recognition(fake_real_images, training=True)
+            fake_real_loss = self.ctc_loss(aug_text_data, fake_real_ctc)
+
+            fake_fake_ctc = self.recognition(fake_fake_images, training=True)
+            fake_fake_loss = self.ctc_loss(aug_text_data, fake_fake_ctc)
+
+            g_ctc_loss = real_real_loss + fake_real_loss + fake_fake_loss
 
             # writer identifier
             real_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
@@ -298,39 +305,48 @@ class SynthesisModel(BaseSynthesisModel):
             g_ctx_loss = tf.constant(0.0)
 
             for real_feat, real_latent_feat in zip(real_feats, real_latent_feats):
-                feats = tf.split(real_latent_feat, num_or_size_splits=2, axis=0)
+                fake_feat = tf.split(real_latent_feat, num_or_size_splits=2, axis=0)
 
-                g_ctx_loss += self.ctx_loss(real_feat, feats[0])
-                g_ctx_loss += self.ctx_loss(real_feat, feats[1])
+                g_ctx_loss += self.ctx_loss(real_feat, fake_feat[0])
+                g_ctx_loss += self.ctx_loss(real_feat, fake_feat[1])
 
             # generator loss
-            losses = {
+            gen_loss = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctc_loss': g_ctc_loss,
                 'g_ctx_loss': g_ctx_loss * 10,
-                'g_kld_loss': g_kld_loss * 0.001,
-                'g_rec_loss': g_rec_loss,
-                'g_res_loss': g_res_loss,
+                'g_kld_loss': g_kld_loss * 0.0001,
                 'g_wid_loss': g_wid_loss,
             }
 
-            g_loss = sum(losses.values())
+            aux_loss = {
+                'g_rec_loss': g_rec_loss,
+                'g_res_loss': g_res_loss,
+            }
+
+            weighted_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss)
+
+            g_loss = sum(gen_loss.values()) + sum(weighted_aux_loss.values())
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
-                                      self.generator.trainable_weights)
+                                      self.generator.trainable_weights +
+                                      trainable_loss_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
-                                             self.generator.trainable_weights))
+                                             self.generator.trainable_weights +
+                                             trainable_loss_weights))
 
         # kid
         self.kid.update_state(image_data, real_real_images)
 
         self.measure_tracker.update({
-            **losses,
-            self.kid.name: self.kid.result() * 1000,
-            'loss': g_loss,
+            **gen_loss,
+            **aux_loss,
+            **{f"{k}_w": x for k, x in weighted_aux_loss.items()},
+            self.kid.name: self.kid.result(),
+            'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
         })
 
 
