@@ -289,7 +289,7 @@ class Compose():
                     mode='min',
                     monitor=monitor,
                     model_path=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
-                    save_best_only=True,
+                    save_best_only=bool(self.recognition),
                     save_weights_only=True,
                     csv_path=os.path.join(run_info['artifact_path'], 'epochs.csv'),
                     csv_separator=',',
