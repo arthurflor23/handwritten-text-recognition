@@ -28,7 +28,6 @@ class CTCLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-    @tf.function(jit_compile=True)
     def call(self, y_true, y_pred):
         """
         Compute the CTC loss between the true labels and predicted labels.
@@ -49,14 +48,16 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        target_length = tf.reduce_sum(tf.cast(tf.not_equal(y_true, 0), tf.int32), axis=-1)
-        output_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
+        labels = tf.sparse.from_dense(y_true)
+        sequence_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
 
-        ctc_loss = tf.keras.ops.ctc_loss(target=tf.cast(y_true, dtype=tf.int32),
-                                         output=tf.cast(y_pred, dtype=tf.float32),
-                                         target_length=target_length,
-                                         output_length=output_length,
-                                         mask_index=0)
+        ctc_loss = tf.compat.v1.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+                                            logits=y_pred,
+                                            sequence_length=sequence_length,
+                                            preprocess_collapse_repeated=False,
+                                            ctc_merge_repeated=True,
+                                            ignore_longer_outputs_than_inputs=True,
+                                            time_major=False)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
 
