@@ -50,23 +50,15 @@ class EditDistance(tf.keras.metrics.Metric):
         y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
+        labels = tf.sparse.from_dense(y_true)
         sequence_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
 
-        decoded, _ = tf.keras.ops.ctc_decode(inputs=tf.cast(y_pred, dtype=tf.float32),
-                                             sequence_lengths=tf.cast(sequence_length, dtype=tf.int32),
-                                             strategy='beam_search',
-                                             beam_width=self.beam_width,
-                                             top_paths=1,
-                                             merge_repeated=True,
-                                             mask_index=0)
+        decoded, _ = tf.nn.ctc_beam_search_decoder(inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
+                                                   sequence_length=sequence_length,
+                                                   beam_width=self.beam_width,
+                                                   top_paths=1)
 
-        decoded = tf.where(decoded[0] == -1, 0, decoded[0])
-        decoded = tf.sparse.from_dense(decoded)
-
-        labels = tf.cast(y_true, dtype=tf.int32)
-        labels = tf.sparse.from_dense(labels)
-
-        edit_distance = tf.edit_distance(hypothesis=decoded, truth=labels, normalize=True)
+        edit_distance = tf.edit_distance(hypothesis=decoded[0], truth=labels, normalize=True)
         edit_distance = tf.reduce_mean(edit_distance)
 
         self.tracker.update_state(edit_distance)
