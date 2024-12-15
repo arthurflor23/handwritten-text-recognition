@@ -608,10 +608,10 @@ class BaseSynthesisModel(BaseModel):
         self.discriminator_steps = discriminator_steps
         self.generator_steps = generator_steps
 
-        self.global_steps = tf.keras.Variable(name='global_steps',
-                                              initializer=0,
-                                              dtype=tf.int64,
-                                              trainable=False)
+        self.global_step = tf.keras.Variable(name='global_step',
+                                             initializer=0,
+                                             dtype=tf.int64,
+                                             trainable=False)
 
         self.names = [
             'recognition',
