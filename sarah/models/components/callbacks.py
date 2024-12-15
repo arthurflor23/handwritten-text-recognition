@@ -50,8 +50,8 @@ class GANMonitor(tf.keras.callbacks.Callback):
         """
 
         self.epoch_index = 0
-        self.global_step = 0
-        self.local_step = 0
+        self.global_step_index = 0
+        self.local_step_index = 0
 
     def on_epoch_begin(self, epoch, logs=None):
         """
@@ -66,7 +66,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
         """
 
         self.epoch_index += 1
-        self.local_step = 0
+        self.local_step_index = 0
 
     def on_batch_end(self, batch, logs=None):
         """
@@ -80,8 +80,8 @@ class GANMonitor(tf.keras.callbacks.Callback):
             Log data at the end of the batch.
         """
 
-        if self.global_step > 0 and self.global_step % self.save_freq == 0:
-            subpath = f"{str(self.global_step)}_{str(self.local_step)}_{str(self.epoch_index)}"
+        if self.global_step_index > 0 and self.global_step_index % self.save_freq == 0:
+            subpath = f"{str(self.global_step_index)}_{str(self.local_step_index)}_{str(self.epoch_index)}"
             filepath = os.path.join(self.filepath, subpath)
 
             for _ in range(self.sample_steps):
@@ -104,8 +104,8 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 fake_random = self.model.generator([text_data, random_latent_data, mask_data], training=False)
                 self._save_images(filepath, fake_random, name='random')
 
-        self.global_step += 1
-        self.local_step += 1
+        self.global_step_index += 1
+        self.local_step_index += 1
 
     def _save_images(self, filepath, images, name):
         """
