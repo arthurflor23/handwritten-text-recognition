@@ -109,7 +109,7 @@ class MeasureTracker():
             self.means[name].update_state(value)
             self.values[name].assign(value)
 
-    def weight(self, measures, reset=False):
+    def weight(self, measures):
         """
         Calculates weighted measures with adaptive regularization.
 
@@ -117,8 +117,6 @@ class MeasureTracker():
         ----------
         measures : dict of tf.Tensor
             Dictionary of measure names and their current values.
-        reset : bool, optional
-            If True, resets weights to their original value.
 
         Returns
         -------
@@ -129,14 +127,9 @@ class MeasureTracker():
         weighted_measures = {}
         trainable_weights = []
 
-        def _reset_weight(name):
-            self.weights[name].assign(1.0)
-
         for name, value in measures.items():
             if name not in self.values:
                 self.add([name])
-
-            tf.cond(reset, true_fn=lambda: _reset_weight(name), false_fn=lambda: None)
 
             weighted_value = 0.5 / (self.weights[name] ** 2) * value
             regularization = tf.math.log(1 + self.weights[name] ** 2)
