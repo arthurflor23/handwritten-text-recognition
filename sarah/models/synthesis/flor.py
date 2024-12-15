@@ -28,9 +28,6 @@ class SynthesisModel(BaseSynthesisModel):
     HiGAN+: Handwriting Imitation GAN with Disentangled Representations
         https://dl.acm.org/doi/10.1145/3550070
 
-    Image-to-Image Translation with Conditional Adversarial Networks
-        https://arxiv.org/abs/1611.07004
-
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
 
@@ -120,11 +117,11 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator_step(input_data)
 
-        tf.cond(pred=tf.math.equal(tf.math.mod(self.global_steps, self.generator_steps), 0),
+        tf.cond(tf.math.equal(tf.math.mod(self.global_step, self.generator_steps), 0),
                 true_fn=lambda: self.generator_step(input_data),
                 false_fn=lambda: None)
 
-        self.global_steps.assign_add(value=1)
+        self.global_step.assign_add(value=1)
 
         return self.measure_tracker.result()
 
@@ -313,20 +310,21 @@ class SynthesisModel(BaseSynthesisModel):
             # generator loss
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
-                'g_ctc_loss': g_ctc_loss,
-                'g_ctx_loss': g_ctx_loss * 10,
+                'g_ctx_loss': g_ctx_loss * 2,
                 'g_kld_loss': g_kld_loss * 0.0001,
-                'g_wid_loss': g_wid_loss,
             }
 
             aux_loss = {
+                'g_ctc_loss': g_ctc_loss,
                 'g_rec_loss': g_rec_loss,
                 'g_res_loss': g_res_loss,
+                'g_wid_loss': g_wid_loss,
             }
 
-            weighted_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss)
+            reset = tf.equal(tf.math.mod(self.global_step, 30000), 0)
+            wtd_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss, reset)
 
-            g_loss = sum(gen_loss.values()) + sum(weighted_aux_loss.values())
+            g_loss = sum(gen_loss.values()) + sum(wtd_aux_loss.values())
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
@@ -344,9 +342,10 @@ class SynthesisModel(BaseSynthesisModel):
         self.measure_tracker.update({
             **gen_loss,
             **aux_loss,
-            **{f"{k}_w": x for k, x in weighted_aux_loss.items()},
-            self.kid.name: self.kid.result(),
+            **{f"{k}_w": x for k, x in wtd_aux_loss.items()},
             'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
+            'loss_w': sum(gen_loss.values()) + sum(wtd_aux_loss.values()),
+            self.kid.name: self.kid.result(),
         })
 
 
