@@ -138,8 +138,8 @@ class MeasureTracker():
 
             tf.cond(reset, true_fn=lambda: _reset_weight(name), false_fn=lambda: None)
 
-            weighted_value = (0.5 / (self.weights[name] ** 2)) * value
-            regularization = tf.math.log(1 + (self.weights[name] ** 2))
+            weighted_value = 0.5 / (self.weights[name] ** 2) * value
+            regularization = tf.math.log(1 + self.weights[name] ** 2)
 
             weighted_measures[name] = weighted_value + regularization
             trainable_weights.append(self.weights[name])
