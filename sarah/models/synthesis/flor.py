@@ -117,7 +117,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator_step(input_data)
 
-        tf.cond(tf.math.equal(tf.math.mod(self.global_step, self.generator_steps), 0),
+        tf.cond(pred=tf.math.equal(tf.math.mod(self.global_step, self.generator_steps), 0),
                 true_fn=lambda: self.generator_step(input_data),
                 false_fn=lambda: None)
 
@@ -246,7 +246,7 @@ class SynthesisModel(BaseSynthesisModel):
         self.style_encoder.trainable = True
         self.generator.trainable = True
 
-        with tf.GradientTape() as g_tape:
+        with tf.GradientTape(persistent=True) as g_tape:
             real_features, real_feats = self.style_backbone(image_data, training=True)
             real_latent_data, mu, logvar = self.style_encoder(real_features, training=True)
 
@@ -278,13 +278,13 @@ class SynthesisModel(BaseSynthesisModel):
             g_ctc_loss = real_real_loss + fake_real_loss + fake_fake_loss
 
             # writer identifier
-            real_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
+            fake_latent_images = tf.concat([fake_real_images, real_real_images], axis=0)
             real_writer_data = tf.repeat(writer_data, repeats=2, axis=0)
 
-            real_latent_features, real_latent_feats = self.style_backbone(real_latent_images, training=True)
-            real_latent_wid_logits = self.identification(real_latent_features, training=True)
+            fake_latent_features, real_latent_feats = self.style_backbone(fake_latent_images, training=True)
+            fake_latent_wid_logits = self.identification(fake_latent_features, training=True)
 
-            g_wid_loss = self.cls_loss(real_writer_data, real_latent_wid_logits)
+            g_wid_loss = self.cls_loss(real_writer_data, fake_latent_wid_logits)
 
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
@@ -293,10 +293,10 @@ class SynthesisModel(BaseSynthesisModel):
             g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
 
             # style reconstruction
-            fake_style_features, _ = self.style_backbone(fake_fake_images, training=True)
-            fake_style_latent_data, _, _ = self.style_encoder(fake_style_features, training=True)
+            fake_features, _ = self.style_backbone(fake_fake_images, training=True)
+            fake_latent_data, _, _ = self.style_encoder(fake_features, training=True)
 
-            g_res_loss = tf.reduce_mean(tf.math.abs(fake_style_latent_data - random_latent_data))
+            g_res_loss = tf.reduce_mean(tf.math.abs(fake_latent_data - random_latent_data))
 
             # contextual
             g_ctx_loss = tf.constant(0.0)
@@ -307,10 +307,32 @@ class SynthesisModel(BaseSynthesisModel):
                 g_ctx_loss += self.ctx_loss(real_feat, fake_feat[0])
                 g_ctx_loss += self.ctx_loss(real_feat, fake_feat[1])
 
-            # generator loss
+            with g_tape.stop_recording():
+                gp_adv = g_tape.gradient(fake_adv_loss, fake_images)
+                gp_ctc = g_tape.gradient(fake_fake_loss, fake_fake_ctc)
+                gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
+                gp_res = g_tape.gradient(g_res_loss, fake_latent_data)
+                gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
+
+                gp_adv = tf.math.reduce_std(gp_adv)
+                gp_ctc = (gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8)) + 1
+                gp_rec = (gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8)) + 1
+                gp_res = (gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)) + 1
+                gp_wid = (gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)) + 1
+
+                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
+                gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
+                gp_res = tf.clip_by_value(gp_res, 0.0, 10.0)
+                gp_wid = tf.clip_by_value(gp_wid, 0.0, 10.0)
+
+                gp_ctc = tf.stop_gradient(gp_ctc)
+                gp_rec = tf.stop_gradient(gp_rec)
+                gp_res = tf.stop_gradient(gp_res)
+                gp_wid = tf.stop_gradient(gp_wid)
+
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
-                'g_ctx_loss': g_ctx_loss * 2,
+                'g_ctx_loss': g_ctx_loss * 5,
                 'g_kld_loss': g_kld_loss * 0.0001,
             }
 
@@ -321,20 +343,23 @@ class SynthesisModel(BaseSynthesisModel):
                 'g_wid_loss': g_wid_loss,
             }
 
-            reset = tf.equal(tf.math.mod(self.global_step, 30000), 0)
-            wtd_aux_loss, trainable_loss_weights = self.measure_tracker.weight(aux_loss, reset)
+            wtd_aux_loss = {
+                'g_ctc_loss_w': g_ctc_loss * gp_ctc,
+                'g_rec_loss_w': g_rec_loss * gp_rec,
+                'g_res_loss_w': g_res_loss * gp_res,
+                'g_wid_loss_w': g_wid_loss * gp_wid,
+            }
 
             g_loss = sum(gen_loss.values()) + sum(wtd_aux_loss.values())
 
         g_gradients = g_tape.gradient(g_loss,
                                       self.style_encoder.trainable_weights +
-                                      self.generator.trainable_weights +
-                                      trainable_loss_weights)
+                                      self.generator.trainable_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
-                                             self.generator.trainable_weights +
-                                             trainable_loss_weights))
+                                             self.generator.trainable_weights))
+        del g_tape
 
         # kid
         self.kid.update_state(image_data, real_real_images)
@@ -342,7 +367,7 @@ class SynthesisModel(BaseSynthesisModel):
         self.measure_tracker.update({
             **gen_loss,
             **aux_loss,
-            **{f"{k}_w": x for k, x in wtd_aux_loss.items()},
+            **wtd_aux_loss,
             'loss': sum(gen_loss.values()) + sum(aux_loss.values()),
             'loss_w': sum(gen_loss.values()) + sum(wtd_aux_loss.values()),
             self.kid.name: self.kid.result(),
