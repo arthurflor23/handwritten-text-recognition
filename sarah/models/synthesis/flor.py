@@ -307,44 +307,41 @@ class SynthesisModel(BaseSynthesisModel):
                 real_real_ctx_loss = self.ctx_loss(real_feat, fake_feat[0])
                 fake_real_ctx_loss = self.ctx_loss(real_feat, fake_feat[1])
 
-                g_ctx_loss_last = real_real_ctx_loss + fake_real_ctx_loss
-                g_ctx_loss += g_ctx_loss_last
+                g_ctx_loss += real_real_ctx_loss + fake_real_ctx_loss
 
+            # gradient balancing
             with g_tape.stop_recording():
                 gp_adv = g_tape.gradient(fake_adv_loss, fake_images)
-                gp_ctc = g_tape.gradient(g_ctc_loss, [real_real_ctc, fake_real_ctc, fake_fake_ctc])
-                gp_ctx = g_tape.gradient(g_ctx_loss_last, [fake_feat[0], fake_feat[1]])
+                gp_ctc = g_tape.gradient(fake_fake_ctc_loss, fake_fake_ctc)
                 gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
                 gp_res = g_tape.gradient(g_res_loss, fake_latent_data)
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
 
                 gp_adv = tf.math.reduce_std(gp_adv)
                 gp_ctc = gp_adv / tf.math.reduce_std(gp_ctc)
-                gp_ctx = gp_adv / tf.math.reduce_std(gp_ctx)
                 gp_rec = gp_adv / tf.math.reduce_std(gp_rec)
                 gp_res = gp_adv / tf.math.reduce_std(gp_res)
                 gp_wid = gp_adv / tf.math.reduce_std(gp_wid)
 
-                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 5.0)
-                gp_ctx = tf.clip_by_value(gp_ctx, 0.0, 5.0)
-                gp_rec = tf.clip_by_value(gp_rec, 0.0, 5.0)
-                gp_res = tf.clip_by_value(gp_res, 0.0, 5.0)
-                gp_wid = tf.clip_by_value(gp_wid, 0.0, 5.0)
+                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
+                gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
+                gp_res = tf.clip_by_value(gp_res, 0.0, 10.0)
+                gp_wid = tf.clip_by_value(gp_wid, 0.0, 10.0)
 
                 gp_ctc = tf.stop_gradient(gp_ctc)
-                gp_ctx = tf.stop_gradient(gp_ctx)
                 gp_rec = tf.stop_gradient(gp_rec)
                 gp_res = tf.stop_gradient(gp_res)
                 gp_wid = tf.stop_gradient(gp_wid)
 
+            # generator loss
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
+                'g_ctx_loss': g_ctx_loss,
                 'g_kld_loss': g_kld_loss * 1e-4,
             }
 
             aux_loss = {
                 'g_ctc_loss': g_ctc_loss,
-                'g_ctx_loss': g_ctx_loss,
                 'g_rec_loss': g_rec_loss,
                 'g_res_loss': g_res_loss,
                 'g_wid_loss': g_wid_loss,
@@ -352,7 +349,6 @@ class SynthesisModel(BaseSynthesisModel):
 
             wtd_aux_loss = {
                 'g_ctc_loss_w': g_ctc_loss * gp_ctc,
-                'g_ctx_loss_w': g_ctx_loss * gp_ctx,
                 'g_rec_loss_w': g_rec_loss * gp_rec,
                 'g_res_loss_w': g_res_loss * gp_res,
                 'g_wid_loss_w': g_wid_loss * gp_wid,
