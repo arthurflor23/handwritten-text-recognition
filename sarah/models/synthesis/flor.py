@@ -318,10 +318,10 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
 
                 gp_adv = tf.math.reduce_std(gp_adv)
-                gp_ctc = gp_adv / tf.math.reduce_std(gp_ctc)
-                gp_rec = gp_adv / tf.math.reduce_std(gp_rec)
-                gp_res = gp_adv / tf.math.reduce_std(gp_res)
-                gp_wid = gp_adv / tf.math.reduce_std(gp_wid)
+                gp_ctc = gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8)
+                gp_rec = gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8)
+                gp_res = gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)
+                gp_wid = gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)
 
                 gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
                 gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
