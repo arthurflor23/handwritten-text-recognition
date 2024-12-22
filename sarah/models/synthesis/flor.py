@@ -194,7 +194,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(image_data, training=True)
+                ctc_logits = self.recognition(aug_image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
@@ -202,7 +202,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.style_backbone(image_data, training=True)
+                wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
@@ -319,11 +319,11 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
 
                 gp_adv = tf.math.reduce_std(gp_adv)
-                gp_ctc = gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8)
-                gp_ctx = gp_adv / (tf.math.reduce_std(gp_ctx) + 1e-8)
-                gp_rec = gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8)
-                gp_res = gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)
-                gp_wid = gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)
+                gp_ctc = gp_adv / tf.math.reduce_std(gp_ctc)
+                gp_ctx = gp_adv / tf.math.reduce_std(gp_ctx)
+                gp_rec = gp_adv / tf.math.reduce_std(gp_rec)
+                gp_res = gp_adv / tf.math.reduce_std(gp_res)
+                gp_wid = gp_adv / tf.math.reduce_std(gp_wid)
 
                 gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 5.0)
                 gp_ctx = tf.clip_by_value(gp_ctx, 0.0, 5.0)
