@@ -311,17 +311,17 @@ class SynthesisModel(BaseSynthesisModel):
 
             # gradient balancing
             with g_tape.stop_recording():
-                gp_adv = g_tape.gradient(fake_adv_loss, fake_images)
+                gp_adv = g_tape.gradient(g_adv_loss, fake_images)
                 gp_ctc = g_tape.gradient(g_ctc_loss, [real_real_ctc, fake_real_ctc, fake_fake_ctc])
                 gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
                 gp_res = g_tape.gradient(g_res_loss, fake_latent_data)
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
 
                 gp_adv = tf.math.reduce_std(gp_adv)
-                gp_ctc = gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8)
-                gp_rec = gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8)
-                gp_res = gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)
-                gp_wid = gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)
+                gp_ctc = gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8) * 0.1
+                gp_rec = gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8) * 1.0
+                gp_res = gp_adv / (tf.math.reduce_std(gp_res) + 1e-8) * 1.0
+                gp_wid = gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8) * 0.1
 
                 gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
                 gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
