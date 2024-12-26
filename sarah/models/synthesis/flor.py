@@ -45,7 +45,7 @@ class SynthesisModel(BaseSynthesisModel):
             Optimizer learning rate.
         """
 
-        super().compile(run_eagerly=False)
+        super().compile(run_eagerly=True)
 
         if learning_rate is None:
             learning_rate = 1e-4
@@ -296,7 +296,7 @@ class SynthesisModel(BaseSynthesisModel):
             fake_features, _ = self.style_backbone(fake_fake_images, training=True)
             fake_latent_data, _, _ = self.style_encoder(fake_features, training=True)
 
-            g_res_loss = tf.reduce_mean(tf.math.abs(fake_latent_data - random_latent_data))
+            g_res_loss = tf.reduce_mean(tf.math.abs(random_latent_data - fake_latent_data))
 
             # contextual
             g_ctx_loss = tf.constant(0.0)
@@ -311,8 +311,8 @@ class SynthesisModel(BaseSynthesisModel):
 
             # gradient balancing
             with g_tape.stop_recording():
-                gp_adv = g_tape.gradient(g_adv_loss, fake_images)
-                gp_ctc = g_tape.gradient(g_ctc_loss, [real_real_ctc, fake_real_ctc, fake_fake_ctc])
+                gp_adv = g_tape.gradient(fake_adv_loss, fake_images)
+                gp_ctc = g_tape.gradient(fake_fake_ctc_loss, fake_fake_ctc)
                 gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
                 gp_res = g_tape.gradient(g_res_loss, fake_latent_data)
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
