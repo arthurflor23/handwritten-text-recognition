@@ -324,10 +324,13 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         df = df.groupby('epoch').mean().astype(float).reset_index()
         df = df.sort_values(by='epoch').reset_index(drop=True)
 
-        if self.save_best_only and self.mode and self.monitor in df.columns:
-            df['checkpoint'] = getattr(df[self.monitor], f"cum{self.mode}")()
-            df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
-            df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
+        if self.mode and self.monitor in df.columns:
+            if self.save_best_only:
+                df['checkpoint'] = getattr(df[self.monitor], f"cum{self.mode}")()
+                df['checkpoint'] = np.where(df['checkpoint'].eq(df['checkpoint'].shift()), 0, df['checkpoint'])
+                df['checkpoint'] = df['checkpoint'].astype(bool).replace(False, '').replace(True, '*')
+            else:
+                df['checkpoint'] = '*'
 
         if save and self.csv_path:
             os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
