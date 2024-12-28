@@ -311,7 +311,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # gradient balancing
             with g_tape.stop_recording():
-                gp_adv = g_tape.gradient(fake_adv_loss, fake_images)
+                gp_adv = g_tape.gradient(g_adv_loss, fake_images)
                 gp_ctc = g_tape.gradient(g_ctc_loss, [real_real_ctc, fake_real_ctc, fake_fake_ctc])
                 gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
                 gp_res = g_tape.gradient(g_res_loss, fake_latent_data)
