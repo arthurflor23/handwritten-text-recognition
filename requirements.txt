@@ -1,6 +1,6 @@
 editdistance==0.8.1
 mlflow==2.19.0
-openai==1.58.1
+openai==1.59.3
 opencv-python==4.10.0.84
 tensorflow[and-cuda]==2.18.0;   platform_system != 'Darwin'
 tensorflow==2.18.0;             platform_system == 'Darwin'
