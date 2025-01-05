@@ -278,7 +278,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         self.target_shape = input_shape[-1]
 
     @tf.function()
-    def call(self, inputs, training=False):
+    def call(self, inputs):
         """
         Applies content alignment to the input image.
 
@@ -286,8 +286,6 @@ class ContentAlignment(tf.keras.layers.Layer):
         ----------
         inputs : tuple of tf.Tensor
             A tuple containing the input tensor and the mask.
-        training : bool, optional
-            Whether the call is for training or inference.
 
         Returns
         -------
@@ -339,10 +337,9 @@ class ContentAlignment(tf.keras.layers.Layer):
             return image
 
         args = (input_data, text_height, text_width, mask_height, mask_width)
-        outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
 
-        if not training:
-            outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, self.image_padding_value, 0)
+        outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
+        outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, self.image_padding_value, 0)
 
         return outputs
 
