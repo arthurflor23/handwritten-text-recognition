@@ -194,6 +194,7 @@ class BaseRecognitionModel(BaseModel):
                  synthetic_image_ratio=0.66,
                  synthetic_text_ratio=0.33,
                  synthetic_style_ratio=0.33,
+                 transpose_shapes=True,
                  seed=None,
                  **kwargs):
         """
@@ -219,6 +220,8 @@ class BaseRecognitionModel(BaseModel):
             Probability to use synthetic text.
         synthetic_style_ratio : float, optional
             Probability to use synthetic style.
+        transpose_shapes : bool, optional
+            Whether to transpose the image and lexical shapes.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -230,8 +233,13 @@ class BaseRecognitionModel(BaseModel):
         seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
-        self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
-        self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
+        self.image_shape = image_shape
+        self.lexical_shape = lexical_shape
+
+        if transpose_shapes:
+            self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
+            self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
+
         self.synthetic_data_ratio = synthetic_data_ratio
         self.synthetic_image_ratio = synthetic_image_ratio
         self.synthetic_text_ratio = synthetic_text_ratio
@@ -564,6 +572,7 @@ class BaseSynthesisModel(BaseModel):
                  writers_shape,
                  discriminator_steps=1,
                  generator_steps=1,
+                 transpose_shapes=True,
                  seed=None,
                  **kwargs):
         """
@@ -581,6 +590,8 @@ class BaseSynthesisModel(BaseModel):
             The repetition of steps for discriminator training.
         generator_steps : int, optional
             The skipping steps for generator training.
+        transpose_shapes : bool, optional
+            Whether to transpose the image and lexical shapes.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -592,8 +603,13 @@ class BaseSynthesisModel(BaseModel):
         seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
-        self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
-        self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
+        self.image_shape = image_shape
+        self.lexical_shape = lexical_shape
+
+        if transpose_shapes:
+            self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
+            self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
+
         self.writers_shape = writers_shape
         self.seed = seed
 
