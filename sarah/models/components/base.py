@@ -230,8 +230,8 @@ class BaseRecognitionModel(BaseModel):
         seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
-        self.image_shape = image_shape
-        self.lexical_shape = lexical_shape
+        self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
+        self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
         self.synthetic_data_ratio = synthetic_data_ratio
         self.synthetic_image_ratio = synthetic_image_ratio
         self.synthetic_text_ratio = synthetic_text_ratio
@@ -592,8 +592,8 @@ class BaseSynthesisModel(BaseModel):
         seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
-        self.image_shape = image_shape
-        self.lexical_shape = lexical_shape
+        self.image_shape = tuple([image_shape[i] for i in [1, 0, 2]])
+        self.lexical_shape = tuple([lexical_shape[i] for i in [1, 0, 2]])
         self.writers_shape = writers_shape
         self.seed = seed
 
