@@ -402,8 +402,6 @@ class Compose():
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
         probabilities = None
 
-        predictions = predictions.transpose((0, 2, 1, 3))
-
         if ctc_decode:
             tokenizer = self.tokenizer if token_decode else None
             predictions, probabilities = self.model.ctc_decoder(x=predictions,
@@ -464,9 +462,7 @@ class Compose():
             return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
-
         predictions = np.array((predictions + 1.0) * 127.5, dtype=np.uint8)
-        predictions = predictions.transpose((0, 2, 1, 3))
 
         return predictions
 

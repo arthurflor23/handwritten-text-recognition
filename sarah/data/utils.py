@@ -157,17 +157,12 @@ def batch_processing(batch_data, mode=None):
     batch_data = np.array(batch_data)
 
     if mode == 'image':
-        batch_data = batch_data.transpose((0, 2, 1))
         batch_data = np.expand_dims(batch_data, axis=-1)
         batch_data = (batch_data.astype(np.float32) / 127.5) - 1
 
     elif mode == 'mask':
-        batch_data = batch_data.transpose((0, 2, 1))
         batch_data = np.expand_dims(batch_data, axis=-1)
         batch_data = (batch_data.astype(np.float32) / 255.)
-
-    elif mode == 'text':
-        batch_data = batch_data.transpose((0, 2, 1))
 
     return batch_data
 
