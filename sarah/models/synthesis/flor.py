@@ -409,8 +409,7 @@ class RecognitionModel(BaseModel):
         self.lexical_shape = lexical_shape
 
         self.model = HTRModel(image_shape=image_shape,
-                              lexical_shape=lexical_shape,
-                              transpose_shapes=False).recognition
+                              lexical_shape=lexical_shape).recognition
 
     def get_config(self):
         """
@@ -829,7 +828,8 @@ class GeneratorModel(BaseModel):
 
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
-        block = tf.keras.layers.Reshape(target_shape=(self.base_shape[0], self.base_shape[1], -1))(block)
+        block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
+        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
         latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
 
@@ -847,7 +847,7 @@ class GeneratorModel(BaseModel):
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
         block = GatedConv2DResidual()(block)
-        block = residual_block(block, latent, self.blocks[-1] // 2, up=(2, 1))
+        block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same')(block)
