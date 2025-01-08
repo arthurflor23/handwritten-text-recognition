@@ -409,7 +409,8 @@ class RecognitionModel(BaseModel):
         self.lexical_shape = lexical_shape
 
         self.model = HTRModel(image_shape=image_shape,
-                              lexical_shape=lexical_shape).recognition
+                              lexical_shape=lexical_shape,
+                              transpose_shapes=False).recognition
 
     def get_config(self):
         """
@@ -481,9 +482,8 @@ class BackboneModel(BaseModel):
         feats = []
 
         encoder_input = tf.keras.Input(shape=self.image_shape)
-        encoder = tf.keras.layers.Identity()(encoder_input)
 
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
@@ -500,7 +500,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -508,7 +508,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
 
         encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -525,7 +525,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
         feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
@@ -534,7 +534,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
         feats.append(encoder)
 
         encoder = SelfAttention(dropout=0.1)(encoder)
