@@ -65,6 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--synthetic-image-ratio', default=0.66, type=float, help='Synthetic image ratio for training')
     parser.add_argument('--synthetic-text-ratio', default=0.33, type=float, help='Synthetic text ratio for training')
     parser.add_argument('--synthetic-style-ratio', default=0.33, type=float, help='Synthetic style ratio for training')
+    parser.add_argument('--synthetic-step-factor', default=64, type=int, help='Synthetic step factor for training')
 
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
@@ -95,7 +96,12 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
+
+    # parameter adjustment
     args.gpu = int(args.gpu) if str(args.gpu).isdigit() else None
+
+    if not (args.synthesis and args.recognition):
+        args.synthetic_step_factor = 1
 
     # required
     if args.check or args.training or args.test:
