@@ -93,7 +93,7 @@ def run(args):
 
         compose.fit(epochs=args.epochs,
                     training_gen=training_gen,
-                    training_steps=training_steps,
+                    training_steps=training_steps * args.synthetic_step_factor,
                     validation_gen=validation_gen,
                     validation_steps=validation_steps,
                     monitor_sample_gen=sample_gen,
