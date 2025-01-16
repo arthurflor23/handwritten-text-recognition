@@ -51,10 +51,10 @@ class SynthesisModel(BaseSynthesisModel):
             learning_rate = 1e-4
 
         self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
 
     def build_model(self):
         """
@@ -323,10 +323,10 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_res = (gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)) * 1.0
                 gp_wid = (gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)) * 0.1
 
-                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 1.0)
-                gp_rec = tf.clip_by_value(gp_rec, 0.0, 1.0)
-                gp_res = tf.clip_by_value(gp_res, 0.0, 1.0)
-                gp_wid = tf.clip_by_value(gp_wid, 0.0, 1.0)
+                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
+                gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
+                gp_res = tf.clip_by_value(gp_res, 0.0, 10.0)
+                gp_wid = tf.clip_by_value(gp_wid, 0.0, 10.0)
 
                 gp_ctc = tf.stop_gradient(gp_ctc)
                 gp_rec = tf.stop_gradient(gp_rec)
@@ -336,7 +336,7 @@ class SynthesisModel(BaseSynthesisModel):
             # generator loss
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
-                'g_ctx_loss': g_ctx_loss,
+                'g_ctx_loss': g_ctx_loss * 2,
                 'g_kld_loss': g_kld_loss * 1e-4,
             }
 
@@ -983,7 +983,7 @@ class DiscriminatorModel(BaseModel):
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
 
-        block = ExtractPatches(patch_shape=self.patch_shape, strides=(2, 2), padding='valid')(image_input)
+        block = ExtractPatches(patch_shape=self.patch_shape, strides=(1, 1), padding='valid')(image_input)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
