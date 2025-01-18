@@ -191,6 +191,7 @@ class BaseRecognitionModel(BaseModel):
                  style_encoder=None,
                  generator=None,
                  synthetic_data_ratio=0.66,
+                 synthetic_image_ratio=0.33,
                  synthetic_text_ratio=0.99,
                  synthetic_style_ratio=0.33,
                  seed=None,
@@ -212,6 +213,8 @@ class BaseRecognitionModel(BaseModel):
             Generator model for image generation.
         synthetic_data_ratio : float, optional
             Probability to use synthetic data.
+        synthetic_image_ratio : float, optional
+            Probability to use synthetic image.
         synthetic_text_ratio : float, optional
             Probability to use synthetic text.
         synthetic_style_ratio : float, optional
@@ -230,6 +233,7 @@ class BaseRecognitionModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthetic_data_ratio = synthetic_data_ratio
+        self.synthetic_image_ratio = synthetic_image_ratio
         self.synthetic_text_ratio = synthetic_text_ratio
         self.synthetic_style_ratio = synthetic_style_ratio
         self.seed = seed
@@ -313,14 +317,17 @@ class BaseRecognitionModel(BaseModel):
         if self.style_backbone and self.style_encoder and self.generator and \
                 np.random.random() <= self.synthetic_data_ratio:
 
+            if np.random.random() > self.synthetic_image_ratio:
+                images = image_data
+
             if np.random.random() <= self.synthetic_text_ratio:
                 texts = aug_text_data
 
             if np.random.random() <= self.synthetic_style_ratio:
-                latent_shape = (len(image_data), self.style_encoder.latent_dim)
+                latent_shape = (len(images), self.style_encoder.latent_dim)
                 latent = tf.random.normal(shape=latent_shape)
             else:
-                features_data = self.style_backbone(image_data, training=False)
+                features_data = self.style_backbone(images, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
 
                 latent = self.style_encoder(features_data, training=False)
