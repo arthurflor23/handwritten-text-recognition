@@ -317,16 +317,16 @@ class BaseRecognitionModel(BaseModel):
         if self.style_backbone and self.style_encoder and self.generator and \
                 np.random.random() <= self.synthetic_data_ratio:
 
-            if np.random.random() > self.synthetic_image_ratio:
-                images = image_data
-
             if np.random.random() <= self.synthetic_text_ratio:
                 texts = aug_text_data
 
             if np.random.random() <= self.synthetic_style_ratio:
-                latent_shape = (len(images), self.style_encoder.latent_dim)
+                latent_shape = (tf.shape(images)[0], self.style_encoder.latent_dim)
                 latent = tf.random.normal(shape=latent_shape)
             else:
+                if np.random.random() > self.synthetic_image_ratio:
+                    images = image_data
+
                 features_data = self.style_backbone(images, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
 
