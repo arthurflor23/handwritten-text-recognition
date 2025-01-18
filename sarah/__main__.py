@@ -62,6 +62,7 @@ if __name__ == '__main__':
 
     # recognition
     parser.add_argument('--synthetic-data-ratio', default=0.66, type=float, help='Synthetic data ratio for training')
+    parser.add_argument('--synthetic-image-ratio', default=0.33, type=float, help='Synthetic image ratio for training')
     parser.add_argument('--synthetic-text-ratio', default=0.99, type=float, help='Synthetic text ratio for training')
     parser.add_argument('--synthetic-style-ratio', default=0.33, type=float, help='Synthetic style ratio for training')
 
