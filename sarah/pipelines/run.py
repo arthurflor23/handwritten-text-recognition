@@ -62,7 +62,6 @@ def run(args):
                       discriminator_steps=args.discriminator_steps,
                       generator_steps=args.generator_steps,
                       synthetic_data_ratio=args.synthetic_data_ratio,
-                      synthetic_image_ratio=args.synthetic_image_ratio,
                       synthetic_text_ratio=args.synthetic_text_ratio,
                       synthetic_style_ratio=args.synthetic_style_ratio,
                       experiment_name=args.experiment_name,
@@ -93,7 +92,7 @@ def run(args):
 
         compose.fit(epochs=args.epochs,
                     training_gen=training_gen,
-                    training_steps=training_steps * args.synthetic_step_factor,
+                    training_steps=training_steps,
                     validation_gen=validation_gen,
                     validation_steps=validation_steps,
                     monitor_sample_gen=sample_gen,
