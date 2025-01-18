@@ -132,10 +132,8 @@ The project has several command-line parameters that can be used to customize it
 #### Recognition
 
 -   `--synthetic-data-ratio`: Synthetic data ratio in synthesis and recognition workflow.
--   `--synthetic-image-ratio`: Synthetic image ratio in synthesis and recognition workflow.
 -   `--synthetic-text-ratio`: Synthetic text ratio in synthesis and recognition workflow.
 -   `--synthetic-style-ratio`: Synthetic style ratio in synthesis and recognition workflow.
--   `--synthetic-step-factor`: Synthetic step factor in synthesis and recognition workflow.
 
 #### Training
 
