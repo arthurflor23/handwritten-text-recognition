@@ -139,6 +139,7 @@ The project has several command-line parameters that can be used to customize it
 #### Training
 
 -   `--training`: Perform training pipeline.
+-   `--training-step-factor`: Factor for training steps.
 -   `--epochs`: Maximum number of epochs.
 -   `--batch-size`: Batch size.
 -   `--learning-rate`: Learning rate.
