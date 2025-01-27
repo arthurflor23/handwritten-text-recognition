@@ -8,7 +8,6 @@ from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import GatedConv2DResidual
 from sarah.models.components.layers import PositionEmbedding
 from sarah.models.components.layers import Reparameterization
-from sarah.models.components.layers import SelfAttention
 from sarah.models.recognition.flor_v2 import RecognitionModel as HTRModel
 
 
@@ -323,10 +322,10 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_res = (gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)) * 1.0
                 gp_wid = (gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)) * 0.1
 
-                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
-                gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
-                gp_res = tf.clip_by_value(gp_res, 0.0, 10.0)
-                gp_wid = tf.clip_by_value(gp_wid, 0.0, 10.0)
+                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 100.0)
+                gp_rec = tf.clip_by_value(gp_rec, 0.0, 100.0)
+                gp_res = tf.clip_by_value(gp_res, 0.0, 100.0)
+                gp_wid = tf.clip_by_value(gp_wid, 0.0, 100.0)
 
                 gp_ctc = tf.stop_gradient(gp_ctc)
                 gp_rec = tf.stop_gradient(gp_rec)
@@ -337,7 +336,7 @@ class SynthesisModel(BaseSynthesisModel):
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctx_loss': g_ctx_loss * 2,
-                'g_kld_loss': g_kld_loss * 1e-4,
+                'g_kld_loss': g_kld_loss * 0.01,
             }
 
             aux_loss = {
@@ -537,7 +536,6 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
         feats.append(encoder)
 
-        encoder = SelfAttention(dropout=0.1)(encoder)
         encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
 
         self.model = tf.keras.Model(name=self.name,
