@@ -719,15 +719,22 @@ class BaseSynthesisModel(BaseModel):
 
         image_data, text_data, _, mask_data = x_data
 
-        if tf.math.reduce_all(tf.equal(image_data, -1.)):
-            latent_shape = (len(image_data), self.style_encoder.latent_dim)
-            latent_data = tf.random.normal(shape=latent_shape)
-        else:
+        def _random_latent():
+            latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
+            return tf.random.normal(shape=latent_shape)
+
+        def _extract_latent():
             features_data = self.style_backbone(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
 
             latent_data = self.style_encoder(features_data, training=training)
             latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+
+            return latent_data
+
+        latent_data = tf.cond(pred=tf.math.reduce_all(tf.equal(image_data, 1.)),
+                              true_fn=_random_latent,
+                              false_fn=_extract_latent)
 
         generated_images = self.generator([text_data, latent_data, mask_data], training=training)
 
