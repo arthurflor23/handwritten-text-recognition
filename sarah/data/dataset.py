@@ -303,6 +303,8 @@ class Dataset():
                 except Exception:
                     print(f"Image `{item['image']}` cannot be read.")
                     return None
+            else:
+                image = np.ones(shape=self.image_shape[:-1]) * 255
 
             source = item.copy()
             encoded = item.copy()
