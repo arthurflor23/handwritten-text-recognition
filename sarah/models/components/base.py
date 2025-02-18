@@ -322,7 +322,7 @@ class BaseRecognitionModel(BaseModel):
 
             if np.random.random() <= self.synthetic_style_ratio:
                 latent_shape = (tf.shape(images)[0], self.style_encoder.latent_dim)
-                latent = tf.random.normal(shape=latent_shape)
+                latent = tf.random.normal(shape=latent_shape, seed=self.seed)
             else:
                 if np.random.random() > self.synthetic_image_ratio:
                     images = image_data
@@ -721,7 +721,7 @@ class BaseSynthesisModel(BaseModel):
 
         def _random_latent():
             latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-            return tf.random.normal(shape=latent_shape)
+            return tf.random.normal(shape=latent_shape, seed=self.seed)
 
         def _extract_latent():
             features_data = self.style_backbone(image_data, training=training)
