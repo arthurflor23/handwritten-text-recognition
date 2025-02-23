@@ -296,9 +296,9 @@ class BaseRecognitionModel(BaseModel):
         x_data, y_data = input_data
 
         aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        image_data, text_data, _, _ = y_data
+        image_data, text_data, _, mask_data = y_data
 
-        images, texts, mask = aug_image_data, text_data, aug_mask_data
+        images, texts, mask = aug_image_data, text_data, mask_data
 
         with tf.GradientTape() as r_tape:
             ctc_logits = self.recognition(images, training=True)
@@ -319,6 +319,7 @@ class BaseRecognitionModel(BaseModel):
 
             if np.random.random() <= self.synthetic_text_ratio:
                 texts = aug_text_data
+                mask = aug_mask_data
 
             if np.random.random() <= self.synthetic_style_ratio:
                 latent_shape = (tf.shape(images)[0], self.style_encoder.latent_dim)
