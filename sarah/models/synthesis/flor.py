@@ -136,7 +136,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         x_data, y_data = input_data
 
-        (aug_image_data, aug_text_data, _, _) = x_data
+        (aug_image_data, aug_text_data, _, aug_mask_data) = x_data
         (image_data, text_data, writer_data, mask_data) = y_data
 
         self.discriminator.trainable = True
@@ -155,8 +155,8 @@ class SynthesisModel(BaseSynthesisModel):
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
 
             real_real_images = self.generator([text_data, real_latent_data, mask_data], training=False)
-            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=False)
-            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=False)
+            fake_real_images = self.generator([aug_text_data, real_latent_data, aug_mask_data], training=False)
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, aug_mask_data], training=False)
 
             real_images = tf.concat([image_data, aug_image_data], axis=0)
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
@@ -201,7 +201,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
+                wid_features_data, _ = self.style_backbone(image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
@@ -231,7 +231,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         x_data, y_data = input_data
 
-        (_, aug_text_data, _, _) = x_data
+        (_, aug_text_data, _, aug_mask_data) = x_data
         (image_data, text_data, writer_data, mask_data) = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
@@ -250,8 +250,8 @@ class SynthesisModel(BaseSynthesisModel):
             real_latent_data, mu, logvar = self.style_encoder(real_features, training=True)
 
             real_real_images = self.generator([text_data, real_latent_data, mask_data], training=True)
-            fake_real_images = self.generator([aug_text_data, real_latent_data, mask_data], training=True)
-            fake_fake_images = self.generator([aug_text_data, random_latent_data, mask_data], training=True)
+            fake_real_images = self.generator([aug_text_data, real_latent_data, aug_mask_data], training=True)
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, aug_mask_data], training=True)
 
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
 
@@ -480,9 +480,8 @@ class BackboneModel(BaseModel):
         feats = []
 
         encoder_input = tf.keras.Input(shape=self.image_shape)
-        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(encoder_input)
 
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
@@ -499,7 +498,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
         encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -507,7 +506,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
         encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -524,7 +523,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
         feats.append(encoder)
 
         encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
@@ -533,7 +532,7 @@ class BackboneModel(BaseModel):
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
         feats.append(encoder)
 
         encoder = tf.keras.layers.GlobalAveragePooling2D()(encoder)
@@ -830,10 +829,10 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
-        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
+        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * (self.num_blocks + 1))(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
-                                               arguments={'y': self.num_blocks},
+                                               arguments={'y': (self.num_blocks + 1)},
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
@@ -846,7 +845,7 @@ class GeneratorModel(BaseModel):
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
         block = GatedConv2DResidual()(block)
-        block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
+        block = residual_block(block, latent_chunks[-1], self.blocks[-1] // 2, up=(1, 2))
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same')(block)
