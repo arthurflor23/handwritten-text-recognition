@@ -100,7 +100,8 @@ The project has several command-line parameters that can be used to customize it
 -   `--image-shape`: Image dimensions (height, width, channels).
 -   `--pad-value`: Padding value for images.
 -   `--char-width`: Character width for normalization.
--   `--order-by-length`: Sort data by text length.
+-   `--mask-by-text`: Mask data by text length.
+-   `--order-by-text`: Sort data by text length.
 -   `--training-ratio`: Training partition ratio.
 -   `--validation-ratio`: Validation partition ratio.
 -   `--test-ratio`: Test partition ratio.
