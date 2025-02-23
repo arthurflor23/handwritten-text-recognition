@@ -40,6 +40,7 @@ def inference(args):
                       image_shape=args.image_shape,
                       pad_value=args.pad_value,
                       char_width=args.char_width,
+                      mask_by_text=args.mask_by_text,
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       seed=args.seed)
