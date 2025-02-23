@@ -87,14 +87,24 @@ def batch_masking(batch_data, target_shape):
     masks = []
 
     if batch_data and len(batch_data) > 0:
-        if isinstance(batch_data[0], str):
-            mask = np.ones((max_height, max_width))
-            masks = np.array([mask for _ in batch_data]) * 255
-        else:
+        if isinstance(batch_data[0], np.ndarray):
             for x in batch_data:
                 mask = np.zeros((max_height, max_width))
                 mask[:x.shape[0], :x.shape[1]] = 255
                 masks.append(mask)
+
+        elif isinstance(batch_data[0], list):
+            for x in batch_data:
+                height = min(len(x) * 64, max_height)
+                width = min(max(len(y) for y in x) * 16, max_width)
+
+                mask = np.zeros((max_height, max_width))
+                mask[:height, :width] = 255
+                masks.append(mask)
+
+        else:
+            mask = np.ones((max_height, max_width))
+            masks = np.array([mask for _ in batch_data]) * 255
 
     return np.array(masks, dtype=np.uint8)
 
