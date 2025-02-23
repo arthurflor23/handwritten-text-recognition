@@ -19,7 +19,8 @@ class Dataset():
                  image_shape=(1024, 64, 1),
                  pad_value=0,
                  char_width=0,
-                 order_by_length=False,
+                 mask_by_text=False,
+                 order_by_text=False,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -44,8 +45,10 @@ class Dataset():
             Padding value for images.
         char_width : int, optional
             The width per character.
-        order_by_length : bool, optional
-            Whether to sort the data by text length.
+        mask_by_text : bool, optional
+            Whether to mask data by text length.
+        order_by_text : bool, optional
+            Whether to sort data by text length.
         training_ratio : float or int, optional
             The training ratio for resample.
         validation_ratio : float or int, optional
@@ -74,7 +77,8 @@ class Dataset():
         self.image_shape = image_shape
         self.pad_value = pad_value
         self.char_width = char_width
-        self.order_by_length = order_by_length
+        self.mask_by_text = mask_by_text
+        self.order_by_text = order_by_text
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -326,7 +330,7 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                if self.order_by_length:
+                if self.order_by_text:
                     source, encoded = zip(*sorted(results, key=lambda x: len(x[0]['text']), reverse=True))
                 else:
                     source, encoded = zip(*results)
@@ -391,7 +395,7 @@ class Dataset():
             if results:
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
 
-                if self.order_by_length:
+                if self.order_by_text:
                     source, encoded = zip(*sorted(flattened, key=lambda x: len(x[0]), reverse=True))
                 else:
                     source, encoded = zip(*flattened)
@@ -444,13 +448,13 @@ class Dataset():
 
         def batch_generator(data, multigrams):
             data_length = len(data)
-            multigrams_length = len(multigrams)
+            multigram_length = len(multigrams)
 
             indices = np.arange(data_length)
             batch_index = 0
 
             while True:
-                if self.order_by_length:
+                if self.order_by_text:
                     if shuffle:
                         batch_index = np.random.randint(0, data_length - batch_size)
                     elif batch_index >= data_length:
@@ -472,11 +476,14 @@ class Dataset():
                 image_data, text_data, writer_data = map(
                     list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
 
-                mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
+                if self.mask_by_text:
+                    mask_data = utils.batch_masking(text_data, target_shape=self.image_shape)
+                else:
+                    mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
 
                 aug_image_data = None
-                aug_text_data = None
                 aug_mask_data = None
+                aug_text_data = None
 
                 if batch_encoded:
                     writer_data = np.array(writer_data)
@@ -486,20 +493,24 @@ class Dataset():
                                                          target_width=len(x['text']) * self.char_width,
                                                          target_shape=self.image_shape) for x in batch]
 
-                    mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
+                        if not self.mask_by_text:
+                            mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
 
                     aug_image_data = image_data.copy()
-                    aug_text_data = text_data.copy()
                     aug_mask_data = mask_data.copy()
-
-                    if multigrams_length:
-                        g_index = np.random.randint(0, multigrams_length - len(batch))
-                        aug_text_data = [data['text'] for data in multigrams[g_index:g_index + len(batch)]]
+                    aug_text_data = text_data.copy()
 
                     if augmentor:
-                        aug_image_data = [augmentor.augmentation(x, aug_image_data) for x in aug_image_data]
-                        aug_image_data = [utils.resize_image(x, target_shape=self.image_shape) for x in aug_image_data]
-                        aug_mask_data = utils.batch_masking(aug_image_data, target_shape=self.image_shape)
+                        aug_image_data = [utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
+                                                             target_shape=self.image_shape) for x in aug_image_data]
+
+                        if not self.mask_by_text:
+                            aug_mask_data = utils.batch_masking(aug_image_data, target_shape=self.image_shape)
+
+                    if multigram_length:
+                        g_index = np.random.randint(0, multigram_length - len(batch))
+                        aug_text_data = [data['text'] for data in multigrams[g_index:g_index + len(batch)]]
+                        aug_mask_data = utils.batch_masking(aug_text_data, target_shape=self.image_shape)
 
                     if batch_padding:
                         image_data = utils.batch_padding(image_data, self.image_shape, self.pad_value, np.uint8)
