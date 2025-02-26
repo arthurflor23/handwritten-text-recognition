@@ -831,7 +831,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=True)
+                                                 use_bias=False)
 
             if self.spectral_norm:
                 self.o_conv = tf.keras.layers.SpectralNormalization(layer=self.o_conv,
@@ -866,8 +866,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
 
         s_conv = self.s_conv(inputs)
 
-        g_conv = tf.keras.layers.Activation('sigmoid')(self.gamma * s_conv)
-        g_conv = self.beta * s_conv * g_conv
+        g_conv = tf.keras.layers.Activation('sigmoid')(s_conv * self.gamma)
+        g_conv = s_conv * g_conv * self.beta
 
         if training and self.dropout:
             g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
@@ -1463,7 +1463,7 @@ class SelfAttention(tf.keras.layers.Layer):
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return self.beta * o + inputs
+        return (o * self.beta) + inputs
 
 
 class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
