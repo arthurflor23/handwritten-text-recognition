@@ -1076,7 +1076,7 @@ class OctConv2D(tf.keras.layers.Layer):
         return [high_out_shape, low_out_shape]
 
 
-class PositionEmbedding(tf.keras.layers.Layer):
+class PositionEmbedding1D(tf.keras.layers.Layer):
     """
     Positional Embedding layer.
     Adds a positional embedding to the input tensor along the specified sequence axis.
