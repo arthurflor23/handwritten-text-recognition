@@ -46,36 +46,35 @@ class RecognitionModel(BaseRecognitionModel):
 
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
-        encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(encoder_input)
 
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
-        encoder = GatedConv2DResidual(h=16)(encoder)
+        encoder = GatedConv2DResidual()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedConv2DResidual(h=24, dropout=0.1)(encoder)
+        encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedConv2DResidual(h=32, dropout=0.1)(encoder)
+        encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedConv2DResidual(h=48, dropout=0.1)(encoder)
+        encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
@@ -83,29 +82,29 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedConv2DResidual(h=56, dropout=0.1)(encoder)
+        encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedConv2DResidual(h=64, dropout=0.1)(encoder)
+        encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(encoder)
-
-        encoder = SelfAttention(dropout=0.1)(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
         self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
-        decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder_input)
+
+        decoder = SelfAttention(dropout=0.2)(decoder_input)
+        decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
 
         for _ in range(3):
             forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
@@ -118,7 +117,6 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
 
         decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
-        decoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(decoder)
 
         self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
 
