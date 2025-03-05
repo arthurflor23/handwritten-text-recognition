@@ -48,16 +48,24 @@ class CTCLoss(tf.keras.losses.Loss):
         y_true = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
         y_pred = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1, tf.shape(y_pred)[-1]))
 
-        labels = tf.sparse.from_dense(y_true)
-        sequence_length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
+        labels = tf.cast(tf.sparse.from_dense(y_true), dtype=tf.int32)
+        length = tf.fill([tf.shape(y_pred)[0]], value=tf.shape(y_pred)[1])
 
-        ctc_loss = tf.compat.v1.nn.ctc_loss(labels=tf.cast(labels, dtype=tf.int32),
+        ctc_loss = tf.compat.v1.nn.ctc_loss(labels=labels,
                                             logits=y_pred,
-                                            sequence_length=sequence_length,
+                                            sequence_length=length,
                                             preprocess_collapse_repeated=False,
                                             ctc_merge_repeated=True,
                                             ignore_longer_outputs_than_inputs=True,
                                             time_major=False)
+
+        # ctc_loss = tf.nn.ctc_loss(labels=labels,
+        #                           logits=y_pred,
+        #                           label_length=length,
+        #                           logit_length=length,
+        #                           logits_time_major=False,
+        #                           unique=False,
+        #                           blank_index=-1)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
 
