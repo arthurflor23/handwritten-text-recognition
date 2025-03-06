@@ -844,7 +844,6 @@ class GeneratorModel(BaseModel):
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
-        block = GatedConv2DResidual()(block)
         block = residual_block(block, latent_chunks[-1], self.blocks[-1] // 2, up=(1, 2))
 
         block = tf.keras.layers.Activation(activation='swish')(block)
