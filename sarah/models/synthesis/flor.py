@@ -829,10 +829,10 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
-        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * (self.num_blocks + 1))(latent)
+        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
-                                               arguments={'y': (self.num_blocks + 1)},
+                                               arguments={'y': self.num_blocks},
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
@@ -844,7 +844,7 @@ class GeneratorModel(BaseModel):
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
-        block = residual_block(block, latent_chunks[-1], self.blocks[-1] // 2, up=(1, 2))
+        block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same')(block)
