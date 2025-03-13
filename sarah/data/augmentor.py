@@ -149,7 +149,7 @@ class Augmentor():
         ]
 
         for transform_func, params, min_size in transformations:
-            if params is None or len(params) == 0 or params[0] == 0:
+            if params is None or len(params) == 0 or params[0] <= 0:
                 continue
 
             if min_size and min(image.shape[:2]) < min_size:
