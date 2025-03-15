@@ -155,8 +155,9 @@ class CTXLoss(tf.keras.losses.Loss):
                 distance = tf.reduce_sum(tf.square(diff), axis=-1)
 
         d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
+
         d_tilde = distance / (d_min + self.epsilon)
-        d_tilde = tf.clip_by_value(d_tilde, clip_value_min=0., clip_value_max=10.)
+        d_tilde = tf.clip_by_value(d_tilde, clip_value_min=0., clip_value_max=100.)
 
         w = tf.math.exp((1 - d_tilde) / self.sigma)
         ctx_ij = w / (tf.math.reduce_sum(w, axis=1, keepdims=True) + self.epsilon)
