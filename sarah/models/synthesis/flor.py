@@ -199,6 +199,8 @@ class SynthesisModel(BaseSynthesisModel):
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
+            self.edit_distance.update_state(text_data, ctc_logits)
+
             # writer identification
             with tf.GradientTape() as w_tape:
                 wid_features_data, _ = self.style_backbone(image_data, training=True)
@@ -217,6 +219,7 @@ class SynthesisModel(BaseSynthesisModel):
             'd_adv_loss': d_adv_loss,
             'd_ctc_loss': d_ctc_loss,
             'd_wid_loss': d_wid_loss,
+            self.edit_distance.name: self.edit_distance.result(),
         })
 
     def generator_step(self, input_data):
