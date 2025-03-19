@@ -524,10 +524,11 @@ class BaseRecognitionModel(BaseModel):
 
             pattern = f'([{re.escape(string.punctuation)}])'
 
-            for image_path, text_true, writer_id, text_pred, prob_pred in \
-                    zip(image_data, text_data, writer_data, pred_data, prob_data):
+            for i, (image_path, text_true, writer_id, text_pred, prob_pred) in \
+                    enumerate(zip(image_data, text_data, writer_data, pred_data, prob_data)):
 
                 local_evaluation = {
+                    'index': (batch_index - batch_size) + (i + 1),
                     'writer': writer_id,
                     'image': image_path,
                     'text': text_true,
@@ -536,8 +537,8 @@ class BaseRecognitionModel(BaseModel):
 
                 gt = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ').lower()).split())
 
-                for i, top_path in enumerate(text_pred):
-                    pd = ' '.join(re.sub(pattern, r' \1 ', top_path.replace('\n', ' ').lower()).split())
+                for j, path in enumerate(text_pred):
+                    pd = ' '.join(re.sub(pattern, r' \1 ', path.replace('\n', ' ').lower()).split())
 
                     cer_distance = editdistance.eval(list(gt), list(pd))
                     cer = cer_distance / max(len(gt), len(pd))
@@ -549,17 +550,17 @@ class BaseRecognitionModel(BaseModel):
                     metrics['wer'].append(wer)
 
                     local_evaluation['predictions'].append({
-                        'probability': prob_pred if prob_pred is None else prob_pred[i],
+                        'index': (j + 1),
+                        'text': path,
+                        'probability': prob_pred if prob_pred is None else prob_pred[j],
                         'cer': cer,
                         'wer': wer,
-                        'text': top_path,
                     })
 
                 evaluations.append(local_evaluation)
 
             progbar.update(step + 1)
 
-        evaluations = sorted(evaluations, key=lambda x: x['predictions'][0]['cer'])
         metrics = {k: float(np.mean(metrics[k])) for k in metrics}
 
         return metrics, evaluations
