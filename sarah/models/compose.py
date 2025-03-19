@@ -280,9 +280,8 @@ class Compose():
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
 
-            monitor = self.model.monitor
-            if validation_gen is not None:
-                monitor = f"val_{self.model.monitor}"
+            monitor = self.model.monitor if validation_gen \
+                else self.model.monitor.lstrip('val_')
 
             callbacks = [
                 TrainingLogger(
