@@ -193,7 +193,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(aug_image_data, training=True)
+                ctc_logits = self.recognition(image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
