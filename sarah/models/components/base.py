@@ -254,7 +254,7 @@ class BaseRecognitionModel(BaseModel):
         self.edit_distance = EditDistance()
 
         self.measure_tracker = MeasureTracker()
-        self.monitor = self.edit_distance.name
+        self.monitor = f"val_{self.edit_distance.name}"
 
         self.build_model()
         self.built = True
@@ -640,11 +640,12 @@ class BaseSynthesisModel(BaseModel):
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
+        self.edit_distance = EditDistance()
         self.kid = KernelInceptionDistance(image_shape=self.image_shape)
         self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
-        self.monitor = self.kid.name
+        self.monitor = self.edit_distance.name
 
         self.build_model()
         self.built = True
