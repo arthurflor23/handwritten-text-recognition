@@ -19,15 +19,15 @@ class Tokenizer():
         self.sos_tk = '◖'
         self.eos_tk = '◗'
 
+        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk]
         self.words = []
         self.writers = []
-        self.chars = [self.pad_tk, self.sos_tk, self.eos_tk]
-
-        self._reserved_chars_length = len(self.chars)
-        self._reserved_marks_length = 2
 
         self.lexical_shape = []
         self.writers_shape = []
+
+        self._chars_length = len(self.chars)
+        self._marks_length = 2
 
         self._initialize_metadata()
 
@@ -46,7 +46,7 @@ class Tokenizer():
         info += f'\n{self.__class__.__name__.center(width)}'
         info += "\n" + "-" * width
         info += f"\n{'words':<{pad}}: {len(self.words):,}"
-        info += f"\n{'chars':<{pad}}: {len(self.chars) - self._reserved_chars_length:,}"
+        info += f"\n{'chars':<{pad}}: {len(self.chars) - self._chars_length:,}"
         info += f"\n{'writers':<{pad}}: {len(self.writers):,}"
         info += "\n" + "-" * width
         info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
@@ -172,6 +172,8 @@ class Tokenizer():
         """
 
         if keepstats:
+            self._update_text_stats(text)
+
             for word in set(text.replace('\n', ' ').split()):
                 if word not in self.words:
                     self.words.append(word)
@@ -179,15 +181,14 @@ class Tokenizer():
             for char in set(text.replace('\n', '')):
                 if char not in self.chars:
                     self.chars.append(char)
-
-            self._update_text_stats(text)
+                    self.chars[self._chars_length:] = sorted(self.chars[self._chars_length:])
 
             def next_power_of_two(n):
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_lines_per_page']),
-                next_power_of_two(self.metadata['max_chars_per_line'] + self._reserved_marks_length),
+                next_power_of_two(self.metadata['max_chars_per_line'] + self._marks_length),
                 len(self.chars) + 1,
             )
 
@@ -198,7 +199,7 @@ class Tokenizer():
         eos_idx = char_to_index.get(self.eos_tk)
 
         text = [' '.join(x.split()) for x in re.sub(r'\n\n+', '\n', text).split('\n')]
-        max_length = max([len(line) for line in text]) + self._reserved_marks_length
+        max_length = max([len(line) for line in text]) + self._marks_length
 
         encoded_text = []
         for line in text:
@@ -225,7 +226,7 @@ class Tokenizer():
             The decoded text.
         """
 
-        translation_table = str.maketrans('', '', ''.join(self.chars[:self._reserved_chars_length]))
+        translation_table = str.maketrans('', '', ''.join(self.chars[:self._chars_length]))
         index_to_char = {idx: char for idx, char in enumerate(self.chars)}
 
         decoded_text = []
