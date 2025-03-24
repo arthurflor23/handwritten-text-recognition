@@ -503,6 +503,10 @@ class BaseRecognitionModel(BaseModel):
             Metrics and evaluations.
         """
 
+        def _standardize(text):
+            pattern = f'([{re.escape(string.punctuation)}])'
+            return ' '.join(re.sub(pattern, r' \1 ', text.replace('\n', ' ').lower()).split())
+
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
         metrics = {'cer': [], 'wer': []}
@@ -522,33 +526,34 @@ class BaseRecognitionModel(BaseModel):
             prob_data = probabilities[batch_index:batch_index + batch_size]
             batch_index += batch_size
 
-            pattern = f'([{re.escape(string.punctuation)}])'
-
-            for i, (image_path, text_true, writer_id, text_pred, prob_pred) in \
+            for i, (image_path, ground_truth, writer_id, text_pred, prob_pred) in \
                     enumerate(zip(image_data, text_data, writer_data, pred_data, prob_data)):
 
                 local_evaluation = {
                     'index': (batch_index - batch_size) + (i + 1),
                     'writer': writer_id,
                     'image': image_path,
-                    'text': text_true,
+                    'text': ground_truth,
                     'predictions': [],
                 }
 
-                gt = ' '.join(re.sub(pattern, r' \1 ', text_true.replace('\n', ' ').lower()).split())
+                gt = _standardize(text=ground_truth)
 
-                for j, path in enumerate(text_pred):
-                    pd = ' '.join(re.sub(pattern, r' \1 ', path.replace('\n', ' ').lower()).split())
+                char_length = max(1, len(gt))
+                word_length = max(1, len(gt.split()))
 
-                    cer = editdistance.eval(list(gt), list(pd)) / len(gt)
-                    wer = editdistance.eval(gt.split(), pd.split()) / len(gt.split())
+                for j, predict in enumerate(text_pred):
+                    pd = _standardize(text=predict)
+
+                    cer = editdistance.eval(list(gt), list(pd)) / char_length
+                    wer = editdistance.eval(gt.split(), pd.split()) / word_length
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
 
                     local_evaluation['predictions'].append({
                         'index': (j + 1),
-                        'text': path,
+                        'text': predict,
                         'probability': prob_pred if prob_pred is None else prob_pred[j],
                         'cer': cer,
                         'wer': wer,
