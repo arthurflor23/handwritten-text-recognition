@@ -181,7 +181,6 @@ class Tokenizer():
             for char in set(text.replace('\n', '')):
                 if char not in self.chars:
                     self.chars.append(char)
-                    self.chars[self._chars_length:] = sorted(self.chars[self._chars_length:])
 
             def next_power_of_two(n):
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
