@@ -109,10 +109,13 @@ class RecognitionModel(BaseRecognitionModel):
         for _ in range(3):
             forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
             backwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+
             forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(forwards)
             backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(backwards)
+
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
+        decoder = tf.keras.layers.LayerNormalization()(decoder)
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
 
