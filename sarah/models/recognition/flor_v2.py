@@ -103,7 +103,7 @@ class RecognitionModel(BaseRecognitionModel):
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
-        decoder = SelfAttention(dropout=0.2)(decoder_input)
+        decoder = SelfAttention(dropout=0.3)(decoder_input)
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
 
         for _ in range(3):
