@@ -325,10 +325,10 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_res = (gp_adv / (tf.math.reduce_std(gp_res) + 1e-8))
                 gp_wid = (gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8))
 
-                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 10.0)
-                gp_rec = tf.clip_by_value(gp_rec, 0.0, 10.0)
-                gp_res = tf.clip_by_value(gp_res, 0.0, 10.0)
-                gp_wid = tf.clip_by_value(gp_wid, 0.0, 10.0)
+                gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 100.0)
+                gp_rec = tf.clip_by_value(gp_rec, 0.0, 100.0)
+                gp_res = tf.clip_by_value(gp_res, 0.0, 100.0)
+                gp_wid = tf.clip_by_value(gp_wid, 0.0, 100.0)
 
                 gp_ctc = tf.stop_gradient(gp_ctc)
                 gp_rec = tf.stop_gradient(gp_rec)
