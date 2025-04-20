@@ -49,11 +49,11 @@ class SynthesisModel(BaseSynthesisModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5, beta_1=0.5, beta_2=0.95)
+        self.r_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5, beta_1=0.5, beta_2=0.999)
         self.w_optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5, beta_1=0.5, beta_2=0.999)
 
         self.g_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
-        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.95)
 
     def build_model(self):
         """
@@ -320,10 +320,10 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_wid = g_tape.gradient(g_wid_loss, fake_latent_wid_logits)
 
                 gp_adv = tf.math.reduce_std(gp_adv)
-                gp_ctc = (gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8))
-                gp_rec = (gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8))
-                gp_res = (gp_adv / (tf.math.reduce_std(gp_res) + 1e-8))
-                gp_wid = (gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8))
+                gp_ctc = gp_adv / (tf.math.reduce_std(gp_ctc) + 1e-8)
+                gp_rec = gp_adv / (tf.math.reduce_std(gp_rec) + 1e-8)
+                gp_res = gp_adv / (tf.math.reduce_std(gp_res) + 1e-8)
+                gp_wid = gp_adv / (tf.math.reduce_std(gp_wid) + 1e-8)
 
                 gp_ctc = tf.clip_by_value(gp_ctc, 0.0, 100.0)
                 gp_rec = tf.clip_by_value(gp_rec, 0.0, 100.0)
@@ -339,7 +339,7 @@ class SynthesisModel(BaseSynthesisModel):
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctx_loss': g_ctx_loss * 2,
-                'g_kld_loss': g_kld_loss * 0.001,
+                'g_kld_loss': g_kld_loss * 0.01,
             }
 
             aux_loss = {
