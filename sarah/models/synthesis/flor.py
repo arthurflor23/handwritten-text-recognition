@@ -339,7 +339,7 @@ class SynthesisModel(BaseSynthesisModel):
             gen_loss = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctx_loss': g_ctx_loss * 2,
-                'g_kld_loss': g_kld_loss * 0.01,
+                'g_kld_loss': g_kld_loss * 0.001,
             }
 
             aux_loss = {
