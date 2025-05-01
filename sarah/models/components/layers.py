@@ -212,6 +212,7 @@ class ContentAlignment(tf.keras.layers.Layer):
                  image_padding_value=-1,
                  text_padding_value=0,
                  mask_padding_value=0,
+                 resize_method='bilinear',
                  **kwargs):
         """
         Initializes the layer.
@@ -228,6 +229,8 @@ class ContentAlignment(tf.keras.layers.Layer):
             Padding value for text inputs.
         mask_padding_value : int, optional
             Padding value for mask inputs.
+        resize_method : str, optional
+            Resize method name.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -239,6 +242,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         self.image_padding_value = image_padding_value
         self.text_padding_value = text_padding_value
         self.mask_padding_value = mask_padding_value
+        self.resize_method = resize_method
 
     def get_config(self):
         """
@@ -258,6 +262,7 @@ class ContentAlignment(tf.keras.layers.Layer):
             'image_padding_value': self.image_padding_value,
             'text_padding_value': self.text_padding_value,
             'mask_padding_value': self.mask_padding_value,
+            'resize_method': self.resize_method,
         })
 
         return config
@@ -312,11 +317,11 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         def content_alignment(args):
             img, text_h, text_w, mask_h, mask_w = args
-            image = tf.image.resize(img[:text_h, :text_w, :], size=(mask_h, mask_w), method='nearest')
+            image = tf.image.resize(img[:text_h, :text_w, :], size=(mask_h, mask_w), method=self.resize_method)
 
             if tf.shape(img)[1] > text_w and self.target_shape[2] > mask_w:
                 size = [mask_h, self.target_shape[2] - mask_w]
-                chunk = tf.image.resize(img[:text_h, text_w:, :], size=size, method='nearest')
+                chunk = tf.image.resize(img[:text_h, text_w:, :], size=size, method=self.resize_method)
                 image = tf.concat([image, chunk], axis=1)
 
             if self.target_shape[2] > tf.shape(image)[1]:
@@ -326,7 +331,7 @@ class ContentAlignment(tf.keras.layers.Layer):
 
             if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
                 size = [self.target_shape[1] - mask_h, self.target_shape[2]]
-                chunk = tf.image.resize(img[text_h:, :text_w, :], size=size, method='nearest')
+                chunk = tf.image.resize(img[text_h:, :text_w, :], size=size, method=self.resize_method)
                 image = tf.concat([image, chunk], axis=0)
 
             if self.target_shape[1] > tf.shape(image)[0]:
