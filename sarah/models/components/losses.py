@@ -187,8 +187,8 @@ class KLDivergence(tf.keras.losses.Loss):
 
     def __init__(self,
                  max_beta=1.0,
-                 total_cycles=5,
-                 warmup_steps=20000,
+                 total_cycles=4,
+                 warmup_steps=25000,
                  annealing_ratio=0.5,
                  schedule_type='cosine',
                  cyclical_annealing=False,
@@ -240,25 +240,26 @@ class KLDivergence(tf.keras.losses.Loss):
         current_cycle = self.step // self.warmup_steps
 
         if current_cycle >= self.total_cycles:
-            return self.max_beta
+            beta = self.max_beta
+        else:
+            cycle_position = self.step % self.warmup_steps
+            annealing_steps = int(self.warmup_steps * self.annealing_ratio)
+
+            if cycle_position <= annealing_steps:
+                cycle_progress = cycle_position / annealing_steps
+
+                if self.schedule_type == 'linear':
+                    beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
+                elif self.schedule_type == 'sigmoid':
+                    beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
+                elif self.schedule_type == 'cosine':
+                    beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
+                else:
+                    raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
+            else:
+                beta = self.max_beta
 
         self.step += 1
-        annealing_steps = int(self.warmup_steps * self.annealing_ratio)
-
-        if self.step % self.warmup_steps <= annealing_steps:
-            cycle_progress = (self.step % self.warmup_steps) / annealing_steps
-
-            if self.schedule_type == 'linear':
-                beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
-            elif self.schedule_type == 'sigmoid':
-                beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
-            elif self.schedule_type == 'cosine':
-                beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
-            else:
-                raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
-        else:
-            beta = self.max_beta
-
         return beta
 
     def call(self, mu, logvar):
