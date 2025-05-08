@@ -644,7 +644,7 @@ class BaseSynthesisModel(BaseModel):
         self.ctx_loss = CTXLoss()
         self.edit_distance = EditDistance()
         self.kid = KernelInceptionDistance(image_shape=self.image_shape)
-        self.kld_loss = KLDivergence(cyclical_annealing=True)
+        self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
         self.monitor = self.edit_distance.name
