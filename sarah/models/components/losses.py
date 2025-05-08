@@ -186,12 +186,12 @@ class KLDivergence(tf.keras.losses.Loss):
     """
 
     def __init__(self,
-                 max_beta=1.0,
-                 total_cycles=4,
-                 warmup_steps=25000,
+                 max_beta=5.0,
+                 total_cycles=10,
+                 warmup_steps=10000,
                  annealing_ratio=0.5,
                  schedule_type='cosine',
-                 cyclical_annealing=False,
+                 cyclical_annealing=True,
                  name='cyclical_vae_loss',
                  **kwargs):
         """
