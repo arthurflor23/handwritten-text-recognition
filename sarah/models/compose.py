@@ -81,6 +81,8 @@ class Compose():
         self.run_context = None
 
         if self.synthesis or self.recognition:
+            tf.keras.backend.clear_session()
+
             try:
                 if gpu is None:
                     tf.config.set_visible_devices([], 'GPU')
