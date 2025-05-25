@@ -128,6 +128,8 @@ class MeasureTracker():
         trainable_weights = []
 
         for name, value in measures.items():
+            name = f"{name}_w"
+
             if name not in self.values:
                 self.add([name])
 
