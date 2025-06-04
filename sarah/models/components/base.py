@@ -647,7 +647,7 @@ class BaseSynthesisModel(BaseModel):
         self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
-        self.monitor = self.edit_distance.name
+        self.monitor = f"d_{self.ctc_loss.name}"
 
         self.build_model()
         self.built = True
