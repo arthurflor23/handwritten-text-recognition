@@ -149,7 +149,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         for _ in range(self.discriminator_steps):
             random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-            random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
+            random_latent_data = tf.random.normal(shape=random_latent_shape)
 
             real_features_data, _ = self.style_backbone(image_data, training=False)
             real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
@@ -161,27 +161,21 @@ class SynthesisModel(BaseSynthesisModel):
             real_images = tf.concat([image_data, aug_image_data], axis=0)
             fake_images = tf.concat([real_real_images, fake_real_images, fake_fake_images], axis=0)
 
-            real_images = tf.stop_gradient(real_images)
-            fake_images = tf.stop_gradient(fake_images)
-
             # discriminator and patch discriminator
             with tf.GradientTape() as d_tape:
-                # fake images
-                fake_adv = self.discriminator(fake_images, training=True)
-                fake_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_adv))
-
-                fake_patch_adv = self.patch_discriminator(fake_images, training=True)
-                fake_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_adv))
-
-                # real images
                 real_adv = self.discriminator(real_images, training=True)
                 real_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_adv))
 
                 real_patch_adv = self.patch_discriminator(real_images, training=True)
                 real_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 - real_patch_adv))
 
-                # discriminator loss
-                d_adv_loss = fake_adv_loss + real_adv_loss + fake_patch_adv_loss + real_patch_adv_loss
+                fake_adv = self.discriminator(fake_images, training=True)
+                fake_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_adv))
+
+                fake_patch_adv = self.patch_discriminator(fake_images, training=True)
+                fake_patch_adv_loss = tf.reduce_mean(tf.nn.relu(1.0 + fake_patch_adv))
+
+                d_adv_loss = real_adv_loss + fake_adv_loss + real_patch_adv_loss + fake_patch_adv_loss
 
             d_gradients = d_tape.gradient(d_adv_loss,
                                           self.discriminator.trainable_weights +
@@ -193,17 +187,15 @@ class SynthesisModel(BaseSynthesisModel):
 
             # handwriting recognition
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(image_data, training=True)
+                ctc_logits = self.recognition(aug_image_data, training=True)
                 d_ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
             r_gradients = r_tape.gradient(d_ctc_loss, self.recognition.trainable_weights)
             self.r_optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
-            self.edit_distance.update_state(text_data, ctc_logits)
-
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.style_backbone(image_data, training=True)
+                wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
                 d_wid_loss = self.cls_loss(writer_data, wid_logits)
 
@@ -219,7 +211,6 @@ class SynthesisModel(BaseSynthesisModel):
             'd_adv_loss': d_adv_loss,
             'd_ctc_loss': d_ctc_loss,
             'd_wid_loss': d_wid_loss,
-            self.edit_distance.name: self.edit_distance.result(),
         })
 
     def generator_step(self, input_data):
@@ -238,7 +229,7 @@ class SynthesisModel(BaseSynthesisModel):
         (image_data, text_data, writer_data, mask_data) = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-        random_latent_data = tf.stop_gradient(tf.random.normal(shape=random_latent_shape))
+        random_latent_data = tf.random.normal(shape=random_latent_shape)
 
         self.discriminator.trainable = False
         self.patch_discriminator.trainable = False
@@ -329,11 +320,6 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_rec = tf.clip_by_value(gp_rec, 0.0, 100.0)
                 gp_res = tf.clip_by_value(gp_res, 0.0, 100.0)
                 gp_wid = tf.clip_by_value(gp_wid, 0.0, 100.0)
-
-                gp_ctc = tf.stop_gradient(gp_ctc)
-                gp_rec = tf.stop_gradient(gp_rec)
-                gp_res = tf.stop_gradient(gp_res)
-                gp_wid = tf.stop_gradient(gp_wid)
 
             # generator loss
             gen_loss = {
