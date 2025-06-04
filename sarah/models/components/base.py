@@ -642,7 +642,6 @@ class BaseSynthesisModel(BaseModel):
         self.cls_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
-        self.edit_distance = EditDistance()
         self.kid = KernelInceptionDistance(image_shape=self.image_shape)
         self.kld_loss = KLDivergence()
 
