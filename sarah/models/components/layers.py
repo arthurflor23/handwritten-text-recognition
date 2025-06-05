@@ -1266,6 +1266,7 @@ class SelfAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 k=8,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1280,8 +1281,10 @@ class SelfAttention(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        k : int, optional
+            Number of groups to split the input channels.
         h : int, optional
-            Reduce the channels dimension to the value.
+            Number of output channels for the attention layer.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -1302,6 +1305,7 @@ class SelfAttention(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.k = k
         self.h = h
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
@@ -1324,6 +1328,7 @@ class SelfAttention(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'k': self.k,
             'h': self.h,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
@@ -1364,7 +1369,7 @@ class SelfAttention(tf.keras.layers.Layer):
         self.filters = input_shape[-1]
         self.h = self.h or input_shape[-1]
 
-        self.f_conv = conv_layer(filters=self.filters // 8,
+        self.f_conv = conv_layer(filters=self.filters // self.k,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
@@ -1372,7 +1377,7 @@ class SelfAttention(tf.keras.layers.Layer):
                                  kernel_constraint=self.kernel_constraint,
                                  use_bias=False)
 
-        self.g_conv = conv_layer(filters=self.filters // 8,
+        self.g_conv = conv_layer(filters=self.filters // self.k,
                                  kernel_size=1,
                                  padding='same',
                                  kernel_initializer=self.kernel_initializer,
