@@ -1083,8 +1083,9 @@ class OctConv2D(tf.keras.layers.Layer):
 
 class PositionEmbedding1D(tf.keras.layers.Layer):
     """
-    Positional Embedding layer.
-    Adds a positional embedding to the input tensor along the specified sequence axis.
+    1D Positional Embedding layer.
+    Adds learnable positional embeddings to 1D input tensors.
+    Typically used for sequence-like inputs: (batch_size, sequence_length, embedding_dim).
 
     References
     ----------
@@ -1094,9 +1095,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
     def __init__(self,
                  max_length,
-                 seq_axis=1,
                  embeddings_initializer='glorot_uniform',
-                 mask_zero=False,
                  **kwargs):
         """
         Initializes the position embedding layer.
@@ -1104,23 +1103,14 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         Parameters
         ----------
         max_length : int
-            Define max sequence length.
-        seq_axis : int, optional
-            Axis of the input tensor for embedding.
-        embeddings_initializer : initializer, optional
-            Kernel weights initializer.
-        mask_zero : bool, optional
-            Whether or not the value 0 is a special padding value.
-        **kwargs : dict
-            Additional arguments.
+            Maximum length of the sequence.
+        embeddings_initializer : str or initializer
+            Initializer for embeddings.
         """
-
         super().__init__(**kwargs)
 
         self.max_length = max_length
-        self.seq_axis = seq_axis
-        self.embeddings_initializer = embeddings_initializer
-        self.mask_zero = mask_zero
+        self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
 
     def get_config(self):
         """
@@ -1136,9 +1126,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
         config.update({
             'max_length': self.max_length,
-            'seq_axis': self.seq_axis,
-            'embeddings_initializer': self.embeddings_initializer,
-            'mask_zero': self.mask_zero,
+            'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
         })
 
         return config
@@ -1155,62 +1143,140 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.position_embeddings = self.add_weight(name=f"{self.name}_weights",
-                                                   shape=[self.max_length, input_shape[-1]],
-                                                   initializer=self.embeddings_initializer)
+        self.pos_embeddings = self.add_weight(name=f"{self.name}_pos_embeddings",
+                                              shape=(self.max_length, input_shape[-1]),
+                                              initializer=self.embeddings_initializer,
+                                              trainable=True)
 
     def call(self, inputs):
         """
-        Processes the input tensors through the layer.
+        Adds 1D positional embeddings to the input.
 
         Parameters
         ----------
         inputs : tf.Tensor
-            Input tensor.
+            Tensor of shape (batch_size, sequence_length, embedding_dim)
 
         Returns
         -------
         tf.Tensor
-            Output tensor after applying position embedding.
+            Tensor with 1D positional embeddings added.
         """
 
         input_shape = tf.shape(inputs)
-        actual_seq_len = input_shape[self.seq_axis]
+        seq_len = input_shape[1]
 
-        position_embeddings = self.position_embeddings[:actual_seq_len, :]
+        pos_emb = self.pos_embeddings[:seq_len, :]
+        pos_emb = tf.expand_dims(pos_emb, axis=0)
 
-        new_shape = [1] * len(inputs.shape)
-        new_shape[self.seq_axis] = actual_seq_len
-        new_shape[-1] = position_embeddings.shape[-1]
+        return inputs + pos_emb
 
-        position_embeddings = tf.reshape(position_embeddings, new_shape)
 
-        return tf.broadcast_to(position_embeddings, input_shape)
+class PositionEmbedding2D(tf.keras.layers.Layer):
+    """
+    2D Positional Embedding layer.
+    Adds learnable row and column embeddings to 2D input tensors.
+    Typically used for image-like inputs (batch_size, height, width, channels).
 
-    def compute_mask(self, inputs, mask=None):
+    References
+    ----------
+    BERT2D: Two Dimensional Positional Embeddings for Efficient Turkish NLP
+        https://ieeexplore.ieee.org/document/10542953
+    """
+
+    def __init__(self,
+                 height,
+                 width,
+                 embeddings_initializer='glorot_uniform',
+                 **kwargs):
         """
-        Computes an output mask tensor based on input values.
+        Initializes the position embedding layer.
+
+        Parameters
+        ----------
+        height : int
+            Maximum height (number of rows).
+        width : int
+            Maximum width (number of columns).
+        embeddings_initializer : str or initializer
+            Initializer for embeddings.
+        """
+
+        super().__init__(**kwargs)
+
+        self.height = height
+        self.width = width
+        self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'height': self.height,
+            'width': self.width,
+            'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.row_embeddings = self.add_weight(name=f"{self.name}_row_embeddings",
+                                              shape=(self.height, input_shape[-1]),
+                                              initializer=self.embeddings_initializer,
+                                              trainable=True)
+
+        self.col_embeddings = self.add_weight(name=f"{self.name}_col_embeddings",
+                                              shape=(self.width, input_shape[-1]),
+                                              initializer=self.embeddings_initializer,
+                                              trainable=True)
+
+    def call(self, inputs):
+        """
+        Adds 2D positional embeddings to the input.
 
         Parameters
         ----------
         inputs : tf.Tensor
-            Input tensor.
-        mask : tf.Tensor, optional
-            Existing mask tensor.
+            Tensor of shape (batch_size, height, width, channels)
 
         Returns
         -------
-        tf.Tensor or None
-            Output mask tensor or None if mask_zero is False.
+        tf.Tensor
+            Tensor with 2D positional embeddings added.
         """
 
-        if not self.mask_zero:
-            return None
+        input_shape = tf.shape(inputs)
+        h, w = input_shape[1], input_shape[2]
 
-        if mask is not None:
-            return mask
+        row_emb = self.row_embeddings[:h, :]
+        col_emb = self.col_embeddings[:w, :]
 
-        return tf.keras.ops.not_equal(inputs, 0)
+        row_emb = tf.reshape(row_emb, [1, h, 1, -1])
+        col_emb = tf.reshape(col_emb, [1, 1, w, -1])
+
+        pos_emb = row_emb + col_emb
+
+        return inputs + pos_emb
 
 
 class Reparameterization(tf.keras.layers.Layer):
