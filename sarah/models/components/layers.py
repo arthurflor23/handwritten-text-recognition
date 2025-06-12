@@ -874,13 +874,13 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         g_conv = tf.keras.layers.Activation('sigmoid')(s_conv * self.gamma)
         g_conv = s_conv * g_conv * self.beta
 
-        if training and self.dropout:
-            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
-
         if self.filters != self.h:
             g_conv = self.o_conv(g_conv)
 
-        return g_conv + inputs
+        if training and self.dropout:
+            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+
+        return inputs + g_conv
 
 
 class OctConv2D(tf.keras.layers.Layer):
@@ -1539,7 +1539,9 @@ class SelfAttention(tf.keras.layers.Layer):
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return (o * self.beta) + inputs
+        attn = o * self.beta
+
+        return inputs + attn
 
 
 class SpatiallyAdaptiveNormalization(tf.keras.layers.Layer):
