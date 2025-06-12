@@ -800,12 +800,8 @@ class GeneratorModel(BaseModel):
         text_input = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
         text = tf.keras.layers.Flatten()(text_input)
 
-        text_embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
-                                                   output_dim=self.text_dim)(text)
-
-        position_embedding = PositionEmbedding1D(max_length=text_embedding.shape[1])(text_embedding)
-
-        embedding = tf.keras.layers.Add()([text_embedding, position_embedding])
+        embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1], output_dim=self.text_dim)(text)
+        embedding = PositionEmbedding1D(max_length=embedding.shape[1])(embedding)
 
         latent_tile = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
                                              arguments={'y': [1, embedding.shape[1], 1]},
