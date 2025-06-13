@@ -587,7 +587,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+                                             use_bias=True)
 
         if self.spectral_norm:
             self.s_conv = tf.keras.layers.SpectralNormalization(layer=self.s_conv,
@@ -823,7 +823,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=False)
+                                             use_bias=True)
 
         if self.spectral_norm:
             self.s_conv = tf.keras.layers.SpectralNormalization(layer=self.s_conv,
@@ -870,15 +870,15 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         """
 
         s_conv = self.s_conv(inputs)
-
         g_conv = tf.keras.layers.Activation('sigmoid')(s_conv * self.gamma)
+
+        if training and self.dropout:
+            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+
         g_conv = s_conv * g_conv * self.beta
 
         if self.filters != self.h:
             g_conv = self.o_conv(g_conv)
-
-        if training and self.dropout:
-            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
         return inputs + g_conv
 
