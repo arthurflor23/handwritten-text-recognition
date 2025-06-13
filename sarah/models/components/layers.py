@@ -823,7 +823,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+                                             use_bias=False)
 
         if self.spectral_norm:
             self.s_conv = tf.keras.layers.SpectralNormalization(layer=self.s_conv,
