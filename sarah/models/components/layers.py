@@ -1054,7 +1054,9 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
     def __init__(self,
                  max_length,
-                 embeddings_initializer='glorot_uniform',
+                 embeddings_initializer='uniform',
+                 embeddings_regularizer=None,
+                 embeddings_constraint=None,
                  **kwargs):
         """
         Initializes the position embedding layer.
@@ -1063,13 +1065,19 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         ----------
         max_length : int
             Maximum length of the sequence.
-        embeddings_initializer : str or initializer
+        embeddings_initializer : str or initializer, optional
             Initializer for embeddings.
+        embeddings_regularizer : str or regularizer, optional
+            Regularizer for embeddings.
+        embeddings_constraint : str or constraint, optional
+            Constraint for embeddings.
         """
         super().__init__(**kwargs)
 
         self.max_length = max_length
         self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
+        self.embeddings_regularizer = tf.keras.regularizers.get(embeddings_regularizer)
+        self.embeddings_constraint = tf.keras.constraints.get(embeddings_constraint)
 
     def get_config(self):
         """
@@ -1086,6 +1094,8 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         config.update({
             'max_length': self.max_length,
             'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
+            'embeddings_regularizer': tf.keras.regularizers.serialize(self.embeddings_regularizer),
+            'embeddings_constraint': tf.keras.constraints.serialize(self.embeddings_constraint),
         })
 
         return config
@@ -1105,6 +1115,8 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         self.pos_embeddings = self.add_weight(name=f"{self.name}_pos_embeddings",
                                               shape=(self.max_length, input_shape[-1]),
                                               initializer=self.embeddings_initializer,
+                                              regularizer=self.embeddings_regularizer,
+                                              constraint=self.embeddings_constraint,
                                               trainable=True)
 
     def call(self, inputs):
@@ -1146,7 +1158,9 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
     def __init__(self,
                  height,
                  width,
-                 embeddings_initializer='glorot_uniform',
+                 embeddings_initializer='uniform',
+                 embeddings_regularizer=None,
+                 embeddings_constraint=None,
                  **kwargs):
         """
         Initializes the position embedding layer.
@@ -1157,8 +1171,12 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
             Maximum height (number of rows).
         width : int
             Maximum width (number of columns).
-        embeddings_initializer : str or initializer
+        embeddings_initializer : str or initializer, optional
             Initializer for embeddings.
+        embeddings_regularizer : str or regularizer, optional
+            Regularizer for embeddings.
+        embeddings_constraint : str or constraint, optional
+            Constraint for embeddings.
         """
 
         super().__init__(**kwargs)
@@ -1166,6 +1184,8 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
         self.height = height
         self.width = width
         self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
+        self.embeddings_regularizer = tf.keras.regularizers.get(embeddings_regularizer)
+        self.embeddings_constraint = tf.keras.constraints.get(embeddings_constraint)
 
     def get_config(self):
         """
@@ -1183,6 +1203,8 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
             'height': self.height,
             'width': self.width,
             'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
+            'embeddings_regularizer': tf.keras.regularizers.serialize(self.embeddings_regularizer),
+            'embeddings_constraint': tf.keras.constraints.serialize(self.embeddings_constraint),
         })
 
         return config
@@ -1202,11 +1224,15 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
         self.row_embeddings = self.add_weight(name=f"{self.name}_row_embeddings",
                                               shape=(self.height, input_shape[-1]),
                                               initializer=self.embeddings_initializer,
+                                              regularizer=self.embeddings_regularizer,
+                                              constraint=self.embeddings_constraint,
                                               trainable=True)
 
         self.col_embeddings = self.add_weight(name=f"{self.name}_col_embeddings",
                                               shape=(self.width, input_shape[-1]),
                                               initializer=self.embeddings_initializer,
+                                              regularizer=self.embeddings_regularizer,
+                                              constraint=self.embeddings_constraint,
                                               trainable=True)
 
     def call(self, inputs):
