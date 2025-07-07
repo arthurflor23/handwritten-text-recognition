@@ -800,7 +800,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
-                                                 padding='same',
+                                                 padding='valid',
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
@@ -1323,6 +1323,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 pooling=False,
                  dropout=0.0,
                  **kwargs):
         """
@@ -1342,6 +1343,8 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        pooling : bool, optional
+            Whether apply pooling reducing or not.
         dropout : float, optional
             Dropout rate to apply on attention weights.
         **kwargs : dict
@@ -1356,6 +1359,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.pooling = pooling
         self.dropout = dropout
 
     def get_config(self):
@@ -1377,6 +1381,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'pooling': self.pooling,
             'dropout': self.dropout,
         })
 
@@ -1394,12 +1399,23 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        if len(input_shape) == 3:
+            pool_size = strides = 2 if input_shape[-2] > 1 else 1
+            pooling_layer = tf.keras.layers.MaxPooling1D
+
+        else:
+            raise ValueError("Unsupported input shape: must be 1D")
+
+        if self.pooling:
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+
         self.filters = input_shape[-1]
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1407,7 +1423,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
 
         self.g_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1415,7 +1431,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
 
         self.h_conv = tf.keras.layers.Conv1D(filters=self.h,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1424,7 +1440,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv1D(filters=self.filters,
                                                  kernel_size=1,
-                                                 padding='same',
+                                                 padding='valid',
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
@@ -1456,6 +1472,10 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         B, T = shape[0], shape[1]
 
         f = self.f_conv(inputs)
+
+        if self.pooling:
+            f = self.f_pooling(f)
+
         f = tf.reshape(f, shape=[B, -1, f.shape[-1]])
 
         g = self.g_conv(inputs)
@@ -1468,6 +1488,10 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_conv(inputs)
+
+        if self.pooling:
+            h = self.h_pooling(h)
+
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
         o = tf.matmul(beta, h)
@@ -1502,6 +1526,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 pooling=False,
                  dropout=0.0,
                  **kwargs):
         """
@@ -1521,6 +1546,8 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        pooling : bool, optional
+            Whether apply pooling reducing or not.
         dropout : float, optional
             Dropout rate to apply on attention weights.
         **kwargs : dict
@@ -1535,6 +1562,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.pooling = pooling
         self.dropout = dropout
 
     def get_config(self):
@@ -1556,6 +1584,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'pooling': self.pooling,
             'dropout': self.dropout,
         })
 
@@ -1573,12 +1602,23 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        if len(input_shape) == 4:
+            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
+            pooling_layer = tf.keras.layers.MaxPooling2D
+
+        else:
+            raise ValueError("Unsupported input shape: must be 2D")
+
+        if self.pooling:
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+
         self.filters = input_shape[-1]
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1586,7 +1626,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
 
         self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1594,7 +1634,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
 
         self.h_conv = tf.keras.layers.Conv2D(filters=self.h,
                                              kernel_size=1,
-                                             padding='same',
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1603,7 +1643,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
-                                                 padding='same',
+                                                 padding='valid',
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
@@ -1635,6 +1675,10 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         B, H, W = shape[0], shape[1], shape[2]
 
         f = self.f_conv(inputs)
+
+        if self.pooling:
+            f = self.f_pooling(f)
+
         f = tf.reshape(f, shape=[B, -1, f.shape[-1]])
 
         g = self.g_conv(inputs)
@@ -1647,6 +1691,10 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
             beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_conv(inputs)
+
+        if self.pooling:
+            h = self.h_pooling(h)
+
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
         o = tf.matmul(beta, h)
@@ -1681,6 +1729,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 pooling=False,
                  dropout=0.0,
                  **kwargs):
         """
@@ -1700,6 +1749,8 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        pooling : bool, optional
+            Whether apply pooling reducing or not.
         dropout : float, optional
             Dropout rate to apply on attention weights.
         **kwargs : dict
@@ -1714,6 +1765,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.pooling = pooling
         self.dropout = dropout
 
     def get_config(self):
@@ -1735,6 +1787,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'pooling': self.pooling,
             'dropout': self.dropout,
         })
 
@@ -1751,6 +1804,21 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         """
 
         super().build(input_shape)
+
+        if len(input_shape) == 3:
+            pool_size = strides = 2 if input_shape[-2] > 1 else 1
+            pooling_layer = tf.keras.layers.MaxPooling1D
+
+        elif len(input_shape) == 4:
+            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
+            pooling_layer = tf.keras.layers.MaxPooling2D
+
+        else:
+            raise ValueError("Unsupported input shape: must be 1D or 2D")
+
+        if self.pooling:
+            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
 
         self.features = input_shape[-1]
         self.h = self.h or self.features
@@ -1805,6 +1873,10 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(inputs))
 
         f = self.f_dense(inputs)
+
+        if self.pooling:
+            f = self.f_pooling(f)
+
         f = tf.reshape(f, shape=(shape[0], -1, f.shape[-1]))
 
         g = self.g_dense(inputs)
@@ -1817,6 +1889,10 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             beta = tf.nn.dropout(beta, rate=self.dropout)
 
         h = self.h_dense(inputs)
+
+        if self.pooling:
+            h = self.h_pooling(h)
+
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
