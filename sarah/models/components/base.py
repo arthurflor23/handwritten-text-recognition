@@ -190,10 +190,7 @@ class BaseRecognitionModel(BaseModel):
                  style_backbone=None,
                  style_encoder=None,
                  generator=None,
-                 synthetic_data_ratio=0.66,
-                 synthetic_image_ratio=0.33,
-                 synthetic_text_ratio=0.99,
-                 synthetic_style_ratio=0.33,
+                 synthesis_probability=1.0,
                  seed=None,
                  **kwargs):
         """
@@ -211,14 +208,8 @@ class BaseRecognitionModel(BaseModel):
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
             Generator model for image generation.
-        synthetic_data_ratio : float, optional
-            Probability to use synthetic data.
-        synthetic_image_ratio : float, optional
-            Probability to use synthetic image.
-        synthetic_text_ratio : float, optional
-            Probability to use synthetic text.
-        synthetic_style_ratio : float, optional
-            Probability to use synthetic style.
+        synthesis_probability : float, optional
+            Synthetic data probability.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -232,10 +223,7 @@ class BaseRecognitionModel(BaseModel):
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
-        self.synthetic_data_ratio = synthetic_data_ratio
-        self.synthetic_image_ratio = synthetic_image_ratio
-        self.synthetic_text_ratio = synthetic_text_ratio
-        self.synthetic_style_ratio = synthetic_style_ratio
+        self.synthesis_probability = synthesis_probability
         self.seed = seed
 
         self.style_backbone = style_backbone
@@ -296,54 +284,46 @@ class BaseRecognitionModel(BaseModel):
         x_data, y_data = input_data
 
         aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        image_data, text_data, _, mask_data = y_data
+        _, text_data, _, mask_data = y_data
 
-        images, texts, mask = aug_image_data, text_data, mask_data
-
-        with tf.GradientTape() as r_tape:
-            ctc_logits = self.recognition(images, training=True)
-            ctc_loss = self.ctc_loss(texts, ctc_logits)
-
-        r_gradients = r_tape.gradient(ctc_loss, self.recognition.trainable_weights)
-        self.optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
-
-        self.edit_distance.update_state(texts, ctc_logits)
-
-        self.measure_tracker.update({
-            self.ctc_loss.name: ctc_loss,
-            self.edit_distance.name: self.edit_distance.result(),
-        })
+        images, texts = [aug_image_data], [text_data]
 
         if self.style_backbone and self.style_encoder and self.generator and \
-                np.random.random() <= self.synthetic_data_ratio:
+                np.random.random() <= self.synthesis_probability:
 
-            if np.random.random() <= self.synthetic_text_ratio:
-                texts = aug_text_data
-                mask = aug_mask_data
+            # original images and original texts
+            features_data = self.style_backbone(aug_image_data, training=False)
+            features_data = features_data[0] if isinstance(features_data, list) else features_data
 
-            if np.random.random() <= self.synthetic_style_ratio:
-                latent_shape = (tf.shape(images)[0], self.style_encoder.latent_dim)
-                latent = tf.random.normal(shape=latent_shape, seed=self.seed)
-            else:
-                if np.random.random() > self.synthetic_image_ratio:
-                    images = image_data
+            latent = self.style_encoder(features_data, training=False)
+            latent = latent[0] if isinstance(latent, list) else latent
 
-                features_data = self.style_backbone(images, training=False)
-                features_data = features_data[0] if isinstance(features_data, list) else features_data
+            real_real_images = self.generator([text_data, latent, mask_data], training=False)
 
-                latent = self.style_encoder(features_data, training=False)
-                latent = latent[0] if isinstance(latent, list) else latent
+            # original images and fake texts
+            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
 
-            images = self.generator([texts, latent, mask], training=False)
+            # fake images and original texts
+            latent_shape = (tf.shape(aug_image_data)[0], self.style_encoder.latent_dim)
+            latent = tf.random.normal(shape=latent_shape, seed=self.seed)
 
+            real_fake_images = self.generator([text_data, latent, mask_data], training=False)
+
+            # fake images and fake texts
+            fake_fake_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
+
+            images.extend([real_real_images, fake_real_images, real_fake_images, fake_fake_images])
+            texts.extend([text_data, aug_text_data, text_data, aug_text_data])
+
+        for image, text in zip(images, texts):
             with tf.GradientTape() as r_tape:
-                ctc_logits = self.recognition(images, training=True)
-                ctc_loss = self.ctc_loss(texts, ctc_logits)
+                ctc_logits = self.recognition(image, training=True)
+                ctc_loss = self.ctc_loss(text, ctc_logits)
 
             r_gradients = r_tape.gradient(ctc_loss, self.recognition.trainable_weights)
             self.optimizer.apply_gradients(zip(r_gradients, self.recognition.trainable_weights))
 
-            self.edit_distance.update_state(texts, ctc_logits)
+            self.edit_distance.update_state(text, ctc_logits)
 
             self.measure_tracker.update({
                 self.ctc_loss.name: ctc_loss,
