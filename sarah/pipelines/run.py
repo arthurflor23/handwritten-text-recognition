@@ -16,6 +16,8 @@ def run(args):
                                                      synthesis_run_id=args.synthesis_run_id,
                                                      recognition=args.recognition,
                                                      recognition_run_id=args.recognition_run_id,
+                                                     identification=args.identification,
+                                                     identification_run_id=args.identification_run_id,
                                                      experiment_name=args.experiment_name,
                                                      finished_runs=args.finished_runs)
 
@@ -58,6 +60,7 @@ def run(args):
     compose = Compose(synthesis=args.synthesis,
                       recognition=args.recognition,
                       spelling=args.spelling,
+                      identification=args.identification,
                       image_shape=args.image_shape,
                       tokenizer=dataset.tokenizer,
                       discriminator_steps=args.discriminator_steps,
@@ -102,7 +105,34 @@ def run(args):
                     patience=args.patience,
                     verbose=args.verbose)
 
-    if args.recognition:
+    if args.identification:
+        if args.training or args.test:
+            test_gen, test_steps = dataset.get_generator(data_partition='test',
+                                                         batch_size=args.batch_size)
+
+            predictions = compose.predict_identification(x=test_gen,
+                                                         steps=test_steps,
+                                                         token_decode=True,
+                                                         verbose=args.verbose)
+
+            source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_encoded=False)
+
+            metrics, evaluations = compose.evaluate_identification(x=predictions,
+                                                                   y=source_gen,
+                                                                   steps=source_steps,
+                                                                   verbose=args.verbose)
+
+            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
+
+            if metrics:
+                print('-' * 60)
+                print('metrics')
+                print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+                print('-' * 60)
+
+    elif args.recognition:
         if args.training or args.test:
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
@@ -141,7 +171,9 @@ def run(args):
                                                              batch_size=args.batch_size,
                                                              batch_encoded=False)
 
-            corrections = compose.predict_spelling(x=predictions, steps=source_steps, verbose=args.verbose)
+            corrections = compose.predict_spelling(x=predictions,
+                                                   steps=source_steps,
+                                                   verbose=args.verbose)
 
             metrics, evaluations = compose.evaluate_recognition(x=corrections,
                                                                 y=source_gen,
@@ -162,7 +194,9 @@ def run(args):
             test_gen, test_steps = dataset.get_generator(data_partition='test',
                                                          batch_size=args.batch_size)
 
-            predictions = compose.predict_synthesis(x=test_gen, steps=test_steps)
+            predictions = compose.predict_synthesis(x=test_gen,
+                                                    steps=test_steps,
+                                                    verbose=args.verbose)
 
             source_gen, source_steps = dataset.get_generator(data_partition='test',
                                                              batch_size=args.batch_size,

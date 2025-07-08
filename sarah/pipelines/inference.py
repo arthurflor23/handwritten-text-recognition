@@ -20,6 +20,8 @@ def inference(args):
                                                      synthesis_run_id=args.synthesis_run_id,
                                                      recognition=args.recognition,
                                                      recognition_run_id=args.recognition_run_id,
+                                                     identification=args.identification,
+                                                     identification_run_id=args.identification_run_id,
                                                      experiment_name=args.experiment_name,
                                                      finished_runs=args.finished_runs)
 
@@ -49,6 +51,7 @@ def inference(args):
     compose = Compose(synthesis=args.synthesis,
                       recognition=args.recognition,
                       spelling=args.spelling,
+                      identification=args.identification,
                       image_shape=args.image_shape,
                       tokenizer=dataset.tokenizer,
                       experiment_name=args.experiment_name,
@@ -61,7 +64,31 @@ def inference(args):
     infer_gen, infer_steps = dataset.get_generator(data_partition='test',
                                                    batch_size=args.batch_size)
 
-    if args.recognition:
+    if args.identification:
+        predictions = compose.predict_identification(x=infer_gen,
+                                                     steps=infer_steps,
+                                                     token_decode=True,
+                                                     verbose=args.verbose)
+
+        inferences = [
+            {
+                'index': i+1,
+                'prediction': predictions[i],
+            }
+            for i in range(len(predictions))
+        ]
+
+        inferences = json.dumps(inferences, indent=4, ensure_ascii=False)
+        print(inferences)
+
+        basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+        filepath = os.path.join(args.inference_output_path, f"{basename}.json")
+        os.makedirs(args.inference_output_path, exist_ok=True)
+
+        with open(filepath, 'w') as f:
+            f.write(inferences)
+
+    elif args.recognition:
         predictions, probabilities = compose.predict_recognition(x=infer_gen,
                                                                  steps=infer_steps,
                                                                  top_paths=args.top_paths,
@@ -75,6 +102,7 @@ def inference(args):
 
         inferences = [
             {
+                'index': i+1,
                 'top_path': y+1,
                 'probability': probabilities[i][y],
                 'prediction': predictions[i][y],
