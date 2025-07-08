@@ -18,11 +18,13 @@ if __name__ == '__main__':
     # models
     parser.add_argument('--synthesis', default=None, help='Synthesis model')
     parser.add_argument('--recognition', default=None, help='Recognition model')
+    parser.add_argument('--identification', default=None, help='Writer Identification model')
     parser.add_argument('--spelling', default=None, help='Spelling model')
 
     # mlflow
     parser.add_argument('--synthesis-run-id', default=None, help='Synthesis run id or index')
     parser.add_argument('--recognition-run-id', default=None, help='Recognition run id or index')
+    parser.add_argument('--identification-run-id', default=None, help='Writer Identification run id or index')
     parser.add_argument('--experiment-name', default='Default', help='Experiment name')
     parser.add_argument('--finished-runs', default=False, action='store_true', help='Only finished runs for selection')
 
@@ -88,7 +90,7 @@ if __name__ == '__main__':
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--gpu', default=0, type=str, help='GPU index value')
-    parser.add_argument('--seed', default=None, type=int, help='Seed value')
+    parser.add_argument('--seed', default=0, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
@@ -101,7 +103,8 @@ if __name__ == '__main__':
         assert args.source, '--source must be defined'
 
     if args.training or args.test or args.inference:
-        assert args.synthesis or args.recognition, '--synthesis or --recognition must be defined'
+        assert args.synthesis or args.recognition or args.identification, \
+            '--synthesis or --recognition or --identification must be defined'
 
     elif args.spelling:
         assert args.recognition_run_id, '--recognition-run-id must be defined'
@@ -109,7 +112,7 @@ if __name__ == '__main__':
     if args.synthesis and args.inference:
         assert args.text, '--text must be defined'
 
-    if args.recognition and args.inference:
+    if (args.recognition or args.identification) and args.inference:
         assert args.image, '--image must be defined'
 
     # pipelines
