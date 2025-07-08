@@ -209,13 +209,6 @@ class Dataset():
         data.setdefault('training', [])
         data.setdefault('validation', [])
 
-        if len(data['training']) > 0 and len(data['validation']) == 0:
-            np.random.shuffle(data['training'])
-            index = max(round(0.1 * len(data['training'])), 1)
-
-            data['validation'] = data['training'][:index]
-            data['training'] = data['training'][index:]
-
         ratios = {
             'training': parse_ratio(self.training_ratio),
             'validation': parse_ratio(self.validation_ratio),
