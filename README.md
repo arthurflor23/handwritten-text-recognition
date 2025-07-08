@@ -130,13 +130,6 @@ The project has several command-line parameters that can be used to customize it
 -   `--discriminator-steps`: Repetition of steps for discriminator training in synthesis workflow.
 -   `--generator-steps`: Skipping steps for generator training in synthesis workflow.
 
-#### Recognition
-
--   `--synthetic-data-ratio`: Synthetic data ratio in synthesis and recognition workflow.
--   `--synthetic-image-ratio`: Synthetic image ratio in synthesis and recognition workflow.
--   `--synthetic-text-ratio`: Synthetic text ratio in synthesis and recognition workflow.
--   `--synthetic-style-ratio`: Synthetic style ratio in synthesis and recognition workflow.
-
 #### Training
 
 -   `--training`: Perform training pipeline.
@@ -148,6 +141,7 @@ The project has several command-line parameters that can be used to customize it
 -   `--plateau-cooldown`: Cooldown after plateau.
 -   `--plateau-patience`: Plateau patience epochs.
 -   `--patience`: Stop after no improvement.
+-   `--synthesis-probability`: Training with synthetic data.
 
 #### Test
 
