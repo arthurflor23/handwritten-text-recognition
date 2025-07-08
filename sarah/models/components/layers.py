@@ -719,6 +719,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 gamma_initializer='ones',
                  dropout=0.0,
                  **kwargs):
         """
@@ -736,6 +737,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
         dropout : float, optional
             Whether apply dropout or not.
         **kwargs : dict
@@ -749,6 +752,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
 
     def get_config(self):
@@ -769,6 +773,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
         })
 
@@ -795,7 +800,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=True)
+                                             use_bias=False)
 
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
@@ -810,6 +815,11 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
+
+        self.gamma = self.add_weight(name=f"{self.name}_gamma",
+                                     shape=(1,),
+                                     initializer=self.gamma_initializer,
+                                     trainable=True)
 
     def call(self, inputs, training=False):
         """
@@ -829,7 +839,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         """
 
         s_conv = self.s_conv(inputs)
-        g_conv = tf.nn.sigmoid(s_conv)
+        g_conv = tf.nn.sigmoid(s_conv * self.gamma)
 
         if training and self.dropout:
             g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
