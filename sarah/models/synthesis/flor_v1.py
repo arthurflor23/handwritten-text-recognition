@@ -197,7 +197,7 @@ class SynthesisModel(BaseSynthesisModel):
             with tf.GradientTape() as w_tape:
                 wid_features_data, _ = self.style_backbone(aug_image_data, training=True)
                 wid_logits = self.identification(wid_features_data, training=True)
-                d_wid_loss = self.cls_loss(writer_data, wid_logits)
+                d_wid_loss = self.sce_loss(writer_data, wid_logits)
 
             w_gradients = w_tape.gradient(d_wid_loss,
                                           self.style_backbone.trainable_weights +
@@ -277,7 +277,7 @@ class SynthesisModel(BaseSynthesisModel):
             fake_latent_features, real_latent_feats = self.style_backbone(fake_latent_images, training=False)
             fake_latent_wid_logits = self.identification(fake_latent_features, training=False)
 
-            g_wid_loss = self.cls_loss(real_writer_data, fake_latent_wid_logits)
+            g_wid_loss = self.sce_loss(real_writer_data, fake_latent_wid_logits)
 
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
