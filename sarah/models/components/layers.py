@@ -839,9 +839,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         """
 
         s_conv = self.s_conv(inputs)
-        g_conv = tf.nn.sigmoid(s_conv * self.gamma)
-
-        g_conv = s_conv * g_conv * self.beta
+        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma) * self.beta
 
         if training and self.dropout:
             g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
