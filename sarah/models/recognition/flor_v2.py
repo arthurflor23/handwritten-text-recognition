@@ -14,12 +14,6 @@ class RecognitionModel(BaseRecognitionModel):
 
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
-
-    Searching for Activation Functions (Swish: a Self-Gated Activation Function)
-        https://arxiv.org/abs/1710.05941
-
-    Self-Attention Generative Adversarial Networks
-        https://arxiv.org/abs/1805.08318
     """
 
     def compile(self, learning_rate=None):
@@ -98,7 +92,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
+        self.encoder = tf.keras.Model(name='recognition_encoder', inputs=encoder_input, outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
@@ -115,13 +109,13 @@ class RecognitionModel(BaseRecognitionModel):
 
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
+        decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2], -1))(decoder)
         decoder = tf.keras.layers.LayerNormalization()(decoder)
+
         decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
 
-        decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
-
-        self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
+        self.decoder = tf.keras.Model(name='recognition_decoder', inputs=decoder_input, outputs=decoder)
 
         # recognition model
         self.recognition = tf.keras.Model(name=self.name,
