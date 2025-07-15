@@ -317,7 +317,7 @@ class Compose():
                     tf.keras.callbacks.ReduceLROnPlateau(
                         mode='min',
                         monitor=monitor,
-                        min_lr=1e-6,
+                        min_lr=1e-4,
                         min_delta=1e-8,
                         factor=plateau_factor,
                         cooldown=plateau_cooldown,
