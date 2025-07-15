@@ -1325,7 +1325,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=16,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1528,7 +1528,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=16,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1731,7 +1731,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=16,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
