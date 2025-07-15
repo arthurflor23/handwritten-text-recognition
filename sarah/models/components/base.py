@@ -237,7 +237,6 @@ class BaseRecognitionModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
@@ -604,7 +603,6 @@ class BaseSynthesisModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
@@ -836,7 +834,6 @@ class BaseWriterIdentificationModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        seed = seed or 0
         tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
