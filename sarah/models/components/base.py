@@ -237,7 +237,8 @@ class BaseRecognitionModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        tf.keras.utils.set_random_seed(seed)
+        if seed is not None:
+            tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -603,7 +604,8 @@ class BaseSynthesisModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        tf.keras.utils.set_random_seed(seed)
+        if seed is not None:
+            tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
@@ -834,7 +836,8 @@ class BaseWriterIdentificationModel(BaseModel):
 
         super().__init__(**kwargs)
 
-        tf.keras.utils.set_random_seed(seed)
+        if seed is not None:
+            tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
         self.writers_shape = writers_shape
