@@ -69,7 +69,8 @@ class Dataset():
             Seed for random shuffle.
         """
 
-        np.random.seed(seed)
+        if seed is not None:
+            np.random.seed(seed)
 
         self.source = source
         self.text_level = text_level
