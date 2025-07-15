@@ -34,7 +34,7 @@ class BaseModel(tf.keras.Model):
         info += f"\n{self.__class__.__name__.center(width)}"
 
         for name in getattr(self, 'names', ['model']):
-            model = getattr(self, name, None)
+            model = self.get_model_by_name(name)
 
             if model is None:
                 continue
@@ -77,6 +77,25 @@ class BaseModel(tf.keras.Model):
         if hasattr(self, 'model'):
             return self.model(inputs, training=training)
 
+    def get_model_by_name(self, name):
+        """
+        Retrieve the attribute model by name.
+
+        Parameters
+        ----------
+        name : str
+            Name of the model.
+
+        Returns
+        -------
+        str
+            The attribute model.
+        """
+
+        return getattr(self, name,
+                       getattr(self, f"{name}_encoder",
+                               getattr(self, f"{name}_decoder", None)))
+
     def get_summary(self):
         """
         Provides summary of model architectures.
@@ -90,13 +109,13 @@ class BaseModel(tf.keras.Model):
         info = []
 
         for name in getattr(self, 'names', ['model']):
-            x = getattr(self, name, None)
-            x = getattr(x, name, x)
+            model = self.get_model_by_name(name)
+            model = getattr(model, name, model)
 
-            if x is None:
+            if model is None:
                 continue
 
-            x.summary(print_fn=lambda r: info.append(r), expand_nested=True)
+            model.summary(print_fn=lambda r: info.append(r), expand_nested=True)
 
         return "\n".join(info)
 
@@ -114,7 +133,7 @@ class BaseModel(tf.keras.Model):
             weights = {}
 
             for name in getattr(self, 'names', ['model']):
-                model = getattr(self, name, None)
+                model = self.get_model_by_name(name)
 
                 if model is not None:
                     weights[name] = model.get_weights()
@@ -132,7 +151,7 @@ class BaseModel(tf.keras.Model):
         """
 
         for name in getattr(self, 'names', ['model']):
-            model = getattr(self, name, None)
+            model = self.get_model_by_name(name)
 
             if model is not None:
                 model.set_weights(weights[name])
@@ -150,7 +169,7 @@ class BaseModel(tf.keras.Model):
         """
 
         for name in getattr(self, 'names', ['model']):
-            model = getattr(self, name, None)
+            model = self.get_model_by_name(name)
             modelpath = filepath.replace('<model>', name)
 
             if model is not None:
@@ -170,257 +189,12 @@ class BaseModel(tf.keras.Model):
         """
 
         for name in getattr(self, 'names', ['model']):
-            model = getattr(self, name, None)
+            model = self.get_model_by_name(name)
             modelpath = filepath.replace('<model>', name)
 
             if model is not None and os.path.isfile(modelpath):
                 model.built = True
                 model.load_weights(filepath=modelpath, skip_mismatch=skip_mismatch)
-
-
-class BaseIdentificationModel(BaseModel):
-    """
-    BaseIdentificationModel extends BaseModel to provide additional
-        functionalities to synthesis and identification models.
-    """
-
-    def __init__(self,
-                 image_shape,
-                 writers_shape,
-                 style_backbone=None,
-                 style_encoder=None,
-                 generator=None,
-                 synthesis_probability=1.0,
-                 seed=None,
-                 **kwargs):
-        """
-        Initializes the synthesis and identification model.
-
-        Parameters
-        ----------
-        image_shape : tuple or list
-            The shape of the input images.
-        writers_shape : tuple or list
-            The shape of the writers input.
-        style_backbone : StyleBackbone instance
-            StyleBackbone model for features extraction.
-        style_encoder : StyleEncoder instance
-            StyleEncoder model for encoding extracted style features.
-        generator : Generator instance
-            Generator model for image generation.
-        synthesis_probability : float, optional
-            Synthetic data probability.
-        seed : int, optional
-            Seed for random shuffle.
-        **kwargs : dict
-            Additional arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        seed = seed or 0
-        tf.keras.utils.set_random_seed(seed)
-
-        self.image_shape = image_shape
-        self.writers_shape = writers_shape
-        self.synthesis_probability = synthesis_probability
-        self.seed = seed
-
-        self.style_backbone = style_backbone
-        self.style_encoder = style_encoder
-        self.generator = generator
-        self.identification = None
-
-        self.names = [
-            'style_backbone',
-            'style_encoder',
-            'generator',
-            'identification',
-        ]
-
-        self.sce_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, name='sce_loss')
-
-        self.measure_tracker = MeasureTracker()
-        self.monitor = f"val_{self.sce_loss.name}"
-
-        self.build_model()
-        self.built = True
-
-    def get_config(self):
-        """
-        Return the configuration of the model.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'image_shape': self.image_shape,
-            'writers_shape': self.writers_shape,
-        })
-
-        return config
-
-    def train_step(self, input_data):
-        """
-        Executes a training step.
-
-        Parameters
-        ----------
-        input_data : list or tuple
-            Batch of (x_data, y_data).
-
-        Returns
-        -------
-        dict
-            Training metrics and losses.
-        """
-
-        x_data, y_data = input_data
-
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        _, text_data, writer_data, mask_data = y_data
-
-        images, writers = [aug_image_data], [writer_data]
-
-        if self.style_backbone and self.style_encoder and self.generator and \
-                np.random.random() <= self.synthesis_probability:
-
-            # original images and original texts
-            features_data = self.style_backbone(aug_image_data, training=False)
-            features_data = features_data[0] if isinstance(features_data, list) else features_data
-
-            latent = self.style_encoder(features_data, training=False)
-            latent = latent[0] if isinstance(latent, list) else latent
-
-            real_real_images = self.generator([text_data, latent, mask_data], training=False)
-
-            # original images and fake texts
-            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
-
-            images.extend([real_real_images, fake_real_images])
-            writers.extend([writer_data, writer_data])
-
-        for image, writer in zip(images, writers):
-            with tf.GradientTape() as w_tape:
-                wid_logits = self.identification(image, training=True)
-                sce_loss = self.sce_loss(writer, wid_logits)
-
-            w_gradients = w_tape.gradient(sce_loss, self.identification.trainable_weights)
-            self.optimizer.apply_gradients(zip(w_gradients, self.identification.trainable_weights))
-
-            self.measure_tracker.update({
-                self.sce_loss.name: sce_loss,
-            })
-
-        return self.measure_tracker.result()
-
-    def test_step(self, input_data):
-        """
-        Executes a testing step.
-
-        Parameters
-        ----------
-        input_data : list or tuple
-            Batch of (x_data, y_data).
-
-        Returns
-        -------
-        dict
-            Training metrics and losses.
-        """
-
-        _, (image_data, _, writer_data, _) = input_data
-
-        wid_logits = self.identification(image_data)
-        sce_loss = self.sce_loss(writer_data, wid_logits)
-
-        self.measure_tracker.update({
-            f"val_{self.sce_loss.name}": sce_loss,
-        })
-
-        return self.measure_tracker.result(val_only=True)
-
-    def call(self, x_data, training=False):
-        """
-        Processes input handwritten images.
-
-        Parameters
-        ----------
-        x_data : list or tuple
-            Input batch (x_data).
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Generated images.
-        """
-
-        image_data = x_data[0] if isinstance(x_data, tuple) else x_data
-        wid_logits = self.identification(image_data, training=training)
-
-        return wid_logits
-
-    def writer_evaluator(self, x, y, steps, verbose=1):
-        """
-        Evaluate writer predictions on the given data.
-
-        Parameters
-        ----------
-        x : np.ndarray
-            Predictions to be evaluated.
-        y : Dataset generator
-            Label data for evaluation.
-        steps : int
-            Number of steps for evaluation.
-        verbose : int, optional
-            Verbosity level.
-
-        Returns
-        -------
-        tuple
-            Metrics and evaluations.
-        """
-
-        progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
-
-        metrics = {'accuracy': []}
-        evaluations = []
-
-        batch_index = 0
-        for step in range(steps):
-            progbar.update(step)
-
-            _, (image_data, _, writer_data, _) = next(y)
-            batch_size = len(image_data)
-
-            y_pred = x[batch_index:batch_index + batch_size]
-            batch_index += batch_size
-
-            for i in range(batch_size):
-                is_correct = int(writer_data[i] == y_pred[i])
-
-                evaluations.append({
-                    'index': (batch_index - batch_size) + (i + 1),
-                    'image': image_data[i],
-                    'writer': writer_data[i],
-                    'writer_prediction': y_pred[i],
-                    'is_correct': is_correct,
-                })
-
-                metrics['accuracy'].append(is_correct)
-
-            progbar.update(step + 1)
-
-        metrics = {k: float(np.mean(v)) for k, v in metrics.items()}
-
-        return metrics, evaluations
 
 
 class BaseRecognitionModel(BaseModel):
@@ -432,7 +206,7 @@ class BaseRecognitionModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
-                 style_backbone=None,
+                 writer_encoder=None,
                  style_encoder=None,
                  generator=None,
                  synthesis_probability=1.0,
@@ -447,8 +221,8 @@ class BaseRecognitionModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
-        style_backbone : StyleBackbone instance
-            StyleBackbone model for features extraction.
+        writer_encoder : Style extractor instance
+            Style extractor model for features extraction.
         style_encoder : StyleEncoder instance
             StyleEncoder model for encoding extracted style features.
         generator : Generator instance
@@ -471,13 +245,13 @@ class BaseRecognitionModel(BaseModel):
         self.synthesis_probability = synthesis_probability
         self.seed = seed
 
-        self.style_backbone = style_backbone
+        self.writer_encoder = writer_encoder
         self.style_encoder = style_encoder
         self.generator = generator
         self.recognition = None
 
         self.names = [
-            'style_backbone',
+            'writer_encoder',
             'style_encoder',
             'generator',
             'recognition',
@@ -533,11 +307,11 @@ class BaseRecognitionModel(BaseModel):
 
         images, texts = [aug_image_data], [text_data]
 
-        if self.style_backbone and self.style_encoder and self.generator and \
+        if self.writer_encoder and self.style_encoder and self.generator and \
                 np.random.random() <= self.synthesis_probability:
 
             # original images and original texts
-            features_data = self.style_backbone(aug_image_data, training=False)
+            features_data = self.writer_encoder(aug_image_data, training=False)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
 
             latent = self.style_encoder(features_data, training=False)
@@ -839,8 +613,8 @@ class BaseSynthesisModel(BaseModel):
         self.seed = seed
 
         self.recognition = None
-        self.style_backbone = None
-        self.identification = None
+        self.writer_encoder = None
+        self.writer_decoder = None
         self.style_encoder = None
         self.generator = None
         self.discriminator = None
@@ -856,8 +630,8 @@ class BaseSynthesisModel(BaseModel):
 
         self.names = [
             'recognition',
-            'style_backbone',
-            'identification',
+            'writer_encoder',
+            'writer_decoder',
             'style_encoder',
             'generator',
             'discriminator',
@@ -913,7 +687,7 @@ class BaseSynthesisModel(BaseModel):
 
         _, (image_data, text_data, _, mask_data) = input_data
 
-        features_data = self.style_backbone(image_data)
+        features_data = self.writer_encoder(image_data)
         features_data = features_data[0] if isinstance(features_data, list) else features_data
 
         latent_data = self.style_encoder(features_data)
@@ -953,7 +727,7 @@ class BaseSynthesisModel(BaseModel):
             return tf.random.normal(shape=latent_shape, seed=self.seed)
 
         def _extract_latent():
-            features_data = self.style_backbone(image_data, training=training)
+            features_data = self.writer_encoder(image_data, training=training)
             features_data = features_data[0] if isinstance(features_data, list) else features_data
 
             latent_data = self.style_encoder(features_data, training=training)
@@ -1015,5 +789,254 @@ class BaseSynthesisModel(BaseModel):
             progbar.update(step + 1)
 
         metrics = {k: float(np.mean(metrics[k])) for k in metrics}
+
+        return metrics, evaluations
+
+
+class BaseWriterIdentificationModel(BaseModel):
+    """
+    BaseWriterIdentificationModel extends BaseModel to provide additional
+        functionalities to synthesis and writer identification models.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 writers_shape,
+                 writer_encoder=None,
+                 style_encoder=None,
+                 generator=None,
+                 synthesis_probability=1.0,
+                 return_features=False,
+                 seed=None,
+                 **kwargs):
+        """
+        Initializes the synthesis and writer identification model.
+
+        Parameters
+        ----------
+        image_shape : tuple or list
+            The shape of the input images.
+        writers_shape : tuple or list
+            The shape of the writers input.
+        writer_encoder : Style extractor instance
+            Style extractor model for features extraction.
+        style_encoder : StyleEncoder instance
+            StyleEncoder model for encoding extracted style features.
+        generator : Generator instance
+            Generator model for image generation.
+        synthesis_probability : float, optional
+            Synthetic data probability.
+        return_features : bool, optional
+            Whether to return the intermediate features.
+        seed : int, optional
+            Seed for random shuffle.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        seed = seed or 0
+        tf.keras.utils.set_random_seed(seed)
+
+        self.image_shape = image_shape
+        self.writers_shape = writers_shape
+        self.synthesis_probability = synthesis_probability
+        self.return_features = return_features
+        self.seed = seed
+
+        self.writer_encoder = writer_encoder
+        self.style_encoder = style_encoder
+        self.generator = generator
+        self.writer_identification = None
+
+        self.names = [
+            'writer_encoder',
+            'style_encoder',
+            'generator',
+            'writer_identification',
+        ]
+
+        self.sce_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, name='sce_loss')
+
+        self.measure_tracker = MeasureTracker()
+        self.monitor = f"val_{self.sce_loss.name}"
+
+        self.build_model()
+        self.built = True
+
+    def get_config(self):
+        """
+        Return the configuration of the model.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'image_shape': self.image_shape,
+            'writers_shape': self.writers_shape,
+        })
+
+        return config
+
+    def train_step(self, input_data):
+        """
+        Executes a training step.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            Batch of (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            Training metrics and losses.
+        """
+
+        x_data, y_data = input_data
+
+        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        _, text_data, writer_data, mask_data = y_data
+
+        images, writers = [aug_image_data], [writer_data]
+
+        if self.writer_encoder and self.style_encoder and self.generator and \
+                np.random.random() <= self.synthesis_probability:
+
+            # original images and original texts
+            features_data = self.writer_encoder(aug_image_data, training=False)
+            features_data = features_data[0] if isinstance(features_data, list) else features_data
+
+            latent = self.style_encoder(features_data, training=False)
+            latent = latent[0] if isinstance(latent, list) else latent
+
+            real_real_images = self.generator([text_data, latent, mask_data], training=False)
+
+            # original images and fake texts
+            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
+
+            images.extend([real_real_images, fake_real_images])
+            writers.extend([writer_data, writer_data])
+
+        for image, writer in zip(images, writers):
+            with tf.GradientTape() as w_tape:
+                wid_logits = self.writer_identification(image, training=True)
+                sce_loss = self.sce_loss(writer, wid_logits)
+
+            w_gradients = w_tape.gradient(sce_loss, self.writer_identification.trainable_weights)
+            self.optimizer.apply_gradients(zip(w_gradients, self.writer_identification.trainable_weights))
+
+            self.measure_tracker.update({
+                self.sce_loss.name: sce_loss,
+            })
+
+        return self.measure_tracker.result()
+
+    def test_step(self, input_data):
+        """
+        Executes a testing step.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            Batch of (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            Training metrics and losses.
+        """
+
+        _, (image_data, _, writer_data, _) = input_data
+
+        wid_logits = self.writer_identification(image_data)
+        sce_loss = self.sce_loss(writer_data, wid_logits)
+
+        self.measure_tracker.update({
+            f"val_{self.sce_loss.name}": sce_loss,
+        })
+
+        return self.measure_tracker.result(val_only=True)
+
+    def call(self, x_data, training=False):
+        """
+        Processes input handwritten images.
+
+        Parameters
+        ----------
+        x_data : list or tuple
+            Input batch (x_data).
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Generated images.
+        """
+
+        image_data = x_data[0] if isinstance(x_data, tuple) else x_data
+        wid_logits = self.writer_identification(image_data, training=training)
+
+        return wid_logits
+
+    def writer_evaluator(self, x, y, steps, verbose=1):
+        """
+        Evaluate writer predictions on the given data.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
+
+        metrics = {'accuracy': []}
+        evaluations = []
+
+        batch_index = 0
+        for step in range(steps):
+            progbar.update(step)
+
+            _, (image_data, _, writer_data, _) = next(y)
+            batch_size = len(image_data)
+
+            y_pred = x[batch_index:batch_index + batch_size]
+            batch_index += batch_size
+
+            for i in range(batch_size):
+                is_correct = int(writer_data[i] == y_pred[i])
+
+                evaluations.append({
+                    'index': (batch_index - batch_size) + (i + 1),
+                    'image': image_data[i],
+                    'writer': writer_data[i],
+                    'writer_prediction': y_pred[i],
+                    'is_correct': is_correct,
+                })
+
+                metrics['accuracy'].append(is_correct)
+
+            progbar.update(step + 1)
+
+        metrics = {k: float(np.mean(v)) for k, v in metrics.items()}
 
         return metrics, evaluations
