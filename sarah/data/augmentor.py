@@ -60,7 +60,8 @@ class Augmentor():
             Seed for random values from numpy.
         """
 
-        np.random.seed(seed)
+        if seed is not None:
+            np.random.seed(seed)
 
         self.binarize_params = binarize
         self.erode_params = erode
