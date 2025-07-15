@@ -24,7 +24,7 @@ class Compose():
                  synthesis=None,
                  recognition=None,
                  spelling=None,
-                 identification=None,
+                 writer_identification=None,
                  image_shape=None,
                  tokenizer=None,
                  discriminator_steps=1,
@@ -44,7 +44,7 @@ class Compose():
             Identifier for the recognition model.
         spelling : str, optional
             Identifier for the spelling correction model.
-        identification : str, optional
+        writer_identification : str, optional
             Identifier for the writer identification model.
         image_shape : tuple, optional
             Shape of the input images.
@@ -67,7 +67,7 @@ class Compose():
         self.synthesis = synthesis
         self.recognition = recognition
         self.spelling = spelling
-        self.identification = identification
+        self.writer_identification = writer_identification
         self.tokenizer = tokenizer
         self.experiment_name = experiment_name or 'Default'
 
@@ -75,7 +75,7 @@ class Compose():
         self.spelling_model = None
         self.run_context = None
 
-        if self.synthesis or self.recognition or self.identification:
+        if self.synthesis or self.recognition or self.writer_identification:
             tf.keras.backend.clear_session()
 
             try:
@@ -93,26 +93,26 @@ class Compose():
 
             SynthesisModel = None
             RecognitionModel = None
-            IdentificationModel = None
             SpellingModel = None
+            WriterIdentificationModel = None
 
             if self.synthesis:
-                SynthesisModel = self._import_model(module=f"synthesis.{self.synthesis}",
-                                                    class_name='SynthesisModel')
+                module = f"synthesis.{self.synthesis}"
+                SynthesisModel = self._import_model(module=module, class_name='SynthesisModel')
 
             if self.recognition:
-                RecognitionModel = self._import_model(module=f"recognition.{self.recognition}",
-                                                      class_name='RecognitionModel')
+                module = f"recognition.{self.recognition}"
+                RecognitionModel = self._import_model(module=module, class_name='RecognitionModel')
 
                 if self.spelling:
-                    SpellingModel = self._import_model(module=f"spelling.{self.spelling}",
-                                                       class_name='SpellingModel')
+                    module = f"spelling.{self.spelling}"
+                    SpellingModel = self._import_model(module=module, class_name='SpellingModel')
 
-            if self.identification:
-                IdentificationModel = self._import_model(module=f"identification.{self.identification}",
-                                                         class_name='IdentificationModel')
+            if self.writer_identification:
+                module = f"writer_identification.{self.writer_identification}"
+                WriterIdentificationModel = self._import_model(module=module, class_name='WriterIdentificationModel')
 
-            if SynthesisModel and not RecognitionModel and not IdentificationModel:
+            if SynthesisModel and not RecognitionModel and not WriterIdentificationModel:
                 self.model = SynthesisModel(name='synthesis',
                                             image_shape=image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
@@ -132,7 +132,7 @@ class Compose():
                                                generator_steps=generator_steps,
                                                seed=seed)
                     synthesis_params = {
-                        'style_backbone': synthesis.style_backbone,
+                        'writer_encoder': synthesis.writer_encoder,
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
                         'synthesis_probability': synthesis_probability,
@@ -148,12 +148,12 @@ class Compose():
                     if SpellingModel:
                         self.spelling_model = SpellingModel()
 
-                elif IdentificationModel:
-                    self.model = IdentificationModel(name='identification',
-                                                     image_shape=image_shape,
-                                                     writers_shape=self.tokenizer.writers_shape,
-                                                     seed=seed,
-                                                     **synthesis_params)
+                elif WriterIdentificationModel:
+                    self.model = WriterIdentificationModel(name='writer_identification',
+                                                           image_shape=image_shape,
+                                                           writers_shape=self.tokenizer.writers_shape,
+                                                           seed=seed,
+                                                           **synthesis_params)
 
     def __repr__(self):
         """
@@ -295,7 +295,7 @@ class Compose():
                     mode='min',
                     monitor=monitor,
                     model_path=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
-                    save_best_only=bool(self.recognition or self.identification),
+                    save_best_only=bool(self.recognition or self.writer_identification),
                     save_weights_only=True,
                     csv_path=os.path.join(run_info['artifact_path'], 'epochs.csv'),
                     csv_separator=',',
@@ -312,7 +312,7 @@ class Compose():
                 ),
             ]
 
-            if self.recognition or self.identification:
+            if self.recognition or self.writer_identification:
                 callbacks.extend([
                     tf.keras.callbacks.ReduceLROnPlateau(
                         mode='min',
@@ -338,7 +338,7 @@ class Compose():
 
             mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
             mlflow.set_tags({'compose.recognition': str(self.recognition)})
-            mlflow.set_tags({'compose.identification': str(self.identification)})
+            mlflow.set_tags({'compose.writer_identification': str(self.writer_identification)})
 
             tokenizer_path = os.path.join(run_info['artifact_path'], 'model', 'tokenizer.pkl')
             os.makedirs(os.path.dirname(tokenizer_path), exist_ok=True)
@@ -369,7 +369,7 @@ class Compose():
 
         return history
 
-    def predict_identification(self, x, steps, token_decode=True, verbose=1):
+    def predict_writer_identification(self, x, steps, token_decode=True, verbose=1):
         """
         Predict writers with identification model using test data.
 
@@ -504,7 +504,7 @@ class Compose():
 
         return predictions
 
-    def evaluate_identification(self, x, y, steps, verbose=1):
+    def evaluate_writer_identification(self, x, y, steps, verbose=1):
         """
         Evaluate writer predictions on the given data.
 
@@ -798,8 +798,8 @@ class Compose():
                       synthesis_run_id=None,
                       recognition=None,
                       recognition_run_id=None,
-                      identification=None,
-                      identification_run_id=None,
+                      writer_identification=None,
+                      writer_identification_run_id=None,
                       experiment_name=None,
                       finished_runs=False):
         """
@@ -815,9 +815,9 @@ class Compose():
             Identifier for recognition model.
         recognition_run_id : str or int, optional
             Run index for the recognition model.
-        identification : str, optional
+        writer_identification : str, optional
             Identifier for writer identification model.
-        identification_run_id : str or int, optional
+        writer_identification_run_id : str or int, optional
             Run index for the writer identification model.
         experiment_name : str, optional
             MLflow experiment name.
@@ -874,11 +874,11 @@ class Compose():
 
         s_run, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
         r_run, r_path = get_artifacts_path('recognition', recognition, recognition_run_id)
-        i_run, i_path = get_artifacts_path('identification', identification, identification_run_id)
+        w_run, w_path = get_artifacts_path('writer_identification', writer_identification, writer_identification_run_id)
 
         tokenizer = None
-        run_context = s_run or r_run or i_run
-        artifacts_path = s_path or r_path or i_path
+        run_context = s_run or r_run or w_run
+        artifacts_path = s_path or r_path or w_path
 
         if artifacts_path:
             tokenizer_uri = os.path.join(artifacts_path, 'model', 'tokenizer.pkl')
