@@ -99,7 +99,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
 
         outputs = [encoder, feats] if self.return_features else encoder
 
-        self.encoder = tf.keras.Model(name=f"{self.name}_encoder", inputs=encoder_input, outputs=outputs)
+        self.encoder = tf.keras.Model(name='writer_encoder', inputs=encoder_input, outputs=outputs)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
@@ -112,7 +112,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
 
         decoder = tf.keras.layers.Dense(units=self.writers_shape[0])(decoder)
 
-        self.decoder = tf.keras.Model(name=f"{self.name}_decoder", inputs=decoder_input, outputs=decoder)
+        self.decoder = tf.keras.Model(name='writer_decoder', inputs=decoder_input, outputs=decoder)
 
         # writer identification model
         if self.return_features:
