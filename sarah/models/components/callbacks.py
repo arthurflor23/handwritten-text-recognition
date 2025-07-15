@@ -89,7 +89,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
                 self._save_images(filepath, image_data, name='authentic')
 
-                features_data = self.model.style_backbone(image_data, training=False)
+                features_data = self.model.writer_encoder(image_data, training=False)
                 features_data = features_data[0] if isinstance(features_data, list) else features_data
 
                 latent_data = self.model.style_encoder(features_data, training=False)
