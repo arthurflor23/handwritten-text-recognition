@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-from sarah.models.components.base import BaseIdentificationModel
+from sarah.models.components.base import BaseWriterIdentificationModel
 from sarah.models.components.layers import GatedConv2DResidual
 
 
-class IdentificationModel(BaseIdentificationModel):
+class WriterIdentificationModel(BaseWriterIdentificationModel):
     """
     References
     ----------
@@ -36,6 +36,8 @@ class IdentificationModel(BaseIdentificationModel):
         """
         Builds the model architecture.
         """
+
+        feats = []
 
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
@@ -73,6 +75,7 @@ class IdentificationModel(BaseIdentificationModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
+        feats.append(encoder)
 
         encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -81,6 +84,7 @@ class IdentificationModel(BaseIdentificationModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        feats.append(encoder)
 
         encoder = GatedConv2DResidual(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
@@ -89,10 +93,13 @@ class IdentificationModel(BaseIdentificationModel):
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        feats.append(encoder)
 
         encoder = tf.keras.layers.Flatten()(encoder)
 
-        self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
+        outputs = [encoder, feats] if self.return_features else encoder
+
+        self.encoder = tf.keras.Model(name=f"{self.name}_encoder", inputs=encoder_input, outputs=outputs)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
@@ -105,9 +112,15 @@ class IdentificationModel(BaseIdentificationModel):
 
         decoder = tf.keras.layers.Dense(units=self.writers_shape[0])(decoder)
 
-        self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
+        self.decoder = tf.keras.Model(name=f"{self.name}_decoder", inputs=decoder_input, outputs=decoder)
 
-        # identification model
-        self.identification = tf.keras.Model(name=self.name,
-                                             inputs=self.encoder.input,
-                                             outputs=self.decoder(self.encoder(encoder_input)))
+        # writer identification model
+        if self.return_features:
+            encoder_output, features = self.encoder(encoder_input)
+            outputs = [self.decoder(encoder_output), features]
+        else:
+            outputs = self.decoder(self.encoder(encoder_input))
+
+        self.writer_identification = tf.keras.Model(name=self.name,
+                                                    inputs=self.encoder.input,
+                                                    outputs=outputs)
