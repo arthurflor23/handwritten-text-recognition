@@ -83,14 +83,14 @@ The project has several command-line parameters that can be used to customize it
 
 -   `--synthesis`: Specify synthesis model (e.g., flor).
 -   `--recognition`: Specify recognition model (e.g., flor_v2).
--   `--identification`: Specify writer identification model (e.g., flor).
+-   `--writer-identification`: Specify writer identification model (e.g., flor).
 -   `--spelling`: Specify spelling model (e.g., openai).
 
 #### MLflow
 
 -   `--synthesis-run-id`: Synthesis model run id or index.
 -   `--recognition-run-id`: Recognition model run id or index.
--   `--identification-run-id`: Writer identification model run id or index.
+-   `--writer-identification-run-id`: Writer identification model run id or index.
 -   `--experiment-name`: MLflow experiment name.
 -   `--finished-runs`: Only finished runs for selection.
 
