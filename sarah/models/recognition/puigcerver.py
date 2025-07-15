@@ -87,7 +87,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2] // 16, -1))(encoder)
 
-        self.encoder = tf.keras.Model(name='encoder', inputs=encoder_input, outputs=encoder)
+        self.encoder = tf.keras.Model(name=f"{self.name}_encoder", inputs=encoder_input, outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
@@ -106,7 +106,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Reshape(target_shape=encoder.shape[1:-1] + self.lexical_shape[-1:])(decoder)
         decoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm2')(decoder)
 
-        self.decoder = tf.keras.Model(name='decoder', inputs=decoder_input, outputs=decoder)
+        self.decoder = tf.keras.Model(name=f"{self.name}_decoder", inputs=decoder_input, outputs=decoder)
 
         # recognition model
         self.recognition = tf.keras.Model(name=self.name,
