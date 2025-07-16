@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--elastic', default=(0.33, 31), nargs='+', type=float, help='Elastic deformation settings')
     parser.add_argument('--perspective', default=(0.66, 0.4), nargs='+', type=float, help='Perspective settings')
     parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
-    parser.add_argument('--shear', default=(0.33, 10), nargs='+', type=float, help='Shearing settings')
+    parser.add_argument('--shear', default=(0.33, 15), nargs='+', type=float, help='Shearing settings')
     parser.add_argument('--scale', default=(0.33, 0.1), nargs='+', type=float, help='Scaling settings')
     parser.add_argument('--rotate', default=(0.33, 0.1), nargs='+', type=float, help='Rotation settings')
     parser.add_argument('--shift-y', default=None, nargs='+', type=float, help='Vertical shift settings')
