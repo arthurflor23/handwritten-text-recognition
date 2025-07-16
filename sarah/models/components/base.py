@@ -323,13 +323,13 @@ class BaseRecognitionModel(BaseModel):
             fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
 
             # fake images and original texts
-            latent_shape = (tf.shape(aug_image_data)[0], self.style_encoder.latent_dim)
-            latent = tf.random.normal(shape=latent_shape, seed=self.seed)
+            random_latent_shape = (tf.shape(aug_image_data)[0], self.style_encoder.latent_dim)
+            random_latent_data = tf.random.normal(shape=random_latent_shape)
 
-            real_fake_images = self.generator([text_data, latent, mask_data], training=False)
+            real_fake_images = self.generator([text_data, random_latent_data, mask_data], training=False)
 
             # fake images and fake texts
-            fake_fake_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, aug_mask_data], training=False)
 
             images.extend([real_real_images, fake_real_images, real_fake_images, fake_fake_images])
             texts.extend([text_data, aug_text_data, text_data, aug_text_data])
@@ -723,8 +723,8 @@ class BaseSynthesisModel(BaseModel):
         image_data, text_data, _, mask_data = x_data
 
         def _random_latent():
-            latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
-            return tf.random.normal(shape=latent_shape, seed=self.seed)
+            random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
+            return tf.random.normal(shape=random_latent_shape)
 
         def _extract_latent():
             features_data = self.writer_encoder(image_data, training=training)
