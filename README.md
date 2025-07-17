@@ -81,7 +81,7 @@ The project has several command-line parameters that can be used to customize it
 
 #### Models
 
--   `--synthesis`: Specify synthesis model (e.g., flor).
+-   `--synthesis`: Specify synthesis model (e.g., flor_v1).
 -   `--recognition`: Specify recognition model (e.g., flor_v2).
 -   `--writer-identification`: Specify writer identification model (e.g., flor).
 -   `--spelling`: Specify spelling model (e.g., openai).
