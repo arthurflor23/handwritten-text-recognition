@@ -571,7 +571,9 @@ class GeneratorModel(BaseModel):
         text_input = tf.keras.layers.Input(shape=self.lexical_shape[:-1])
         text = tf.keras.layers.Flatten()(text_input)
 
-        embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1], output_dim=self.text_dim)(text)
+        embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
+                                              output_dim=self.text_dim)(text)
+
         embedding = PositionEmbedding1D(max_length=embedding.shape[1])(embedding)
 
         latent_tile = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
@@ -579,6 +581,7 @@ class GeneratorModel(BaseModel):
                                              name='latent_tile')(latent)
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
+        embedding = tf.keras.layers.LayerNormalization()(embedding)
 
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
@@ -601,14 +604,13 @@ class GeneratorModel(BaseModel):
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
         block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
-
         block = tf.keras.layers.Activation(activation='swish')(block)
-        block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='same')(block)
 
-        outputs = tf.keras.layers.Activation(activation='tanh')(block)
+        block = tf.keras.layers.Conv2D(filters=1, kernel_size=1, strides=1, padding='valid')(block)
+        block = tf.keras.layers.Activation(activation='tanh')(block)
 
-        outputs = ContentAlignment(char_height_ratio=outputs.shape[1] // self.lexical_shape[0],
-                                   char_width_ratio=outputs.shape[2] // self.lexical_shape[1])([outputs, text, mask])
+        outputs = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
+                                   char_width_ratio=block.shape[2] // self.lexical_shape[1])([block, text, mask])
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
