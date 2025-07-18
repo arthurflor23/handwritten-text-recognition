@@ -575,8 +575,16 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        if len(input_shape) == 4:
+            kernel_height = 3 if input_shape[-3] > 1 else 1
+            kernel_width = 3 if input_shape[-2] > 1 else 1
+            kernel_size = (kernel_height, kernel_width)
+
+        else:
+            raise ValueError("Unsupported input shape: must be 2D")
+
         self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
-                                             kernel_size=3,
+                                             kernel_size=kernel_size,
                                              strides=1,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -676,8 +684,16 @@ class GatedConv2DDual(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        if len(input_shape) == 4:
+            kernel_height = 3 if input_shape[-3] > 1 else 1
+            kernel_width = 3 if input_shape[-2] > 1 else 1
+            kernel_size = (kernel_height, kernel_width)
+
+        else:
+            raise ValueError("Unsupported input shape: must be 2D")
+
         self.sl_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
-                                              kernel_size=3,
+                                              kernel_size=kernel_size,
                                               strides=1,
                                               padding='same',
                                               kernel_initializer=self.kernel_initializer,
@@ -791,11 +807,19 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        if len(input_shape) == 4:
+            kernel_height = 3 if input_shape[-3] > 1 else 1
+            kernel_width = 3 if input_shape[-2] > 1 else 1
+            kernel_size = (kernel_height, kernel_width)
+
+        else:
+            raise ValueError("Unsupported input shape: must be 2D")
+
         self.filters = input_shape[-1]
         self.h = self.h or input_shape[-1]
 
         self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=3,
+                                             kernel_size=kernel_size,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
