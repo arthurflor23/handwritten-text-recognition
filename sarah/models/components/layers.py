@@ -1408,38 +1408,38 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
+            kernel_size = 3 if input_shape[-2] > 1 else 1
             pool_size = strides = 2 if input_shape[-2] > 1 else 1
-            pooling_layer = tf.keras.layers.MaxPooling1D
 
         else:
             raise ValueError("Unsupported input shape: must be 1D")
 
         if self.pooling:
-            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.f_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
+            self.h_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
 
         self.filters = input_shape[-1]
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.g_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv1D(filters=self.h,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1611,38 +1611,43 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 4:
-            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
-            pooling_layer = tf.keras.layers.MaxPooling2D
+            kernel_height = 3 if input_shape[-3] > 1 else 1
+            kernel_width = 3 if input_shape[-2] > 1 else 1
+            kernel_size = (kernel_height, kernel_width)
+
+            pool_height = 2 if input_shape[-3] > 1 else 1
+            pool_width = 2 if input_shape[-2] > 1 else 1
+            pool_size = strides = (pool_height, pool_width)
 
         else:
             raise ValueError("Unsupported input shape: must be 2D")
 
         if self.pooling:
-            self.f_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-            self.h_pooling = pooling_layer(pool_size=pool_size, strides=strides)
+            self.f_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
+            self.h_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
 
         self.filters = input_shape[-1]
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1818,7 +1823,10 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             pooling_layer = tf.keras.layers.MaxPooling1D
 
         elif len(input_shape) == 4:
-            pool_size = strides = (2 if input_shape[-3] > 1 else 1, 2 if input_shape[-2] > 1 else 1)
+            pool_height = 2 if input_shape[-3] > 1 else 1
+            pool_width = 2 if input_shape[-2] > 1 else 1
+
+            pool_size = strides = (pool_height, pool_width)
             pooling_layer = tf.keras.layers.MaxPooling2D
 
         else:
