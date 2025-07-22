@@ -845,6 +845,8 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
+        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+
     def call(self, inputs, training=False):
         """
         Apply residual gated convolution to the input.
@@ -866,7 +868,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma) * self.beta
 
         if training and self.dropout:
-            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+            g_conv = self.dropout_layer(g_conv)
 
         if self.filters != self.h:
             g_conv = self.o_conv(g_conv)
@@ -1349,7 +1351,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=16,
+                 k=8,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1483,6 +1485,8 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
+        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+
     def call(self, inputs, training=False):
         """
         Processes the input tensors through the layer.
@@ -1517,7 +1521,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         beta = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            beta = tf.nn.dropout(beta, rate=self.dropout)
+            beta = self.dropout_layer(beta)
 
         h = self.h_conv(inputs)
 
@@ -1552,7 +1556,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=16,
+                 k=8,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1691,6 +1695,8 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
+        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+
     def call(self, inputs, training=False):
         """
         Processes the input tensors through the layer.
@@ -1725,7 +1731,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         beta = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            beta = tf.nn.dropout(beta, rate=self.dropout)
+            beta = self.dropout_layer(beta)
 
         h = self.h_conv(inputs)
 
@@ -1760,7 +1766,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=16,
+                 k=8,
                  h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1893,6 +1899,8 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
+        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+
     def call(self, inputs, training=False):
         """
         Processes the input tensors through the layer.
@@ -1926,7 +1934,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         beta = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            beta = tf.nn.dropout(beta, rate=self.dropout)
+            beta = self.dropout_layer(beta)
 
         h = self.h_dense(inputs)
 
