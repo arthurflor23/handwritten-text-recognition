@@ -319,7 +319,7 @@ class Compose():
                         monitor=monitor,
                         min_lr=1e-4,
                         min_delta=1e-7,
-                        factor=plateau_factor + 1e-7,
+                        factor=plateau_factor,
                         cooldown=plateau_cooldown,
                         patience=plateau_patience,
                         verbose=verbose,
