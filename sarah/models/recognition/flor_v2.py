@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
 from sarah.models.components.layers import GatedConv2DResidual
-from sarah.models.components.layers import SelfAttention
+from sarah.models.components.layers import SelfAttentionConv2D
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -97,7 +97,7 @@ class RecognitionModel(BaseRecognitionModel):
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
-        decoder = SelfAttention(dropout=0.3)(decoder_input)
+        decoder = SelfAttentionConv2D(dropout=0.3)(decoder_input)
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
 
         for _ in range(3):
