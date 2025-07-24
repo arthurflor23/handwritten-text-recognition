@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=None, type=int, help='Maximum number of epochs')
     parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
     parser.add_argument('--learning-rate', default=None, type=float, help='Learning rate')
-    parser.add_argument('--plateau-factor', default=0.3, type=float, help='Learning rate reduction factor')
+    parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
     parser.add_argument('--plateau-cooldown', default=0, type=int, help='Cooldown after plateau')
     parser.add_argument('--plateau-patience', default=40, type=int, help='Plateau patience epochs')
     parser.add_argument('--patience', default=80, type=int, help='Stop after no improvement')
