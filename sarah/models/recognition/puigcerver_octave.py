@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
-from sarah.models.components.layers import OctConv2D
+from sarah.models.components.layers import OctaveConv2D
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -45,7 +45,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(encoder_input)
 
         encoder = [encoder, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder)]
-        high, low = OctConv2D(alpha=0.25, filters=16)(encoder)
+        high, low = OctaveConv2D(alpha=0.25, filters=16)(encoder)
 
         high = tf.keras.layers.BatchNormalization()(high)
         low = tf.keras.layers.BatchNormalization()(low)
@@ -54,7 +54,7 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
         low = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(low)
 
-        high, low = OctConv2D(alpha=0.25, filters=32)([high, low])
+        high, low = OctaveConv2D(alpha=0.25, filters=32)([high, low])
 
         high = tf.keras.layers.BatchNormalization()(high)
         low = tf.keras.layers.BatchNormalization()(low)
@@ -96,7 +96,7 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
 
-        high, low = OctConv2D(alpha=0.25, filters=80)([high, low])
+        high, low = OctaveConv2D(alpha=0.25, filters=80)([high, low])
 
         high = tf.keras.layers.BatchNormalization()(high)
         high = tf.keras.layers.Activation('relu')(high)
