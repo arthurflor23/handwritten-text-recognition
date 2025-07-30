@@ -618,7 +618,7 @@ class GatedConv2D(tf.keras.layers.Layer):
         return s_conv * inputs
 
 
-class GatedConv2DDual(tf.keras.layers.Layer):
+class GatedDualConv2D(tf.keras.layers.Layer):
     """
     Implements a Dual Gated Convolutional layer.
 
@@ -734,7 +734,7 @@ class GatedConv2DDual(tf.keras.layers.Layer):
         return s_conv * l_conv
 
 
-class GatedConv2DResidual(tf.keras.layers.Layer):
+class GatedResidualConv2D(tf.keras.layers.Layer):
     """
     Implements a Residual Gated Convolutional layer.
     """
@@ -891,7 +891,7 @@ class GatedConv2DResidual(tf.keras.layers.Layer):
         return inputs + g_conv
 
 
-class OctConv2D(tf.keras.layers.Layer):
+class OctaveConv2D(tf.keras.layers.Layer):
     """
     Implements octave convolutional layer.
     This layer processes input feature maps by splitting them into high and low frequency components
