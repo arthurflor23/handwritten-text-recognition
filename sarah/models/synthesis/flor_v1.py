@@ -5,7 +5,7 @@ from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import AdaptiveInstanceNormalization
 from sarah.models.components.layers import ContentAlignment
 from sarah.models.components.layers import ExtractPatches
-from sarah.models.components.layers import GatedConv2DResidual
+from sarah.models.components.layers import GatedResidualConv2D
 from sarah.models.components.layers import PositionEmbedding1D
 from sarah.models.components.layers import Reparameterization
 
@@ -599,7 +599,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                block = GatedConv2DResidual()(block)
+                block = GatedResidualConv2D()(block)
 
             block = residual_block(block, latent_chunks[i], filters, up=up)
 
@@ -746,7 +746,7 @@ class DiscriminatorModel(BaseModel):
             block = residual_block(block, filters, preactive=(i > 0), down=down)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
-                block = GatedConv2DResidual()(block)
+                block = GatedResidualConv2D()(block)
 
         if not self.patch_shape:
             block = residual_block(block, self.blocks[-1], preactive=True, down=None)
