@@ -880,15 +880,17 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         """
 
         s_conv = self.s_conv(inputs)
-        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma) * self.beta
+        g_conv = tf.nn.sigmoid(s_conv * self.gamma)
+
+        o = s_conv * g_conv * self.beta
 
         if training and self.dropout:
-            g_conv = self.dropout_layer(g_conv)
+            o = self.dropout_layer(o)
 
         if self.filters != self.h:
-            g_conv = self.o_conv(g_conv)
+            o = self.o_conv(o)
 
-        return inputs + g_conv
+        return inputs + o
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
@@ -1539,9 +1541,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
-        if training and self.dropout:
-            beta = self.dropout_layer(beta)
-
         h = self.h_conv(inputs)
 
         if self.pooling:
@@ -1550,12 +1549,15 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[B, T, self.h])
+        o = tf.reshape(o, shape=[B, T, self.h]) * self.beta
+
+        if training and self.dropout:
+            o = self.dropout_layer(o)
 
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return inputs + self.beta * o
+        return inputs + o
 
 
 class SelfAttentionConv2D(tf.keras.layers.Layer):
@@ -1750,9 +1752,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
-        if training and self.dropout:
-            beta = self.dropout_layer(beta)
-
         h = self.h_conv(inputs)
 
         if self.pooling:
@@ -1761,12 +1760,15 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[B, H, W, self.h])
+        o = tf.reshape(o, shape=[B, H, W, self.h]) * self.beta
+
+        if training and self.dropout:
+            o = self.dropout_layer(o)
 
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return inputs + self.beta * o
+        return inputs + o
 
 
 class SelfAttentionDense(tf.keras.layers.Layer):
@@ -1958,9 +1960,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
-        if training and self.dropout:
-            beta = self.dropout_layer(beta)
-
         h = self.h_dense(inputs)
 
         if self.pooling:
@@ -1969,9 +1968,12 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
         o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h]) * self.beta
+
+        if training and self.dropout:
+            o = self.dropout_layer(o)
 
         if self.features != self.h:
             o = self.o_dense(o)
 
-        return inputs + self.beta * o
+        return inputs + o
