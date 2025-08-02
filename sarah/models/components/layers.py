@@ -518,6 +518,9 @@ class GatedConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 kernel_size=(3, 3),
+                 strides=(1, 1),
+                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -528,6 +531,12 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        kernel_size : int or tuple, optional
+            Convolution window size.
+        strides : int or tuple, optional
+            Stride of the convolution.
+        padding : str, optional
+            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -542,6 +551,9 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -560,6 +572,9 @@ class GatedConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'kernel_size': self.kernel_size,
+            'strides': self.strides,
+            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -580,18 +595,10 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        if len(input_shape) == 4:
-            kernel_height = 3 if input_shape[-3] > 1 else 1
-            kernel_width = 3 if input_shape[-2] > 1 else 1
-            kernel_size = (kernel_height, kernel_width)
-
-        else:
-            raise ValueError("Unsupported input shape: must be 2D")
-
         self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
-                                             kernel_size=kernel_size,
-                                             strides=1,
-                                             padding='same',
+                                             kernel_size=self.kernel_size,
+                                             strides=self.strides,
+                                             padding=self.padding,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -632,6 +639,9 @@ class GatedDualConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 kernel_size=(3, 3),
+                 strides=(1, 1),
+                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -642,6 +652,12 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        kernel_size : int or tuple, optional
+            Convolution window size.
+        strides : int or tuple, optional
+            Stride of the convolution.
+        padding : str, optional
+            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -656,6 +672,9 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -674,6 +693,9 @@ class GatedDualConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'kernel_size': self.kernel_size,
+            'strides': self.strides,
+            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -694,18 +716,10 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        if len(input_shape) == 4:
-            kernel_height = 3 if input_shape[-3] > 1 else 1
-            kernel_width = 3 if input_shape[-2] > 1 else 1
-            kernel_size = (kernel_height, kernel_width)
-
-        else:
-            raise ValueError("Unsupported input shape: must be 2D")
-
         self.sl_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
-                                              kernel_size=kernel_size,
-                                              strides=1,
-                                              padding='same',
+                                              kernel_size=self.kernel_size,
+                                              strides=self.strides,
+                                              padding=self.padding,
                                               kernel_initializer=self.kernel_initializer,
                                               kernel_regularizer=self.kernel_regularizer,
                                               kernel_constraint=self.kernel_constraint,
@@ -741,6 +755,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  h=None,
+                 kernel_size=(3, 3),
+                 strides=(1, 1),
+                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -756,6 +773,12 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         ----------
         h : int, optional
             Reduce the channels dimension to the value.
+        kernel_size : int or tuple, optional
+            Convolution window size.
+        strides : int or tuple, optional
+            Stride of the convolution.
+        padding : str, optional
+            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -767,7 +790,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         gamma_initializer : initializer, optional
             Gamma weights initializer.
         dropout : float, optional
-            Whether apply dropout or not.
+            Whether to apply dropout or not.
         use_bias : bool, optional
             Whether the layers use bias vectors/matrices.
         **kwargs : dict
@@ -777,6 +800,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.h = h
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -799,6 +825,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         config.update({
             'h': self.h,
+            'kernel_size': self.kernel_size,
+            'strides': self.strides,
+            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -822,20 +851,13 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        if len(input_shape) == 4:
-            kernel_height = 3 if input_shape[-3] > 1 else 1
-            kernel_width = 3 if input_shape[-2] > 1 else 1
-            kernel_size = (kernel_height, kernel_width)
-
-        else:
-            raise ValueError("Unsupported input shape: must be 2D")
-
         self.filters = input_shape[-1]
-        self.h = self.h or input_shape[-1]
+        self.h = self.h or self.filters
 
         self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=self.kernel_size,
+                                             strides=self.strides,
+                                             padding=self.padding,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -923,12 +945,12 @@ class OctaveConv2D(tf.keras.layers.Layer):
             Fraction of filters for low frequency.
         filters : int
             Number of output filters.
-        kernel_size : tuple of 2 ints, optional
+        kernel_size : int or tuple, optional
             Convolution window size.
-        strides : tuple of 2 ints, optional
-            Convolution strides.
+        strides : int or tuple, optional
+            Stride of the convolution.
         padding : str, optional
-            Padding type.
+            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
