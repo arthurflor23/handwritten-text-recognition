@@ -519,8 +519,6 @@ class GatedConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 strides=(1, 1),
-                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -533,10 +531,6 @@ class GatedConv2D(tf.keras.layers.Layer):
         ----------
         kernel_size : int or tuple, optional
             Convolution window size.
-        strides : int or tuple, optional
-            Stride of the convolution.
-        padding : str, optional
-            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -552,8 +546,6 @@ class GatedConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.kernel_size = kernel_size
-        self.strides = strides
-        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -573,8 +565,6 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         config.update({
             'kernel_size': self.kernel_size,
-            'strides': self.strides,
-            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -597,8 +587,8 @@ class GatedConv2D(tf.keras.layers.Layer):
 
         self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
                                              kernel_size=self.kernel_size,
-                                             strides=self.strides,
-                                             padding=self.padding,
+                                             strides=1,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -640,8 +630,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 strides=(1, 1),
-                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -654,10 +642,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
         ----------
         kernel_size : int or tuple, optional
             Convolution window size.
-        strides : int or tuple, optional
-            Stride of the convolution.
-        padding : str, optional
-            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -673,8 +657,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.kernel_size = kernel_size
-        self.strides = strides
-        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -694,8 +676,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
         config.update({
             'kernel_size': self.kernel_size,
-            'strides': self.strides,
-            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -718,8 +698,8 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
         self.sl_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
                                               kernel_size=self.kernel_size,
-                                              strides=self.strides,
-                                              padding=self.padding,
+                                              strides=1,
+                                              padding='same',
                                               kernel_initializer=self.kernel_initializer,
                                               kernel_regularizer=self.kernel_regularizer,
                                               kernel_constraint=self.kernel_constraint,
@@ -756,8 +736,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  h=None,
                  kernel_size=(3, 3),
-                 strides=(1, 1),
-                 padding='same',
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -775,10 +753,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Reduce the channels dimension to the value.
         kernel_size : int or tuple, optional
             Convolution window size.
-        strides : int or tuple, optional
-            Stride of the convolution.
-        padding : str, optional
-            Padding mode: "valid" or "same".
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -801,8 +775,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         self.h = h
         self.kernel_size = kernel_size
-        self.strides = strides
-        self.padding = padding
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -826,8 +798,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         config.update({
             'h': self.h,
             'kernel_size': self.kernel_size,
-            'strides': self.strides,
-            'padding': self.padding,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -856,8 +826,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
                                              kernel_size=self.kernel_size,
-                                             strides=self.strides,
-                                             padding=self.padding,
+                                             strides=1,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1064,7 +1034,7 @@ class OctaveConv2D(tf.keras.layers.Layer):
         high_to_low = tf.nn.avg_pool2d(input=high_input,
                                        ksize=[1, 2, 2, 1],
                                        strides=[1, 2, 2, 1],
-                                       padding='SAME')
+                                       padding=self.padding.upper())
 
         high_to_low = tf.nn.conv2d(input=high_to_low,
                                    filters=self.high_to_low_kernel,
