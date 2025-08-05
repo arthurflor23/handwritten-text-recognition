@@ -97,6 +97,9 @@ class Dataset():
 
             data = self._source.fetch_data(self.text_level)
 
+            for items in data.values():
+                items.sort(key=lambda x: x.get('image'), reverse=False)
+
         data = self._partitioning(data)
 
         self.samples = self._build_samples(data)
@@ -324,9 +327,9 @@ class Dataset():
 
             if results:
                 if self.order_by_text:
-                    source, encoded = zip(*sorted(results, key=lambda x: len(x[0]['text']), reverse=True))
-                else:
-                    source, encoded = zip(*results)
+                    results.sort(key=lambda x: len(x[0]['text']), reverse=True)
+
+                source, encoded = zip(*results)
 
                 samples['source'][partition] = np.array(source, dtype=object)
                 samples['encoded'][partition] = np.array(encoded, dtype=object)
@@ -389,9 +392,9 @@ class Dataset():
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
 
                 if self.order_by_text:
-                    source, encoded = zip(*sorted(flattened, key=lambda x: len(x[0]), reverse=True))
-                else:
-                    source, encoded = zip(*flattened)
+                    flattened.sort(key=lambda x: len(x[0]), reverse=True)
+
+                source, encoded = zip(*flattened)
 
                 for s, e in zip(source, encoded):
                     multigrams['source'].append({'text': s})
