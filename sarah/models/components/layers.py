@@ -815,8 +815,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 4:
-            kernel_height = 2 if input_shape[-3] > 1 else 1
-            kernel_width = 2 if input_shape[-2] > 1 else 1
+            kernel_height = 3 if input_shape[-3] > 1 else 1
+            kernel_width = 3 if input_shape[-2] > 1 else 1
             kernel_size = (kernel_height, kernel_width)
 
         else:
