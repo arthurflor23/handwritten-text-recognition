@@ -522,7 +522,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -632,7 +632,7 @@ class GatedDualConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -733,13 +733,14 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  h=None,
+                 kernel_size=(3, 3),
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  gamma_initializer='ones',
                  dropout=0.0,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -748,6 +749,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         ----------
         h : int, optional
             Reduce the channels dimension to the value.
+        kernel_size : int or tuple, optional
+            Convolution window size.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -769,6 +772,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.h = h
+        self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -791,6 +795,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         config.update({
             'h': self.h,
+            'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -814,19 +819,11 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        if len(input_shape) == 4:
-            kernel_height = 3 if input_shape[-3] > 1 else 1
-            kernel_width = 3 if input_shape[-2] > 1 else 1
-            kernel_size = (kernel_height, kernel_width)
-
-        else:
-            raise ValueError("Unsupported input shape: must be 2D")
-
         self.filters = input_shape[-1]
         self.h = self.h or self.filters
 
         self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=kernel_size,
+                                             kernel_size=self.kernel_size,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
@@ -1368,7 +1365,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1448,8 +1445,8 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
+            kernel_size = 3 if input_shape[-2] > 1 else 1
             pool_size = strides = 2 if input_shape[-2] > 1 else 1
-
         else:
             raise ValueError("Unsupported input shape: must be 1D")
 
@@ -1461,24 +1458,24 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
         self.g_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
         self.h_conv = tf.keras.layers.Conv1D(filters=self.h,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1577,7 +1574,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1657,10 +1654,11 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 4:
-            kernel_height = 2 if input_shape[-3] > 1 else 1
-            kernel_width = 2 if input_shape[-2] > 1 else 1
-            pool_size = strides = (kernel_height, kernel_width)
+            kernel_size = (3 if input_shape[-3] > 1 else 1,
+                           3 if input_shape[-2] > 1 else 1)
 
+            pool_size = strides = (2 if input_shape[-3] > 1 else 1,
+                                   2 if input_shape[-2] > 1 else 1)
         else:
             raise ValueError("Unsupported input shape: must be 2D")
 
@@ -1672,24 +1670,24 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
         self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
         self.h_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=1,
-                                             padding='valid',
+                                             kernel_size=kernel_size,
+                                             padding='same',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
@@ -1788,7 +1786,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=False,
+                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1868,16 +1866,13 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
-            pool_size = strides = 2 if input_shape[-2] > 1 else 1
             pooling_layer = tf.keras.layers.MaxPooling1D
+            pool_size = strides = 2 if input_shape[-2] > 1 else 1
 
         elif len(input_shape) == 4:
-            kernel_height = 2 if input_shape[-3] > 1 else 1
-            kernel_width = 2 if input_shape[-2] > 1 else 1
-
-            pool_size = strides = (kernel_height, kernel_width)
             pooling_layer = tf.keras.layers.MaxPooling2D
-
+            pool_size = strides = (2 if input_shape[-3] > 1 else 1,
+                                   2 if input_shape[-2] > 1 else 1)
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
