@@ -522,7 +522,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initializes the layer.
@@ -632,7 +632,7 @@ class GatedDualConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initializes the layer.
@@ -739,7 +739,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  gamma_initializer='ones',
                  dropout=0.0,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initializes the layer.
@@ -1368,7 +1368,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1577,7 +1577,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1788,7 +1788,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the self-attention layer.
