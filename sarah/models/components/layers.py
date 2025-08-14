@@ -522,7 +522,6 @@ class GatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -537,8 +536,6 @@ class GatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -549,7 +546,6 @@ class GatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -568,7 +564,6 @@ class GatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -591,7 +586,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
     def call(self, inputs):
         """
@@ -632,7 +627,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -647,8 +641,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -659,7 +651,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -678,7 +669,6 @@ class GatedDualConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -701,7 +691,7 @@ class GatedDualConv2D(tf.keras.layers.Layer):
                                               kernel_initializer=self.kernel_initializer,
                                               kernel_regularizer=self.kernel_regularizer,
                                               kernel_constraint=self.kernel_constraint,
-                                              use_bias=self.use_bias)
+                                              use_bias=False)
 
     def call(self, inputs):
         """
@@ -740,7 +730,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  gamma_initializer='ones',
                  dropout=0.0,
-                 use_bias=True,
                  **kwargs):
         """
         Initializes the layer.
@@ -763,8 +752,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Gamma weights initializer.
         dropout : float, optional
             Whether to apply dropout or not.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Conv2D keyword arguments.
         """
@@ -779,7 +766,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         self.beta_initializer = beta_initializer
         self.gamma_initializer = gamma_initializer
         self.dropout = dropout
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -802,7 +788,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             'beta_initializer': self.beta_initializer,
             'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -828,7 +813,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
@@ -837,7 +822,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1365,7 +1350,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1388,8 +1372,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             Dropout rate to apply on attention weights.
         pooling : bool, optional
             Whether apply pooling reducing or not.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -1404,7 +1386,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         self.beta_initializer = beta_initializer
         self.dropout = dropout
         self.pooling = pooling
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -1427,7 +1408,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
             'pooling': self.pooling,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -1445,7 +1425,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 3:
-            kernel_size = 3 if input_shape[-2] > 1 else 1
             pool_size = strides = 2 if input_shape[-2] > 1 else 1
         else:
             raise ValueError("Unsupported input shape: must be 1D")
@@ -1458,28 +1437,28 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.g_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv1D(filters=self.h,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv1D(filters=self.filters,
@@ -1488,7 +1467,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1530,6 +1509,9 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
+        if training and self.dropout:
+            beta = self.dropout_layer(beta)
+
         h = self.h_conv(inputs)
 
         if self.pooling:
@@ -1539,9 +1521,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
 
         o = tf.matmul(beta, h)
         o = tf.reshape(o, shape=[B, T, self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
 
         if self.filters != self.h:
             o = self.o_conv(o)
@@ -1574,7 +1553,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1597,8 +1575,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
             Dropout rate to apply on attention weights.
         pooling : bool, optional
             Whether apply pooling reducing or not.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -1613,7 +1589,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         self.beta_initializer = beta_initializer
         self.dropout = dropout
         self.pooling = pooling
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -1636,7 +1611,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
             'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
             'pooling': self.pooling,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -1654,9 +1628,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         if len(input_shape) == 4:
-            kernel_size = (3 if input_shape[-3] > 1 else 1,
-                           3 if input_shape[-2] > 1 else 1)
-
             pool_size = strides = (2 if input_shape[-3] > 1 else 1,
                                    2 if input_shape[-2] > 1 else 1)
         else:
@@ -1670,28 +1641,28 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         self.h = self.h or self.filters
 
         self.f_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.g_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.h_conv = tf.keras.layers.Conv2D(filters=self.h,
-                                             kernel_size=kernel_size,
-                                             padding='same',
+                                             kernel_size=1,
+                                             padding='valid',
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         if self.filters != self.h:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
@@ -1700,7 +1671,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1742,6 +1713,9 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
+        if training and self.dropout:
+            beta = self.dropout_layer(beta)
+
         h = self.h_conv(inputs)
 
         if self.pooling:
@@ -1751,9 +1725,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
 
         o = tf.matmul(beta, h)
         o = tf.reshape(o, shape=[B, H, W, self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
 
         if self.filters != self.h:
             o = self.o_conv(o)
@@ -1786,7 +1757,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
                  **kwargs):
         """
         Initialize the self-attention layer.
@@ -1809,8 +1779,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             Dropout rate to apply on attention weights.
         pooling : bool, optional
             Whether apply pooling reducing or not.
-        use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -1825,7 +1793,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         self.beta_initializer = beta_initializer
         self.dropout = dropout
         self.pooling = pooling
-        self.use_bias = use_bias
 
     def get_config(self):
         """
@@ -1848,7 +1815,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
             'pooling': self.pooling,
-            'use_bias': self.use_bias,
         })
 
         return config
@@ -1887,26 +1853,26 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.g_dense = tf.keras.layers.Dense(units=self.features // self.k,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         self.h_dense = tf.keras.layers.Dense(units=self.h,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+                                             use_bias=False)
 
         if self.features != self.h:
             self.o_dense = tf.keras.layers.Dense(units=self.features,
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1947,6 +1913,9 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         s = tf.matmul(g, f, transpose_b=True)
         beta = tf.nn.softmax(s, axis=-1)
 
+        if training and self.dropout:
+            beta = self.dropout_layer(beta)
+
         h = self.h_dense(inputs)
 
         if self.pooling:
@@ -1956,9 +1925,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
 
         o = tf.matmul(beta, h)
         o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
 
         if self.features != self.h:
             o = self.o_dense(o)
