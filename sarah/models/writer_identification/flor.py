@@ -53,7 +53,8 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
 
-        encoder = GatedResidualConv2D()(encoder)
+        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.GroupNormalization(groups=-1)(encoder)
