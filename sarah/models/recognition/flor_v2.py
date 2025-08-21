@@ -31,7 +31,7 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 1e-3
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.99)
 
     def build_model(self):
         """
@@ -41,13 +41,13 @@ class RecognitionModel(BaseRecognitionModel):
         # encoder model
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder_input)
+        encoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         encoder = GatedResidualConv2D()(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
@@ -55,7 +55,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
@@ -98,7 +98,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
         decoder = SelfAttentionDense()(decoder_input)
-        decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
+        decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder)
 
         for _ in range(3):
             forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
