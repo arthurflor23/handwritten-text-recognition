@@ -30,7 +30,8 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         if learning_rate is None:
             learning_rate = 1e-4
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.999)
+        self.optimizer = tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01)
 
     def build_model(self):
         """
