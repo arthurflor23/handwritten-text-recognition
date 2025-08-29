@@ -31,7 +31,8 @@ class RecognitionModel(BaseRecognitionModel):
         if learning_rate is None:
             learning_rate = 1e-3
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5, beta_2=0.99)
+        self.optimizer = tf.keras.optimizers.AdamW(
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.99, weight_decay=0.01)
 
     def build_model(self):
         """
@@ -112,7 +113,7 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2], -1))(decoder)
         decoder = tf.keras.layers.LayerNormalization()(decoder)
 
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
 
         self.decoder = tf.keras.Model(name='recognition_decoder', inputs=decoder_input, outputs=decoder)
