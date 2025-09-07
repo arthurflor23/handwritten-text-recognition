@@ -12,7 +12,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1703.06868v2
     """
 
-    def __init__(self, epsilon=1e-5, **kwargs):
+    def __init__(self, epsilon=1e-3, **kwargs):
         """
         Initializes the adaptive instance normalization layer.
 
