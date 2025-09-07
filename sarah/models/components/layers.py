@@ -12,7 +12,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         https://arxiv.org/abs/1703.06868v2
     """
 
-    def __init__(self, epsilon=1e-3, **kwargs):
+    def __init__(self, epsilon=1e-5, **kwargs):
         """
         Initializes the adaptive instance normalization layer.
 
@@ -64,9 +64,9 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
         self.norm = tf.keras.layers.GroupNormalization(groups=-1,
-                                                       epsilon=self.epsilon,
+                                                       scale=False,
                                                        center=False,
-                                                       scale=False)
+                                                       epsilon=self.epsilon)
 
     def call(self, inputs, training=False):
         """
@@ -166,9 +166,9 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
         self.norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
-                                                       epsilon=self.epsilon,
+                                                       scale=False,
                                                        center=False,
-                                                       scale=False)
+                                                       epsilon=self.epsilon)
 
     def call(self, inputs, training=False):
         """
@@ -519,7 +519,7 @@ class GatedConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  use_bias=True,
@@ -629,7 +629,7 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  use_bias=True,
@@ -734,7 +734,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  h=None,
                  kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
@@ -899,7 +899,7 @@ class OctaveConv2D(tf.keras.layers.Layer):
                  kernel_size=(3, 3),
                  strides=(1, 1),
                  padding='same',
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  **kwargs):
@@ -1359,7 +1359,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
     def __init__(self,
                  k=8,
                  h=None,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
@@ -1567,7 +1567,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  k=8,
                  h=None,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
@@ -1776,7 +1776,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
     def __init__(self,
                  k=8,
                  h=None,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer='he_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
