@@ -519,7 +519,7 @@ class GatedConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 kernel_initializer='he_uniform',
+                 kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  use_bias=True,
@@ -629,7 +629,7 @@ class GatedDualConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  kernel_size=(3, 3),
-                 kernel_initializer='he_uniform',
+                 kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  use_bias=True,
@@ -734,7 +734,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  h=None,
                  kernel_size=(3, 3),
-                 kernel_initializer='he_uniform',
+                 kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
