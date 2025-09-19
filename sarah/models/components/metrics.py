@@ -99,7 +99,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
     def __init__(self,
                  image_shape,
-                 epsilon=1e-5,
+                 epsilon=1e-7,
                  name='kid',
                  **kwargs):
         """
