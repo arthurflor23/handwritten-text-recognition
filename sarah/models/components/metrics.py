@@ -99,7 +99,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
     def __init__(self,
                  image_shape,
-                 epsilon=1e-7,
                  name='kid',
                  **kwargs):
         """
@@ -109,8 +108,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         ----------
         image_shape : list or tuple
             Input image shape.
-        epsilon : float, optional
-            Small constant for numerical stability.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -120,7 +117,6 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-        self.epsilon = epsilon
 
         self.kid_image_size = (299, 299, 3)
         self.tracker = tf.keras.metrics.Mean()
@@ -157,15 +153,15 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         kernel_cross = self.polynomial_kernel(real_features, generated_features)
 
         batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
+        batch_factor = batch_size * (batch_size - 1.0)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = sum_kernel_real / ((batch_size * (batch_size - 1.0)) + self.epsilon)
+        mean_kernel_real = tf.keras.ops.divide_no_nan(sum_kernel_real, batch_factor)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = sum_kernel_generated / ((batch_size * (batch_size - 1.0)) + self.epsilon)
-        mean_kernel_cross = tf.reduce_mean(kernel_cross)
+        mean_kernel_generated = tf.keras.ops.divide_no_nan(sum_kernel_generated, batch_factor)
 
-        kid = ((mean_kernel_real + mean_kernel_generated) - (2.0 * mean_kernel_cross))
+        kid = ((mean_kernel_real + mean_kernel_generated) - (2.0 * tf.reduce_mean(kernel_cross)))
 
         self.tracker.update_state(kid)
 
@@ -187,7 +183,9 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         """
 
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
-        return (features_1 @ tf.transpose(features_2) / (feature_dimensions + self.epsilon) + 1.0) ** 3.0
+        features = features_1 @ tf.transpose(features_2)
+
+        return tf.keras.ops.divide_no_nan(features, feature_dimensions + 1.0) ** 3.0
 
     def result(self):
         """
