@@ -869,17 +869,15 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         """
 
         s_conv = self.s_conv(inputs)
-        g_conv = tf.nn.sigmoid(s_conv * self.gamma)
-
-        o = s_conv * g_conv * self.beta
+        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
 
         if training and self.dropout:
-            o = self.dropout_layer(o)
+            g_conv = self.dropout_layer(g_conv)
 
         if self.filters != self.h:
-            o = self.o_conv(o)
+            g_conv = self.o_conv(g_conv)
 
-        return inputs + o
+        return inputs + g_conv * self.beta
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
@@ -1527,7 +1525,11 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         g = tf.reshape(g, shape=[B, -1, g.shape[-1]])
 
         s = tf.matmul(g, f, transpose_b=True)
-        beta = tf.nn.softmax(s, axis=-1)
+        b = tf.nn.softmax(s, axis=-1)
+
+        if training and self.dropout:
+            b = self.dropout_layer(b)
+            b = tf.keras.ops.divide_no_nan(b, tf.reduce_sum(b, axis=-1, keepdims=True))
 
         h = self.h_conv(inputs)
 
@@ -1536,16 +1538,13 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
 
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
-        o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[B, T, self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
+        o = tf.matmul(b, h)
+        o = tf.reshape(o, shape=[B, T, self.h])
 
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return inputs + o
+        return inputs + o * self.beta
 
 
 class SelfAttentionConv2D(tf.keras.layers.Layer):
@@ -1736,7 +1735,11 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         g = tf.reshape(g, shape=[B, -1, g.shape[-1]])
 
         s = tf.matmul(g, f, transpose_b=True)
-        beta = tf.nn.softmax(s, axis=-1)
+        b = tf.nn.softmax(s, axis=-1)
+
+        if training and self.dropout:
+            b = self.dropout_layer(b)
+            b = tf.keras.ops.divide_no_nan(b, tf.reduce_sum(b, axis=-1, keepdims=True))
 
         h = self.h_conv(inputs)
 
@@ -1745,16 +1748,13 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
 
         h = tf.reshape(h, shape=[B, -1, h.shape[-1]])
 
-        o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[B, H, W, self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
+        o = tf.matmul(b, h)
+        o = tf.reshape(o, shape=[B, H, W, self.h])
 
         if self.filters != self.h:
             o = self.o_conv(o)
 
-        return inputs + o
+        return inputs + o * self.beta
 
 
 class SelfAttentionDense(tf.keras.layers.Layer):
@@ -1941,7 +1941,11 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         g = tf.reshape(g, shape=(shape[0], -1, g.shape[-1]))
 
         s = tf.matmul(g, f, transpose_b=True)
-        beta = tf.nn.softmax(s, axis=-1)
+        b = tf.nn.softmax(s, axis=-1)
+
+        if training and self.dropout:
+            b = self.dropout_layer(b)
+            b = tf.keras.ops.divide_no_nan(b, tf.reduce_sum(b, axis=-1, keepdims=True))
 
         h = self.h_dense(inputs)
 
@@ -1950,13 +1954,10 @@ class SelfAttentionDense(tf.keras.layers.Layer):
 
         h = tf.reshape(h, shape=(shape[0], -1, h.shape[-1]))
 
-        o = tf.matmul(beta, h)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h]) * self.beta
-
-        if training and self.dropout:
-            o = self.dropout_layer(o)
+        o = tf.matmul(b, h)
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h])
 
         if self.features != self.h:
             o = self.o_dense(o)
 
-        return inputs + o
+        return inputs + o * self.beta
