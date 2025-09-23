@@ -17,7 +17,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
     def __init__(self,
                  optimizer,
                  normalization='std',
-                 epsilon=1e-7,
                  **kwargs):
         """
         Initialize the class instance.
@@ -28,8 +27,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             Base optimizer to wrap.
         normalization : str, optional
             Type of gradient normalization to apply.
-        epsilon : float, optional
-            Small constant for numerical stability.
         **kwargs : dict
             Additional arguments.
         """
@@ -40,7 +37,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
 
         self.optimizer = optimizer
         self.normalization = normalization
-        self.epsilon = epsilon
 
         normalization_functions = {
             'avg_l1_l2': self._average_l1_l2_norm,
@@ -71,7 +67,6 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
         config.update({
             'optimizer': tf.keras.optimizers.serialize(self.optimizer),
             'normalization': self.normalization,
-            'epsilon': self.epsilon,
         })
 
         return config
@@ -91,7 +86,7 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             The operation that applies gradients.
         """
 
-        grads_and_vars = [(grad / (self.fn(grad) + self.epsilon), var)
+        grads_and_vars = [(tf.keras.ops.divide_no_nan(grad, self.fn(grad)), var)
                           for grad, var in grads_and_vars if grad is not None]
 
         return self.optimizer.apply_gradients(grads_and_vars)
@@ -266,6 +261,5 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
 
         optimizer = tf.keras.optimizers.deserialize(config.pop('optimizer'))
         normalization = config.pop('normalization', 'std')
-        epsilon = config.pop('epsilon', 1e-7)
 
-        return cls(optimizer, normalization, epsilon, **config)
+        return cls(optimizer, normalization, **config)
