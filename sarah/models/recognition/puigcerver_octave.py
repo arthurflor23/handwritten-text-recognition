@@ -47,8 +47,8 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = [encoder, tf.keras.layers.AveragePooling2D(pool_size=2)(encoder)]
         high, low = OctaveConv2D(alpha=0.25, filters=16)(encoder)
 
-        high = tf.keras.layers.BatchNormalization()(high)
-        low = tf.keras.layers.BatchNormalization()(low)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
@@ -56,8 +56,8 @@ class RecognitionModel(BaseRecognitionModel):
 
         high, low = OctaveConv2D(alpha=0.25, filters=32)([high, low])
 
-        high = tf.keras.layers.BatchNormalization()(high)
-        low = tf.keras.layers.BatchNormalization()(low)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
         high = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(high)
@@ -69,8 +69,8 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization()(high)
-        low = tf.keras.layers.BatchNormalization()(low)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
 
@@ -80,8 +80,8 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization()(high)
-        low = tf.keras.layers.BatchNormalization()(low)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
 
@@ -91,17 +91,17 @@ class RecognitionModel(BaseRecognitionModel):
         high = tf.keras.layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(high)
         low = tf.keras.layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(low)
 
-        high = tf.keras.layers.BatchNormalization()(high)
-        low = tf.keras.layers.BatchNormalization()(low)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         high = tf.keras.layers.LeakyReLU(negative_slope=0.01)(high)
         low = tf.keras.layers.LeakyReLU(negative_slope=0.01)(low)
 
         high, low = OctaveConv2D(alpha=0.25, filters=80)([high, low])
 
-        high = tf.keras.layers.BatchNormalization()(high)
+        high = tf.keras.layers.BatchNormalization(epsilon=1e-5)(high)
         high = tf.keras.layers.Activation('relu')(high)
 
-        low = tf.keras.layers.BatchNormalization()(low)
+        low = tf.keras.layers.BatchNormalization(epsilon=1e-5)(low)
         low = tf.keras.layers.Activation('relu')(low)
 
         high_to_high = tf.keras.layers.Conv2D(80, 3, padding='same')(high)
@@ -110,7 +110,7 @@ class RecognitionModel(BaseRecognitionModel):
         low_to_high = tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 2, 2, 1]), name='tile')(low_to_high)
 
         encoder = tf.keras.layers.Add()([high_to_high, low_to_high])
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation('relu')(encoder)
 
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2] // 16, -1))(encoder)

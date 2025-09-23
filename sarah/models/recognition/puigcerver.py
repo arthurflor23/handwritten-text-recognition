@@ -45,7 +45,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          strides=(1, 1),
                                          padding='same')(encoder)
 
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(encoder)
 
@@ -54,7 +54,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          strides=(1, 1),
                                          padding='same')(encoder)
 
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
@@ -64,7 +64,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          strides=(1, 1),
                                          padding='same')(encoder)
 
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
@@ -73,7 +73,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          strides=(1, 1),
                                          padding='same')(encoder)
 
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
@@ -82,7 +82,7 @@ class RecognitionModel(BaseRecognitionModel):
                                          strides=(1, 1),
                                          padding='same')(encoder)
 
-        encoder = tf.keras.layers.BatchNormalization()(encoder)
+        encoder = tf.keras.layers.BatchNormalization(epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
 
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2] // 16, -1))(encoder)
