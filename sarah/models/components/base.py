@@ -2,7 +2,7 @@ import os
 import re
 import string
 import numpy as np
-import editdistance
+import Levenshtein
 import tensorflow as tf
 
 from sarah.models.components.losses import CTCLoss
@@ -544,8 +544,11 @@ class BaseRecognitionModel(BaseModel):
                 for j, predict in enumerate(text_pred):
                     pd = _standardize(text=predict)
 
-                    cer = editdistance.eval(list(gt), list(pd)) / char_length
-                    wer = editdistance.eval(gt.split(), pd.split()) / word_length
+                    max_char_distance = max(char_length, max(1, len(pd)))
+                    max_word_distance = max(word_length, max(1, len(pd.split())))
+
+                    cer = Levenshtein.distance(gt, pd, score_cutoff=max_char_distance) / char_length
+                    wer = Levenshtein.distance(gt.split(), pd.split(), score_cutoff=max_word_distance) / word_length
 
                     metrics['cer'].append(cer)
                     metrics['wer'].append(wer)
@@ -553,7 +556,7 @@ class BaseRecognitionModel(BaseModel):
                     local_evaluation['predictions'].append({
                         'index': (j + 1),
                         'text': predict,
-                        'probability': prob_pred if prob_pred is None else prob_pred[j],
+                        'probability': prob_pred[j] if prob_pred is not None else None,
                         'cer': cer,
                         'wer': wer,
                     })
