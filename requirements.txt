@@ -1,6 +1,6 @@
 levenshtein==0.27.1
 mlflow==3.5.1
-openai==2.6.0
+openai==2.6.1
 opencv-python==4.12.0.88
 tensorflow[and-cuda]==2.20.0;   platform_system != 'Darwin'
 tensorflow==2.20.0;             platform_system == 'Darwin'
