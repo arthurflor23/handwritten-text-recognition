@@ -63,10 +63,10 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
-        self.norm = tf.keras.layers.GroupNormalization(groups=-1,
-                                                       scale=False,
-                                                       center=False,
-                                                       epsilon=self.epsilon)
+        self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
 
     def call(self, inputs, training=False):
         """
@@ -93,7 +93,7 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         beta = tf.reshape(beta, [-1, 1, 1, self.channels])
         gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
 
-        normed = self.norm(x, training=training)
+        normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
 
         return outputs
@@ -165,10 +165,10 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
         self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
 
-        self.norm = tf.keras.layers.BatchNormalization(momentum=self.momentum,
-                                                       scale=False,
-                                                       center=False,
-                                                       epsilon=self.epsilon)
+        self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
 
     def call(self, inputs, training=False):
         """
@@ -195,7 +195,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         beta = tf.reshape(beta, [-1, 1, 1, self.channels])
         gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
 
-        normed = self.norm(x, training=training)
+        normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
 
         return outputs
