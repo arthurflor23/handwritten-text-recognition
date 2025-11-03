@@ -72,7 +72,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=96, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization()(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
@@ -101,9 +101,9 @@ class RecognitionModel(BaseRecognitionModel):
         decoder = SelfAttentionDense()(decoder_input)
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder)
 
-        for _ in range(3):
-            forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
-            backwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
+        for rate in [0.3, 0.6, 0.6]:
+            forwards = tf.keras.layers.Dropout(rate=rate)(decoder)
+            backwards = tf.keras.layers.Dropout(rate=rate)(decoder)
 
             forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(forwards)
             backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(backwards)
