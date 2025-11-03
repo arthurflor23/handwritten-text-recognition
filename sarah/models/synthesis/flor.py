@@ -8,7 +8,7 @@ from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import GatedResidualConv2D
 from sarah.models.components.layers import Reparameterization
 
-from sarah.models.recognition.flor_v2 import RecognitionModel
+from sarah.models.recognition.flor import RecognitionModel
 from sarah.models.writer_identification.flor import WriterIdentificationModel
 
 
