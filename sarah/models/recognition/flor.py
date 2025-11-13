@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
+from sarah.models.components.layers import ConditionalAttentionDense
 from sarah.models.components.layers import GatedResidualConv2D
-from sarah.models.components.layers import SelfAttentionDense
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -98,14 +98,14 @@ class RecognitionModel(BaseRecognitionModel):
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
-        decoder = SelfAttentionDense()(decoder_input)
+        decoder = ConditionalAttentionDense()(decoder_input)
         decoder = tf.keras.layers.Reshape(target_shape=(-1, encoder.shape[-1]))(decoder)
 
         for rate in [0.3, 0.6, 0.6]:
             forwards = tf.keras.layers.Dropout(rate=rate)(decoder)
-            backwards = tf.keras.layers.Dropout(rate=rate)(decoder)
-
             forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(forwards)
+
+            backwards = tf.keras.layers.Dropout(rate=rate)(decoder)
             backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(backwards)
 
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
