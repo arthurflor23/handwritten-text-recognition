@@ -310,6 +310,9 @@ class Compose():
                     restore_best_weights=True,
                     verbose=verbose,
                 ),
+                tf.keras.callbacks.SwapEMAWeights(
+                    swap_on_epoch=self.model.optimizer.use_ema,
+                ),
             ]
 
             if self.recognition or self.writer_identification:
