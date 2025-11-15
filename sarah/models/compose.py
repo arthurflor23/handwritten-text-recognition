@@ -290,7 +290,10 @@ class Compose():
             monitor = self.model.monitor if validation_gen \
                 else self.model.monitor.lstrip('val_')
 
-            callbacks = [
+            callbacks = [tf.keras.callbacks.SwapEMAWeights(swap_on_epoch=True)] \
+                if self.model.optimizer.use_ema else []
+
+            callbacks.extend([
                 TrainingLogger(
                     mode='min',
                     monitor=monitor,
@@ -310,12 +313,7 @@ class Compose():
                     restore_best_weights=True,
                     verbose=verbose,
                 ),
-            ]
-
-            if self.model.optimizer.use_ema:
-                callbacks.extend([
-                    tf.keras.callbacks.SwapEMAWeights(swap_on_epoch=True),
-                ])
+            ])
 
             if self.recognition or self.writer_identification:
                 callbacks.extend([
