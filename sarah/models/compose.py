@@ -287,8 +287,8 @@ class Compose():
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
 
-            monitor = self.model.monitor if validation_gen \
-                else self.model.monitor.lstrip('val_')
+            monitor = self.model.monitor.lstrip('val_') \
+                if validation_gen is None else self.model.monitor
 
             callbacks = [tf.keras.callbacks.SwapEMAWeights(swap_on_epoch=True)] \
                 if self.model.optimizer.use_ema else []
