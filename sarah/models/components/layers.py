@@ -116,8 +116,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
                  h=None,
+                 k=8,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -131,10 +131,10 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
-            Number of groups to split the input channels.
         h : int, optional
             Number of output channels for the attention layer.
+        k : int, optional
+            Number of groups to split the input channels.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -155,8 +155,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.k = k
         self.h = h
+        self.k = k
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -178,8 +178,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'k': self.k,
             'h': self.h,
+            'k': self.k,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -350,8 +350,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
                  h=None,
+                 k=8,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -365,10 +365,10 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
-            Number of groups to split the input channels.
         h : int, optional
             Number of output channels for the attention layer.
+        k : int, optional
+            Number of groups to split the input channels.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -389,8 +389,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.k = k
         self.h = h
+        self.k = k
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -412,8 +412,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'k': self.k,
             'h': self.h,
+            'k': self.k,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -585,8 +585,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
                  h=None,
+                 k=8,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -600,10 +600,10 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
-            Number of groups to split the input channels.
         h : int, optional
             Number of output channels for the attention layer.
+        k : int, optional
+            Number of groups to split the input channels.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -624,8 +624,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.k = k
         self.h = h
+        self.k = k
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -647,8 +647,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'k': self.k,
             'h': self.h,
+            'k': self.k,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -1015,8 +1015,8 @@ class ContentAlignment(tf.keras.layers.Layer):
         mask_height = self.get_content_length(input_mask, self.mask_padding_value, axis=1)
         mask_width = self.get_content_length(input_mask, self.mask_padding_value, axis=2)
 
-        def content_alignment(args):
-            img, text_h, text_w, mask_h, mask_w = args
+        def content_alignment(elems):
+            img, text_h, text_w, mask_h, mask_w = elems
             image = tf.image.resize(img[:text_h, :text_w, :], size=(mask_h, mask_w), method=self.resize_method)
 
             if tf.shape(img)[1] > text_w and self.target_shape[2] > mask_w:
@@ -1041,9 +1041,9 @@ class ContentAlignment(tf.keras.layers.Layer):
 
             return image
 
-        args = (input_data, text_height, text_width, mask_height, mask_width)
+        elems = (input_data, text_height, text_width, mask_height, mask_width)
 
-        outputs = tf.map_fn(content_alignment, args, fn_output_signature=tf.float32)
+        outputs = tf.map_fn(content_alignment, elems=elems, fn_output_signature=tf.float32)
         outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, self.image_padding_value, 0)
 
         return outputs
@@ -1115,7 +1115,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
-        return input_shape[-1]
+        return tf.TensorShape(input_shape[-1])
 
 
 class ExtractPatches(tf.keras.layers.Layer):
@@ -1771,11 +1771,10 @@ class OctaveConv2D(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
-        high_in_shape, low_in_shape = input_shape
-        high_out_shape = (*high_in_shape[:3], self.high_channels)
-        low_out_shape = (*low_in_shape[:3], self.low_channels)
+        output_shape = [(*input_shape[:3], self.high_channels),
+                        (*input_shape[:3], self.low_channels)]
 
-        return [high_out_shape, low_out_shape]
+        return tf.TensorShape(output_shape)
 
 
 class PositionEmbedding1D(tf.keras.layers.Layer):
