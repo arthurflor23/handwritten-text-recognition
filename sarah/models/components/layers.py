@@ -1790,7 +1790,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 max_length,
+                 sequence_length,
                  embeddings_initializer='uniform',
                  embeddings_regularizer=None,
                  embeddings_constraint=None,
@@ -1800,7 +1800,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        max_length : int
+        sequence_length : int
             Maximum length of the sequence.
         embeddings_initializer : str or initializer, optional
             Initializer for embeddings.
@@ -1811,7 +1811,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         """
         super().__init__(**kwargs)
 
-        self.max_length = max_length
+        self.sequence_length = sequence_length
         self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
         self.embeddings_regularizer = tf.keras.regularizers.get(embeddings_regularizer)
         self.embeddings_constraint = tf.keras.constraints.get(embeddings_constraint)
@@ -1829,7 +1829,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'max_length': self.max_length,
+            'sequence_length': self.sequence_length,
             'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
             'embeddings_regularizer': tf.keras.regularizers.serialize(self.embeddings_regularizer),
             'embeddings_constraint': tf.keras.constraints.serialize(self.embeddings_constraint),
@@ -1850,7 +1850,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         self.pos_embeddings = self.add_weight(name=f"{self.name}_pos_embeddings",
-                                              shape=(self.max_length, input_shape[-1]),
+                                              shape=(self.sequence_length, input_shape[-1]),
                                               initializer=self.embeddings_initializer,
                                               regularizer=self.embeddings_regularizer,
                                               constraint=self.embeddings_constraint,
