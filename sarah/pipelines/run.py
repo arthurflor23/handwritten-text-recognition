@@ -19,7 +19,8 @@ def run(args):
                                                      writer_identification=args.writer_identification,
                                                      writer_identification_run_id=args.writer_identification_run_id,
                                                      experiment_name=args.experiment_name,
-                                                     finished_runs=args.finished_runs)
+                                                     finished_runs=args.finished_runs,
+                                                     output_path=args.output_path)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -34,7 +35,7 @@ def run(args):
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
-                      input_path=args.source_input_path,
+                      input_path=args.input_path,
                       seed=args.seed)
     print(dataset)
 
@@ -67,6 +68,7 @@ def run(args):
                       generator_steps=args.generator_steps,
                       synthesis_probability=args.synthesis_probability,
                       experiment_name=args.experiment_name,
+                      output_path=args.output_path,
                       gpu=args.gpu,
                       seed=args.seed)
     print(compose)

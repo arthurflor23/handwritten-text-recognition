@@ -23,7 +23,8 @@ def inference(args):
                                                      writer_identification=args.writer_identification,
                                                      writer_identification_run_id=args.writer_identification_run_id,
                                                      experiment_name=args.experiment_name,
-                                                     finished_runs=args.finished_runs)
+                                                     finished_runs=args.finished_runs,
+                                                     output_path=args.output_path)
 
     if tokenizer is None or run_context is None:
         print('Tokenizer or run context not found to load.')
@@ -55,6 +56,7 @@ def inference(args):
                       image_shape=args.image_shape,
                       tokenizer=dataset.tokenizer,
                       experiment_name=args.experiment_name,
+                      output_path=args.output_path,
                       gpu=args.gpu,
                       seed=args.seed)
     print(compose)
@@ -82,8 +84,8 @@ def inference(args):
         print(inferences)
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
-        filepath = os.path.join(args.inference_output_path, f"{basename}.json")
-        os.makedirs(args.inference_output_path, exist_ok=True)
+        filepath = os.path.join(args.output_path, f"{basename}.json")
+        os.makedirs(args.output_path, exist_ok=True)
 
         with open(filepath, 'w') as f:
             f.write(inferences)
@@ -116,8 +118,8 @@ def inference(args):
         print(inferences)
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
-        filepath = os.path.join(args.inference_output_path, f"{basename}.json")
-        os.makedirs(args.inference_output_path, exist_ok=True)
+        filepath = os.path.join(args.output_path, f"{basename}.json")
+        os.makedirs(args.output_path, exist_ok=True)
 
         with open(filepath, 'w') as f:
             f.write(inferences)
@@ -129,8 +131,8 @@ def inference(args):
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
         filepath = f"{basename}_{'guided' if args.image else 'random'}".strip('_')
-        os.makedirs(args.inference_output_path, exist_ok=True)
+        os.makedirs(args.output_path, exist_ok=True)
 
         for i, image in enumerate(predictions):
-            generated_filepath = os.path.join(args.inference_output_path, f"{filepath}_{i+1}.png")
+            generated_filepath = os.path.join(args.output_path, f"{filepath}_{i+1}.png")
             cv2.imwrite(generated_filepath, image)

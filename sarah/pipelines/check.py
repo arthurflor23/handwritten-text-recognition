@@ -24,7 +24,7 @@ def check(args):
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       lazy_mode=args.lazy_mode,
-                      input_path=args.source_input_path,
+                      input_path=args.input_path,
                       seed=args.seed)
     print(dataset)
 
