@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
-    parser.add_argument('--input-path', default='datasets', help='Path to source data')
+    parser.add_argument('--input-path', default='datasets', help='Path to input data')
     parser.add_argument('--output-path', default='mlruns', help='Path to output data')
     parser.add_argument('--gpu', default=0, type=str, help='GPU index value')
     parser.add_argument('--seed', default=42, type=int, help='Seed value')
