@@ -31,6 +31,7 @@ class Compose():
                  generator_steps=1,
                  synthesis_probability=1.0,
                  experiment_name=None,
+                 output_path='mlruns',
                  gpu=0,
                  seed=None):
         """
@@ -58,6 +59,8 @@ class Compose():
             Synthetic data probability.
         experiment_name : str, optional
             Name of the MLflow experiment.
+        output_path : str, optional
+            Path to output data.
         gpu : int, optional
             GPU index value.
         seed : int, optional
@@ -70,15 +73,19 @@ class Compose():
         self.writer_identification = writer_identification
         self.tokenizer = tokenizer
         self.experiment_name = experiment_name or 'Default'
+        self.output_path = output_path
 
         self.model = None
         self.spelling_model = None
         self.run_context = None
 
         if self.synthesis or self.recognition or self.writer_identification:
-            tf.keras.backend.clear_session()
+            mlflow.set_tracking_uri(self.output_path)
+            mlflow.set_experiment(self.experiment_name)
 
             try:
+                tf.keras.backend.clear_session()
+
                 if gpu is None:
                     tf.config.set_visible_devices([], 'GPU')
                 else:
@@ -88,8 +95,6 @@ class Compose():
 
             except Exception:
                 pass
-
-            mlflow.set_experiment(self.experiment_name)
 
             SynthesisModel = None
             RecognitionModel = None
@@ -804,7 +809,8 @@ class Compose():
                       writer_identification=None,
                       writer_identification_run_id=None,
                       experiment_name=None,
-                      finished_runs=False):
+                      finished_runs=False,
+                      output_path='mlruns'):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -826,6 +832,8 @@ class Compose():
             MLflow experiment name.
         finished_runs : bool, optional
             Only finished runs for selection.
+        output_path : str, optional
+            Path to output data.
 
         Returns
         -------
@@ -833,7 +841,7 @@ class Compose():
             (tokenizer, run_context) or (None, None) if not found.
         """
 
-        Compose().fix_mlflow_artifacts_path()
+        Compose().fix_mlflow_artifacts_path(output_path)
 
         def get_artifacts_path(tag_name, tag_value, run_id):
             run, artifact_path = None, None
@@ -898,7 +906,7 @@ class Compose():
         return tokenizer, run_context
 
     @staticmethod
-    def fix_mlflow_artifacts_path():
+    def fix_mlflow_artifacts_path(output_path='mlruns'):
         """
         This static method addresses the issue where MLflow artifact paths become
             incorrect after moving the MLflow folder, by updating the paths in 'meta.yaml' files.
@@ -907,10 +915,17 @@ class Compose():
         -----
         Current workaround for fixing paths when mlflow folder is moved.
         GitHub Issue: https://github.com/mlflow/mlflow/issues/3144
+
+        Parameters
+        ----------
+        output_path : str, optional
+            Path to output data.
         """
 
+        mlflow.set_tracking_uri(output_path)
+
         artifact_path_keys = {'artifact_location': '', 'artifact_uri': 'artifacts'}
-        meta_files = glob.glob(os.path.join('mlruns', '**', 'meta.yaml'), recursive=True)
+        meta_files = glob.glob(os.path.join(output_path, '**', 'meta.yaml'), recursive=True)
 
         for metadata_file in meta_files:
             with open(metadata_file, 'r') as f:
