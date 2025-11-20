@@ -97,7 +97,6 @@ The project has several command-line parameters that can be used to customize it
 #### Dataset
 
 -   `--source`: Source data (e.g., iam, rimes).
--   `--source-input-path`: Path for source data input.
 -   `--text-level`: Text structure level (e.g., line, paragraph).
 -   `--image-shape`: Image dimensions (height, width, channels).
 -   `--pad-value`: Padding value for images.
@@ -154,7 +153,6 @@ The project has several command-line parameters that can be used to customize it
 #### Inference
 
 -   `--inference`: Perform inference pipeline.
--   `--inference-output-path`: Inference output path.
 -   `--image`: Image path for recognition.
 -   `--bbox`: Bounding box (x, y, width, height).
 -   `--text`: Text for synthesis.
@@ -162,6 +160,8 @@ The project has several command-line parameters that can be used to customize it
 #### Others
 
 -   `--check`: Perform check pipeline.
+-   `--input-path`: Path to source data.
+-   `--output-path`: Path to output data.
 -   `--gpu`: GPU index value.
 -   `--seed`: Seed value.
 -   `--verbose`: Verbosity level.
