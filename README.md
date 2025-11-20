@@ -160,7 +160,7 @@ The project has several command-line parameters that can be used to customize it
 #### Others
 
 -   `--check`: Perform check pipeline.
--   `--input-path`: Path to source data.
+-   `--input-path`: Path to input data.
 -   `--output-path`: Path to output data.
 -   `--gpu`: GPU index value.
 -   `--seed`: Seed value.
