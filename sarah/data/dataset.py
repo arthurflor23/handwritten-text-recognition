@@ -64,7 +64,7 @@ class Dataset():
         multigrams : bool, optional
             Enable multigrams process.
         input_path : str, optional
-            Path name to fetch the data.
+            Path to input data.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -175,7 +175,7 @@ class Dataset():
         Parameters
         ----------
         input_path : str, optional
-            Path name to fetch the data.
+            Path to input data.
         source : str
             The base name of the .zip file and target directory.
         """
