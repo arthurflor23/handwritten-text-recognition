@@ -116,8 +116,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 h=None,
                  k=8,
+                 h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -131,10 +131,10 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : int, optional
-            Number of output channels for the attention layer.
         k : int, optional
             Number of groups to split the input channels.
+        h : int, optional
+            Number of output channels for the attention layer.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -155,8 +155,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.h = h
         self.k = k
+        self.h = h
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -178,8 +178,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'h': self.h,
             'k': self.k,
+            'h': self.h,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -350,8 +350,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 h=None,
                  k=8,
+                 h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -365,10 +365,10 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : int, optional
-            Number of output channels for the attention layer.
         k : int, optional
             Number of groups to split the input channels.
+        h : int, optional
+            Number of output channels for the attention layer.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -389,8 +389,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.h = h
         self.k = k
+        self.h = h
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -412,8 +412,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'h': self.h,
             'k': self.k,
+            'h': self.h,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -585,8 +585,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 h=None,
                  k=8,
+                 h=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -600,10 +600,10 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : int, optional
-            Number of output channels for the attention layer.
         k : int, optional
             Number of groups to split the input channels.
+        h : int, optional
+            Number of output channels for the attention layer.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -624,8 +624,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.h = h
         self.k = k
+        self.h = h
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -647,8 +647,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'h': self.h,
             'k': self.k,
+            'h': self.h,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
