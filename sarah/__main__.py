@@ -30,7 +30,6 @@ if __name__ == '__main__':
 
     # dataset
     parser.add_argument('--source', default=None, help='Source data')
-    parser.add_argument('--source-input-path', default='datasets', help='Source input path')
     parser.add_argument('--text-level', default='line', help='Text structure level')
     parser.add_argument('--image-shape', default=(64, 1024, 1), nargs=3, type=int, help='Image dimensions (h, w, c)')
     parser.add_argument('--pad-value', default=0, type=int, help='Padding value for images')
@@ -82,13 +81,14 @@ if __name__ == '__main__':
 
     # inference
     parser.add_argument('--inference', default=False, action='store_true', help='Perform inference pipeline')
-    parser.add_argument('--inference-output-path', default='mlruns', help='Inference output path')
     parser.add_argument('--image', default=None, help='Image path for recognition')
     parser.add_argument('--bbox', default=None, nargs=4, help='Bounding box (x, y, w, h)')
     parser.add_argument('--text', default=None, help='Text for synthesis')
 
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
+    parser.add_argument('--input-path', default='datasets', help='Path to source data')
+    parser.add_argument('--output-path', default='mlruns', help='Path to output data')
     parser.add_argument('--gpu', default=0, type=str, help='GPU index value')
     parser.add_argument('--seed', default=42, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
@@ -129,4 +129,4 @@ if __name__ == '__main__':
         # mlflow path compatibility
         #   https://github.com/mlflow/mlflow/issues/3144
         from sarah.models.compose import Compose
-        Compose().fix_mlflow_artifacts_path()
+        Compose().fix_mlflow_artifacts_path(args.output_path)
