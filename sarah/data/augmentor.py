@@ -90,6 +90,7 @@ class Augmentor():
         """
 
         pad, width = 25, 60
+
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
         info += "\n" + "-" * width
