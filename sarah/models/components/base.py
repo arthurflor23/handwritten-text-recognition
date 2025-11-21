@@ -30,8 +30,12 @@ class BaseModel(tf.keras.Model):
         """
 
         pad, width = 25, 60
+
+        module_name = self.__class__.__module__.split('.')[-1]
+        class_name = self.__class__.__name__.center(width)
+
         info = "=" * width
-        info += f"\n{self.__class__.__name__.center(width)}"
+        info += f"\n{class_name}"
 
         for name in getattr(self, 'names', ['model']):
             model = self.get_model_by_name(name)
@@ -48,6 +52,7 @@ class BaseModel(tf.keras.Model):
             total_count = trainable_count + non_trainable_count
 
             info += "\n" + "-" * width
+            info += f"\n{'Module':<{pad}}: {module_name}"
             info += f"\n{'Model':<{pad}}: {model.name}"
             info += "\n" + "-" * width
             info += f"\n{'Total params':<{pad}}: {total_count:,}"
