@@ -61,8 +61,8 @@ class Compose():
             Name of the MLflow experiment.
         output_path : str, optional
             Path to output data.
-        gpu : int, optional
-            GPU index value.
+        gpu : int, list, or tuple, optional
+            GPU index or sequence of indices.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -71,9 +71,19 @@ class Compose():
         self.recognition = recognition
         self.spelling = spelling
         self.writer_identification = writer_identification
+
+        self.image_shape = image_shape
         self.tokenizer = tokenizer
+
+        self.discriminator_steps = discriminator_steps
+        self.generator_steps = generator_steps
+        self.synthesis_probability = synthesis_probability
+
         self.experiment_name = experiment_name or 'Default'
         self.output_path = output_path
+
+        self.gpu = gpu
+        self.seed = seed
 
         self.model = None
         self.spelling_model = None
@@ -84,14 +94,18 @@ class Compose():
             mlflow.set_experiment(self.experiment_name)
 
             try:
-                tf.keras.backend.clear_session()
+                tf.keras.backend.clear_session(free_memory=True)
 
-                if gpu is None:
-                    tf.config.set_visible_devices([], 'GPU')
-                else:
-                    device = tf.config.list_physical_devices('GPU')[gpu]
-                    tf.config.set_visible_devices(device, 'GPU')
-                    tf.config.experimental.set_memory_growth(device, True)
+                indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
+                indices = [int(i) for i in indices if str(i).isdigit()]
+
+                devices = tf.config.list_physical_devices('GPU')
+                devices = [devices[i] for i in indices]
+
+                tf.config.set_visible_devices(devices=devices, device_type='GPU')
+
+                for device in devices:
+                    tf.config.experimental.set_memory_growth(device=device, enable=True)
 
             except Exception:
                 pass
@@ -119,35 +133,35 @@ class Compose():
 
             if SynthesisModel and not RecognitionModel and not WriterIdentificationModel:
                 self.model = SynthesisModel(name='synthesis',
-                                            image_shape=image_shape,
+                                            image_shape=self.image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
                                             writers_shape=self.tokenizer.writers_shape,
-                                            discriminator_steps=discriminator_steps,
-                                            generator_steps=generator_steps,
-                                            seed=seed)
+                                            discriminator_steps=self.discriminator_steps,
+                                            generator_steps=self.generator_steps,
+                                            seed=self.seed)
             else:
                 synthesis_params = {}
 
                 if SynthesisModel:
                     synthesis = SynthesisModel(name='synthesis',
-                                               image_shape=image_shape,
+                                               image_shape=self.image_shape,
                                                lexical_shape=self.tokenizer.lexical_shape,
                                                writers_shape=self.tokenizer.writers_shape,
-                                               discriminator_steps=discriminator_steps,
-                                               generator_steps=generator_steps,
-                                               seed=seed)
+                                               discriminator_steps=self.discriminator_steps,
+                                               generator_steps=self.generator_steps,
+                                               seed=self.seed)
                     synthesis_params = {
                         'writer_encoder': synthesis.writer_encoder,
                         'style_encoder': synthesis.style_encoder,
                         'generator': synthesis.generator,
-                        'synthesis_probability': synthesis_probability,
+                        'synthesis_probability': self.synthesis_probability,
                     }
 
                 if RecognitionModel:
                     self.model = RecognitionModel(name='recognition',
-                                                  image_shape=image_shape,
+                                                  image_shape=self.image_shape,
                                                   lexical_shape=self.tokenizer.lexical_shape,
-                                                  seed=seed,
+                                                  seed=self.seed,
                                                   **synthesis_params)
 
                     if SpellingModel:
@@ -155,9 +169,9 @@ class Compose():
 
                 elif WriterIdentificationModel:
                     self.model = WriterIdentificationModel(name='writer_identification',
-                                                           image_shape=image_shape,
+                                                           image_shape=self.image_shape,
                                                            writers_shape=self.tokenizer.writers_shape,
-                                                           seed=seed,
+                                                           seed=self.seed,
                                                            **synthesis_params)
 
     def __repr__(self):
@@ -174,6 +188,7 @@ class Compose():
             return str(None)
 
         width = 60
+
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
         info += f"\n{self.model}"
