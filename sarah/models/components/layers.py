@@ -132,9 +132,9 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups to split the input channels.
+            Number of groups for input channels.
         h : int or float, optional
-            Projection factor applied to the value features.
+            Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -360,9 +360,9 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups to split the input channels.
+            Number of groups for input channels.
         h : int or float, optional
-            Projection factor applied to the value features.
+            Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -589,9 +589,9 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups to split the input channels.
+            Number of groups for input channels.
         h : int or float, optional
-            Projection factor applied to the value features.
+            Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
