@@ -116,7 +116,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=1/8,
                  h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -132,7 +132,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Divisor factor for channel reduction.
+            Projection factor for query and key features.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -219,7 +219,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
             raise ValueError("Unsupported input shape: must be 1D")
 
         self.filters = query_shape[-1]
-        self.k_filters = int(self.filters / self.k)
+        self.k_filters = int(self.filters * self.k)
         self.h_filters = int(self.filters * self.h)
 
         if self.pooling:
@@ -346,7 +346,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=1/8,
                  h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -362,7 +362,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Divisor factor for channel reduction.
+            Projection factor for query and key features.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -450,7 +450,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
             raise ValueError("Unsupported input shape: must be 2D")
 
         self.filters = query_shape[-1]
-        self.k_filters = int(self.filters / self.k)
+        self.k_filters = int(self.filters * self.k)
         self.h_filters = int(self.filters * self.h)
 
         if self.pooling:
@@ -577,7 +577,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 k=8,
+                 k=1/8,
                  h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -593,7 +593,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Divisor factor for channel reduction.
+            Projection factor for query and key features.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -686,7 +686,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
         self.units = query_shape[-1]
-        self.k_units = int(self.units / self.k)
+        self.k_units = int(self.units * self.k)
         self.h_units = int(self.units * self.h)
 
         if self.pooling:
