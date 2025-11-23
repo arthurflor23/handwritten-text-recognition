@@ -295,7 +295,6 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(query))
         B, T = shape[0], shape[1]
 
-        # key projection
         k = self.k_conv(key)
 
         if self.pooling:
@@ -303,11 +302,9 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         k = tf.reshape(k, shape=[B, -1, k.shape[-1]])
 
-        # query projection
         q = self.q_conv(query)
         q = tf.reshape(q, shape=[B, -1, q.shape[-1]])
 
-        # attention weights
         s = tf.matmul(q, k, transpose_b=True)
         s = tf.nn.softmax(s, axis=-1)
 
@@ -315,7 +312,6 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
             s = self.dropout_layer(s)
             s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
-        # value projection
         v = self.v_conv(value)
 
         if self.pooling:
@@ -323,7 +319,6 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
-        # output
         o = tf.matmul(s, v)
         o = tf.reshape(o, shape=[B, T, self.h])
 
@@ -530,7 +525,6 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         shape = tf.unstack(tf.shape(query))
         B, H, W = shape[0], shape[1], shape[2]
 
-        # key projection
         k = self.k_conv(key)
 
         if self.pooling:
@@ -538,11 +532,9 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         k = tf.reshape(k, shape=[B, -1, k.shape[-1]])
 
-        # query projection
         q = self.q_conv(query)
         q = tf.reshape(q, shape=[B, -1, q.shape[-1]])
 
-        # attention weights
         s = tf.matmul(q, k, transpose_b=True)
         s = tf.nn.softmax(s, axis=-1)
 
@@ -550,7 +542,6 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
             s = self.dropout_layer(s)
             s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
-        # value projection
         v = self.v_conv(value)
 
         if self.pooling:
@@ -558,7 +549,6 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
-        # output
         o = tf.matmul(s, v)
         o = tf.reshape(o, shape=[B, H, W, self.h])
 
@@ -761,7 +751,6 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         shape = tf.unstack(tf.shape(query))
 
-        # key projection
         k = self.k_dense(key)
 
         if self.pooling:
@@ -769,11 +758,9 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         k = tf.reshape(k, shape=(shape[0], -1, k.shape[-1]))
 
-        # query projection
         q = self.q_dense(query)
         q = tf.reshape(q, shape=(shape[0], -1, q.shape[-1]))
 
-        # attention weights
         s = tf.matmul(q, k, transpose_b=True)
         s = tf.nn.softmax(s, axis=-1)
 
@@ -781,7 +768,6 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
             s = self.dropout_layer(s)
             s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
-        # value projection
         v = self.v_dense(value)
 
         if self.pooling:
@@ -789,7 +775,6 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         v = tf.reshape(v, shape=(shape[0], -1, v.shape[-1]))
 
-        # output
         o = tf.matmul(s, v)
         o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h])
 
