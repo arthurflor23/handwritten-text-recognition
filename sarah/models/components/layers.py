@@ -219,12 +219,14 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
             raise ValueError("Unsupported input shape: must be 1D")
 
         self.filters = query_shape[-1]
+        self.k_filters = int(self.filters / self.k)
+        self.h_filters = int(self.filters * self.h)
 
         if self.pooling:
             self.k_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
             self.v_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
 
-        self.k_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
+        self.k_conv = tf.keras.layers.Conv1D(filters=self.k_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -232,7 +234,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.q_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
+        self.q_conv = tf.keras.layers.Conv1D(filters=self.k_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -240,7 +242,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_conv = tf.keras.layers.Conv1D(filters=self.features * self.h,
+        self.v_conv = tf.keras.layers.Conv1D(filters=self.h_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -319,7 +321,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, T, self.features * self.h])
+        o = tf.reshape(o, shape=[B, T, self.h_filters])
 
         if self.h != 1:
             o = self.o_conv(o)
@@ -448,12 +450,14 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
             raise ValueError("Unsupported input shape: must be 2D")
 
         self.filters = query_shape[-1]
+        self.k_filters = int(self.filters / self.k)
+        self.h_filters = int(self.filters * self.h)
 
         if self.pooling:
             self.k_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
             self.v_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
 
-        self.k_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
+        self.k_conv = tf.keras.layers.Conv2D(filters=self.k_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -461,7 +465,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.q_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
+        self.q_conv = tf.keras.layers.Conv2D(filters=self.k_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -469,7 +473,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_conv = tf.keras.layers.Conv2D(filters=self.features * self.h,
+        self.v_conv = tf.keras.layers.Conv2D(filters=self.h_filters,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -548,7 +552,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, H, W, self.features * self.h])
+        o = tf.reshape(o, shape=[B, H, W, self.h_filters])
 
         if self.h != 1:
             o = self.o_conv(o)
@@ -681,32 +685,34 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
-        self.features = query_shape[-1]
+        self.units = query_shape[-1]
+        self.k_units = int(self.units / self.k)
+        self.h_units = int(self.units * self.h)
 
         if self.pooling:
             self.k_pooling = pooling_layer(pool_size=pool_size, strides=strides)
             self.v_pooling = pooling_layer(pool_size=pool_size, strides=strides)
 
-        self.k_dense = tf.keras.layers.Dense(units=self.features // self.k,
+        self.k_dense = tf.keras.layers.Dense(units=self.k_units,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.q_dense = tf.keras.layers.Dense(units=self.features // self.k,
+        self.q_dense = tf.keras.layers.Dense(units=self.k_units,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_dense = tf.keras.layers.Dense(units=self.features * self.h,
+        self.v_dense = tf.keras.layers.Dense(units=self.h_units,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
         if self.h != 1:
-            self.o_dense = tf.keras.layers.Dense(units=self.features,
+            self.o_dense = tf.keras.layers.Dense(units=self.units,
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
@@ -773,7 +779,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=(shape[0], -1, v.shape[-1]))
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.features * self.h])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h_units])
 
         if self.h != 1:
             o = self.o_dense(o)
@@ -1414,7 +1420,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 h=None,
+                 h=1.0,
                  kernel_size=(3, 3),
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -1429,8 +1435,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : int, optional
-            Reduce the channels dimension to the value.
+        h : int or float, optional
+            Projection factor for features.
         kernel_size : int or tuple, optional
             Convolution window size.
         kernel_initializer : initializer, optional
@@ -1502,9 +1508,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         self.filters = input_shape[-1]
-        self.h = self.h or self.filters
+        self.h_filters = int(self.filters * self.h)
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.h,
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.h_filters,
                                              kernel_size=self.kernel_size,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -1512,7 +1518,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        if self.filters != self.h:
+        if self.h != 1:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
                                                  padding='valid',
@@ -1556,7 +1562,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         if training and self.dropout:
             g_conv = self.dropout_layer(g_conv)
 
-        if self.filters != self.h:
+        if self.h != 1:
             g_conv = self.o_conv(g_conv)
 
         return inputs + g_conv * self.beta
