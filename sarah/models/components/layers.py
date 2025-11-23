@@ -117,7 +117,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
     def __init__(self,
                  k=8,
-                 h=None,
+                 h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -133,8 +133,8 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         ----------
         k : int, optional
             Number of groups to split the input channels.
-        h : int, optional
-            Number of output channels for the attention layer.
+        h : int or float, optional
+            Projection factor applied to the value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -218,12 +218,11 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         else:
             raise ValueError("Unsupported input shape: must be 1D")
 
+        self.filters = query_shape[-1]
+
         if self.pooling:
             self.k_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
             self.v_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
-
-        self.filters = query_shape[-1]
-        self.h = self.h or self.filters
 
         self.k_conv = tf.keras.layers.Conv1D(filters=self.filters // self.k,
                                              kernel_size=1,
@@ -241,7 +240,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_conv = tf.keras.layers.Conv1D(filters=self.h,
+        self.v_conv = tf.keras.layers.Conv1D(filters=self.features * self.h,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -249,7 +248,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        if self.filters != self.h:
+        if self.h != 1:
             self.o_conv = tf.keras.layers.Conv1D(filters=self.filters,
                                                  kernel_size=1,
                                                  padding='valid',
@@ -320,9 +319,9 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, T, self.h])
+        o = tf.reshape(o, shape=[B, T, self.features * self.h])
 
-        if self.filters != self.h:
+        if self.h != 1:
             o = self.o_conv(o)
 
         return query + o * self.beta
@@ -346,7 +345,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
     def __init__(self,
                  k=8,
-                 h=None,
+                 h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -362,8 +361,8 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         ----------
         k : int, optional
             Number of groups to split the input channels.
-        h : int, optional
-            Number of output channels for the attention layer.
+        h : int or float, optional
+            Projection factor applied to the value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -448,12 +447,11 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         else:
             raise ValueError("Unsupported input shape: must be 2D")
 
+        self.filters = query_shape[-1]
+
         if self.pooling:
             self.k_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
             self.v_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
-
-        self.filters = query_shape[-1]
-        self.h = self.h or self.filters
 
         self.k_conv = tf.keras.layers.Conv2D(filters=self.filters // self.k,
                                              kernel_size=1,
@@ -471,7 +469,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_conv = tf.keras.layers.Conv2D(filters=self.h,
+        self.v_conv = tf.keras.layers.Conv2D(filters=self.features * self.h,
                                              kernel_size=1,
                                              padding='valid',
                                              kernel_initializer=self.kernel_initializer,
@@ -479,7 +477,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        if self.filters != self.h:
+        if self.h != 1:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
                                                  padding='valid',
@@ -550,9 +548,9 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, H, W, self.h])
+        o = tf.reshape(o, shape=[B, H, W, self.features * self.h])
 
-        if self.filters != self.h:
+        if self.h != 1:
             o = self.o_conv(o)
 
         return query + o * self.beta
@@ -576,7 +574,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
     def __init__(self,
                  k=8,
-                 h=None,
+                 h=1.0,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -592,8 +590,8 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         ----------
         k : int, optional
             Number of groups to split the input channels.
-        h : int, optional
-            Number of output channels for the attention layer.
+        h : int or float, optional
+            Projection factor applied to the value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -683,12 +681,11 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         else:
             raise ValueError("Unsupported input shape: must be 1D or 2D")
 
+        self.features = query_shape[-1]
+
         if self.pooling:
             self.k_pooling = pooling_layer(pool_size=pool_size, strides=strides)
             self.v_pooling = pooling_layer(pool_size=pool_size, strides=strides)
-
-        self.features = query_shape[-1]
-        self.h = self.h or self.features
 
         self.k_dense = tf.keras.layers.Dense(units=self.features // self.k,
                                              kernel_initializer=self.kernel_initializer,
@@ -702,13 +699,13 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        self.v_dense = tf.keras.layers.Dense(units=self.h,
+        self.v_dense = tf.keras.layers.Dense(units=self.features * self.h,
                                              kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.kernel_regularizer,
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        if self.features != self.h:
+        if self.h != 1:
             self.o_dense = tf.keras.layers.Dense(units=self.features,
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
@@ -776,9 +773,9 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         v = tf.reshape(v, shape=(shape[0], -1, v.shape[-1]))
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h])
+        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.features * self.h])
 
-        if self.features != self.h:
+        if self.h != 1:
             o = self.o_dense(o)
 
         return query + o * self.beta
