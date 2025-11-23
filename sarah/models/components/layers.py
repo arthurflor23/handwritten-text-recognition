@@ -132,7 +132,7 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups for input channels.
+            Divisor factor for channel reduction.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -144,11 +144,11 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
         beta_initializer : initializer, optional
             Beta weights initializer.
         dropout : float, optional
-            Dropout rate to apply on attention weights.
+            Dropout rate for attention weights.
         pooling : bool, optional
-            Whether apply pooling reducing or not.
+            Enables spatial reduction with max pooling.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -362,7 +362,7 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups for input channels.
+            Divisor factor for channel reduction.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -374,11 +374,11 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
         beta_initializer : initializer, optional
             Beta weights initializer.
         dropout : float, optional
-            Dropout rate to apply on attention weights.
+            Dropout rate for attention weights.
         pooling : bool, optional
-            Whether apply pooling reducing or not.
+            Enables spatial reduction with max pooling.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -593,7 +593,7 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         Parameters
         ----------
         k : int, optional
-            Number of groups for input channels.
+            Divisor factor for channel reduction.
         h : int or float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
@@ -605,11 +605,11 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
         beta_initializer : initializer, optional
             Beta weights initializer.
         dropout : float, optional
-            Dropout rate to apply on attention weights.
+            Dropout rate for attention weights.
         pooling : bool, optional
-            Whether apply pooling reducing or not.
+            Enables spatial reduction with max pooling.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -809,7 +809,7 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         epsilon : float, optional
             Small float added to variance to avoid dividing by zero.
         **kwargs : dict
-            Additional arguments.
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
@@ -1226,9 +1226,9 @@ class GatedConv2D(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
-            Conv2D keyword arguments.
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
@@ -1336,9 +1336,9 @@ class GatedDualConv2D(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
-            Conv2D keyword arguments.
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
@@ -1452,9 +1452,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         dropout : float, optional
             Whether to apply dropout or not.
         use_bias : bool, optional
-            Whether the layers use bias vectors/matrices.
+            Enables bias terms in the projection layers.
         **kwargs : dict
-            Conv2D keyword arguments.
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
@@ -1611,7 +1611,7 @@ class OctaveConv2D(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         **kwargs : dict
-            Additional arguments.
+            Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
