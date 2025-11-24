@@ -64,7 +64,6 @@ class CTCLoss(tf.keras.losses.Loss):
         #                           label_length=length,
         #                           logit_length=length,
         #                           logits_time_major=False,
-        #                           unique=False,
         #                           blank_index=-1)
 
         ctc_loss = tf.reduce_mean(ctc_loss)
