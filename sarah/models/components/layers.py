@@ -131,9 +131,9 @@ class ConditionalAttentionConv1D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
+        k : float, optional
             Projection factor for query and key features.
-        h : int or float, optional
+        h : float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
@@ -361,9 +361,9 @@ class ConditionalAttentionConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
+        k : float, optional
             Projection factor for query and key features.
-        h : int or float, optional
+        h : float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
@@ -592,9 +592,9 @@ class ConditionalAttentionDense(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        k : int, optional
+        k : float, optional
             Projection factor for query and key features.
-        h : int or float, optional
+        h : float, optional
             Projection factor for value features.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
@@ -1435,7 +1435,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : int or float, optional
+        h : float, optional
             Projection factor for features.
         kernel_size : int or tuple, optional
             Convolution window size.
