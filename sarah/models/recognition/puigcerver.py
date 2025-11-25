@@ -24,7 +24,7 @@ class RecognitionModel(BaseRecognitionModel):
             Optimizer learning rate.
         """
 
-        super().compile(run_eagerly=False)
+        super().compile(run_eagerly=False, jit_compile=False)
 
         if learning_rate is None:
             learning_rate = 3e-4
