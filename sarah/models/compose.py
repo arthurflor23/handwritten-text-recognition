@@ -94,7 +94,6 @@ class Compose():
             mlflow.set_experiment(self.experiment_name)
 
             try:
-                tf.keras.backend.set_epsilon(value=1e-8)
                 tf.keras.backend.clear_session(free_memory=True)
 
                 indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
