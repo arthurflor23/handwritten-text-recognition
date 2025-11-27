@@ -94,6 +94,7 @@ class Compose():
             mlflow.set_experiment(self.experiment_name)
 
             try:
+                tf.keras.backend.set_epsilon(value=1e-8)
                 tf.keras.backend.clear_session(free_memory=True)
 
                 indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
@@ -327,7 +328,7 @@ class Compose():
                 tf.keras.callbacks.EarlyStopping(
                     mode='min',
                     monitor=monitor,
-                    min_delta=1e-7,
+                    min_delta=1e-8,
                     patience=patience,
                     start_from_epoch=0,
                     restore_best_weights=True,
@@ -341,7 +342,7 @@ class Compose():
                         mode='min',
                         monitor=monitor,
                         min_lr=1e-4,
-                        min_delta=1e-7,
+                        min_delta=1e-8,
                         factor=plateau_factor,
                         cooldown=plateau_cooldown,
                         patience=plateau_patience,
