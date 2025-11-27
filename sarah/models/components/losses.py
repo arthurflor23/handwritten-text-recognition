@@ -88,9 +88,8 @@ class CTXLoss(tf.keras.losses.Loss):
     """
 
     def __init__(self,
-                 distance='cosine',
                  sigma=0.5,
-                 epsilon=1e-7,
+                 distance='cosine',
                  name='ctx_loss',
                  **kwargs):
         """
@@ -98,12 +97,10 @@ class CTXLoss(tf.keras.losses.Loss):
 
         Parameters
         ----------
-        distance : str, optional
-            Distance measure to use: 'cosine', 'l1', or 'l2'.
         sigma : float, optional
             Sharpness parameter of the similarity function.
-        epsilon : float, optional
-            Small constant for numerical stability.
+        distance : str, optional
+            Distance measure to use: 'cosine', 'l1', or 'l2'.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -112,9 +109,8 @@ class CTXLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-        self.distance = distance
         self.sigma = sigma
-        self.epsilon = epsilon
+        self.distance = distance
 
     def call(self, y_true, y_pred):
         """
@@ -160,7 +156,7 @@ class CTXLoss(tf.keras.losses.Loss):
         ctx_ij = tf.keras.ops.divide_no_nan(w, tf.reduce_sum(w, axis=1, keepdims=True))
 
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1))
-        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + self.epsilon))
+        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + tf.keras.backend.epsilon()))
 
         return ctx_loss
 
