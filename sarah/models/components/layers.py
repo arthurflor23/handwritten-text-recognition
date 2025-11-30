@@ -837,7 +837,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1495,7 +1495,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1726,7 +1726,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -1954,7 +1954,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
