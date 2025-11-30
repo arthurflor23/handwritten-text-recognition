@@ -582,7 +582,7 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
         block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
-        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks, use_bias=False)(latent)
+        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
                                                arguments={'y': self.num_blocks},
