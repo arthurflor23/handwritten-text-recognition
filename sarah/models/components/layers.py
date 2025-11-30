@@ -1362,7 +1362,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the attention layer.
@@ -1592,7 +1592,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the attention layer.
@@ -1823,7 +1823,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  pooling=False,
-                 use_bias=True,
+                 use_bias=False,
                  **kwargs):
         """
         Initialize the attention layer.
