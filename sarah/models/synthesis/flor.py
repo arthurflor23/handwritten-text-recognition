@@ -157,8 +157,8 @@ class SynthesisModel(BaseSynthesisModel):
             random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
             random_latent_data = tf.random.normal(shape=random_latent_shape)
 
-            real_features_data, _ = self.writer_encoder(image_data, training=False)
-            real_latent_data, _, _ = self.style_encoder(real_features_data, training=False)
+            _, real_features_data = self.writer_encoder(image_data, training=False)
+            _, _, real_latent_data = self.style_encoder(real_features_data, training=False)
 
             real_real_images = self.generator([text_data, real_latent_data, mask_data], training=False)
             fake_real_images = self.generator([aug_text_data, real_latent_data, aug_mask_data], training=False)
@@ -191,7 +191,7 @@ class SynthesisModel(BaseSynthesisModel):
 
             # writer identification
             with tf.GradientTape() as w_tape:
-                wid_features_data, _ = self.writer_encoder(aug_image_data, training=True)
+                _, wid_features_data = self.writer_encoder(aug_image_data, training=True)
                 wid_logits = self.writer_decoder(wid_features_data, training=True)
                 d_wid_loss = self.sce_loss(writer_data, wid_logits)
 
@@ -235,8 +235,8 @@ class SynthesisModel(BaseSynthesisModel):
         self.generator.trainable = True
 
         with tf.GradientTape(persistent=True) as g_tape:
-            real_features, real_feats = self.writer_encoder(image_data, training=False)
-            real_latent_data, mu, logvar = self.style_encoder(real_features, training=True)
+            real_feats, real_features = self.writer_encoder(image_data, training=False)
+            mu, logvar, real_latent_data = self.style_encoder(real_features, training=True)
 
             real_real_images = self.generator([text_data, real_latent_data, mask_data], training=True)
             fake_real_images = self.generator([aug_text_data, real_latent_data, aug_mask_data], training=True)
@@ -265,23 +265,23 @@ class SynthesisModel(BaseSynthesisModel):
             g_ctc_loss = real_real_ctc_loss + fake_real_ctc_loss + fake_fake_ctc_loss + real_fake_ctc_loss
 
             # writer identifier
-            real_real_wid_features, real_real_wid_feats = self.writer_encoder(real_real_images, training=False)
+            real_real_wid_feats, real_real_wid_features = self.writer_encoder(real_real_images, training=False)
             real_real_wid_logits = self.writer_decoder(real_real_wid_features, training=False)
             real_real_wid_loss = self.sce_loss(writer_data, real_real_wid_logits)
 
-            fake_real_wid_features, fake_real_wid_feats = self.writer_encoder(fake_real_images, training=False)
+            fake_real_wid_feats, fake_real_wid_features = self.writer_encoder(fake_real_images, training=False)
             fake_real_wid_logits = self.writer_decoder(fake_real_wid_features, training=False)
             fake_real_wid_loss = self.sce_loss(writer_data, fake_real_wid_logits)
 
             g_wid_loss = real_real_wid_loss + fake_real_wid_loss
 
             # style reconstruction
-            fake_fake_res_features, _ = self.writer_encoder(fake_fake_images, training=False)
-            fake_fake_res_data, _, _ = self.style_encoder(fake_fake_res_features, training=True)
+            _, fake_fake_res_features = self.writer_encoder(fake_fake_images, training=False)
+            _, _, fake_fake_res_data = self.style_encoder(fake_fake_res_features, training=True)
             fake_fake_res_loss = tf.reduce_mean(tf.math.square(random_latent_data - fake_fake_res_data))
 
-            real_fake_res_features, _ = self.writer_encoder(real_fake_images, training=False)
-            real_fake_res_data, _, _ = self.style_encoder(real_fake_res_features, training=True)
+            _, real_fake_res_features = self.writer_encoder(real_fake_images, training=False)
+            _, _, real_fake_res_data = self.style_encoder(real_fake_res_features, training=True)
             real_fake_res_loss = tf.reduce_mean(tf.math.square(random_latent_data - real_fake_res_data))
 
             g_res_loss = fake_fake_res_loss + real_fake_res_loss
@@ -436,7 +436,7 @@ class StyleEncoderModel(BaseModel):
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=feature_inputs,
-                                    outputs=[outputs, mu, logvar])
+                                    outputs=[mu, logvar, outputs])
 
 
 class GeneratorModel(BaseModel):
