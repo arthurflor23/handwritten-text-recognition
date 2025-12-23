@@ -98,7 +98,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         feats.append(encoder)
 
         encoder = tf.keras.layers.Flatten()(encoder)
-        outputs = [encoder, feats] if self.return_features else encoder
+        outputs = [feats, encoder] if self.return_features else encoder
 
         self.encoder = tf.keras.Model(name='writer_encoder', inputs=encoder_input, outputs=outputs)
 
@@ -117,8 +117,8 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
 
         # writer identification model
         if self.return_features:
-            encoder_output, features = self.encoder(encoder_input)
-            outputs = [self.decoder(encoder_output), features]
+            features, encoder_output = self.encoder(encoder_input)
+            outputs = [features, self.decoder(encoder_output)]
         else:
             outputs = self.decoder(self.encoder(encoder_input))
 
