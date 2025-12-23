@@ -145,21 +145,25 @@ class BaseModel(tf.keras.Model):
 
             return weights
 
-    def set_weights(self, weights):
+    def load_weights(self, filepath, skip_mismatch=True):
         """
-        Set the weights for the submodels.
+        Load the weights for the submodels.
 
         Parameters
         ----------
-        weights : dict
-            A dictionary with submodel names as keys and their weights as values.
+        filepath : str
+            Filepath for loading the weights.
+        skip_mismatch : bool, optional
+            Skip loading of layers where there is a mismatch in the number of weights.
         """
 
         for name in getattr(self, 'names', ['model']):
             model = self.get_model_by_name(name)
+            modelpath = filepath.replace('<model>', name)
 
-            if model is not None:
-                model.set_weights(weights[name])
+            if model is not None and os.path.isfile(modelpath):
+                model.built = True
+                model.load_weights(filepath=modelpath, skip_mismatch=skip_mismatch)
 
     def save_weights(self, filepath, overwrite=True):
         """
@@ -181,25 +185,44 @@ class BaseModel(tf.keras.Model):
                 model.trainable = True
                 model.save_weights(filepath=modelpath, overwrite=overwrite)
 
-    def load_weights(self, filepath, skip_mismatch=True):
+    def set_weights(self, weights):
         """
-        Load the weights for the submodels.
+        Set the weights for the submodels.
 
         Parameters
         ----------
-        filepath : str
-            Filepath for loading the weights.
-        skip_mismatch : bool, optional
-            Skip loading of layers where there is a mismatch in the number of weights.
+        weights : dict
+            A dictionary with submodel names as keys and their weights as values.
         """
 
         for name in getattr(self, 'names', ['model']):
             model = self.get_model_by_name(name)
-            modelpath = filepath.replace('<model>', name)
 
-            if model is not None and os.path.isfile(modelpath):
-                model.built = True
-                model.load_weights(filepath=modelpath, skip_mismatch=skip_mismatch)
+            if model is not None:
+                model.set_weights(weights[name])
+
+    def unwrap_call_output(self, output):
+        """
+        Unwrap model output.
+
+        If the output is a list or tuple, returns its last element.
+            Otherwise, returns the output unchanged.
+
+        Parameters
+        ----------
+        output : object
+            Output from the model.
+
+        Returns
+        -------
+        object
+            Model output.
+        """
+
+        if isinstance(output, (list, tuple)):
+            return output[-1]
+
+        return output
 
 
 class BaseRecognitionModel(BaseModel):
@@ -290,6 +313,68 @@ class BaseRecognitionModel(BaseModel):
 
         return config
 
+    def build_input_data(self,
+                         image_data,
+                         text_data,
+                         aug_text_data,
+                         mask_data,
+                         aug_mask_data):
+        """
+        Builds image and text inputs for the model.
+        Includes synthesized samples when synthesis is enabled.
+
+        Parameters
+        ----------
+        image_data : tf.Tensor
+            Input image batch.
+        text_data : tf.Tensor
+            Ground-truth text labels.
+        aug_text_data : tf.Tensor
+            Augmented text labels.
+        mask_data : tf.Tensor
+            Mask from the original image input.
+        aug_mask_data : tf.Tensor
+            Mask from the augmented image input.
+
+        Returns
+        -------
+        tuple
+            Lists of images and texts.
+        """
+
+        images, texts = [image_data], [text_data]
+
+        if self.writer_encoder and self.style_encoder and self.generator and \
+                np.random.random() <= self.synthesis_probability:
+
+            # extract writer style from real images
+            features_data = self.writer_encoder(image_data, training=False)
+            features_data = self.unwrap_call_output(features_data)
+
+            latent = self.style_encoder(features_data, training=False)
+            latent = self.unwrap_call_output(latent)
+
+            # real images and real texts
+            real_real_images = self.generator([text_data, latent, mask_data], training=False)
+
+            # real images and fake texts
+            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
+
+            # random style sampling
+            random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
+            random_latent_data = tf.random.normal(shape=random_latent_shape)
+
+            # fake images and real texts
+            real_fake_images = self.generator([text_data, random_latent_data, mask_data], training=False)
+
+            # fake images and fake texts
+            fake_fake_images = self.generator([aug_text_data, random_latent_data, aug_mask_data], training=False)
+
+            images.extend([real_real_images, fake_real_images, real_fake_images, fake_fake_images])
+            texts.extend([text_data, aug_text_data, text_data, aug_text_data])
+
+        return images, texts
+
     def train_step(self, input_data):
         """
         Executes a training step.
@@ -310,38 +395,17 @@ class BaseRecognitionModel(BaseModel):
         aug_image_data, aug_text_data, _, aug_mask_data = x_data
         _, text_data, _, mask_data = y_data
 
-        images, texts = [aug_image_data], [text_data]
-
-        if self.writer_encoder and self.style_encoder and self.generator and \
-                np.random.random() <= self.synthesis_probability:
-
-            # original images and original texts
-            features_data = self.writer_encoder(aug_image_data, training=False)
-            features_data = features_data[0] if isinstance(features_data, list) else features_data
-
-            latent = self.style_encoder(features_data, training=False)
-            latent = latent[0] if isinstance(latent, list) else latent
-
-            real_real_images = self.generator([text_data, latent, mask_data], training=False)
-
-            # original images and fake texts
-            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
-
-            # fake images and original texts
-            random_latent_shape = (tf.shape(aug_image_data)[0], self.style_encoder.latent_dim)
-            random_latent_data = tf.random.normal(shape=random_latent_shape)
-
-            real_fake_images = self.generator([text_data, random_latent_data, mask_data], training=False)
-
-            # fake images and fake texts
-            fake_fake_images = self.generator([aug_text_data, random_latent_data, aug_mask_data], training=False)
-
-            images.extend([real_real_images, fake_real_images, real_fake_images, fake_fake_images])
-            texts.extend([text_data, aug_text_data, text_data, aug_text_data])
+        images, texts = self.build_input_data(image_data=aug_image_data,
+                                              text_data=text_data,
+                                              aug_text_data=aug_text_data,
+                                              mask_data=mask_data,
+                                              aug_mask_data=aug_mask_data)
 
         for image, text in zip(images, texts):
             with tf.GradientTape() as r_tape:
                 ctc_logits = self.recognition(image, training=True)
+                ctc_logits = self.unwrap_call_output(ctc_logits)
+
                 ctc_loss = self.ctc_loss(text, ctc_logits)
 
             r_gradients = r_tape.gradient(ctc_loss, self.recognition.trainable_weights)
@@ -374,6 +438,8 @@ class BaseRecognitionModel(BaseModel):
         _, (image_data, text_data, _, _) = input_data
 
         ctc_logits = self.recognition(image_data)
+        ctc_logits = self.unwrap_call_output(ctc_logits)
+
         ctc_loss = self.ctc_loss(text_data, ctc_logits)
 
         self.edit_distance.update_state(text_data, ctc_logits)
@@ -402,8 +468,10 @@ class BaseRecognitionModel(BaseModel):
             Generated images.
         """
 
-        image_data = x_data[0] if isinstance(x_data, tuple) else x_data
+        image_data = x_data[0] if isinstance(x_data, (list, tuple)) else x_data
+
         ctc_logits = self.recognition(image_data, training=training)
+        ctc_logits = self.unwrap_call_output(ctc_logits)
 
         return ctc_logits
 
@@ -696,10 +764,10 @@ class BaseSynthesisModel(BaseModel):
         _, (image_data, text_data, _, mask_data) = input_data
 
         features_data = self.writer_encoder(image_data)
-        features_data = features_data[0] if isinstance(features_data, list) else features_data
+        features_data = self.unwrap_call_output(features_data)
 
         latent_data = self.style_encoder(features_data)
-        latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+        latent_data = self.unwrap_call_output(latent_data)
 
         generated_images = self.generator([text_data, latent_data, mask_data])
 
@@ -736,10 +804,10 @@ class BaseSynthesisModel(BaseModel):
 
         def _extract_latent():
             features_data = self.writer_encoder(image_data, training=training)
-            features_data = features_data[0] if isinstance(features_data, list) else features_data
+            features_data = self.unwrap_call_output(features_data)
 
             latent_data = self.style_encoder(features_data, training=training)
-            latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+            latent_data = self.unwrap_call_output(latent_data)
 
             return latent_data
 
@@ -892,6 +960,61 @@ class BaseWriterIdentificationModel(BaseModel):
 
         return config
 
+    def build_input_data(self,
+                         image_data,
+                         writer_data,
+                         text_data,
+                         aug_text_data,
+                         mask_data,
+                         aug_mask_data):
+        """
+        Builds image and writer inputs for the model.
+        Includes synthesized samples when synthesis is enabled.
+
+        Parameters
+        ----------
+        image_data : tf.Tensor
+            Input image batch.
+        writer_data : tf.Tensor
+            Writer identity labels.
+        text_data : tf.Tensor
+            Ground-truth text labels.
+        aug_text_data : tf.Tensor
+            Augmented text labels.
+        mask_data : tf.Tensor
+            Mask from the original image input.
+        aug_mask_data : tf.Tensor
+            Mask from the augmented image input.
+
+        Returns
+        -------
+        tuple
+            Lists of images and writers.
+        """
+
+        images, writers = [image_data], [writer_data]
+
+        if self.writer_encoder and self.style_encoder and self.generator and \
+                np.random.random() <= self.synthesis_probability:
+
+            # extract writer style from real images
+            features_data = self.writer_encoder(image_data, training=False)
+            features_data = self.unwrap_call_output(features_data)
+
+            latent = self.style_encoder(features_data, training=False)
+            latent = self.unwrap_call_output(latent)
+
+            # real images and real texts
+            real_real_images = self.generator([text_data, latent, mask_data], training=False)
+
+            # real images and fake texts
+            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
+
+            images.extend([real_real_images, fake_real_images])
+            writers.extend([writer_data, writer_data])
+
+        return images, writers
+
     def train_step(self, input_data):
         """
         Executes a training step.
@@ -912,29 +1035,18 @@ class BaseWriterIdentificationModel(BaseModel):
         aug_image_data, aug_text_data, _, aug_mask_data = x_data
         _, text_data, writer_data, mask_data = y_data
 
-        images, writers = [aug_image_data], [writer_data]
-
-        if self.writer_encoder and self.style_encoder and self.generator and \
-                np.random.random() <= self.synthesis_probability:
-
-            # original images and original texts
-            features_data = self.writer_encoder(aug_image_data, training=False)
-            features_data = features_data[0] if isinstance(features_data, list) else features_data
-
-            latent = self.style_encoder(features_data, training=False)
-            latent = latent[0] if isinstance(latent, list) else latent
-
-            real_real_images = self.generator([text_data, latent, mask_data], training=False)
-
-            # original images and fake texts
-            fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
-
-            images.extend([real_real_images, fake_real_images])
-            writers.extend([writer_data, writer_data])
+        images, writers = self.build_writer_input_data(image_data=aug_image_data,
+                                                       writer_data=writer_data,
+                                                       text_data=text_data,
+                                                       aug_text_data=aug_text_data,
+                                                       mask_data=mask_data,
+                                                       aug_mask_data=aug_mask_data)
 
         for image, writer in zip(images, writers):
             with tf.GradientTape() as w_tape:
                 wid_logits = self.writer_identification(image, training=True)
+                wid_logits = self.unwrap_call_output(wid_logits)
+
                 sce_loss = self.sce_loss(writer, wid_logits)
 
             w_gradients = w_tape.gradient(sce_loss, self.writer_identification.trainable_weights)
@@ -964,6 +1076,8 @@ class BaseWriterIdentificationModel(BaseModel):
         _, (image_data, _, writer_data, _) = input_data
 
         wid_logits = self.writer_identification(image_data)
+        wid_logits = self.unwrap_call_output(wid_logits)
+
         sce_loss = self.sce_loss(writer_data, wid_logits)
 
         self.measure_tracker.update({
@@ -989,8 +1103,10 @@ class BaseWriterIdentificationModel(BaseModel):
             Generated images.
         """
 
-        image_data = x_data[0] if isinstance(x_data, tuple) else x_data
+        image_data = x_data[0] if isinstance(x_data, (list, tuple)) else x_data
+
         wid_logits = self.writer_identification(image_data, training=training)
+        wid_logits = self.unwrap_call_output(wid_logits)
 
         return wid_logits
 
