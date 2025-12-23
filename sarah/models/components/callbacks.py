@@ -90,10 +90,10 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 self._save_images(filepath, image_data, name='authentic')
 
                 features_data = self.model.writer_encoder(image_data, training=False)
-                features_data = features_data[0] if isinstance(features_data, list) else features_data
+                features_data = self.model.unwrap_call_output(features_data)
 
                 latent_data = self.model.style_encoder(features_data, training=False)
-                latent_data = latent_data[0] if isinstance(latent_data, list) else latent_data
+                latent_data = self.model.unwrap_call_output(latent_data)
 
                 fake_guided = self.model.generator([text_data, latent_data, mask_data], training=False)
                 self._save_images(filepath, fake_guided, name='guided')
