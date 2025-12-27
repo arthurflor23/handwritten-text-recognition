@@ -113,7 +113,7 @@ class SynthesisModel(BaseSynthesisModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -138,13 +138,13 @@ class SynthesisModel(BaseSynthesisModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
         """
 
         x_data, y_data = input_data
 
-        (aug_image_data, aug_text_data, _, aug_mask_data) = x_data
-        (image_data, text_data, writer_data, mask_data) = y_data
+        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        image_data, text_data, writer_data, mask_data = y_data
 
         self.discriminator.trainable = True
         self.recognition.trainable = True
@@ -216,13 +216,13 @@ class SynthesisModel(BaseSynthesisModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
         """
 
         x_data, y_data = input_data
 
-        (_, aug_text_data, _, aug_mask_data) = x_data
-        (image_data, text_data, writer_data, mask_data) = y_data
+        _, aug_text_data, _, aug_mask_data = x_data
+        image_data, text_data, writer_data, mask_data = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
         random_latent_data = tf.random.normal(shape=random_latent_shape)
