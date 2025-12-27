@@ -313,28 +313,15 @@ class BaseRecognitionModel(BaseModel):
 
         return config
 
-    def build_input_data(self,
-                         image_data,
-                         text_data,
-                         aug_text_data,
-                         mask_data,
-                         aug_mask_data):
+    def build_input_data(self, input_data):
         """
         Builds image and text inputs for the model.
         Includes synthesized samples when synthesis is enabled.
 
         Parameters
         ----------
-        image_data : tf.Tensor
-            Input image batch.
-        text_data : tf.Tensor
-            Ground-truth text labels.
-        aug_text_data : tf.Tensor
-            Augmented text labels.
-        mask_data : tf.Tensor
-            Mask from the original image input.
-        aug_mask_data : tf.Tensor
-            Mask from the augmented image input.
+        input_data : list or tuple
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -342,13 +329,18 @@ class BaseRecognitionModel(BaseModel):
             Lists of images and texts.
         """
 
-        images, texts = [image_data], [text_data]
+        x_data, y_data = input_data
+
+        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        _, text_data, _, mask_data = y_data
+
+        images, texts = [aug_image_data], [text_data]
 
         if self.writer_encoder and self.style_encoder and self.generator and \
                 np.random.random() <= self.synthesis_probability:
 
             # extract writer style from real images
-            features_data = self.writer_encoder(image_data, training=False)
+            features_data = self.writer_encoder(aug_image_data, training=False)
             features_data = self.unwrap_call_output(features_data)
 
             latent = self.style_encoder(features_data, training=False)
@@ -361,7 +353,7 @@ class BaseRecognitionModel(BaseModel):
             fake_real_images = self.generator([aug_text_data, latent, aug_mask_data], training=False)
 
             # random style sampling
-            random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
+            random_latent_shape = (tf.shape(aug_image_data)[0], self.style_encoder.latent_dim)
             random_latent_data = tf.random.normal(shape=random_latent_shape)
 
             # fake images and real texts
@@ -382,7 +374,7 @@ class BaseRecognitionModel(BaseModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -390,16 +382,7 @@ class BaseRecognitionModel(BaseModel):
             Training metrics and losses.
         """
 
-        x_data, y_data = input_data
-
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        _, text_data, _, mask_data = y_data
-
-        images, texts = self.build_input_data(image_data=aug_image_data,
-                                              text_data=text_data,
-                                              aug_text_data=aug_text_data,
-                                              mask_data=mask_data,
-                                              aug_mask_data=aug_mask_data)
+        images, texts = self.build_input_data(input_data)
 
         for image, text in zip(images, texts):
             with tf.GradientTape() as r_tape:
@@ -427,7 +410,7 @@ class BaseRecognitionModel(BaseModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -753,7 +736,7 @@ class BaseSynthesisModel(BaseModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -960,31 +943,15 @@ class BaseWriterIdentificationModel(BaseModel):
 
         return config
 
-    def build_input_data(self,
-                         image_data,
-                         writer_data,
-                         text_data,
-                         aug_text_data,
-                         mask_data,
-                         aug_mask_data):
+    def build_input_data(self, input_data):
         """
         Builds image and writer inputs for the model.
         Includes synthesized samples when synthesis is enabled.
 
         Parameters
         ----------
-        image_data : tf.Tensor
-            Input image batch.
-        writer_data : tf.Tensor
-            Writer identity labels.
-        text_data : tf.Tensor
-            Ground-truth text labels.
-        aug_text_data : tf.Tensor
-            Augmented text labels.
-        mask_data : tf.Tensor
-            Mask from the original image input.
-        aug_mask_data : tf.Tensor
-            Mask from the augmented image input.
+        input_data : list or tuple
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -992,13 +959,18 @@ class BaseWriterIdentificationModel(BaseModel):
             Lists of images and writers.
         """
 
-        images, writers = [image_data], [writer_data]
+        x_data, y_data = input_data
+
+        aug_image_data, aug_text_data, _, aug_mask_data = x_data
+        _, text_data, writer_data, mask_data = y_data
+
+        images, writers = [aug_image_data], [writer_data]
 
         if self.writer_encoder and self.style_encoder and self.generator and \
                 np.random.random() <= self.synthesis_probability:
 
             # extract writer style from real images
-            features_data = self.writer_encoder(image_data, training=False)
+            features_data = self.writer_encoder(aug_image_data, training=False)
             features_data = self.unwrap_call_output(features_data)
 
             latent = self.style_encoder(features_data, training=False)
@@ -1022,7 +994,7 @@ class BaseWriterIdentificationModel(BaseModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
@@ -1030,17 +1002,7 @@ class BaseWriterIdentificationModel(BaseModel):
             Training metrics and losses.
         """
 
-        x_data, y_data = input_data
-
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        _, text_data, writer_data, mask_data = y_data
-
-        images, writers = self.build_writer_input_data(image_data=aug_image_data,
-                                                       writer_data=writer_data,
-                                                       text_data=text_data,
-                                                       aug_text_data=aug_text_data,
-                                                       mask_data=mask_data,
-                                                       aug_mask_data=aug_mask_data)
+        images, writers = self.build_input_data(input_data)
 
         for image, writer in zip(images, writers):
             with tf.GradientTape() as w_tape:
@@ -1065,7 +1027,7 @@ class BaseWriterIdentificationModel(BaseModel):
         Parameters
         ----------
         input_data : list or tuple
-            Batch of (x_data, y_data).
+            Model inputs and targets (x_data, y_data).
 
         Returns
         -------
