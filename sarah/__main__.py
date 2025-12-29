@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-path', default='datasets', help='Path to input data')
     parser.add_argument('--output-path', default='mlruns', help='Path to output data')
     parser.add_argument('--gpu', default=0, nargs='+', help='GPU index or sequence of indices')
-    parser.add_argument('--seed', default=42, type=int, help='Seed value')
+    parser.add_argument('--seed', default=None, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
