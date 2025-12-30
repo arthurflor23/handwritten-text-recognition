@@ -111,6 +111,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         decoder = tf.keras.layers.Dense(units=256)(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
+        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
         decoder = tf.keras.layers.Dense(units=self.writers_shape[0])(decoder)
 
         self.decoder = tf.keras.Model(name='writer_decoder', inputs=decoder_input, outputs=decoder)
