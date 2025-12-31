@@ -86,7 +86,7 @@ class GradientNormalization(tf.keras.optimizers.Optimizer):
             The operation that applies gradients.
         """
 
-        grads_and_vars = [(tf.keras.ops.divide_no_nan(grad, self.fn(grad)), var)
+        grads_and_vars = [(tf.math.divide_no_nan(grad, self.fn(grad)), var)
                           for grad, var in grads_and_vars if grad is not None]
 
         return self.optimizer.apply_gradients(grads_and_vars)
