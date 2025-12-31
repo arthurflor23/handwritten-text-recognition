@@ -156,10 +156,10 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         batch_factor = batch_size * (batch_size - 1.0)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
-        mean_kernel_real = tf.keras.ops.divide_no_nan(sum_kernel_real, batch_factor)
+        mean_kernel_real = tf.math.divide_no_nan(sum_kernel_real, batch_factor)
 
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
-        mean_kernel_generated = tf.keras.ops.divide_no_nan(sum_kernel_generated, batch_factor)
+        mean_kernel_generated = tf.math.divide_no_nan(sum_kernel_generated, batch_factor)
 
         kid = ((mean_kernel_real + mean_kernel_generated) - (2.0 * tf.reduce_mean(kernel_cross)))
 
@@ -185,7 +185,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
         features = features_1 @ tf.transpose(features_2)
 
-        return tf.keras.ops.divide_no_nan(features, feature_dimensions + 1.0) ** 3.0
+        return tf.math.divide_no_nan(features, feature_dimensions + 1.0) ** 3.0
 
     def result(self):
         """
