@@ -150,10 +150,10 @@ class CTXLoss(tf.keras.losses.Loss):
                 distance = tf.reduce_sum(tf.square(diff), axis=-1)
 
         d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
-        d_tilde = tf.keras.ops.divide_no_nan(distance, d_min)
+        d_tilde = tf.math.divide_no_nan(distance, d_min)
 
         w = tf.math.exp((1 - d_tilde) / self.sigma)
-        ctx_ij = tf.keras.ops.divide_no_nan(w, tf.reduce_sum(w, axis=1, keepdims=True))
+        ctx_ij = tf.math.divide_no_nan(w, tf.reduce_sum(w, axis=1, keepdims=True))
 
         ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1))
         ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + tf.keras.backend.epsilon()))
