@@ -311,8 +311,8 @@ class SynthesisModel(BaseSynthesisModel):
 
                 gp_adv = tf.math.reduce_std(gp_adv)
 
-                gp_rec = tf.keras.ops.divide_no_nan(gp_adv, tf.math.reduce_std(gp_rec)) + 1
-                gp_res = tf.keras.ops.divide_no_nan(gp_adv, tf.math.reduce_std(gp_res)) + 1
+                gp_rec = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(gp_rec)) + 1
+                gp_res = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(gp_res)) + 1
 
             # generator loss
             adv_loss = {
