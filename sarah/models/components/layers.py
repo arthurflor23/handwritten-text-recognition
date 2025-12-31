@@ -849,8 +849,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
-        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
-
     def call(self, inputs, training=False):
         """
         Apply residual gated convolution to the input.
@@ -872,7 +870,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
 
         if training and self.dropout:
-            g_conv = self.dropout_layer(g_conv)
+            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
         if self.h != 1:
             g_conv = self.o_conv(g_conv)
@@ -1502,8 +1500,6 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
-
     def call(self, query, value=None, key=None, training=False):
         """
         Processes the input tensors through the layer.
@@ -1548,8 +1544,8 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         s = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            s = self.dropout_layer(s)
-            s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
+            s = tf.nn.dropout(s, rate=self.dropout)
+            s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
         v = self.v_conv(value)
 
@@ -1733,8 +1729,6 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
-
     def call(self, query, value=None, key=None, training=False):
         """
         Processes the input tensors through the layer.
@@ -1779,8 +1773,8 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
         s = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            s = self.dropout_layer(s)
-            s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
+            s = tf.nn.dropout(s, rate=self.dropout)
+            s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
         v = self.v_conv(value)
 
@@ -1961,8 +1955,6 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
-
     def call(self, query, value=None, key=None, training=False):
         """
         Processes the input tensors through the layer.
@@ -2006,8 +1998,8 @@ class SelfAttentionDense(tf.keras.layers.Layer):
         s = tf.nn.softmax(s, axis=-1)
 
         if training and self.dropout:
-            s = self.dropout_layer(s)
-            s = tf.keras.ops.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
+            s = tf.nn.dropout(s, rate=self.dropout)
+            s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
         v = self.v_dense(value)
 
