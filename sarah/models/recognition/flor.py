@@ -98,7 +98,7 @@ class RecognitionModel(BaseRecognitionModel):
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
 
-        decoder = SelfAttentionDense(k=1/8, h=1/2)(decoder_input)
+        decoder = SelfAttentionDense(k=1/8, h=1/2, pooling=False)(decoder_input)
 
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
 
@@ -112,7 +112,7 @@ class RecognitionModel(BaseRecognitionModel):
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2], -1))(decoder)
-        decoder = tf.keras.layers.LayerNormalization()(decoder)
+        decoder = tf.keras.layers.LayerNormalization(epsilon=1e-3)(decoder)
 
         decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
