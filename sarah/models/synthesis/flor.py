@@ -575,7 +575,7 @@ class GeneratorModel(BaseModel):
                                              name='latent_tile')(latent)
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
-        embedding = tf.keras.layers.LayerNormalization()(embedding)
+        embedding = tf.keras.layers.LayerNormalization(epsilon=1e-3)(embedding)
 
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
