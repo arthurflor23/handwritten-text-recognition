@@ -1359,7 +1359,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  dropout=0.0,
-                 pooling=False,
+                 pooling=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -1587,7 +1587,7 @@ class SelfAttentionConv2D(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  dropout=0.0,
-                 pooling=False,
+                 pooling=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -1816,7 +1816,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  dropout=0.0,
-                 pooling=False,
+                 pooling=True,
                  use_bias=True,
                  **kwargs):
         """
