@@ -46,7 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('--erode', default=None, nargs='+', type=float, help='Erosion settings')
     parser.add_argument('--dilate', default=None, nargs='+', type=float, help='Dilation settings')
     parser.add_argument('--elastic', default=(0.33, 31), nargs='+', type=float, help='Elastic deformation settings')
-    parser.add_argument('--perspective', default=(0.66, 0.5), nargs='+', type=float, help='Perspective settings')
+    parser.add_argument('--perspective', default=(0.66, 0.4), nargs='+', type=float, help='Perspective settings')
     parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
     parser.add_argument('--shear', default=(0.33, 10), nargs='+', type=float, help='Shearing settings')
     parser.add_argument('--scale', default=(0.33, 0.1), nargs='+', type=float, help='Scaling settings')
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-path', default='datasets', help='Path to input data')
     parser.add_argument('--output-path', default='mlruns', help='Path to output data')
     parser.add_argument('--gpu', default=0, nargs='+', help='GPU index or sequence of indices')
-    parser.add_argument('--seed', default=None, type=int, help='Seed value')
+    parser.add_argument('--seed', default=1, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
