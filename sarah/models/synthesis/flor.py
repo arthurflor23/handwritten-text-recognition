@@ -305,14 +305,13 @@ class SynthesisModel(BaseSynthesisModel):
 
             # gradient balancing
             with g_tape.stop_recording():
-                gp_adv = g_tape.gradient(g_adv_loss, fake_images)
-                gp_rec = g_tape.gradient(g_rec_loss, real_latent_data)
-                gp_res = g_tape.gradient(g_res_loss, [fake_fake_res_data, real_fake_res_data])
+                grad_adv = g_tape.gradient(g_adv_loss, fake_images)
+                grad_rec = g_tape.gradient(g_rec_loss, real_latent_data)
+                grad_res = g_tape.gradient(g_res_loss, [fake_fake_res_data, real_fake_res_data])
 
-                gp_adv = tf.math.reduce_std(gp_adv)
-
-                gp_rec = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(gp_rec)) + 1
-                gp_res = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(gp_res)) + 1
+                gp_adv = tf.math.reduce_std(grad_adv)
+                gp_rec = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(grad_rec)) + 1
+                gp_res = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(grad_res)) + 1
 
             # generator loss
             adv_loss = {
