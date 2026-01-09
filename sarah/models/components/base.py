@@ -406,6 +406,8 @@ class BaseRecognitionModel(BaseModel):
                 self.edit_distance.name: self.edit_distance.result(),
             })
 
+        self.global_step.assign_add(value=1)
+
         return self.measure_tracker.result()
 
     def test_step(self, input_data):
@@ -914,6 +916,11 @@ class BaseWriterIdentificationModel(BaseModel):
         self.generator = generator
         self.writer_identification = None
 
+        self.global_step = tf.keras.Variable(name='global_step',
+                                             initializer=0,
+                                             dtype=tf.int64,
+                                             trainable=False)
+
         self.names = [
             'writer_encoder',
             'style_encoder',
@@ -1022,6 +1029,8 @@ class BaseWriterIdentificationModel(BaseModel):
             self.measure_tracker.update({
                 self.sce_loss.name: sce_loss,
             })
+
+        self.global_step.assign_add(value=1)
 
         return self.measure_tracker.result()
 
