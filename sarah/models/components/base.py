@@ -278,6 +278,11 @@ class BaseRecognitionModel(BaseModel):
         self.generator = generator
         self.recognition = None
 
+        self.global_step = tf.keras.Variable(name='global_step',
+                                             initializer=0,
+                                             dtype=tf.int64,
+                                             trainable=False)
+
         self.names = [
             'writer_encoder',
             'style_encoder',
