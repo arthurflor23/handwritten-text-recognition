@@ -222,41 +222,6 @@ class KLDivergence(tf.keras.losses.Loss):
         self.cyclical_annealing = cyclical_annealing
         self.step = 0
 
-    def cyclical_beta(self):
-        """
-        Compute the cyclical beta value based on the current schedule type.
-
-        Returns
-        -------
-        float
-            The value of beta for the current step.
-        """
-
-        current_cycle = self.step // self.warmup_steps
-
-        if current_cycle >= self.total_cycles:
-            beta = self.max_beta
-        else:
-            cycle_position = self.step % self.warmup_steps
-            annealing_steps = int(self.warmup_steps * self.annealing_ratio)
-
-            if cycle_position <= annealing_steps:
-                cycle_progress = cycle_position / annealing_steps
-
-                if self.schedule_type == 'linear':
-                    beta = self.max_beta * tf.minimum(2 * cycle_progress, 1.0)
-                elif self.schedule_type == 'sigmoid':
-                    beta = self.max_beta / (1 + tf.exp(-12 * (cycle_progress - 0.5)))
-                elif self.schedule_type == 'cosine':
-                    beta = self.max_beta * 0.5 * (1 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
-                else:
-                    raise ValueError(f"Unknown schedule_type: {self.schedule_type}")
-            else:
-                beta = self.max_beta
-
-        self.step += 1
-        return beta
-
     def call(self, mu, logvar):
         """
         Compute scaled KL divergence loss.
@@ -274,10 +239,29 @@ class KLDivergence(tf.keras.losses.Loss):
             Scaled KL divergence loss.
         """
 
-        kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
+        kld_loss = tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + logvar - tf.square(mu) - tf.exp(logvar), axis=1))
 
         if self.cyclical_annealing:
-            beta = self.cyclical_beta()
+            beta = self.max_beta
+            current_cycle = tf.math.floordiv(self.step, self.warmup_steps)
+
+            if current_cycle < self.total_cycles:
+                cycle_position = tf.cast(tf.math.floormod(self.step, self.warmup_steps), tf.float32)
+                annealing_steps = tf.cast(self.annealing_ratio * self.warmup_steps, tf.float32)
+
+                if cycle_position <= annealing_steps:
+                    cycle_progress = cycle_position / annealing_steps
+
+                    if self.schedule_type == 'linear':
+                        beta = self.max_beta * tf.minimum(2.0 * cycle_progress, 1.0)
+
+                    elif self.schedule_type == 'sigmoid':
+                        beta = self.max_beta / (1.0 + tf.exp(-12.0 * (cycle_progress - 0.5)))
+
+                    elif self.schedule_type == 'cosine':
+                        beta = self.max_beta * 0.5 * (1.0 - tf.cos(tf.experimental.numpy.pi * cycle_progress))
+
             kld_loss = beta * kld_loss
+            self.step += 1
 
         return kld_loss
