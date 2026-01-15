@@ -183,11 +183,13 @@ class Augmentor():
                                      thresh=127,
                                      maxval=255,
                                      type=cv2.THRESH_BINARY)
+
         elif method == 'otsu':
             _, image = cv2.threshold(src=image,
                                      thresh=0,
                                      maxval=255,
                                      type=cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
         elif method == 'adaptive_mean':
             image = cv2.adaptiveThreshold(src=image,
                                           maxValue=255,
@@ -195,6 +197,7 @@ class Augmentor():
                                           thresholdType=cv2.THRESH_BINARY,
                                           blockSize=11,
                                           C=2)
+
         elif method == 'adaptive_gaussian':
             image = cv2.adaptiveThreshold(src=image,
                                           maxValue=255,
@@ -230,8 +233,8 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-        image = cv2.erode(image, kernel, iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
+        image = cv2.erode(src=image, kernel=kernel, iterations=iterations)
 
         return image
 
@@ -260,8 +263,8 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-        image = cv2.dilate(image, kernel, iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
+        image = cv2.dilate(src=image, kernel=kernel, iterations=iterations)
 
         return image
 
@@ -293,18 +296,25 @@ class Augmentor():
         if kernel_size % 2 == 0:
             kernel_size += 1
 
-        dxy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
-        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * alpha)
+        dx = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
+        dy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
 
-        org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
-        displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
+        dx = cv2.GaussianBlur(src=dx, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
+        dy = cv2.GaussianBlur(src=dy, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
+
+        coords = np.indices(image.shape[:2], dtype=np.float32)
+        map_y = coords[0] + dy
+        map_x = coords[1] + dx
+
+        map_x = np.clip(map_x, 0, image.shape[1] - 1)
+        map_y = np.clip(map_y, 0, image.shape[0] - 1)
 
         image = cv2.remap(src=image,
-                          map1=displaced_coords[..., 1],
-                          map2=displaced_coords[..., 0],
-                          interpolation=cv2.INTER_LINEAR,
+                          map1=map_x,
+                          map2=map_y,
+                          interpolation=cv2.INTER_NEAREST,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=np.median(image.flatten()))
+                          borderValue=int(np.median(image)))
 
         return image
 
@@ -350,11 +360,14 @@ class Augmentor():
             (np.random.randint(0, max_offset), np.random.randint(height - max_offset, height)),
         ], dtype=np.float32)
 
-        M = cv2.getPerspectiveTransform(src_points, dst_points)
+        M = cv2.getPerspectiveTransform(src=src_points, dst=dst_points)
 
-        image = cv2.warpPerspective(image, M, (width, height),
+        image = cv2.warpPerspective(src=image,
+                                    M=M,
+                                    dsize=(width, height),
+                                    flags=cv2.INTER_NEAREST,
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=np.median(image.flatten()))
+                                    borderValue=int(np.median(image)))
 
         return image
 
@@ -406,18 +419,26 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(img, dim, interpolation=cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA)
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_NEAREST)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
                 top, bottom = delta_h//2, delta_h-(delta_h//2)
                 left, right = delta_w//2, delta_w-(delta_w//2)
 
-                img = cv2.copyMakeBorder(img, top, bottom, left, right,
+                img = cv2.copyMakeBorder(src=img,
+                                         top=top,
+                                         bottom=bottom,
+                                         left=left,
+                                         right=right,
                                          borderType=cv2.BORDER_CONSTANT,
-                                         value=np.mean(image))
+                                         value=int(np.median(image)))
 
-                image = cv2.addWeighted(image, 1 - opc, img.astype(image.dtype), opc, 0)
+                image = cv2.addWeighted(src1=image,
+                                        src2=img.astype(image.dtype),
+                                        alpha=1 - opc,
+                                        beta=opc,
+                                        gamma=0)
 
         return image
 
@@ -456,9 +477,12 @@ class Augmentor():
             new_width = int(width - height * shear_tan)
             M = np.float32([[1, shear_tan, -height * shear_tan], [0, 1, 0]])
 
-        image = cv2.warpAffine(image, M, (new_width, height),
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(new_width, height),
+                               flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=np.median(image.flatten()))
+                               borderValue=int(np.median(image)))
 
         return image
 
@@ -485,13 +509,13 @@ class Augmentor():
             alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
-        ratio = 1 - alpha
+        ratio = np.clip(1 - alpha, 0.5, 1.5)
 
         dim = (int(width * ratio), int(height * ratio))
-        image = cv2.resize(image, dim, interpolation=cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA)
+        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_NEAREST)
 
         if alpha > 0:
-            padded_image = np.full((height, width), np.median(image.flatten()), dtype=np.uint8)
+            padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
@@ -523,7 +547,7 @@ class Augmentor():
         max_offset_factor = (1 - (height / (height + width))) ** 2
 
         center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center, angle * max_offset_factor, 1.0)
+        M = cv2.getRotationMatrix2D(center=center, angle=angle * max_offset_factor, scale=1.0)
 
         cos_angle = np.abs(M[0, 0])
         sin_angle = np.abs(M[0, 1])
@@ -534,9 +558,12 @@ class Augmentor():
         M[0, 2] += (new_width / 2) - center[0]
         M[1, 2] += (new_height / 2) - center[1]
 
-        image = cv2.warpAffine(image, M, (new_width, new_height),
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(new_width, new_height),
+                               flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=np.median(image.flatten()))
+                               borderValue=int(np.median(image)))
 
         return image
 
@@ -573,11 +600,14 @@ class Augmentor():
 
         new_height = height + abs(y_translation)
 
-        image = cv2.warpAffine(image, M, (width, new_height),
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(width, new_height),
+                               flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=np.median(image.flatten()))
+                               borderValue=int(np.median(image)))
 
-        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_NEAREST)
 
         return image
 
@@ -614,11 +644,14 @@ class Augmentor():
 
         new_width = width + abs(x_translation)
 
-        image = cv2.warpAffine(image, M, (new_width, height),
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(new_width, height),
+                               flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=np.median(image.flatten()))
+                               borderValue=int(np.median(image)))
 
-        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_NEAREST)
 
         return image
 
@@ -682,8 +715,11 @@ class Augmentor():
         gauss = np.random.normal(mean, std, (height, width))
         gauss = gauss.reshape(height, width)
 
-        image = np.add(image, gauss)
-        image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+        image = cv2.normalize(src=np.add(image, gauss),
+                              dst=None,
+                              alpha=0,
+                              beta=255,
+                              norm_type=cv2.NORM_MINMAX)
 
         return image
 
@@ -716,6 +752,6 @@ class Augmentor():
             kernel_size += 1
 
         for _ in range(iterations):
-            image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
+            image = cv2.GaussianBlur(src=image, ksize=(kernel_size, kernel_size), sigmaX=0)
 
         return image
