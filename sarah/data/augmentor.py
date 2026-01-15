@@ -303,15 +303,13 @@ class Augmentor():
         dy = cv2.GaussianBlur(src=dy, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
 
         coords = np.indices(image.shape[:2], dtype=np.float32)
-        map_y = coords[0] + dy
-        map_x = coords[1] + dx
 
-        map_x = np.clip(map_x, 0, image.shape[1] - 1)
-        map_y = np.clip(map_y, 0, image.shape[0] - 1)
+        map_x = np.float32(np.clip(coords[1] + dx, 0, image.shape[1] - 1))
+        map_y = np.float32(np.clip(coords[0] + dy, 0, image.shape[0] - 1))
 
         image = cv2.remap(src=image,
-                          map1=np.float32(map_x),
-                          map2=np.float32(map_y),
+                          map1=map_x,
+                          map2=map_y,
                           interpolation=cv2.INTER_NEAREST,
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=int(np.median(image)))
