@@ -314,7 +314,7 @@ class Augmentor():
                           map2=map_y,
                           interpolation=cv2.INTER_NEAREST,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=int(np.median(image)))
+                          borderValue=np.median(image))
 
         return image
 
@@ -367,7 +367,7 @@ class Augmentor():
                                     dsize=(width, height),
                                     flags=cv2.INTER_NEAREST,
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=int(np.median(image)))
+                                    borderValue=np.median(image))
 
         return image
 
@@ -432,7 +432,7 @@ class Augmentor():
                                          left=left,
                                          right=right,
                                          borderType=cv2.BORDER_CONSTANT,
-                                         value=int(np.median(image)))
+                                         value=np.median(image))
 
                 image = cv2.addWeighted(src1=image,
                                         src2=img.astype(image.dtype),
@@ -482,7 +482,7 @@ class Augmentor():
                                dsize=(new_width, height),
                                flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=np.median(image))
 
         return image
 
@@ -515,7 +515,7 @@ class Augmentor():
         image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_NEAREST)
 
         if alpha > 0:
-            padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
+            padded_image = np.full((height, width), np.median(image), dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
@@ -563,7 +563,7 @@ class Augmentor():
                                dsize=(new_width, new_height),
                                flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=np.median(image))
 
         return image
 
@@ -605,7 +605,7 @@ class Augmentor():
                                dsize=(width, new_height),
                                flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=np.median(image))
 
         image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_NEAREST)
 
@@ -649,7 +649,7 @@ class Augmentor():
                                dsize=(new_width, height),
                                flags=cv2.INTER_NEAREST,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=np.median(image))
 
         image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_NEAREST)
 
