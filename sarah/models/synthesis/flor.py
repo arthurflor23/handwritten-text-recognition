@@ -314,52 +314,52 @@ class SynthesisModel(BaseSynthesisModel):
                 gp_res = tf.math.divide_no_nan(gp_adv, tf.math.reduce_std(grad_res)) + 1
 
             # generator loss
-            adv_loss = {
+            adv_dict = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctx_loss': g_ctx_loss * 2,
                 'g_kld_loss': g_kld_loss * 0.01,
             }
 
-            gen_loss = {
+            gen_dict = {
                 'g_ctc_loss': g_ctc_loss,
                 'g_wid_loss': g_wid_loss,
             }
 
-            aux_loss = {
+            aux_dict = {
                 'g_rec_loss': g_rec_loss,
                 'g_res_loss': g_res_loss,
             }
 
-            wtd_aux_loss = {
+            wtd_aux_dict = {
                 'g_rec_loss_w': g_rec_loss * gp_rec,
                 'g_res_loss_w': g_res_loss * gp_res,
             }
 
-            wtd_gen_loss, trainable_loss_weights = self.measure_tracker.weight(gen_loss)
+            wtd_gen_dict, trainable_weights = self.measure_tracker.weight(gen_dict)
 
-            g_loss = sum(adv_loss.values()) + sum(gen_loss.values()) + sum(aux_loss.values())
-            g_loss_w = sum(adv_loss.values()) + sum(wtd_gen_loss.values()) + sum(wtd_aux_loss.values())
+            g_loss = sum(adv_dict.values()) + sum(gen_dict.values()) + sum(aux_dict.values())
+            g_loss_w = sum(adv_dict.values()) + sum(wtd_gen_dict.values()) + sum(wtd_aux_dict.values())
 
         g_gradients = g_tape.gradient(g_loss_w,
                                       self.style_encoder.trainable_weights +
                                       self.generator.trainable_weights +
-                                      trainable_loss_weights)
+                                      trainable_weights)
 
         self.g_optimizer.apply_gradients(zip(g_gradients,
                                              self.style_encoder.trainable_weights +
                                              self.generator.trainable_weights +
-                                             trainable_loss_weights))
+                                             trainable_weights))
         del g_tape
 
         # kid
         self.kid.update_state(image_data, real_real_images)
 
         self.measure_tracker.update({
-            **adv_loss,
-            **gen_loss,
-            **aux_loss,
-            **wtd_gen_loss,
-            **wtd_aux_loss,
+            **adv_dict,
+            **gen_dict,
+            **aux_dict,
+            **wtd_gen_dict,
+            **wtd_aux_dict,
             'loss': g_loss,
             'loss_w': g_loss_w,
             self.kid.name: self.kid.result(),
