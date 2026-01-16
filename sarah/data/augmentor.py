@@ -417,7 +417,9 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_NEAREST)
+                interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
+
+                img = cv2.resize(src=img, dsize=dim, interpolation=interpolation)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
@@ -507,10 +509,12 @@ class Augmentor():
             alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
-        ratio = np.clip(1 - alpha, 0.5, 1.5)
+        ratio = 1 - alpha
 
         dim = (int(width * ratio), int(height * ratio))
-        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_NEAREST)
+        interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
+
+        image = cv2.resize(src=image, dsize=dim, interpolation=interpolation)
 
         if alpha > 0:
             padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
