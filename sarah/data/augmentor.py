@@ -296,15 +296,20 @@ class Augmentor():
         if kernel_size % 2 == 0:
             kernel_size += 1
 
-        dxy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
-        dxy = cv2.GaussianBlur(src=dxy, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
+        dx = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
+        dy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
 
-        coords = np.indices(image.shape[:2], dtype=np.float32).transpose(1, 2, 0)
-        displaced_coords = np.float32(coords + np.stack((dxy, dxy), axis=-1))
+        dx = cv2.GaussianBlur(src=dx, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
+        dy = cv2.GaussianBlur(src=dy, ksize=(kernel_size, kernel_size), sigmaX=0) * (kernel_size * alpha)
+
+        coords = np.indices(image.shape[:2], dtype=np.float32)
+
+        map_x = np.float32(np.clip(coords[1] + dx, 0, image.shape[1] - 1))
+        map_y = np.float32(np.clip(coords[0] + dy, 0, image.shape[0] - 1))
 
         image = cv2.remap(src=image,
-                          map1=displaced_coords[..., 1],
-                          map2=displaced_coords[..., 0],
+                          map1=map_x,
+                          map2=map_y,
                           interpolation=cv2.INTER_NEAREST,
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=int(np.median(image)))
@@ -412,7 +417,7 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA)
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_NEAREST)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
@@ -502,10 +507,10 @@ class Augmentor():
             alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
-        ratio = 1 - alpha
+        ratio = np.clip(1 - alpha, 0.5, 1.5)
 
         dim = (int(width * ratio), int(height * ratio))
-        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA)
+        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_NEAREST)
 
         if alpha > 0:
             padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
