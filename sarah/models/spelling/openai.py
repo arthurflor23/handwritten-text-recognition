@@ -27,7 +27,10 @@ class SpellingModel():
         self.env_file = env_file
         self.env_key = env_key
 
-        self.model = 'gpt-4o-mini'
+        # self.model = 'gpt-5-mini'    # $0.25	$0.025	$2.00
+        # self.model = 'gpt-4.1-nano'  # $0.10	$0.025	$0.40
+        # self.model = 'gpt-4o-mini'   # $0.15	$0.075	$0.60
+        self.model = 'gpt-5-nano'    # $0.05	$0.005	$0.40
         self.max_tokens = 8192
 
         self.instruction = ('Correct only obvious spelling mistakes in words within tags. '
@@ -168,9 +171,8 @@ class SpellingModel():
                 response = openai.chat.completions.create(model=self.model,
                                                           messages=messages,
                                                           temperature=0,
-                                                          top_p=1.0,
-                                                          n=1,
-                                                          seed=0)
+                                                          top_p=1,
+                                                          n=1)
 
                 return response.choices[0].message.content.strip().split('\n')
 
