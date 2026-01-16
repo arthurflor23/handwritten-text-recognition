@@ -76,10 +76,10 @@ def check(args):
         image_source_data, text_source_data, writer_source_data, _ = y_source_data
 
         _, y_encoded_data = next(encoded_gen)
-        image_encoded_data, text_encoded_data, writer_encoded_data, mask_encoded_data = y_encoded_data
+        image_encoded_data, text_encoded_data, writer_encoded_data, _ = y_encoded_data
 
         x_augmented_data, _ = next(augmented_gen)
-        image_augmented_data, _, _, mask_augmented_data = x_augmented_data
+        image_augmented_data, _, _, _ = x_augmented_data
 
         for i in range(len(image_source_data)):
             print('\n')
@@ -96,9 +96,6 @@ def check(args):
             print('Encoded text')
             print(text_encoded_data[i])
             print('-' * 60, '\n')
-
-            cv2.imshow('Image Mask', mask_encoded_data[i])
-            cv2.imshow('Augmented Mask Image', mask_augmented_data[i])
 
             cv2.imshow('Image', image_encoded_data[i])
             cv2.imshow('Augmented Image', image_augmented_data[i])
