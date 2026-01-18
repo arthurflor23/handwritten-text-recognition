@@ -233,8 +233,12 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
-        image = cv2.erode(src=image, kernel=kernel, iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE,
+                                           ksize=(kernel_size, kernel_size))
+
+        image = cv2.erode(src=image,
+                          kernel=kernel,
+                          iterations=iterations)
 
         return image
 
@@ -263,8 +267,12 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
-        image = cv2.dilate(src=image, kernel=kernel, iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE,
+                                           ksize=(kernel_size, kernel_size))
+
+        image = cv2.dilate(src=image,
+                           kernel=kernel,
+                           iterations=iterations)
 
         return image
 
@@ -297,15 +305,15 @@ class Augmentor():
             kernel_size += 1
 
         dxy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
-        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * (kernel_size * alpha)
+        dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * kernel_size * alpha
 
-        coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
-        displaced_coords = np.float32(coords + np.stack((dxy, dxy), axis=-1))
+        org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
+        displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
 
         image = cv2.remap(src=image,
                           map1=displaced_coords[..., 1],
                           map2=displaced_coords[..., 0],
-                          interpolation=cv2.INTER_CUBIC,
+                          interpolation=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=int(np.median(image)))
 
@@ -335,9 +343,8 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_offset = min(height, width)
-        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
-        max_offset = int(np.ceil(max_offset * alpha * max_offset_factor))
+        max_factor = (1 - (min(height, width) / (height + width))) ** 4
+        dxy_factor = int(np.ceil(min(height, width) * alpha * max_factor))
 
         src_points = np.array([
             (0, 0),
@@ -347,10 +354,10 @@ class Augmentor():
         ], dtype=np.float32)
 
         dst_points = np.array([
-            (np.random.randint(0, max_offset), np.random.randint(0, max_offset)),
-            (np.random.randint(width - max_offset, width), np.random.randint(0, max_offset)),
-            (np.random.randint(width - max_offset, width), np.random.randint(height - max_offset, height)),
-            (np.random.randint(0, max_offset), np.random.randint(height - max_offset, height)),
+            (np.random.randint(0, dxy_factor), np.random.randint(0, dxy_factor)),
+            (np.random.randint(width - dxy_factor, width), np.random.randint(0, dxy_factor)),
+            (np.random.randint(width - dxy_factor, width), np.random.randint(height - dxy_factor, height)),
+            (np.random.randint(0, dxy_factor), np.random.randint(height - dxy_factor, height)),
         ], dtype=np.float32)
 
         M = cv2.getPerspectiveTransform(src=src_points, dst=dst_points)
@@ -358,7 +365,7 @@ class Augmentor():
         image = cv2.warpPerspective(src=image,
                                     M=M,
                                     dsize=(width, height),
-                                    flags=cv2.INTER_CUBIC,
+                                    flags=cv2.INTER_LINEAR,
                                     borderMode=cv2.BORDER_CONSTANT,
                                     borderValue=int(np.median(image)))
 
@@ -412,9 +419,7 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
-
-                img = cv2.resize(src=img, dsize=dim, interpolation=interpolation)
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_LINEAR)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
@@ -461,8 +466,8 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_offset_factor = (1 - (height / (height + width))) ** 4
-        shear_tan = np.tan(np.radians(angle * max_offset_factor))
+        dy_factor = (1 - (height / (height + width))) ** 4
+        shear_tan = np.tan(np.radians(angle * dy_factor))
 
         if angle > 0:
             new_width = int(width + height * shear_tan)
@@ -475,7 +480,7 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(new_width, height),
-                               flags=cv2.INTER_CUBIC,
+                               flags=cv2.INTER_LINEAR,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
@@ -507,9 +512,7 @@ class Augmentor():
         ratio = 1 - alpha
 
         dim = (int(width * ratio), int(height * ratio))
-        interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
-
-        image = cv2.resize(src=image, dsize=dim, interpolation=interpolation)
+        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_LINEAR)
 
         if alpha > 0:
             padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
@@ -541,10 +544,11 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_offset_factor = (1 - (height / (height + width))) ** 2
+        dy_factor = (1 - (height / (height + width))) ** 2
+        angle = angle * dy_factor
 
         center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center=center, angle=angle * max_offset_factor, scale=1.0)
+        M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
 
         cos_angle = np.abs(M[0, 0])
         sin_angle = np.abs(M[0, 1])
@@ -558,7 +562,7 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(new_width, new_height),
-                               flags=cv2.INTER_CUBIC,
+                               flags=cv2.INTER_LINEAR,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
@@ -588,23 +592,19 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_offset = min(height, width)
-        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
-
-        y_translation = int(np.ceil(max_offset * alpha * max_offset_factor))
+        dy_factor = (1 - (height / (height + width))) ** 4
+        y_translation = int(np.ceil(height * alpha * dy_factor))
 
         M = np.float32([[1, 0, 0], [0, 1, y_translation]])
 
-        new_height = height + abs(y_translation)
-
         image = cv2.warpAffine(src=image,
                                M=M,
-                               dsize=(width, new_height),
-                               flags=cv2.INTER_CUBIC,
+                               dsize=(width, height + abs(y_translation)),
+                               flags=cv2.INTER_LINEAR,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
 
         return image
 
@@ -632,23 +632,19 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_offset = min(height, width)
-        max_offset_factor = (1 - (max_offset / (height + width))) ** 4
-
-        x_translation = int(np.ceil(max_offset * alpha * max_offset_factor))
+        dx_factor = (1 - (width / (height + width))) ** 4
+        x_translation = int(np.ceil(width * alpha * dx_factor))
 
         M = np.float32([[1, 0, x_translation], [0, 1, 0]])
 
-        new_width = width + abs(x_translation)
-
         image = cv2.warpAffine(src=image,
                                M=M,
-                               dsize=(new_width, height),
-                               flags=cv2.INTER_CUBIC,
+                               dsize=(width + abs(x_translation), height),
+                               flags=cv2.INTER_LINEAR,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
 
         return image
 
