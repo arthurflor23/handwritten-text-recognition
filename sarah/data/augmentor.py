@@ -129,8 +129,8 @@ class Augmentor():
             Transformed image.
         """
 
-        mixup_params = self.mixup_params if self.mixup_params is None else \
-            self.mixup_params[:1] + [batch_images] + self.mixup_params[1:]
+        if self.mixup_params is not None:
+            self.mixup_params = list(self.mixup_params[:2]) + [batch_images]
 
         transformations = [
             (self.binarize, self.binarize_params, None),
@@ -138,7 +138,7 @@ class Augmentor():
             (self.dilate, self.dilate_params, 32),
             (self.elastic, self.elastic_params, 32),
             (self.perspective, self.perspective_params, 32),
-            (self.mixup, mixup_params, 32),
+            (self.mixup, self.mixup_params, 32),
             (self.shear, self.shear_params, 32),
             (self.scale, self.scale_params, 32),
             (self.rotate, self.rotate_params, 32),
@@ -313,7 +313,7 @@ class Augmentor():
         image = cv2.remap(src=image,
                           map1=displaced_coords[..., 1],
                           map2=displaced_coords[..., 0],
-                          interpolation=cv2.INTER_LINEAR,
+                          interpolation=cv2.INTER_CUBIC,
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=int(np.median(image)))
 
@@ -365,13 +365,13 @@ class Augmentor():
         image = cv2.warpPerspective(src=image,
                                     M=M,
                                     dsize=(width, height),
-                                    flags=cv2.INTER_LINEAR,
+                                    flags=cv2.INTER_CUBIC,
                                     borderMode=cv2.BORDER_CONSTANT,
                                     borderValue=int(np.median(image)))
 
         return image
 
-    def mixup(self, image, batch_images, opacity, iterations=1, radius=True):
+    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
         """
         Apply mixup augmentation to the image.
 
@@ -379,10 +379,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be mixed.
-        batch_images : list
-            List of additional images for mixing.
         opacity : float
             Opacity of the mixup effect.
+        batch_images : list, optional
+            List of additional images for mixing.
         iterations : int
             Number of images for the mixup operation.
         radius : bool, optional
@@ -419,7 +419,7 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_LINEAR)
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
@@ -480,7 +480,7 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(new_width, height),
-                               flags=cv2.INTER_LINEAR,
+                               flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
@@ -512,7 +512,7 @@ class Augmentor():
         ratio = 1 - alpha
 
         dim = (int(width * ratio), int(height * ratio))
-        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_LINEAR)
+        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_CUBIC)
 
         if alpha > 0:
             padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
@@ -562,7 +562,7 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(new_width, new_height),
-                               flags=cv2.INTER_LINEAR,
+                               flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
@@ -600,11 +600,11 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(width, height + abs(y_translation)),
-                               flags=cv2.INTER_LINEAR,
+                               flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
 
         return image
 
@@ -640,11 +640,11 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(width + abs(x_translation), height),
-                               flags=cv2.INTER_LINEAR,
+                               flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=int(np.median(image)))
 
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
+        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
 
         return image
 
