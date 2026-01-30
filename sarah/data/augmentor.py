@@ -89,25 +89,28 @@ class Augmentor():
             Formatted string with useful information.
         """
 
+        def _format(params):
+            return tuple(map(lambda x: round(x, 2), params)) if params else '-'
+
         pad, width = 25, 68
 
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
         info += "\n" + "-" * width
-        info += f"\n{'binarize':<{pad}}: {self.binarize_params or '-'}"
-        info += f"\n{'erode':<{pad}}: {self.erode_params or '-'}"
-        info += f"\n{'dilate':<{pad}}: {self.dilate_params or '-'}"
-        info += f"\n{'elastic':<{pad}}: {self.elastic_params or '-'}"
-        info += f"\n{'perspective':<{pad}}: {self.perspective_params or '-'}"
-        info += f"\n{'mixup':<{pad}}: {self.mixup_params or '-'}"
-        info += f"\n{'shear':<{pad}}: {self.shear_params or '-'}"
-        info += f"\n{'scale':<{pad}}: {self.scale_params or '-'}"
-        info += f"\n{'rotate':<{pad}}: {self.rotate_params or '-'}"
-        info += f"\n{'shift_y':<{pad}}: {self.shift_y_params or '-'}"
-        info += f"\n{'shift_x':<{pad}}: {self.shift_x_params or '-'}"
-        info += f"\n{'salt_and_pepper':<{pad}}: {self.salt_and_pepper_params or '-'}"
-        info += f"\n{'gaussian_noise':<{pad}}: {self.gaussian_noise_params or '-'}"
-        info += f"\n{'gaussian_blur':<{pad}}: {self.gaussian_blur_params or '-'}"
+        info += f"\n{'binarize':<{pad}}: {_format(self.binarize_params)}"
+        info += f"\n{'erode':<{pad}}: {_format(self.erode_params)}"
+        info += f"\n{'dilate':<{pad}}: {_format(self.dilate_params)}"
+        info += f"\n{'elastic':<{pad}}: {_format(self.elastic_params)}"
+        info += f"\n{'perspective':<{pad}}: {_format(self.perspective_params)}"
+        info += f"\n{'mixup':<{pad}}: {_format(self.mixup_params)}"
+        info += f"\n{'shear':<{pad}}: {_format(self.shear_params)}"
+        info += f"\n{'scale':<{pad}}: {_format(self.scale_params)}"
+        info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
+        info += f"\n{'shift_y':<{pad}}: {_format(self.shift_y_params)}"
+        info += f"\n{'shift_x':<{pad}}: {_format(self.shift_x_params)}"
+        info += f"\n{'salt_and_pepper':<{pad}}: {_format(self.salt_and_pepper_params)}"
+        info += f"\n{'gaussian_noise':<{pad}}: {_format(self.gaussian_noise_params)}"
+        info += f"\n{'gaussian_blur':<{pad}}: {_format(self.gaussian_blur_params)}"
         info += f"\n{'seed':<{pad}}: {self.seed}"
 
         return info
