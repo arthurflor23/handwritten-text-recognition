@@ -42,7 +42,7 @@ class Tokenizer():
         """
 
         pad, width = 25, 68
-        chunk_length = width - pad - 3
+        chunk_length = width - pad - 4
 
         info = "=" * width
         info += f'\n{self.__class__.__name__.center(width)}'
