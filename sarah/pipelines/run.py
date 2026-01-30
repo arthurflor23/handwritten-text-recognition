@@ -129,10 +129,10 @@ def run(args):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
 
             if metrics:
-                print('-' * 60)
+                print('-' * 68)
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('-' * 60)
+                print('-' * 68)
 
     elif args.recognition:
         if args.training or args.test:
@@ -160,10 +160,10 @@ def run(args):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
 
             if metrics:
-                print('-' * 60)
+                print('-' * 68)
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('-' * 60)
+                print('-' * 68)
 
         if args.spelling:
             data, predictions, probabilities = compose.get_evaluations()
@@ -186,10 +186,10 @@ def run(args):
             compose.save_context(metrics=metrics, evaluations=evaluations, suffix='spelling')
 
             if metrics:
-                print('-' * 60)
+                print('-' * 68)
                 print('spelling metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('-' * 60)
+                print('-' * 68)
 
     elif args.synthesis:
         if args.training or args.test:
@@ -212,7 +212,7 @@ def run(args):
             compose.save_context(metrics=metrics, evaluation_images=evaluations)
 
             if metrics:
-                print('-' * 60)
+                print('-' * 68)
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
-                print('-' * 60)
+                print('-' * 68)

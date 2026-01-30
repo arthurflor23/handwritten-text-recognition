@@ -29,7 +29,7 @@ class BaseModel(tf.keras.Model):
             Formatted string with useful information.
         """
 
-        pad, width = 25, 60
+        pad, width = 25, 68
 
         module_name = self.__class__.__module__.split('.')[-1]
         class_name = self.__class__.__name__.center(width)

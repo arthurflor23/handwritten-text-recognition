@@ -89,7 +89,7 @@ class Augmentor():
             Formatted string with useful information.
         """
 
-        pad, width = 25, 60
+        pad, width = 25, 68
 
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"

@@ -91,11 +91,11 @@ def check(args):
 
             print('Source text', f"(length {len(text_source_data[i])})")
             print(text_source_data[i])
-            print('-' * 60, '\n')
+            print('-' * 68, '\n')
 
             print('Encoded text')
             print(text_encoded_data[i])
-            print('-' * 60, '\n')
+            print('-' * 68, '\n')
 
             cv2.imshow('Image', image_encoded_data[i])
             cv2.imshow('Augmented Image', image_augmented_data[i])

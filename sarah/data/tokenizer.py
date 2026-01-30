@@ -41,7 +41,8 @@ class Tokenizer():
             Formatted string with useful information.
         """
 
-        pad, width = 25, 60
+        pad, width = 25, 68
+        chunk_length = width - pad - 3
 
         info = "=" * width
         info += f'\n{self.__class__.__name__.center(width)}'
@@ -55,7 +56,7 @@ class Tokenizer():
         info += "\n" + "-" * width
 
         chars = ''.join(self.chars)
-        chunks = [chars[i:i+(width//2)+2] for i in range(0, len(chars), (width//2)+2)]
+        chunks = [chars[i:i+chunk_length] for i in range(0, len(chars), chunk_length)]
 
         info += f"\n{'charset':<{pad}}: {chunks[0]}"
         for chunk in chunks[1:]:

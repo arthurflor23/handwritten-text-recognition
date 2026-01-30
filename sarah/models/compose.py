@@ -187,7 +187,7 @@ class Compose():
         if not self.model:
             return str(None)
 
-        width = 60
+        width = 68
 
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
@@ -680,7 +680,7 @@ class Compose():
                 title = "Run context (new)"
 
             if title:
-                pad, width = 25, 60
+                pad, width = 25, 68
                 print("=" * width)
                 print(f"{title.center(width)}")
                 print("-" * width)
