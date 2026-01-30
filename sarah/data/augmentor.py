@@ -442,7 +442,7 @@ class Augmentor():
 
         return image
 
-    def shear(self, image, angle, radius=True):
+    def shear(self, image, alpha, radius=True):
         """
         Apply shear transformation to the image.
 
@@ -450,10 +450,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be sheared.
-        angle : float
-            shear angle in degrees.
+        alpha : float
+            Factor of shear transformation.
         radius : bool, optional
-            Whether to use range radius for angle.
+            Whether to use range radius for alpha.
 
         Returns
         -------
@@ -462,20 +462,20 @@ class Augmentor():
         """
 
         if radius:
-            angle = np.random.uniform(-angle, angle)
+            alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
 
         dy_factor = (1 - (height / (height + width))) ** 4
-        shear_tan = np.tan(np.radians(angle * dy_factor))
+        angle = alpha * dy_factor
 
         if angle > 0:
-            new_width = int(width + height * shear_tan)
-            M = np.float32([[1, shear_tan, 0], [0, 1, 0]])
+            new_width = int(width + height * angle)
+            M = np.float32([[1, angle, 0], [0, 1, 0]])
 
         else:
-            new_width = int(width - height * shear_tan)
-            M = np.float32([[1, shear_tan, -height * shear_tan], [0, 1, 0]])
+            new_width = int(width - height * angle)
+            M = np.float32([[1, angle, -height * angle], [0, 1, 0]])
 
         image = cv2.warpAffine(src=image,
                                M=M,
@@ -520,7 +520,7 @@ class Augmentor():
 
         return image
 
-    def rotate(self, image, angle, radius=True):
+    def rotate(self, image, alpha, radius=True):
         """
         Apply rotate to the image.
 
@@ -528,10 +528,10 @@ class Augmentor():
         ----------
         image : ndarray
             Input image to be rotated.
-        angle : float
-            rotate angle in degrees.
+        alpha : float
+            Factor of rotate transformation.
         radius : bool, optional
-            Whether to use range radius for angle.
+            Whether to use range radius for alpha.
 
         Returns
         -------
@@ -540,12 +540,12 @@ class Augmentor():
         """
 
         if radius:
-            angle = np.random.uniform(-angle, angle)
+            alpha = np.random.uniform(-alpha, alpha)
 
         height, width = image.shape[:2]
 
-        dy_factor = (1 - (height / (height + width))) ** 2
-        angle = angle * dy_factor
+        dy_factor = (1 - (height / (height + width))) ** 4
+        angle = alpha * dy_factor
 
         center = (width // 2, height // 2)
         M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
