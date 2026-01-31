@@ -139,17 +139,17 @@ class Augmentor():
             (self.mixup, self.mixup_params, 32),
             (self.binarize, self.binarize_params, 0),
 
+            (self.erode, self.erode_params, 32),
+            (self.dilate, self.dilate_params, 32),
+
             (self.elastic, self.elastic_params, 32),
             (self.perspective, self.perspective_params, 32),
 
-            (self.scale, self.scale_params, 32),
             (self.shear, self.shear_params, 32),
+            (self.scale, self.scale_params, 32),
             (self.rotate, self.rotate_params, 32),
             (self.shift_y, self.shift_y_params, 32),
             (self.shift_x, self.shift_x_params, 32),
-
-            (self.erode, self.erode_params, 32),
-            (self.dilate, self.dilate_params, 32),
 
             (self.salt_and_pepper, self.salt_and_pepper_params, 32),
             (self.gaussian_noise, self.gaussian_noise_params, 32),
