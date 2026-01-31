@@ -136,31 +136,35 @@ class Augmentor():
             self.mixup_params = list(self.mixup_params[:2]) + [batch_images]
 
         transformations = [
-            (self.binarize, self.binarize_params, None),
-            (self.erode, self.erode_params, 32),
-            (self.dilate, self.dilate_params, 32),
+            (self.mixup, self.mixup_params, 32),
+            (self.binarize, self.binarize_params, 0),
+
             (self.elastic, self.elastic_params, 32),
             (self.perspective, self.perspective_params, 32),
-            (self.mixup, self.mixup_params, 32),
-            (self.shear, self.shear_params, 32),
+
             (self.scale, self.scale_params, 32),
+            (self.shear, self.shear_params, 32),
             (self.rotate, self.rotate_params, 32),
             (self.shift_y, self.shift_y_params, 32),
             (self.shift_x, self.shift_x_params, 32),
+
+            (self.erode, self.erode_params, 32),
+            (self.dilate, self.dilate_params, 32),
+
             (self.salt_and_pepper, self.salt_and_pepper_params, 32),
             (self.gaussian_noise, self.gaussian_noise_params, 32),
             (self.gaussian_blur, self.gaussian_blur_params, 32),
         ]
 
-        for transform_func, params, min_size in transformations:
+        for func, params, min_length in transformations:
             if params is None or len(params) == 0 or params[0] <= 0:
                 continue
 
-            if min_size and min(image.shape[:2]) < min_size:
+            if min(image.shape[:2]) <= min_length:
                 continue
 
-            if np.random.random() <= float(params[0]):
-                image = transform_func(image, *params[1:])
+            if np.random.random() <= params[0]:
+                image = func(image, *params[1:])
 
         return image
 
