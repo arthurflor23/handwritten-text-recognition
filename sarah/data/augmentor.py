@@ -89,8 +89,8 @@ class Augmentor():
             Formatted string with useful information.
         """
 
-        def _format(params):
-            return tuple(map(lambda x: round(x, 2), params)) if params else '-'
+        def _format(x):
+            return tuple(round(y, 2) if isinstance(y, (int, float)) else y for y in x) if x else '-'
 
         pad, width = 25, 68
 
