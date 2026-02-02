@@ -212,7 +212,7 @@ class ContentAlignment(tf.keras.layers.Layer):
                  image_padding_value=-1,
                  text_padding_value=0,
                  mask_padding_value=0,
-                 resize_method='bilinear',
+                 resize_method='bicubic',
                  **kwargs):
         """
         Initializes the layer.
