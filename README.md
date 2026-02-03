@@ -110,12 +110,12 @@ The project has several command-line parameters that can be used to customize it
 
 #### Augmentor
 
+- `--mixup`: Mixup transformation (probability, opacity, iterations).
 - `--binarize`: Binarization (probability, method).
 - `--erode`: Erode transformation (probability, kernel size, iterations).
 - `--dilate`: Dilate transformation (probability, kernel size, iterations).
 - `--elastic`: Elastic transformation (probability, kernel size, alpha).
 - `--perspective`: Perspective transformation (probability, alpha).
-- `--mixup`: Mixup transformation (probability, opacity, iterations).
 - `--shear`: Shear transformation (probability, shear alpha).
 - `--scale`: Scale transformation (probability, scale alpha).
 - `--rotate`: Rotate transformation (probability, rotate alpha).
