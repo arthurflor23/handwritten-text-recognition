@@ -113,7 +113,7 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2], -1))(decoder)
 
-        decoder = tf.keras.layers.LayerNormalization(epsilon=1e-3)(decoder)
+        decoder = tf.keras.layers.LayerNormalization(epsilon=1e-5)(decoder)
         decoder = tf.keras.layers.Dropout(rate=0.6)(decoder)
         decoder = tf.keras.layers.Dense(units=self.lexical_shape[-1])(decoder)
 
