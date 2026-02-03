@@ -8,12 +8,12 @@ class Augmentor():
     """
 
     def __init__(self,
+                 mixup=None,
                  binarize=None,
                  erode=None,
                  dilate=None,
                  elastic=None,
                  perspective=None,
-                 mixup=None,
                  shear=None,
                  scale=None,
                  rotate=None,
@@ -28,6 +28,8 @@ class Augmentor():
 
         Parameters
         ----------
+        mixup : list or None, optional
+            Parameters for mixup transformation.
         binarize : list or None, optional
             Parameters for binarization.
         erode : list or None, optional
@@ -38,8 +40,6 @@ class Augmentor():
             Parameters for elastic transformation.
         perspective : list or None, optional
             Parameters for perspective transform transformation.
-        mixup : list or None, optional
-            Parameters for mixup transformation.
         shear : list or None, optional
             Parameters for shear transformation.
         scale : list or None, optional
@@ -63,12 +63,12 @@ class Augmentor():
         if seed is not None:
             np.random.seed(seed)
 
+        self.mixup_params = mixup
         self.binarize_params = binarize
         self.erode_params = erode
         self.dilate_params = dilate
         self.elastic_params = elastic
         self.perspective_params = perspective
-        self.mixup_params = mixup
         self.shear_params = shear
         self.scale_params = scale
         self.rotate_params = rotate
@@ -97,12 +97,12 @@ class Augmentor():
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
         info += "\n" + "-" * width
+        info += f"\n{'mixup':<{pad}}: {_format(self.mixup_params)}"
         info += f"\n{'binarize':<{pad}}: {_format(self.binarize_params)}"
         info += f"\n{'erode':<{pad}}: {_format(self.erode_params)}"
         info += f"\n{'dilate':<{pad}}: {_format(self.dilate_params)}"
         info += f"\n{'elastic':<{pad}}: {_format(self.elastic_params)}"
         info += f"\n{'perspective':<{pad}}: {_format(self.perspective_params)}"
-        info += f"\n{'mixup':<{pad}}: {_format(self.mixup_params)}"
         info += f"\n{'shear':<{pad}}: {_format(self.shear_params)}"
         info += f"\n{'scale':<{pad}}: {_format(self.scale_params)}"
         info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
