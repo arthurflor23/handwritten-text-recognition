@@ -42,12 +42,12 @@ if __name__ == '__main__':
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading')
 
     # augmentor
+    parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
     parser.add_argument('--binarize', default=None, nargs='+', help='Binarization settings')
     parser.add_argument('--erode', default=(0.33, 3), nargs='+', type=float, help='Erosion settings')
     parser.add_argument('--dilate', default=None, nargs='+', type=float, help='Dilation settings')
     parser.add_argument('--elastic', default=(0.33, 31), nargs='+', type=float, help='Elastic deformation settings')
     parser.add_argument('--perspective', default=(0.66, 0.8), nargs='+', type=float, help='Perspective settings')
-    parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
     parser.add_argument('--shear', default=(0.33, 0.1), nargs='+', type=float, help='Shearing settings')
     parser.add_argument('--scale', default=(0.33, 0.1), nargs='+', type=float, help='Scaling settings')
     parser.add_argument('--rotate', default=(0.33, 0.1), nargs='+', type=float, help='Rotation settings')
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--learning-rate', default=None, type=float, help='Learning rate')
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
     parser.add_argument('--plateau-cooldown', default=0, type=int, help='Cooldown after plateau')
-    parser.add_argument('--plateau-patience', default=60, type=int, help='Plateau patience epochs')
+    parser.add_argument('--plateau-patience', default=50, type=int, help='Plateau patience epochs')
     parser.add_argument('--patience', default=100, type=int, help='Stop after no improvement')
     parser.add_argument('--synthesis-probability', default=1.0, type=float, help='Training with synthetic data')
 
