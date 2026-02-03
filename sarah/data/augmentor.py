@@ -168,6 +168,77 @@ class Augmentor():
 
         return image
 
+    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
+        """
+        Apply mixup augmentation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be mixed.
+        opacity : float
+            Opacity of the mixup effect.
+        batch_images : list, optional
+            List of additional images for mixing.
+        iterations : int
+            Number of images for the mixup operation.
+        radius : bool, optional
+            Whether to use range radius for opacity and iterations.
+
+        Returns
+        -------
+        ndarray
+            Mixed image.
+        """
+
+        if batch_images is None or len(batch_images) == 0:
+            return image
+
+        height, width = image.shape[:2]
+
+        size_min = height * width * 0.75
+        size_max = height * width * 1.25
+        size_images = [img for img in batch_images if size_min <= img.shape[0] * img.shape[1] <= size_max]
+
+        if size_images:
+            iterations = min(iterations, len(size_images))
+            indices = np.uint8(np.random.uniform(0, len(size_images), iterations))
+            opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
+
+            for i, opc in zip(indices, opacities):
+                img = size_images[i]
+
+                if self.binarize_params is not None:
+                    img = self.binarize(img, *self.binarize_params[1:])
+
+                ratio_width = width / float(img.shape[1])
+                ratio_height = height / float(img.shape[0])
+                ratio = min(ratio_width, ratio_height)
+
+                dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
+
+                delta_w = width - dim[0]
+                delta_h = height - dim[1]
+                top, bottom = delta_h//2, delta_h-(delta_h//2)
+                left, right = delta_w//2, delta_w-(delta_w//2)
+
+                img = cv2.copyMakeBorder(src=img,
+                                         top=top,
+                                         bottom=bottom,
+                                         left=left,
+                                         right=right,
+                                         borderType=cv2.BORDER_CONSTANT,
+                                         value=int(np.median(image)))
+
+                image = cv2.addWeighted(src1=image,
+                                        src2=img.astype(image.dtype),
+                                        alpha=1 - opc,
+                                        beta=opc,
+                                        gamma=0)
+
+        return image
+
     def binarize(self, image, method='otsu'):
         """
         Apply binarization method to an image.
@@ -375,77 +446,6 @@ class Augmentor():
                                     flags=cv2.INTER_CUBIC,
                                     borderMode=cv2.BORDER_CONSTANT,
                                     borderValue=int(np.median(image)))
-
-        return image
-
-    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
-        """
-        Apply mixup augmentation to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be mixed.
-        opacity : float
-            Opacity of the mixup effect.
-        batch_images : list, optional
-            List of additional images for mixing.
-        iterations : int
-            Number of images for the mixup operation.
-        radius : bool, optional
-            Whether to use range radius for opacity and iterations.
-
-        Returns
-        -------
-        ndarray
-            Mixed image.
-        """
-
-        if batch_images is None or len(batch_images) == 0:
-            return image
-
-        height, width = image.shape[:2]
-
-        size_min = height * width * 0.75
-        size_max = height * width * 1.25
-        size_images = [img for img in batch_images if size_min <= img.shape[0] * img.shape[1] <= size_max]
-
-        if size_images:
-            iterations = min(iterations, len(size_images))
-            indices = np.uint8(np.random.uniform(0, len(size_images), iterations))
-            opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
-
-            for i, opc in zip(indices, opacities):
-                img = size_images[i]
-
-                if self.binarize_params is not None:
-                    img = self.binarize(img, *self.binarize_params[1:])
-
-                ratio_width = width / float(img.shape[1])
-                ratio_height = height / float(img.shape[0])
-                ratio = min(ratio_width, ratio_height)
-
-                dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
-
-                delta_w = width - dim[0]
-                delta_h = height - dim[1]
-                top, bottom = delta_h//2, delta_h-(delta_h//2)
-                left, right = delta_w//2, delta_w-(delta_w//2)
-
-                img = cv2.copyMakeBorder(src=img,
-                                         top=top,
-                                         bottom=bottom,
-                                         left=left,
-                                         right=right,
-                                         borderType=cv2.BORDER_CONSTANT,
-                                         value=int(np.median(image)))
-
-                image = cv2.addWeighted(src1=image,
-                                        src2=img.astype(image.dtype),
-                                        alpha=1 - opc,
-                                        beta=opc,
-                                        gamma=0)
 
         return image
 
