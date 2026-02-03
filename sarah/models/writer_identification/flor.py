@@ -44,13 +44,13 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder_input = tf.keras.Input(shape=self.image_shape)
 
         encoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(encoder_input)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
         encoder = GatedResidualConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
 
@@ -58,7 +58,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
@@ -66,7 +66,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
@@ -74,7 +74,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
         feats.append(encoder)
@@ -83,7 +83,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
         feats.append(encoder)
@@ -92,7 +92,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-3)(encoder)
+        encoder = tf.keras.layers.GroupNormalization(groups=-1, epsilon=1e-5)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
         feats.append(encoder)
