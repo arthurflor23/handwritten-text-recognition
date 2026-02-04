@@ -284,6 +284,19 @@ class Augmentor():
                                           blockSize=11,
                                           C=2)
 
+        elif method == 'sauvola':
+            window_size = 31
+            thresh = 128
+            k = 0.1
+
+            mean = cv2.boxFilter(src=image, ddepth=-1, ksize=(window_size, window_size))
+            mean_sq = cv2.boxFilter(src=image**2, ddepth=-1, ksize=(window_size, window_size))
+
+            stddev = np.sqrt(mean_sq - mean**2)
+            threshold = mean * (1 + k * (stddev / thresh - 1))
+
+            image = np.where(image > threshold, 255, 0).astype(np.uint8)
+
         return image
 
     def erode(self, image, kernel_size, iterations=1, radius=True):
