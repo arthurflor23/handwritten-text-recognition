@@ -99,19 +99,18 @@ The project has several command-line parameters that can be used to customize it
 - `--source`: Source data (e.g., iam, rimes).
 - `--text-level`: Text structure level (e.g., line, paragraph).
 - `--image-shape`: Image dimensions (height, width, channels).
-- `--pad-value`: Padding value for images.
 - `--char-width`: Character width for normalization.
 - `--mask-by-text`: Mask data by text length.
 - `--order-by-text`: Sort data by text length.
 - `--training-ratio`: Training partition ratio.
 - `--validation-ratio`: Validation partition ratio.
 - `--test-ratio`: Test partition ratio.
+- `--illumination` : Apply illumination compensation.
+- `--binarization` : Apply binarization method.
 - `--lazy-mode`: Activate lazy loading.
 
 #### Augmentor
 
-- `--mixup`: Mixup transformation (probability, opacity, iterations).
-- `--binarize`: Binarization (probability, method).
 - `--erode`: Erode transformation (probability, kernel size, iterations).
 - `--dilate`: Dilate transformation (probability, kernel size, iterations).
 - `--elastic`: Elastic transformation (probability, kernel size, alpha).
@@ -121,6 +120,7 @@ The project has several command-line parameters that can be used to customize it
 - `--rotate`: Rotate transformation (probability, rotate alpha).
 - `--shift-y`: Vertical translation (probability, y-alpha).
 - `--shift-x`: Horizontal translation (probability, x-alpha).
+- `--mixup`: Mixup transformation (probability, opacity, iterations).
 - `--salt-and-pepper`: Salt and Pepper noise (probability, alpha).
 - `--gaussian-noise`: Gaussian noise (probability, alpha).
 - `--gaussian-blur`: Gaussian blur filter (probability, kernel size).
