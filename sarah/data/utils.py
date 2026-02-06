@@ -4,6 +4,289 @@ import html
 import numpy as np
 
 
+def batch_binarization(batch_data, method):
+    """
+    Apply binarization to a batch of grayscale images.
+
+    Parameters
+    ----------
+    batch_data : list of np.ndarray
+        List of grayscale images.
+    method : str, optional
+        Binarization method to apply.
+
+    Returns
+    ----------
+    list of np.ndarray
+        List of binarized images.
+    """
+
+    outputs = []
+
+    for image in batch_data:
+        if method == 'global':
+            _, image = cv2.threshold(src=image,
+                                     thresh=127,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY)
+
+        elif method == 'otsu':
+            _, image = cv2.threshold(src=image,
+                                     thresh=0,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        elif method == 'adaptive_mean':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
+
+        elif method == 'adaptive_gaussian':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
+
+        elif method == 'sauvola':
+            window_size = 31
+            thresh = 128
+            k = 0.1
+
+            mean = cv2.boxFilter(src=image, ddepth=-1, ksize=(window_size, window_size))
+            mean_sq = cv2.boxFilter(src=image**2, ddepth=-1, ksize=(window_size, window_size))
+
+            stddev = np.sqrt(mean_sq - mean**2)
+            threshold = mean * (1 + k * (stddev / thresh - 1))
+
+            image = np.where(image > threshold, 255, 0).astype(np.uint8)
+
+        outputs.append(image)
+
+    return outputs
+
+
+def batch_illumination(batch_data):
+    """
+    Apply illumination compensation to enhance text visibility in images.
+
+    Parameters
+    ----------
+    images : list of np.ndarray
+        List of grayscale images.
+
+    Returns
+    -------
+    list of np.ndarray
+        List of processed images.
+
+    References
+    ----------
+    Efficient illumination compensation techniques for text images.
+        https://www.sciencedirect.com/science/article/pii/S1051200412000826
+    """
+
+    def scale255(img):
+        mn, mx = img.min(), img.max()
+
+        if mx - mn < 1e-5:
+            return np.zeros_like(img, dtype=np.float32)
+
+        return (img - mn) / (mx - mn) * 255.0
+
+    outputs = []
+
+    for image in batch_data:
+        _, binary = cv2.threshold(image, 254, 255, cv2.THRESH_BINARY)
+
+        if np.sum(binary) > np.sum(image) * 0.8:
+            outputs.append(image.copy())
+            continue
+
+        imgf = image.astype(np.float32)
+        h, w = image.shape
+
+        hist = cv2.calcHist([image], [0], None, [26], [0, 260])
+        hr = np.argmax(hist > np.sqrt(image.size)) * 10
+
+        cei = np.clip((imgf - (hr + 15)) * 2.0, 0, 255)
+
+        gx = cv2.Sobel(imgf, cv2.CV_32F, 1, 0, 3)
+        gy = cv2.Sobel(imgf, cv2.CV_32F, 0, 1, 3)
+        eg = scale255(cv2.magnitude(gx, gy))
+
+        tli = ~((eg >= 30) | (cei >= 60))
+        tli = tli.astype(np.uint8) * 255
+        erosion = cv2.erode(tli, np.ones((3, 3), np.uint8), 1)
+
+        int_img = cei.copy()
+        for y in range(w):
+            mask = erosion[:, y] == 0
+
+            if not np.any(mask):
+                continue
+
+            diff = np.diff(mask.astype(np.int8))
+            starts = np.where(diff == 1)[0] + 1
+            ends = np.where(diff == -1)[0]
+
+            if mask[0]:
+                starts = np.r_[0, starts]
+
+            if mask[-1]:
+                ends = np.r_[ends, h - 1]
+
+            for s, e in zip(starts, ends):
+                n = e - s + 1
+
+                if n > 30:
+                    continue
+
+                top = cei[max(0, s - 5):s, y]
+                bot = cei[e + 1:min(h, e + 6), y]
+
+                if top.size == 0 or bot.size == 0:
+                    continue
+
+                int_img[s:e + 1, y] = np.linspace(top.max(), bot.max(), n)
+
+        ldi = cv2.blur(scale255(int_img), (11, 11))
+
+        image = (cei / (ldi + 1e-5)) * 260.0
+        image[erosion != 0] *= 1.5
+        image = np.clip(image, 0, 255).astype(np.uint8)
+
+        outputs.append(image)
+
+    return outputs
+
+
+def batch_masking(batch_data):
+    """
+    Generate masks for a batch of images.
+
+    Parameters
+    ----------
+    data : ndarray
+        Batch of images.
+
+    Returns
+    -------
+    ndarray
+        Masks indicating content areas.
+    """
+
+    masks = []
+
+    if batch_data is None or len(batch_data) == 0:
+        return masks
+
+    if isinstance(batch_data[0], np.ndarray):
+        for x in batch_data:
+            mask = np.ones(x.shape, dtype=np.uint8) * 255
+            masks.append(mask)
+
+    else:
+        for x in batch_data:
+            shape = (len(x[0]) * 64, len(x) * 16)
+            mask = np.ones(shape, dtype=np.uint8) * 255
+            masks.append(mask)
+
+    return masks
+
+
+def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
+    """
+    Pads a batch of data to a uniform shape.
+
+    Parameters
+    ----------
+    batch_data : list
+        List of data.
+    target_shape : tuple, optional
+        Target shape for padding.
+    pad_value : int, optional
+        Value used for padding.
+    dtype : data-type, optional
+        Data type of the output array.
+
+    Returns
+    -------
+    numpy.ndarray
+        Padded data.
+    """
+
+    if target_shape:
+        max_height, max_width = target_shape[:2]
+    else:
+        max_height = max(len(height) for height in batch_data)
+        max_width = max(len(width) for height in batch_data for width in height)
+
+    shape = (len(batch_data), max_height, max_width)
+    padded = np.full(shape=shape, fill_value=pad_value, dtype=dtype)
+
+    for i, data in enumerate(batch_data):
+        data = np.array(data)
+
+        if data.size > 0 and data.ndim == 2:
+            padded[i, :data.shape[0], :data.shape[1]] = data
+
+    return padded
+
+
+def batch_processing(batch_data,
+                     target_shape=None,
+                     illumination=False,
+                     binarization=None,
+                     mode=None):
+    """
+    Processes a data batch for model input.
+
+    Parameters
+    ----------
+    data_batch : list
+        List of arrays.
+    target_shape : tuple, optional
+        Target shape for padding.
+    illumination : bool, optional
+        Apply illumination compensation.
+    binarization : str, optional
+        Apply binarization method.
+    mode : str, optional
+        Whether to use None, 'image' or 'text' processing.
+
+    Returns
+    -------
+    numpy.ndarray
+        Processed data.
+    """
+
+    if mode == 'image':
+        if illumination:
+            batch_data = batch_illumination(batch_data)
+
+        if binarization:
+            batch_data = batch_binarization(batch_data, method=binarization)
+
+        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
+        batch_data = np.expand_dims(batch_data, axis=-1)
+        batch_data = (batch_data.astype(np.float32) / 127.5) - 1
+
+    elif mode == 'mask':
+        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
+        batch_data = np.expand_dims(batch_data, axis=-1)
+        batch_data = (batch_data.astype(np.float32) / 255.)
+
+    elif mode == 'text':
+        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.int64)
+
+    return np.array(batch_data)
+
+
 def format_text(text):
     """
     Clean and format the input text.
@@ -64,117 +347,6 @@ def format_text(text):
     text = ' '.join(text.replace('\n', '﹗').split()).replace('﹗', '\n').strip()
 
     return text
-
-
-def batch_masking(batch_data, target_shape):
-    """
-    Generate masks for a batch of images.
-
-    Parameters
-    ----------
-    data : ndarray
-        Batch of images.
-    target_shape : tuple
-        Maximum dimensions.
-
-    Returns
-    -------
-    ndarray
-        Masks indicating content areas.
-    """
-
-    max_height, max_width = target_shape[:2]
-    masks = []
-
-    if batch_data and len(batch_data) > 0:
-        if isinstance(batch_data[0], np.ndarray):
-            for x in batch_data:
-                mask = np.zeros((max_height, max_width))
-                mask[:x.shape[0], :x.shape[1]] = 255
-                masks.append(mask)
-
-        elif isinstance(batch_data[0], list):
-            for x in batch_data:
-                height = min(len(x) * 64, max_height)
-                width = min(max(len(y) for y in x) * 16, max_width)
-
-                mask = np.zeros((max_height, max_width))
-                mask[:height, :width] = 255
-                masks.append(mask)
-
-        else:
-            mask = np.ones((max_height, max_width))
-            masks = np.array([mask for _ in batch_data]) * 255
-
-    return np.array(masks, dtype=np.uint8)
-
-
-def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
-    """
-    Pads a batch of data to a uniform shape.
-
-    Parameters
-    ----------
-    batch_data : list
-        List of data.
-    target_shape : tuple, optional
-        Target shape for padding.
-    pad_value : int, optional
-        Value used for padding.
-    dtype : data-type, optional
-        Data type of the output array.
-
-    Returns
-    -------
-    numpy.ndarray
-        Padded data.
-    """
-
-    if target_shape:
-        max_height, max_width = target_shape[:2]
-    else:
-        max_height = max(len(height) for height in batch_data)
-        max_width = max(len(width) for height in batch_data for width in height)
-
-    padded = np.full((len(batch_data), max_height, max_width), fill_value=pad_value, dtype=dtype)
-
-    for i, data in enumerate(batch_data):
-        data = np.array(data)
-
-        if data.size > 0 and data.ndim == 2:
-            padded[i, :data.shape[0], :data.shape[1]] = data
-
-    return padded
-
-
-def batch_processing(batch_data, mode=None):
-    """
-    Processes a data batch for model input.
-
-    Parameters
-    ----------
-    data_batch : list
-        List of arrays.
-    mode : str, optional
-        Whether to use None, 'image' or 'text' processing.
-
-    Returns
-    -------
-    numpy.ndarray
-        Processed data.
-    """
-
-    batch_data = np.array(batch_data)
-
-    if mode == 'image':
-        batch_data = np.expand_dims(batch_data, axis=-1)
-        batch_data = (batch_data.astype(np.float32) / 127.5) - 1
-
-    elif mode == 'mask':
-        batch_data = np.expand_dims(batch_data, axis=-1)
-        batch_data = (batch_data.astype(np.float32) / 255.)
-
-    return batch_data
 
 
 def read_image(image_path, bbox=None):
