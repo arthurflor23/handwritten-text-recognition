@@ -16,29 +16,29 @@ def check(args):
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
                       image_shape=args.image_shape,
-                      pad_value=args.pad_value,
                       char_width=args.char_width,
                       mask_by_text=args.mask_by_text,
                       order_by_text=args.order_by_text,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
+                      illumination=args.illumination,
+                      binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
                       input_path=args.input_path,
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(binarize=args.binarize,
-                          erode=args.erode,
+    augmentor = Augmentor(erode=args.erode,
                           dilate=args.dilate,
                           elastic=args.elastic,
                           perspective=args.perspective,
-                          mixup=args.mixup,
                           shear=args.shear,
                           scale=args.scale,
                           rotate=args.rotate,
                           shift_y=args.shift_y,
                           shift_x=args.shift_x,
+                          mixup=args.mixup,
                           salt_and_pepper=args.salt_and_pepper,
                           gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
@@ -48,7 +48,6 @@ def check(args):
     source_gen, _ = dataset.get_generator(data_partition='test',
                                           batch_size=args.batch_size,
                                           batch_encoded=False,
-                                          batch_padding=False,
                                           batch_processing=False,
                                           augmentor=None,
                                           shuffle=False)
@@ -56,7 +55,6 @@ def check(args):
     encoded_gen, _ = dataset.get_generator(data_partition='test',
                                            batch_size=args.batch_size,
                                            batch_encoded=True,
-                                           batch_padding=False,
                                            batch_processing=False,
                                            augmentor=None,
                                            shuffle=False)
@@ -64,7 +62,6 @@ def check(args):
     augmented_gen, _ = dataset.get_generator(data_partition='test',
                                              batch_size=args.batch_size,
                                              batch_encoded=True,
-                                             batch_padding=True,
                                              batch_processing=False,
                                              augmentor=augmentor,
                                              shuffle=False)
@@ -73,13 +70,13 @@ def check(args):
 
     while True:
         _, y_source_data = next(source_gen)
-        image_source_data, text_source_data, writer_source_data, _ = y_source_data
+        image_source_data, text_source_data, writer_source_data, mask_encoded_data = y_source_data
 
         _, y_encoded_data = next(encoded_gen)
         image_encoded_data, text_encoded_data, writer_encoded_data, _ = y_encoded_data
 
         x_augmented_data, _ = next(augmented_gen)
-        image_augmented_data, _, _, _ = x_augmented_data
+        image_augmented_data, _, _, mask_augmented_data = x_augmented_data
 
         for i in range(len(image_source_data)):
             print('\n')
@@ -96,6 +93,9 @@ def check(args):
             print('Encoded text')
             print(text_encoded_data[i])
             print('-' * 68, '\n')
+
+            # cv2.imshow('Image Mask', mask_encoded_data[i])
+            # cv2.imshow('Augmented Mask Image', mask_augmented_data[i])
 
             cv2.imshow('Image', image_encoded_data[i])
             cv2.imshow('Augmented Image', image_augmented_data[i])
