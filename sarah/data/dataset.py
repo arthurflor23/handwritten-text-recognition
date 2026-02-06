@@ -17,13 +17,14 @@ class Dataset():
                  source=None,
                  text_level='line',
                  image_shape=(1024, 64, 1),
-                 pad_value=0,
                  char_width=0,
                  mask_by_text=False,
                  order_by_text=False,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
+                 illumination=False,
+                 binarization=None,
                  lazy_mode=False,
                  data=None,
                  tokenizer=None,
@@ -41,8 +42,6 @@ class Dataset():
             The text structure level.
         image_shape : list, optional
             The images shape.
-        pad_value : int, optional
-            Padding value for images.
         char_width : int, optional
             The width per character.
         mask_by_text : bool, optional
@@ -55,6 +54,10 @@ class Dataset():
             The validation ratio for resample.
         test_ratio : float or int, optional
             The test ratio for resample.
+        illumination : bool, optional
+            Apply illumination compensation.
+        binarization : str, optional
+            Apply binarization method.
         lazy_mode : bool, optional
             Enable lazy loading mode.
         data : list, optional
@@ -75,13 +78,14 @@ class Dataset():
         self.source = source
         self.text_level = text_level
         self.image_shape = image_shape
-        self.pad_value = pad_value
         self.char_width = char_width
         self.mask_by_text = mask_by_text
         self.order_by_text = order_by_text
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
+        self.illumination = illumination
+        self.binarization = binarization
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
@@ -123,11 +127,12 @@ class Dataset():
         info += f"\n{'source':<{pad}}: {self.source or '-'}"
         info += f"\n{'text_level':<{pad}}: {self.text_level or '-'}"
         info += f"\n{'image_shape':<{pad}}: {self.image_shape or '-'}"
-        info += f"\n{'pad_value':<{pad}}: {self.pad_value}"
         info += f"\n{'char_width':<{pad}}: {self.char_width or '-'}"
         info += f"\n{'training_ratio':<{pad}}: {self.training_ratio or '-'}"
         info += f"\n{'validation_ratio':<{pad}}: {self.validation_ratio or '-'}"
         info += f"\n{'test_ratio':<{pad}}: {self.test_ratio or '-'}"
+        info += f"\n{'illumination':<{pad}}: {self.illumination or '-'}"
+        info += f"\n{'binarization':<{pad}}: {self.binarization or '-'}"
         info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode}"
         info += f"\n{'seed':<{pad}}: {self.seed}"
         info += "\n" + "-" * width
@@ -410,7 +415,6 @@ class Dataset():
                       data_partition,
                       batch_size=8,
                       batch_encoded=True,
-                      batch_padding=True,
                       batch_processing=True,
                       augmentor=None,
                       samples=None,
@@ -426,8 +430,6 @@ class Dataset():
             The number of samples in each batch.
         batch_encoded : bool, optional
             Specifies whether to use source or encoded data.
-        batch_padding : bool, optional
-            Specifies whether to padding batch data.
         batch_processing : bool, optional
             Specifies whether to process batch data for model input.
         augmentor : Augmentor, optional
@@ -474,9 +476,9 @@ class Dataset():
                     list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
 
                 if self.mask_by_text:
-                    mask_data = utils.batch_masking(text_data, target_shape=self.image_shape)
+                    mask_data = utils.batch_masking(text_data)
                 else:
-                    mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
+                    mask_data = utils.batch_masking(image_data)
 
                 aug_image_data = None
                 aug_mask_data = None
@@ -491,7 +493,7 @@ class Dataset():
                                                          target_shape=self.image_shape) for x in batch]
 
                         if not self.mask_by_text:
-                            mask_data = utils.batch_masking(image_data, target_shape=self.image_shape)
+                            mask_data = utils.batch_masking(image_data)
 
                     aug_image_data = image_data.copy()
                     aug_mask_data = mask_data.copy()
@@ -502,29 +504,32 @@ class Dataset():
                                                              target_shape=self.image_shape) for x in aug_image_data]
 
                         if not self.mask_by_text:
-                            aug_mask_data = utils.batch_masking(aug_image_data, target_shape=self.image_shape)
+                            aug_mask_data = utils.batch_masking(aug_image_data)
 
                     if multigram_length:
                         g_index = np.random.randint(0, multigram_length - len(batch))
+
                         aug_text_data = [data['text'] for data in multigrams[g_index:g_index + len(batch)]]
-                        aug_mask_data = utils.batch_masking(aug_text_data, target_shape=self.image_shape)
-
-                    if batch_padding:
-                        image_data = utils.batch_padding(image_data, self.image_shape, self.pad_value, np.uint8)
-                        aug_image_data = utils.batch_padding(aug_image_data, self.image_shape, self.pad_value, np.uint8)
-
-                        text_data = utils.batch_padding(text_data, self.tokenizer.lexical_shape, 0, np.int64)
-                        aug_text_data = utils.batch_padding(aug_text_data, self.tokenizer.lexical_shape, 0, np.int64)
+                        aug_mask_data = utils.batch_masking(aug_text_data)
 
                     if batch_processing:
-                        image_data = utils.batch_processing(image_data, mode='image')
-                        aug_image_data = utils.batch_processing(aug_image_data, mode='image')
+                        image_data = utils.batch_processing(batch_data=image_data,
+                                                            target_shape=self.image_shape,
+                                                            illumination=self.illumination,
+                                                            binarization=self.binarization,
+                                                            mode='image')
 
-                        mask_data = utils.batch_processing(mask_data, mode='mask')
-                        aug_mask_data = utils.batch_processing(aug_mask_data, mode='mask')
+                        aug_image_data = utils.batch_processing(batch_data=aug_image_data,
+                                                                target_shape=self.image_shape,
+                                                                illumination=self.illumination,
+                                                                binarization=self.binarization,
+                                                                mode='image')
 
-                        text_data = utils.batch_processing(text_data, mode='text')
-                        aug_text_data = utils.batch_processing(aug_text_data, mode='text')
+                        mask_data = utils.batch_processing(mask_data, self.image_shape, mode='mask')
+                        aug_mask_data = utils.batch_processing(aug_mask_data, self.image_shape, mode='mask')
+
+                        text_data = utils.batch_processing(text_data, self.tokenizer.lexical_shape, mode='text')
+                        aug_text_data = utils.batch_processing(aug_text_data, self.tokenizer.lexical_shape, mode='text')
 
                 x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data)
                 y_data = (image_data, text_data, writer_data, mask_data)
