@@ -133,18 +133,14 @@ class Augmentor():
         transformations = [
             (self.erode, self.erode_params, 32),
             (self.dilate, self.dilate_params, 32),
-
             (self.elastic, self.elastic_params, 32),
             (self.perspective, self.perspective_params, 32),
-
             (self.shear, self.shear_params, 32),
             (self.scale, self.scale_params, 32),
             (self.rotate, self.rotate_params, 32),
             (self.shift_y, self.shift_y_params, 32),
             (self.shift_x, self.shift_x_params, 32),
-
             (self.mixup, self.mixup_params, 32),
-
             (self.salt_and_pepper, self.salt_and_pepper_params, 32),
             (self.gaussian_noise, self.gaussian_noise_params, 32),
             (self.gaussian_blur, self.gaussian_blur_params, 32),
@@ -187,12 +183,11 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE,
-                                           ksize=(kernel_size, kernel_size))
+        ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
+        ksize = ksize[np.random.randint(len(ksize))]
 
-        image = cv2.erode(src=image,
-                          kernel=kernel,
-                          iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
+        image = cv2.erode(src=image, kernel=kernel, iterations=iterations)
 
         return image
 
@@ -221,12 +216,11 @@ class Augmentor():
             kernel_size = np.random.randint(1, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE,
-                                           ksize=(kernel_size, kernel_size))
+        ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
+        ksize = ksize[np.random.randint(len(ksize))]
 
-        image = cv2.dilate(src=image,
-                           kernel=kernel,
-                           iterations=iterations)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
+        image = cv2.dilate(src=image, kernel=kernel, iterations=iterations)
 
         return image
 
@@ -695,7 +689,10 @@ class Augmentor():
         if kernel_size % 2 == 0:
             kernel_size += 1
 
+        ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
+        ksize = ksize[np.random.randint(len(ksize))]
+
         for _ in range(iterations):
-            image = cv2.GaussianBlur(src=image, ksize=(kernel_size, kernel_size), sigmaX=0)
+            image = cv2.GaussianBlur(src=image, ksize=ksize, sigmaX=0)
 
         return image
