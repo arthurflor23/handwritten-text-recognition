@@ -416,6 +416,7 @@ class Dataset():
                       batch_size=8,
                       batch_encoded=True,
                       batch_processing=True,
+                      batch_scale=True,
                       augmentor=None,
                       samples=None,
                       shuffle=False):
@@ -432,6 +433,8 @@ class Dataset():
             Specifies whether to use source or encoded data.
         batch_processing : bool, optional
             Specifies whether to process batch data for model input.
+        batch_scale : bool, optional
+            Specifies whether to scale batch data.
         augmentor : Augmentor, optional
             The Augmentor instance.
         samples : int, optional
@@ -513,23 +516,37 @@ class Dataset():
                         aug_mask_data = utils.batch_masking(aug_text_data)
 
                     if batch_processing:
-                        image_data = utils.batch_processing(batch_data=image_data,
-                                                            target_shape=self.image_shape,
+                        image_data = utils.batch_processing(batch_mode='image',
+                                                            batch_data=image_data,
+                                                            batch_scale=batch_scale,
+                                                            padding_shape=self.image_shape,
                                                             illumination=self.illumination,
-                                                            binarization=self.binarization,
-                                                            mode='image')
+                                                            binarization=self.binarization)
 
-                        aug_image_data = utils.batch_processing(batch_data=aug_image_data,
-                                                                target_shape=self.image_shape,
+                        aug_image_data = utils.batch_processing(batch_mode='image',
+                                                                batch_data=aug_image_data,
+                                                                batch_scale=batch_scale,
+                                                                padding_shape=self.image_shape,
                                                                 illumination=self.illumination,
-                                                                binarization=self.binarization,
-                                                                mode='image')
+                                                                binarization=self.binarization)
 
-                        mask_data = utils.batch_processing(mask_data, self.image_shape, mode='mask')
-                        aug_mask_data = utils.batch_processing(aug_mask_data, self.image_shape, mode='mask')
+                        mask_data = utils.batch_processing(batch_mode='mask',
+                                                           batch_data=mask_data,
+                                                           batch_scale=batch_scale,
+                                                           padding_shape=self.image_shape)
 
-                        text_data = utils.batch_processing(text_data, self.tokenizer.lexical_shape, mode='text')
-                        aug_text_data = utils.batch_processing(aug_text_data, self.tokenizer.lexical_shape, mode='text')
+                        aug_mask_data = utils.batch_processing(batch_mode='mask',
+                                                               batch_data=aug_mask_data,
+                                                               batch_scale=batch_scale,
+                                                               padding_shape=self.image_shape)
+
+                        text_data = utils.batch_processing(batch_mode='text',
+                                                           batch_data=text_data,
+                                                           padding_shape=self.tokenizer.lexical_shape)
+
+                        aug_text_data = utils.batch_processing(batch_mode='text',
+                                                               batch_data=aug_text_data,
+                                                               padding_shape=self.tokenizer.lexical_shape)
 
                 x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data)
                 y_data = (image_data, text_data, writer_data, mask_data)
