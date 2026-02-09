@@ -540,7 +540,7 @@ class GeneratorModel(BaseModel):
         def residual_block(x, y, filters, up=None):
             h = tf.keras.layers.Identity()(x)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
@@ -549,7 +549,7 @@ class GeneratorModel(BaseModel):
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
@@ -574,7 +574,7 @@ class GeneratorModel(BaseModel):
                                              name='latent_tile')(latent)
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
-        embedding = tf.keras.layers.LayerNormalization(epsilon=1e-5)(embedding)
+        embedding = tf.keras.layers.LayerNormalization(epsilon=1e-3)(embedding)
 
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
