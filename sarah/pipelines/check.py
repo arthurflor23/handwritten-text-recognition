@@ -49,6 +49,7 @@ def check(args):
                                           batch_size=args.batch_size,
                                           batch_encoded=False,
                                           batch_processing=False,
+                                          batch_scale=False,
                                           augmentor=None,
                                           shuffle=False)
 
@@ -56,6 +57,7 @@ def check(args):
                                            batch_size=args.batch_size,
                                            batch_encoded=True,
                                            batch_processing=False,
+                                           batch_scale=False,
                                            augmentor=None,
                                            shuffle=False)
 
@@ -63,6 +65,7 @@ def check(args):
                                              batch_size=args.batch_size,
                                              batch_encoded=True,
                                              batch_processing=False,
+                                             batch_scale=False,
                                              augmentor=augmentor,
                                              shuffle=False)
 
