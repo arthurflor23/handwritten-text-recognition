@@ -76,7 +76,7 @@ def batch_illumination(batch_data):
 
     Parameters
     ----------
-    images : list of np.ndarray
+    batch_data : list of np.ndarray
         List of grayscale images.
 
     Returns
