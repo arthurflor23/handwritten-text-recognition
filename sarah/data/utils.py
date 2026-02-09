@@ -200,7 +200,7 @@ def batch_masking(batch_data):
     return masks
 
 
-def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
+def batch_padding(batch_data, pad_value=0, target_shape=None, dtype=np.int64):
     """
     Pads a batch of data to a uniform shape.
 
@@ -208,10 +208,10 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     ----------
     batch_data : list
         List of data.
-    target_shape : tuple, optional
-        Target shape for padding.
     pad_value : int, optional
         Value used for padding.
+    target_shape : tuple, optional
+        Target shape for padding.
     dtype : data-type, optional
         Data type of the output array.
 
@@ -239,10 +239,10 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     return padded
 
 
-def batch_processing(mode,
+def batch_processing(batch_mode,
                      batch_data,
                      batch_scale=True,
-                     target_shape=None,
+                     padding_shape=None,
                      illumination=False,
                      binarization=None):
     """
@@ -250,13 +250,13 @@ def batch_processing(mode,
 
     Parameters
     ----------
-    mode : str
+    batch_mode : str
         Type of input data.
     batch_data : list
         List of data input.
     batch_scale : bool, optional
         Whether to scale data values.
-    target_shape : tuple, optional
+    padding_shape : tuple, optional
         Target shape for padding.
     illumination : bool, optional
         Apply illumination compensation.
@@ -269,28 +269,28 @@ def batch_processing(mode,
         Processed data.
     """
 
-    if mode == 'image':
+    if batch_mode == 'image':
         if illumination:
             batch_data = batch_illumination(batch_data)
 
         if binarization:
             batch_data = batch_binarization(batch_data, method=binarization)
 
-        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
+        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
 
         if batch_scale:
             batch_data = (batch_data.astype(np.float32) / 127.5) - 1
 
-    elif mode == 'mask':
-        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
+    elif batch_mode == 'mask':
+        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
 
         if batch_scale:
             batch_data = (batch_data.astype(np.float32) / 255.)
 
-    elif mode == 'text':
-        batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.int64)
+    elif batch_mode == 'text':
+        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.int64)
 
     return np.array(batch_data)
 
