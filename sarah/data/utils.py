@@ -90,14 +90,6 @@ def batch_illumination(batch_data):
         https://www.sciencedirect.com/science/article/pii/S1051200412000826
     """
 
-    def scale255(img):
-        mn, mx = img.min(), img.max()
-
-        if mx - mn < 1e-5:
-            return np.zeros_like(img, dtype=np.float32)
-
-        return (img - mn) / (mx - mn) * 255.0
-
     outputs = []
 
     for image in batch_data:
@@ -113,17 +105,21 @@ def batch_illumination(batch_data):
         hist = cv2.calcHist([image], [0], None, [26], [0, 260])
         hr = np.argmax(hist > np.sqrt(image.size)) * 10
 
-        cei = np.clip((imgf - (hr + 15)) * 2.0, 0, 255)
+        cei = np.clip((imgf - (hr + 15)) * 2, 0, 255)
 
         gx = cv2.Sobel(imgf, cv2.CV_32F, 1, 0, 3)
         gy = cv2.Sobel(imgf, cv2.CV_32F, 0, 1, 3)
-        eg = scale255(cv2.magnitude(gx, gy))
 
-        tli = ~((eg >= 30) | (cei >= 60))
+        mag = cv2.magnitude(gx, gy)
+
+        rng = mag / (mag.max() - mag.min())
+        rng = (rng - rng.min()) * 255.
+
+        tli = ~((rng >= 30) | (cei >= 60))
         tli = tli.astype(np.uint8) * 255
         erosion = cv2.erode(tli, np.ones((3, 3), np.uint8), 1)
 
-        int_img = cei.copy()
+        img = cei.copy()
         for y in range(w):
             mask = erosion[:, y] == 0
 
@@ -152,13 +148,18 @@ def batch_illumination(batch_data):
                 if top.size == 0 or bot.size == 0:
                     continue
 
-                int_img[s:e + 1, y] = np.linspace(top.max(), bot.max(), n)
+                img[s:e + 1, y] = np.linspace(top.max(), bot.max(), n)
 
-        ldi = cv2.blur(scale255(int_img), (11, 11))
+        rng = img / (img.max() - img.min())
+        rng = (rng - rng.min()) * 255.
 
-        image = (cei / (ldi + 1e-5)) * 260.0
+        rng = cv2.blur(rng, (11, 11))
+
+        image = np.nan_to_num(cei / rng) * 260
         image[erosion != 0] *= 1.5
-        image = np.clip(image, 0, 255).astype(np.uint8)
+
+        image = np.clip(image, 0, 255)
+        image = image.astype(np.uint8)
 
         outputs.append(image)
 
@@ -238,26 +239,29 @@ def batch_padding(batch_data, target_shape=None, pad_value=0, dtype=np.int64):
     return padded
 
 
-def batch_processing(batch_data,
+def batch_processing(mode,
+                     batch_data,
+                     batch_scale=True,
                      target_shape=None,
                      illumination=False,
-                     binarization=None,
-                     mode=None):
+                     binarization=None):
     """
     Processes a data batch for model input.
 
     Parameters
     ----------
-    data_batch : list
-        List of arrays.
+    mode : str
+        Type of input data.
+    batch_data : list
+        List of data input.
+    batch_scale : bool, optional
+        Whether to scale data values.
     target_shape : tuple, optional
         Target shape for padding.
     illumination : bool, optional
         Apply illumination compensation.
     binarization : str, optional
         Apply binarization method.
-    mode : str, optional
-        Whether to use None, 'image' or 'text' processing.
 
     Returns
     -------
@@ -274,12 +278,16 @@ def batch_processing(batch_data,
 
         batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
-        batch_data = (batch_data.astype(np.float32) / 127.5) - 1
+
+        if batch_scale:
+            batch_data = (batch_data.astype(np.float32) / 127.5) - 1
 
     elif mode == 'mask':
         batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
-        batch_data = (batch_data.astype(np.float32) / 255.)
+
+        if batch_scale:
+            batch_data = (batch_data.astype(np.float32) / 255.)
 
     elif mode == 'text':
         batch_data = batch_padding(batch_data, target_shape=target_shape, dtype=np.int64)
