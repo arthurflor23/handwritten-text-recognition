@@ -143,8 +143,8 @@ class SynthesisModel(BaseSynthesisModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        image_data, text_data, writer_data, mask_data = y_data
+        aug_image_data, aug_text_data, _, aug_mask_data, _ = x_data
+        image_data, text_data, writer_data, mask_data, _ = y_data
 
         self.discriminator.trainable = True
         self.recognition.trainable = True
@@ -221,8 +221,8 @@ class SynthesisModel(BaseSynthesisModel):
 
         x_data, y_data = input_data
 
-        _, aug_text_data, _, aug_mask_data = x_data
-        image_data, text_data, writer_data, mask_data = y_data
+        _, aug_text_data, _, aug_mask_data, _ = x_data
+        image_data, text_data, writer_data, mask_data, _ = y_data
 
         random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
         random_latent_data = tf.random.normal(shape=random_latent_shape)
@@ -544,8 +544,8 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
@@ -603,7 +603,8 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Activation(activation='tanh')(block)
 
         outputs = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
-                                   char_width_ratio=block.shape[2] // self.lexical_shape[1])([block, text, mask])
+                                   char_width_ratio=block.shape[2] // self.lexical_shape[1],
+                                   resize_method='bilinear')([block, text, mask])
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
