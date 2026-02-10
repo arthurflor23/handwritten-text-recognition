@@ -467,7 +467,6 @@ class Dataset():
                 else:
                     if batch_index >= data_length:
                         batch_index = 0
-
                     if shuffle and batch_index == 0:
                         np.random.shuffle(indices)
 
@@ -475,47 +474,73 @@ class Dataset():
 
                 batch_index += batch_size
 
-                image_data, text_data, writer_data = map(
-                    list, zip(*[(x['image'], x['text'], x['writer']) for x in batch]))
+                image_data, text_data, writer_data, segmentation_data = map(
+                    list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch]))
 
-                if self.mask_by_text:
-                    mask_data = utils.batch_masking(text_data)
-                else:
-                    mask_data = utils.batch_masking(image_data)
+                mask_data = utils.batch_masking(text_data if self.mask_by_text else image_data)
 
-                aug_image_data = None
-                aug_mask_data = None
                 aug_text_data = None
+                aug_mask_data = None
+                aug_image_data = None
+                aug_segmentation_data = None
 
                 if batch_encoded:
                     writer_data = np.array(writer_data)
 
                     if self.lazy_mode:
-                        image_data = [utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
-                                                         target_width=len(x['text']) * self.char_width,
-                                                         target_shape=self.image_shape) for x in batch]
+                        image_data = [
+                            utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
+                                               target_width=len(x['text']) * self.char_width,
+                                               target_shape=self.image_shape)
+                            for x in batch
+                        ]
 
                         if not self.mask_by_text:
                             mask_data = utils.batch_masking(image_data)
 
-                    aug_image_data = image_data.copy()
-                    aug_mask_data = mask_data.copy()
+                    segmentation_data = utils.batch_binarization(image_data, method='sauvola', invert=True)
+
                     aug_text_data = text_data.copy()
+                    aug_mask_data = mask_data.copy()
+                    aug_image_data = image_data.copy()
+                    aug_segmentation_data = segmentation_data.copy()
 
                     if augmentor:
-                        aug_image_data = [utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
-                                                             target_shape=self.image_shape) for x in aug_image_data]
+                        aug_image_data = [
+                            utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
+                                               target_shape=self.image_shape)
+                            for x in aug_image_data
+                        ]
 
                         if not self.mask_by_text:
                             aug_mask_data = utils.batch_masking(aug_image_data)
 
+                        aug_segmentation_data = utils.batch_binarization(aug_image_data, method='sauvola', invert=True)
+
                     if multigram_length:
                         g_index = np.random.randint(0, multigram_length - len(batch))
-
-                        aug_text_data = [data['text'] for data in multigrams[g_index:g_index + len(batch)]]
+                        aug_text_data = [x['text'] for x in multigrams[g_index:g_index + len(batch)]]
                         aug_mask_data = utils.batch_masking(aug_text_data)
 
                     if batch_processing:
+                        text_data = utils.batch_processing(batch_mode='text',
+                                                           batch_data=text_data,
+                                                           padding_shape=self.tokenizer.lexical_shape)
+
+                        aug_text_data = utils.batch_processing(batch_mode='text',
+                                                               batch_data=aug_text_data,
+                                                               padding_shape=self.tokenizer.lexical_shape)
+
+                        mask_data = utils.batch_processing(batch_mode='binary',
+                                                           batch_data=mask_data,
+                                                           batch_scale=batch_scale,
+                                                           padding_shape=self.image_shape)
+
+                        aug_mask_data = utils.batch_processing(batch_mode='binary',
+                                                               batch_data=aug_mask_data,
+                                                               batch_scale=batch_scale,
+                                                               padding_shape=self.image_shape)
+
                         image_data = utils.batch_processing(batch_mode='image',
                                                             batch_data=image_data,
                                                             batch_scale=batch_scale,
@@ -530,26 +555,18 @@ class Dataset():
                                                                 illumination=self.illumination,
                                                                 binarization=self.binarization)
 
-                        mask_data = utils.batch_processing(batch_mode='mask',
-                                                           batch_data=mask_data,
-                                                           batch_scale=batch_scale,
-                                                           padding_shape=self.image_shape)
+                        segmentation_data = utils.batch_processing(batch_mode='binary',
+                                                                   batch_data=segmentation_data,
+                                                                   batch_scale=batch_scale,
+                                                                   padding_shape=self.image_shape)
 
-                        aug_mask_data = utils.batch_processing(batch_mode='mask',
-                                                               batch_data=aug_mask_data,
-                                                               batch_scale=batch_scale,
-                                                               padding_shape=self.image_shape)
+                        aug_segmentation_data = utils.batch_processing(batch_mode='binary',
+                                                                       batch_data=aug_segmentation_data,
+                                                                       batch_scale=batch_scale,
+                                                                       padding_shape=self.image_shape)
 
-                        text_data = utils.batch_processing(batch_mode='text',
-                                                           batch_data=text_data,
-                                                           padding_shape=self.tokenizer.lexical_shape)
-
-                        aug_text_data = utils.batch_processing(batch_mode='text',
-                                                               batch_data=aug_text_data,
-                                                               padding_shape=self.tokenizer.lexical_shape)
-
-                x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data)
-                y_data = (image_data, text_data, writer_data, mask_data)
+                x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data)
+                y_data = (image_data, text_data, writer_data, mask_data, segmentation_data)
 
                 yield x_data, y_data
 

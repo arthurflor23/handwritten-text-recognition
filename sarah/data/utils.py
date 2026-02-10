@@ -4,7 +4,7 @@ import html
 import numpy as np
 
 
-def batch_binarization(batch_data, method):
+def batch_binarization(batch_data, method, invert=False):
     """
     Apply binarization to a batch of grayscale images.
 
@@ -14,6 +14,8 @@ def batch_binarization(batch_data, method):
         List of grayscale images.
     method : str, optional
         Binarization method to apply.
+    invert : bool, optional
+        Whether to invert the binarized image.
 
     Returns
     ----------
@@ -64,6 +66,9 @@ def batch_binarization(batch_data, method):
             threshold = mean * (1 + k * (stddev / thresh - 1))
 
             image = np.where(image > threshold, 255, 0).astype(np.uint8)
+
+        if invert:
+            image = cv2.bitwise_not(image)
 
         outputs.append(image)
 
@@ -269,25 +274,22 @@ def batch_processing(batch_mode,
         Processed data.
     """
 
-    if batch_mode == 'image':
-        if illumination:
-            batch_data = batch_illumination(batch_data)
+    if batch_mode in ['image', 'binary']:
+        if batch_mode == 'image':
+            if illumination:
+                batch_data = batch_illumination(batch_data)
 
-        if binarization:
-            batch_data = batch_binarization(batch_data, method=binarization)
+            if binarization:
+                batch_data = batch_binarization(batch_data, method=binarization)
 
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
 
         if batch_scale:
-            batch_data = (batch_data.astype(np.float32) / 127.5) - 1
-
-    elif batch_mode == 'mask':
-        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
-        batch_data = np.expand_dims(batch_data, axis=-1)
-
-        if batch_scale:
-            batch_data = (batch_data.astype(np.float32) / 255.)
+            if batch_mode == 'image':
+                batch_data = (batch_data.astype(np.float32) / 127.5) - 1
+            else:
+                batch_data = (batch_data.astype(np.float32) / 255.)
 
     elif batch_mode == 'text':
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.int64)
