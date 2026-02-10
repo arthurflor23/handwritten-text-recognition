@@ -45,63 +45,60 @@ def check(args):
                           seed=args.seed)
     print(augmentor)
 
-    source_gen, _ = dataset.get_generator(data_partition='test',
-                                          batch_size=args.batch_size,
-                                          batch_encoded=False,
-                                          batch_processing=False,
-                                          batch_scale=False,
-                                          augmentor=None,
-                                          shuffle=False)
+    src_gen, _ = dataset.get_generator(data_partition='test',
+                                       batch_size=args.batch_size,
+                                       batch_encoded=False,
+                                       batch_processing=False,
+                                       batch_scale=False,
+                                       augmentor=None,
+                                       shuffle=False)
 
-    encoded_gen, _ = dataset.get_generator(data_partition='test',
-                                           batch_size=args.batch_size,
-                                           batch_encoded=True,
-                                           batch_processing=False,
-                                           batch_scale=False,
-                                           augmentor=None,
-                                           shuffle=False)
+    enc_gen, _ = dataset.get_generator(data_partition='test',
+                                       batch_size=args.batch_size,
+                                       batch_encoded=True,
+                                       batch_processing=False,
+                                       batch_scale=False,
+                                       augmentor=None,
+                                       shuffle=False)
 
-    augmented_gen, _ = dataset.get_generator(data_partition='test',
-                                             batch_size=args.batch_size,
-                                             batch_encoded=True,
-                                             batch_processing=False,
-                                             batch_scale=False,
-                                             augmentor=augmentor,
-                                             shuffle=False)
+    aug_gen, _ = dataset.get_generator(data_partition='test',
+                                       batch_size=args.batch_size,
+                                       batch_encoded=True,
+                                       batch_processing=False,
+                                       batch_scale=False,
+                                       augmentor=augmentor,
+                                       shuffle=False)
 
     print('\nChecking samples...')
 
     while True:
-        _, y_source_data = next(source_gen)
-        image_source_data, text_source_data, writer_source_data, mask_encoded_data = y_source_data
+        _, y_src = next(src_gen)
+        img_src, txt_src, wri_src, _, _ = y_src
 
-        _, y_encoded_data = next(encoded_gen)
-        image_encoded_data, text_encoded_data, writer_encoded_data, _ = y_encoded_data
+        _, y_enc = next(enc_gen)
+        img_enc, txt_enc, wri_enc, _, _ = y_enc
 
-        x_augmented_data, _ = next(augmented_gen)
-        image_augmented_data, _, _, mask_augmented_data = x_augmented_data
+        x_aug, _ = next(aug_gen)
+        img_aug, _, _, _, seg_aug = x_aug
 
-        for i in range(len(image_source_data)):
-            print('\n')
-            print('Path image')
-            print(image_source_data[i], '\n')
+        for i in range(len(img_src)):
+            print('\nPath image')
+            print(img_src[i], '\n')
 
-            print('Source writer :', writer_source_data[i])
-            print('Encoded writer:', writer_encoded_data[i], '\n')
+            print('Writer (src):', wri_src[i])
+            print('Writer (enc):', wri_enc[i], '\n')
 
-            print('Source text', f"(length {len(text_source_data[i])})")
-            print(text_source_data[i])
+            print(f'Text (src) length {len(txt_src[i])}')
+            print(txt_src[i])
             print('-' * 68, '\n')
 
-            print('Encoded text')
-            print(text_encoded_data[i])
+            print('Text (enc)')
+            print(txt_enc[i])
             print('-' * 68, '\n')
 
-            # cv2.imshow('Image Mask', mask_encoded_data[i])
-            # cv2.imshow('Augmented Mask Image', mask_augmented_data[i])
-
-            cv2.imshow('Image', image_encoded_data[i])
-            cv2.imshow('Augmented Image', image_augmented_data[i])
+            cv2.imshow('Image (enc)', img_enc[i])
+            cv2.imshow('Image (aug)', img_aug[i])
+            cv2.imshow('Segmentation (aug)', seg_aug[i])
 
             print('Press Enter to continue or Esc to stop...\n')
             key = cv2.waitKey(0)
