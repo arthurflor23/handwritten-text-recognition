@@ -336,8 +336,8 @@ class BaseRecognitionModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        _, text_data, _, mask_data = y_data
+        aug_image_data, aug_text_data, _, aug_mask_data, _ = x_data
+        _, text_data, _, mask_data, _ = y_data
 
         images, texts = [aug_image_data], [text_data]
 
@@ -425,7 +425,8 @@ class BaseRecognitionModel(BaseModel):
             Training metrics and losses.
         """
 
-        _, (image_data, text_data, _, _) = input_data
+        _, y_data = input_data
+        image_data, text_data, _, _, _ = y_data
 
         ctc_logits = self.recognition(image_data)
         ctc_logits = self.unwrap_call_output(ctc_logits)
@@ -581,7 +582,9 @@ class BaseRecognitionModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (image_data, text_data, writer_data, _) = next(y)
+            _, y_data = next(y)
+            image_data, text_data, writer_data, _, _ = y_data
+
             batch_size = len(text_data)
 
             pred_data = x[batch_index:batch_index + batch_size]
@@ -751,7 +754,8 @@ class BaseSynthesisModel(BaseModel):
             Training metrics and losses.
         """
 
-        _, (image_data, text_data, _, mask_data) = input_data
+        _, y_data = input_data
+        image_data, text_data, _, mask_data, _ = y_data
 
         features_data = self.writer_encoder(image_data)
         features_data = self.unwrap_call_output(features_data)
@@ -841,7 +845,9 @@ class BaseSynthesisModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (image_true_data, _, _, _) = next(y)
+            _, y_data = next(y)
+            image_true_data, _, _, _, _ = y_data
+
             batch_size = len(image_true_data)
 
             image_pred_data = x[batch_index:batch_index + batch_size]
@@ -973,8 +979,8 @@ class BaseWriterIdentificationModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data = x_data
-        _, text_data, writer_data, mask_data = y_data
+        aug_image_data, aug_text_data, _, aug_mask_data, _ = x_data
+        _, text_data, writer_data, mask_data, _ = y_data
 
         images, writers = [aug_image_data], [writer_data]
 
@@ -1049,7 +1055,8 @@ class BaseWriterIdentificationModel(BaseModel):
             Training metrics and losses.
         """
 
-        _, (image_data, _, writer_data, _) = input_data
+        _, y_data = input_data
+        image_data, _, writer_data, _, _ = y_data
 
         wid_logits = self.writer_identification(image_data)
         wid_logits = self.unwrap_call_output(wid_logits)
@@ -1116,7 +1123,9 @@ class BaseWriterIdentificationModel(BaseModel):
         for step in range(steps):
             progbar.update(step)
 
-            _, (image_data, _, writer_data, _) = next(y)
+            _, y_data = next(y)
+            image_data, _, writer_data, _, _ = y_data
+
             batch_size = len(image_data)
 
             y_pred = x[batch_index:batch_index + batch_size]
