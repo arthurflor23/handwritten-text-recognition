@@ -544,8 +544,8 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
@@ -604,7 +604,7 @@ class GeneratorModel(BaseModel):
 
         outputs = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
                                    char_width_ratio=block.shape[2] // self.lexical_shape[1],
-                                   resize_method='bilinear')([block, text, mask])
+                                   resize_method='bicubic')([block, text, mask])
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
