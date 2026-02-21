@@ -44,9 +44,9 @@ if __name__ == '__main__':
 
     # augmentor
     parser.add_argument('--erode', default=(0.33, 3), nargs='+', type=float, help='Erosion settings')
-    parser.add_argument('--dilate', default=(0.33, 2), nargs='+', type=float, help='Dilation settings')
+    parser.add_argument('--dilate', default=None, nargs='+', type=float, help='Dilation settings')
     parser.add_argument('--elastic', default=(0.33, 31), nargs='+', type=float, help='Elastic deformation settings')
-    parser.add_argument('--perspective', default=(0.66, 0.8), nargs='+', type=float, help='Perspective settings')
+    parser.add_argument('--perspective', default=(0.66, 0.7), nargs='+', type=float, help='Perspective settings')
     parser.add_argument('--shear', default=(0.33, 0.1), nargs='+', type=float, help='Shearing settings')
     parser.add_argument('--scale', default=(0.33, 0.1), nargs='+', type=float, help='Scaling settings')
     parser.add_argument('--rotate', default=(0.33, 0.1), nargs='+', type=float, help='Rotation settings')
