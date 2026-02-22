@@ -111,16 +111,16 @@ The project has several command-line parameters that can be used to customize it
 
 #### Augmentor
 
+- `--mixup`: Mixup transformation (probability, opacity, iterations).
 - `--erode`: Erode transformation (probability, kernel size, iterations).
 - `--dilate`: Dilate transformation (probability, kernel size, iterations).
 - `--elastic`: Elastic transformation (probability, kernel size, alpha).
 - `--perspective`: Perspective transformation (probability, alpha).
-- `--shear`: Shear transformation (probability, shear alpha).
-- `--scale`: Scale transformation (probability, scale alpha).
-- `--rotate`: Rotate transformation (probability, rotate alpha).
-- `--shift-y`: Vertical translation (probability, y-alpha).
-- `--shift-x`: Horizontal translation (probability, x-alpha).
-- `--mixup`: Mixup transformation (probability, opacity, iterations).
+- `--rotate`: Rotate transformation (probability, alpha).
+- `--shear`: Shear transformation (probability, alpha).
+- `--scale`: Scale transformation (probability, alpha).
+- `--shift-y`: Vertical translation (probability, alpha).
+- `--shift-x`: Horizontal translation (probability, alpha).
 - `--salt-and-pepper`: Salt and Pepper noise (probability, alpha).
 - `--gaussian-noise`: Gaussian noise (probability, alpha).
 - `--gaussian-blur`: Gaussian blur filter (probability, kernel size).
