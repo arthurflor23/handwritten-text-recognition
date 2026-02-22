@@ -8,16 +8,16 @@ class Augmentor():
     """
 
     def __init__(self,
+                 mixup=None,
                  erode=None,
                  dilate=None,
                  elastic=None,
                  perspective=None,
+                 rotate=None,
                  shear=None,
                  scale=None,
-                 rotate=None,
                  shift_y=None,
                  shift_x=None,
-                 mixup=None,
                  salt_and_pepper=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
@@ -27,6 +27,8 @@ class Augmentor():
 
         Parameters
         ----------
+        mixup : list or None, optional
+            Parameters for mixup transformation.
         erode : list or None, optional
             Parameters for erode transformation.
         dilate : list or None, optional
@@ -35,18 +37,16 @@ class Augmentor():
             Parameters for elastic transformation.
         perspective : list or None, optional
             Parameters for perspective transform transformation.
+        rotate : list or None, optional
+            Parameters for rotate transformation.
         shear : list or None, optional
             Parameters for shear transformation.
         scale : list or None, optional
             Parameters for scale transformation.
-        rotate : list or None, optional
-            Parameters for rotate transformation.
         shift_y : list or None, optional
             Parameters for vertical translation transformation.
         shift_x : list or None, optional
             Parameters for horizontal translation transformation.
-        mixup : list or None, optional
-            Parameters for mixup transformation.
         salt_and_pepper : list or None, optional
             Parameters for salt and pepper noise.
         gaussian_noise : list or None, optional
@@ -60,16 +60,16 @@ class Augmentor():
         if seed is not None:
             np.random.seed(seed)
 
+        self.mixup_params = mixup
         self.erode_params = erode
         self.dilate_params = dilate
         self.elastic_params = elastic
         self.perspective_params = perspective
+        self.rotate_params = rotate
         self.shear_params = shear
         self.scale_params = scale
-        self.rotate_params = rotate
         self.shift_y_params = shift_y
         self.shift_x_params = shift_x
-        self.mixup_params = mixup
         self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
@@ -93,16 +93,16 @@ class Augmentor():
         info = "=" * width
         info += f"\n{self.__class__.__name__.center(width)}"
         info += "\n" + "-" * width
+        info += f"\n{'mixup':<{pad}}: {_format(self.mixup_params)}"
         info += f"\n{'erode':<{pad}}: {_format(self.erode_params)}"
         info += f"\n{'dilate':<{pad}}: {_format(self.dilate_params)}"
         info += f"\n{'elastic':<{pad}}: {_format(self.elastic_params)}"
         info += f"\n{'perspective':<{pad}}: {_format(self.perspective_params)}"
+        info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
         info += f"\n{'shear':<{pad}}: {_format(self.shear_params)}"
         info += f"\n{'scale':<{pad}}: {_format(self.scale_params)}"
-        info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
         info += f"\n{'shift_y':<{pad}}: {_format(self.shift_y_params)}"
         info += f"\n{'shift_x':<{pad}}: {_format(self.shift_x_params)}"
-        info += f"\n{'mixup':<{pad}}: {_format(self.mixup_params)}"
         info += f"\n{'salt_and_pepper':<{pad}}: {_format(self.salt_and_pepper_params)}"
         info += f"\n{'gaussian_noise':<{pad}}: {_format(self.gaussian_noise_params)}"
         info += f"\n{'gaussian_blur':<{pad}}: {_format(self.gaussian_blur_params)}"
@@ -131,16 +131,16 @@ class Augmentor():
             self.mixup_params = list(self.mixup_params[:2]) + [batch_images]
 
         transformations = [
+            (self.mixup, self.mixup_params, 32),
             (self.erode, self.erode_params, 32),
             (self.dilate, self.dilate_params, 32),
             (self.elastic, self.elastic_params, 32),
             (self.perspective, self.perspective_params, 32),
+            (self.rotate, self.rotate_params, 32),
             (self.shear, self.shear_params, 32),
             (self.scale, self.scale_params, 32),
-            (self.rotate, self.rotate_params, 32),
             (self.shift_y, self.shift_y_params, 32),
             (self.shift_x, self.shift_x_params, 32),
-            (self.mixup, self.mixup_params, 32),
             (self.salt_and_pepper, self.salt_and_pepper_params, 32),
             (self.gaussian_noise, self.gaussian_noise_params, 32),
             (self.gaussian_blur, self.gaussian_blur_params, 32),
@@ -155,6 +155,74 @@ class Augmentor():
 
             if np.random.random() <= params[0]:
                 image = func(image, *params[1:])
+
+        return image
+
+    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
+        """
+        Apply mixup augmentation to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be mixed.
+        opacity : float
+            Opacity of the mixup effect.
+        batch_images : list, optional
+            List of additional images for mixing.
+        iterations : int
+            Number of images for the mixup operation.
+        radius : bool, optional
+            Whether to use range radius for opacity and iterations.
+
+        Returns
+        -------
+        ndarray
+            Mixed image.
+        """
+
+        if batch_images is None or len(batch_images) == 0:
+            return image
+
+        height, width = image.shape[:2]
+
+        size_min = height * width * 0.75
+        size_max = height * width * 1.25
+        size_images = [img for img in batch_images if size_min <= img.shape[0] * img.shape[1] <= size_max]
+
+        if size_images:
+            iterations = min(iterations, len(size_images))
+            indices = np.uint8(np.random.uniform(0, len(size_images), iterations))
+            opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
+
+            for i, opc in zip(indices, opacities):
+                img = size_images[i]
+
+                ratio_width = width / float(img.shape[1])
+                ratio_height = height / float(img.shape[0])
+                ratio = min(ratio_width, ratio_height)
+
+                dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
+                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
+
+                delta_w = width - dim[0]
+                delta_h = height - dim[1]
+                top, bottom = delta_h//2, delta_h-(delta_h//2)
+                left, right = delta_w//2, delta_w-(delta_w//2)
+
+                img = cv2.copyMakeBorder(src=img,
+                                         top=top,
+                                         bottom=bottom,
+                                         left=left,
+                                         right=right,
+                                         borderType=cv2.BORDER_CONSTANT,
+                                         value=int(np.median(image)))
+
+                image = cv2.addWeighted(src1=image,
+                                        src2=img.astype(image.dtype),
+                                        alpha=1 - opc,
+                                        beta=opc,
+                                        gamma=0)
 
         return image
 
@@ -313,6 +381,54 @@ class Augmentor():
 
         return image
 
+    def rotate(self, image, alpha, radius=True):
+        """
+        Apply rotate to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be rotated.
+        alpha : float
+            Factor of rotate transformation.
+        radius : bool, optional
+            Whether to use range radius for alpha.
+
+        Returns
+        -------
+        ndarray
+            Rotated image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(-alpha, alpha)
+
+        height, width = image.shape[:2]
+
+        dy_factor = (1 - (height / (height + width))) ** 4
+        angle = alpha * dy_factor
+
+        center = (width // 2, height // 2)
+        M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
+
+        cos_angle = np.abs(M[0, 0])
+        sin_angle = np.abs(M[0, 1])
+
+        new_width = int((height * sin_angle) + (width * cos_angle))
+        new_height = int((height * cos_angle) + (width * sin_angle))
+
+        M[0, 2] += (new_width / 2) - center[0]
+        M[1, 2] += (new_height / 2) - center[1]
+
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(new_width, new_height),
+                               flags=cv2.INTER_CUBIC,
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=int(np.median(image)))
+
+        return image
+
     def shear(self, image, alpha, radius=True):
         """
         Apply shear transformation to the image.
@@ -388,54 +504,6 @@ class Augmentor():
         if alpha > 0:
             padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
-
-        return image
-
-    def rotate(self, image, alpha, radius=True):
-        """
-        Apply rotate to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be rotated.
-        alpha : float
-            Factor of rotate transformation.
-        radius : bool, optional
-            Whether to use range radius for alpha.
-
-        Returns
-        -------
-        ndarray
-            Rotated image.
-        """
-
-        if radius:
-            alpha = np.random.uniform(-alpha, alpha)
-
-        height, width = image.shape[:2]
-
-        dy_factor = (1 - (height / (height + width))) ** 4
-        angle = alpha * dy_factor
-
-        center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
-
-        cos_angle = np.abs(M[0, 0])
-        sin_angle = np.abs(M[0, 1])
-
-        new_width = int((height * sin_angle) + (width * cos_angle))
-        new_height = int((height * cos_angle) + (width * sin_angle))
-
-        M[0, 2] += (new_width / 2) - center[0]
-        M[1, 2] += (new_height / 2) - center[1]
-
-        image = cv2.warpAffine(src=image,
-                               M=M,
-                               dsize=(new_width, new_height),
-                               flags=cv2.INTER_CUBIC,
-                               borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
 
         return image
 
@@ -516,74 +584,6 @@ class Augmentor():
                                borderValue=int(np.median(image)))
 
         image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
-
-        return image
-
-    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
-        """
-        Apply mixup augmentation to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be mixed.
-        opacity : float
-            Opacity of the mixup effect.
-        batch_images : list, optional
-            List of additional images for mixing.
-        iterations : int
-            Number of images for the mixup operation.
-        radius : bool, optional
-            Whether to use range radius for opacity and iterations.
-
-        Returns
-        -------
-        ndarray
-            Mixed image.
-        """
-
-        if batch_images is None or len(batch_images) == 0:
-            return image
-
-        height, width = image.shape[:2]
-
-        size_min = height * width * 0.75
-        size_max = height * width * 1.25
-        size_images = [img for img in batch_images if size_min <= img.shape[0] * img.shape[1] <= size_max]
-
-        if size_images:
-            iterations = min(iterations, len(size_images))
-            indices = np.uint8(np.random.uniform(0, len(size_images), iterations))
-            opacities = np.random.uniform(0.0, opacity, iterations) if radius else np.full(iterations, opacity)
-
-            for i, opc in zip(indices, opacities):
-                img = size_images[i]
-
-                ratio_width = width / float(img.shape[1])
-                ratio_height = height / float(img.shape[0])
-                ratio = min(ratio_width, ratio_height)
-
-                dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
-
-                delta_w = width - dim[0]
-                delta_h = height - dim[1]
-                top, bottom = delta_h//2, delta_h-(delta_h//2)
-                left, right = delta_w//2, delta_w-(delta_w//2)
-
-                img = cv2.copyMakeBorder(src=img,
-                                         top=top,
-                                         bottom=bottom,
-                                         left=left,
-                                         right=right,
-                                         borderType=cv2.BORDER_CONSTANT,
-                                         value=int(np.median(image)))
-
-                image = cv2.addWeighted(src1=image,
-                                        src2=img.astype(image.dtype),
-                                        alpha=1 - opc,
-                                        beta=opc,
-                                        gamma=0)
 
         return image
 
