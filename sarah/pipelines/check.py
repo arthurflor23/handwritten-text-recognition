@@ -29,16 +29,16 @@ def check(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(erode=args.erode,
+    augmentor = Augmentor(mixup=args.mixup,
+                          erode=args.erode,
                           dilate=args.dilate,
                           elastic=args.elastic,
                           perspective=args.perspective,
+                          rotate=args.rotate,
                           shear=args.shear,
                           scale=args.scale,
-                          rotate=args.rotate,
                           shift_y=args.shift_y,
                           shift_x=args.shift_x,
-                          mixup=args.mixup,
                           salt_and_pepper=args.salt_and_pepper,
                           gaussian_noise=args.gaussian_noise,
                           gaussian_blur=args.gaussian_blur,
