@@ -247,11 +247,18 @@ class Augmentor():
             Eroded image.
         """
 
+        kernel_size = max(kernel_size, 2)
+
         if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
+            kernel_size = np.random.randint(2, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
+            ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
+            ksize = ksize[np.random.randint(len(ksize))]
+        else:
+            ksize = (kernel_size, kernel_size)
+
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
         image = cv2.morphologyEx(src=image, op=cv2.MORPH_ERODE, kernel=kernel, iterations=iterations)
 
         return image
@@ -277,11 +284,18 @@ class Augmentor():
             Dilated image.
         """
 
+        kernel_size = max(kernel_size, 2)
+
         if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
+            kernel_size = np.random.randint(2, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
+            ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
+            ksize = ksize[np.random.randint(len(ksize))]
+        else:
+            ksize = (kernel_size, kernel_size)
+
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
         image = cv2.morphologyEx(src=image, op=cv2.MORPH_DILATE, kernel=kernel, iterations=iterations)
 
         return image
@@ -307,8 +321,10 @@ class Augmentor():
             Distorted image.
         """
 
+        kernel_size = max(kernel_size, 2)
+
         if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
+            kernel_size = np.random.randint(2, kernel_size + 1)
             alpha = np.random.uniform(0.0, alpha)
 
         if kernel_size % 2 == 0:
@@ -317,12 +333,12 @@ class Augmentor():
         dxy = np.random.uniform(-1.0, 1.0, size=image.shape[:2])
         dxy = cv2.GaussianBlur(dxy, (kernel_size, kernel_size), 0) * kernel_size * alpha
 
-        org_coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32).transpose(1, 2, 0)
-        displaced_coords = np.float32(org_coords + np.stack((dxy, dxy), axis=-1))
+        coords = np.indices((image.shape[0], image.shape[1]), dtype=np.float32)
+        coords = np.float32(coords.transpose(1, 2, 0) + np.stack((dxy, dxy), axis=-1))
 
         image = cv2.remap(src=image,
-                          map1=displaced_coords[..., 1],
-                          map2=displaced_coords[..., 0],
+                          map1=coords[..., 1],
+                          map2=coords[..., 0],
                           interpolation=cv2.INTER_CUBIC,
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=int(np.median(image)))
@@ -676,17 +692,16 @@ class Augmentor():
             Blurred image.
         """
 
+        kernel_size = max(kernel_size, 2)
+
         if radius:
-            kernel_size = np.random.randint(1, kernel_size + 1)
+            kernel_size = np.random.randint(2, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
         if kernel_size % 2 == 0:
             kernel_size += 1
 
-        ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
-        ksize = ksize[np.random.randint(len(ksize))]
-
         for _ in range(iterations):
-            image = cv2.GaussianBlur(src=image, ksize=ksize, sigmaX=0)
+            image = cv2.GaussianBlur(src=image, ksize=(kernel_size, kernel_size), sigmaX=0)
 
         return image
