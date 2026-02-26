@@ -252,7 +252,7 @@ class Augmentor():
             iterations = np.random.randint(1, iterations + 1)
 
         kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
-        image = cv2.erode(src=image, kernel=kernel, iterations=iterations)
+        image = cv2.morphologyEx(src=image, op=cv2.MORPH_ERODE, kernel=kernel, iterations=iterations)
 
         return image
 
@@ -282,7 +282,7 @@ class Augmentor():
             iterations = np.random.randint(1, iterations + 1)
 
         kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
-        image = cv2.dilate(src=image, kernel=kernel, iterations=iterations)
+        image = cv2.morphologyEx(src=image, op=cv2.MORPH_DILATE, kernel=kernel, iterations=iterations)
 
         return image
 
