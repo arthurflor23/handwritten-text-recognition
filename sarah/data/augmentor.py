@@ -146,21 +146,21 @@ class Augmentor():
 
         border_value = int(np.median(image))
 
-        for func, params, min_length in transformations:
-            if params is None or len(params) == 0 or params[0] <= 0:
+        for func, parameters, min_length in transformations:
+            if parameters is None or len(parameters) == 0 or parameters[0] <= 0:
                 continue
 
             if min(image.shape[:2]) <= min_length:
                 continue
 
-            if np.random.random() <= params[0]:
+            if np.random.random() <= parameters[0]:
                 names = [x.name for x in inspect.signature(func).parameters.values()]
 
-                parameters = dict(zip(names[1:], params[1:]))
-                parameters['batch_images'] = batch_images
-                parameters['border_value'] = border_value
+                params = dict(zip(names[1:], parameters[1:]))
+                params['batch_images'] = batch_images
+                params['border_value'] = border_value
 
-                image = func(image, **parameters)
+                image = func(image, **params)
 
         return image
 
