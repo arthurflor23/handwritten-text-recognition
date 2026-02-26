@@ -1,4 +1,5 @@
 import cv2
+import inspect
 import numpy as np
 
 
@@ -127,9 +128,6 @@ class Augmentor():
             Transformed image.
         """
 
-        if self.mixup_params is not None:
-            self.mixup_params = list(self.mixup_params[:2]) + [batch_images]
-
         transformations = [
             (self.mixup, self.mixup_params, 32),
             (self.erode, self.erode_params, 32),
@@ -146,6 +144,8 @@ class Augmentor():
             (self.gaussian_blur, self.gaussian_blur_params, 32),
         ]
 
+        border_value = int(np.median(image))
+
         for func, params, min_length in transformations:
             if params is None or len(params) == 0 or params[0] <= 0:
                 continue
@@ -154,11 +154,24 @@ class Augmentor():
                 continue
 
             if np.random.random() <= params[0]:
-                image = func(image, *params[1:])
+                names = [x.name for x in inspect.signature(func).parameters.values()]
+
+                parameters = dict(zip(names[1:], params[1:]))
+                parameters['batch_images'] = batch_images
+                parameters['border_value'] = border_value
+
+                image = func(image, **parameters)
 
         return image
 
-    def mixup(self, image, opacity, batch_images=None, iterations=1, radius=True):
+    def mixup(self,
+              image,
+              opacity,
+              iterations=1,
+              border_value=0,
+              batch_images=None,
+              radius=True,
+              **kwargs):
         """
         Apply mixup augmentation to the image.
 
@@ -168,12 +181,16 @@ class Augmentor():
             Input image to be mixed.
         opacity : float
             Opacity of the mixup effect.
-        batch_images : list, optional
-            List of additional images for mixing.
         iterations : int
             Number of images for the mixup operation.
+        border_value : int, optional
+            Border value for padding.
+        batch_images : list, optional
+            List of additional images for mixing.
         radius : bool, optional
             Whether to use range radius for opacity and iterations.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -216,7 +233,7 @@ class Augmentor():
                                          left=left,
                                          right=right,
                                          borderType=cv2.BORDER_CONSTANT,
-                                         value=int(np.median(image)))
+                                         value=border_value)
 
                 image = cv2.addWeighted(src1=image,
                                         src2=img.astype(image.dtype),
@@ -226,7 +243,12 @@ class Augmentor():
 
         return image
 
-    def erode(self, image, kernel_size, iterations=1, radius=True):
+    def erode(self,
+              image,
+              kernel_size,
+              iterations=1,
+              radius=True,
+              **kwargs):
         """
         Apply erode transformation to the image.
 
@@ -240,6 +262,8 @@ class Augmentor():
             Number of iterations for erosion.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -263,7 +287,12 @@ class Augmentor():
 
         return image
 
-    def dilate(self, image, kernel_size, iterations=1, radius=True):
+    def dilate(self,
+               image,
+               kernel_size,
+               iterations=1,
+               radius=True,
+               **kwargs):
         """
         Apply dilate transformation to the image.
 
@@ -277,6 +306,8 @@ class Augmentor():
             Number of iterations for dilation.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -300,7 +331,13 @@ class Augmentor():
 
         return image
 
-    def elastic(self, image, kernel_size, alpha=1.0, radius=True):
+    def elastic(self,
+                image,
+                kernel_size,
+                alpha=1.0,
+                border_value=0,
+                radius=True,
+                **kwargs):
         """
         Apply elastic transform to the image.
 
@@ -312,8 +349,12 @@ class Augmentor():
             Kernel size for elastic transform.
         alpha : float
             Factor of elastic transform.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for kernel size and alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -341,11 +382,16 @@ class Augmentor():
                           map2=coords[..., 0],
                           interpolation=cv2.INTER_CUBIC,
                           borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=int(np.median(image)))
+                          borderValue=border_value)
 
         return image
 
-    def perspective(self, image, alpha, radius=True):
+    def perspective(self,
+                    image,
+                    alpha,
+                    border_value=0,
+                    radius=True,
+                    **kwargs):
         """
         Apply perspective transformation to the image.
 
@@ -355,8 +401,12 @@ class Augmentor():
             Input image to be transformed.
         alpha : float
             Factor of perspective transformation.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for type and alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -393,11 +443,16 @@ class Augmentor():
                                     dsize=(width, height),
                                     flags=cv2.INTER_CUBIC,
                                     borderMode=cv2.BORDER_CONSTANT,
-                                    borderValue=int(np.median(image)))
+                                    borderValue=border_value)
 
         return image
 
-    def rotate(self, image, alpha, radius=True):
+    def rotate(self,
+               image,
+               alpha,
+               border_value=0,
+               radius=True,
+               **kwargs):
         """
         Apply rotate to the image.
 
@@ -407,8 +462,12 @@ class Augmentor():
             Input image to be rotated.
         alpha : float
             Factor of rotate transformation.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -441,11 +500,16 @@ class Augmentor():
                                dsize=(new_width, new_height),
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=border_value)
 
         return image
 
-    def shear(self, image, alpha, radius=True):
+    def shear(self,
+              image,
+              alpha,
+              border_value=0,
+              radius=True,
+              **kwargs):
         """
         Apply shear transformation to the image.
 
@@ -455,8 +519,12 @@ class Augmentor():
             Input image to be sheared.
         alpha : float
             Factor of shear transformation.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -485,11 +553,16 @@ class Augmentor():
                                dsize=(new_width, height),
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=border_value)
 
         return image
 
-    def scale(self, image, alpha, radius=True):
+    def scale(self,
+              image,
+              alpha,
+              border_value=0,
+              radius=True,
+              **kwargs):
         """
         Apply scale to the image.
 
@@ -499,8 +572,12 @@ class Augmentor():
             Input image to be scaled.
         alpha : float
             scale alpha.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -518,12 +595,17 @@ class Augmentor():
         image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_CUBIC)
 
         if alpha > 0:
-            padded_image = np.full((height, width), int(np.median(image)), dtype=np.uint8)
+            padded_image = np.full((height, width), fill_value=border_value, dtype=np.uint8)
             padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
 
-    def shift_y(self, image, alpha, radius=True):
+    def shift_y(self,
+                image,
+                alpha,
+                border_value=0,
+                radius=True,
+                **kwargs):
         """
         Apply Y-axis translation to the image.
 
@@ -533,8 +615,12 @@ class Augmentor():
             Input image to be translated.
         alpha : float
             Y-axis translation factor.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for alphas.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -557,13 +643,18 @@ class Augmentor():
                                dsize=(width, height + abs(y_translation)),
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=border_value)
 
         image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
 
         return image
 
-    def shift_x(self, image, alpha, radius=True):
+    def shift_x(self,
+                image,
+                alpha,
+                border_value=0,
+                radius=True,
+                **kwargs):
         """
         Apply X-axis translation to the image.
 
@@ -573,8 +664,12 @@ class Augmentor():
             Input image to be translated.
         alpha : float
             X-axis translation factor.
+        border_value : int, optional
+            Border value for padding.
         radius : bool, optional
             Whether to use range radius for alphas.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -597,13 +692,17 @@ class Augmentor():
                                dsize=(width + abs(x_translation), height),
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=int(np.median(image)))
+                               borderValue=border_value)
 
         image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
 
         return image
 
-    def salt_and_pepper(self, image, alpha, radius=True):
+    def salt_and_pepper(self,
+                        image,
+                        alpha,
+                        radius=True,
+                        **kwargs):
         """
         Apply salt and pepper noise to the image.
 
@@ -615,6 +714,8 @@ class Augmentor():
             Percentage of pixels to add noise to.
         radius : bool, optional
             Whether to use range radius for alpha.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -633,7 +734,11 @@ class Augmentor():
 
         return image
 
-    def gaussian_noise(self, image, alpha, radius=True):
+    def gaussian_noise(self,
+                       image,
+                       alpha,
+                       radius=True,
+                       **kwargs):
         """
         Adds Gaussian noise to an image.
 
@@ -645,6 +750,8 @@ class Augmentor():
             Noise level factor, where larger alpha adds more noise.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
@@ -671,7 +778,12 @@ class Augmentor():
 
         return image
 
-    def gaussian_blur(self, image, kernel_size, iterations=1, radius=True):
+    def gaussian_blur(self,
+                      image,
+                      kernel_size,
+                      iterations=1,
+                      radius=True,
+                      **kwargs):
         """
         Apply Gaussian blur to the image.
 
@@ -685,6 +797,8 @@ class Augmentor():
             Number of iterations for Gaussian blur.
         radius : bool, optional
             Whether to use range radius for kernel size and iterations.
+        **kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
