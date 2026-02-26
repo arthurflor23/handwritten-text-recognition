@@ -156,6 +156,7 @@ class Augmentor():
 
                 params = dict(zip(names[1:], parameters[1:]))
                 params['batch_images'] = batch_images
+                params['border_value'] = int(np.median(image))
 
                 image = func(image, **params)
 
@@ -165,7 +166,7 @@ class Augmentor():
               image,
               opacity,
               iterations=1,
-              border_value=None,
+              border_value=0,
               batch_images=None,
               radius=True,
               **kwargs):
@@ -180,7 +181,7 @@ class Augmentor():
             Opacity of the mixup effect.
         iterations : int
             Number of images for the mixup operation.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         batch_images : list, optional
             List of additional images for mixing.
@@ -197,9 +198,6 @@ class Augmentor():
 
         if batch_images is None or len(batch_images) == 0:
             return image
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         height, width = image.shape[:2]
 
@@ -335,7 +333,7 @@ class Augmentor():
                 image,
                 kernel_size,
                 alpha=1.0,
-                border_value=None,
+                border_value=0,
                 radius=True,
                 **kwargs):
         """
@@ -349,7 +347,7 @@ class Augmentor():
             Kernel size for elastic transform.
         alpha : float
             Factor of elastic transform.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for kernel size and alpha.
@@ -361,9 +359,6 @@ class Augmentor():
         ndarray
             Distorted image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         kernel_size = max(kernel_size, 2)
 
@@ -392,7 +387,7 @@ class Augmentor():
     def perspective(self,
                     image,
                     alpha,
-                    border_value=None,
+                    border_value=0,
                     radius=True,
                     **kwargs):
         """
@@ -404,7 +399,7 @@ class Augmentor():
             Input image to be transformed.
         alpha : float
             Factor of perspective transformation.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for type and alpha.
@@ -416,9 +411,6 @@ class Augmentor():
         ndarray
             Transformed image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(0.0, alpha)
@@ -456,7 +448,7 @@ class Augmentor():
     def rotate(self,
                image,
                alpha,
-               border_value=None,
+               border_value=0,
                radius=True,
                **kwargs):
         """
@@ -468,7 +460,7 @@ class Augmentor():
             Input image to be rotated.
         alpha : float
             Factor of rotate transformation.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
@@ -480,9 +472,6 @@ class Augmentor():
         ndarray
             Rotated image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(-alpha, alpha)
@@ -516,7 +505,7 @@ class Augmentor():
     def shear(self,
               image,
               alpha,
-              border_value=None,
+              border_value=0,
               radius=True,
               **kwargs):
         """
@@ -528,7 +517,7 @@ class Augmentor():
             Input image to be sheared.
         alpha : float
             Factor of shear transformation.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
@@ -540,9 +529,6 @@ class Augmentor():
         ndarray
             Sheared image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(-alpha, alpha)
@@ -572,7 +558,7 @@ class Augmentor():
     def scale(self,
               image,
               alpha,
-              border_value=None,
+              border_value=0,
               radius=True,
               **kwargs):
         """
@@ -584,7 +570,7 @@ class Augmentor():
             Input image to be scaled.
         alpha : float
             scale alpha.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for alpha.
@@ -596,9 +582,6 @@ class Augmentor():
         ndarray
             Scaled image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(-alpha, alpha)
@@ -618,7 +601,7 @@ class Augmentor():
     def shift_y(self,
                 image,
                 alpha,
-                border_value=None,
+                border_value=0,
                 radius=True,
                 **kwargs):
         """
@@ -630,7 +613,7 @@ class Augmentor():
             Input image to be translated.
         alpha : float
             Y-axis translation factor.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for alphas.
@@ -642,9 +625,6 @@ class Augmentor():
         ndarray
             Translated image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(0.0, alpha)
@@ -670,7 +650,7 @@ class Augmentor():
     def shift_x(self,
                 image,
                 alpha,
-                border_value=None,
+                border_value=0,
                 radius=True,
                 **kwargs):
         """
@@ -682,7 +662,7 @@ class Augmentor():
             Input image to be translated.
         alpha : float
             X-axis translation factor.
-        border_value : int or None, optional
+        border_value : int, optional
             Border value for padding.
         radius : bool, optional
             Whether to use range radius for alphas.
@@ -694,9 +674,6 @@ class Augmentor():
         ndarray
             Translated image.
         """
-
-        if border_value is None:
-            border_value = int(np.median(image))
 
         if radius:
             alpha = np.random.uniform(0.0, alpha)
