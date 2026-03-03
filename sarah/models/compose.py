@@ -24,6 +24,7 @@ class Compose():
                  synthesis=None,
                  recognition=None,
                  spelling=None,
+                 segmentation=None,
                  writer_identification=None,
                  image_shape=None,
                  tokenizer=None,
@@ -45,6 +46,8 @@ class Compose():
             Identifier for the recognition model.
         spelling : str, optional
             Identifier for the spelling correction model.
+        segmentation : str, optional
+            Identifier for the segmentation model.
         writer_identification : str, optional
             Identifier for the writer identification model.
         image_shape : tuple, optional
@@ -70,6 +73,7 @@ class Compose():
         self.synthesis = synthesis
         self.recognition = recognition
         self.spelling = spelling
+        self.segmentation = segmentation
         self.writer_identification = writer_identification
 
         self.image_shape = image_shape
@@ -89,7 +93,7 @@ class Compose():
         self.spelling_model = None
         self.run_context = None
 
-        if self.synthesis or self.recognition or self.writer_identification:
+        if self.synthesis or self.recognition or self.segmentation or self.writer_identification:
             mlflow.set_tracking_uri(self.output_path)
             mlflow.set_experiment(self.experiment_name)
 
@@ -113,6 +117,7 @@ class Compose():
             SynthesisModel = None
             RecognitionModel = None
             SpellingModel = None
+            SegmentationModel = None
             WriterIdentificationModel = None
 
             if self.synthesis:
@@ -127,11 +132,15 @@ class Compose():
                     module = f"spelling.{self.spelling}"
                     SpellingModel = self._import_model(module=module, class_name='SpellingModel')
 
+            if self.segmentation:
+                module = f"segmentation.{self.segmentation}"
+                SegmentationModel = self._import_model(module=module, class_name='SegmentationModel')
+
             if self.writer_identification:
                 module = f"writer_identification.{self.writer_identification}"
                 WriterIdentificationModel = self._import_model(module=module, class_name='WriterIdentificationModel')
 
-            if SynthesisModel and not RecognitionModel and not WriterIdentificationModel:
+            if SynthesisModel and not RecognitionModel and not SegmentationModel and not WriterIdentificationModel:
                 self.model = SynthesisModel(name='synthesis',
                                             image_shape=self.image_shape,
                                             lexical_shape=self.tokenizer.lexical_shape,
@@ -166,6 +175,12 @@ class Compose():
 
                     if SpellingModel:
                         self.spelling_model = SpellingModel()
+
+                elif SegmentationModel:
+                    self.model = SegmentationModel(name='segmentation',
+                                                   image_shape=self.image_shape,
+                                                   seed=self.seed,
+                                                   **synthesis_params)
 
                 elif WriterIdentificationModel:
                     self.model = WriterIdentificationModel(name='writer_identification',
@@ -821,6 +836,8 @@ class Compose():
                       synthesis_run_id=None,
                       recognition=None,
                       recognition_run_id=None,
+                      segmentation=None,
+                      segmentation_run_id=None,
                       writer_identification=None,
                       writer_identification_run_id=None,
                       experiment_name=None,
@@ -839,6 +856,10 @@ class Compose():
             Identifier for recognition model.
         recognition_run_id : str or int, optional
             Run index for the recognition model.
+        segmentation : str, optional
+            Identifier for segmentation model.
+        segmentation_run_id : str or int, optional
+            Run index for the segmentation model.
         writer_identification : str, optional
             Identifier for writer identification model.
         writer_identification_run_id : str or int, optional
@@ -898,13 +919,14 @@ class Compose():
 
             return run, artifact_path
 
-        s_run, s_path = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
-        r_run, r_path = get_artifacts_path('recognition', recognition, recognition_run_id)
-        w_run, w_path = get_artifacts_path('writer_identification', writer_identification, writer_identification_run_id)
+        r_syn, p_syn = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
+        r_rec, p_rec = get_artifacts_path('recognition', recognition, recognition_run_id)
+        r_seg, p_seg = get_artifacts_path('segmentation', segmentation, segmentation_run_id)
+        r_wid, p_wid = get_artifacts_path('writer_identification', writer_identification, writer_identification_run_id)
 
+        run_context = r_syn or r_rec or r_seg or r_wid
+        artifacts_path = p_syn or p_rec or p_seg or p_wid
         tokenizer = None
-        run_context = s_run or r_run or w_run
-        artifacts_path = s_path or r_path or w_path
 
         if artifacts_path:
             tokenizer_uri = os.path.join(artifacts_path, 'model', 'tokenizer.pkl')
