@@ -18,12 +18,14 @@ if __name__ == '__main__':
     # models
     parser.add_argument('--synthesis', default=None, help='Synthesis model')
     parser.add_argument('--recognition', default=None, help='Recognition model')
+    parser.add_argument('--segmentation', default=None, help='Segmentation model')
     parser.add_argument('--writer-identification', default=None, help='Writer Identification model')
     parser.add_argument('--spelling', default=None, help='Spelling model')
 
     # mlflow
     parser.add_argument('--synthesis-run-id', default=None, help='Synthesis run id or index')
     parser.add_argument('--recognition-run-id', default=None, help='Recognition run id or index')
+    parser.add_argument('--segmentation-run-id', default=None, help='Segmentation run id or index')
     parser.add_argument('--writer-identification-run-id', default=None, help='Writer Identification run id or index')
     parser.add_argument('--experiment-name', default='Default', help='Experiment name')
     parser.add_argument('--finished-runs', default=False, action='store_true', help='Only finished runs for selection')
@@ -100,8 +102,8 @@ if __name__ == '__main__':
         assert args.source, '--source must be defined'
 
     if args.training or args.test or args.inference:
-        assert args.synthesis or args.recognition or args.writer_identification, \
-            '--synthesis or --recognition or --writer-identification must be defined'
+        assert args.synthesis or args.recognition or args.segmentation or args.writer_identification, \
+            '--synthesis or --recognition or --segmentation or --writer-identification must be defined'
 
     elif args.spelling:
         assert args.recognition_run_id, '--recognition-run-id must be defined'
@@ -109,7 +111,7 @@ if __name__ == '__main__':
     if args.synthesis and args.inference:
         assert args.text, '--text must be defined'
 
-    if (args.recognition or args.writer_identification) and args.inference:
+    if (args.recognition or args.segmentation or args.writer_identification) and args.inference:
         assert args.image, '--image must be defined'
 
     # pipelines
