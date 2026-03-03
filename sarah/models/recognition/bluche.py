@@ -105,6 +105,12 @@ class RecognitionModel(BaseRecognitionModel):
         self.decoder = tf.keras.Model(name='recognition_decoder', inputs=decoder_input, outputs=decoder)
 
         # recognition model
+        if self.return_features:
+            encoder_output = self.encoder(encoder_input)
+            outputs = [encoder_output, self.decoder(encoder_output)]
+        else:
+            outputs = self.decoder(self.encoder(encoder_input))
+
         self.recognition = tf.keras.Model(name=self.name,
                                           inputs=self.encoder.input,
-                                          outputs=self.decoder(self.encoder(encoder_input)))
+                                          outputs=outputs)
