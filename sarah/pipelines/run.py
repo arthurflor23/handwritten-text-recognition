@@ -16,6 +16,8 @@ def run(args):
                                                      synthesis_run_id=args.synthesis_run_id,
                                                      recognition=args.recognition,
                                                      recognition_run_id=args.recognition_run_id,
+                                                     segmentation=args.segmentation,
+                                                     segmentation_run_id=args.segmentation_run_id,
                                                      writer_identification=args.writer_identification,
                                                      writer_identification_run_id=args.writer_identification_run_id,
                                                      experiment_name=args.experiment_name,
@@ -61,6 +63,7 @@ def run(args):
     compose = Compose(synthesis=args.synthesis,
                       recognition=args.recognition,
                       spelling=args.spelling,
+                      segmentation=args.segmentation,
                       writer_identification=args.writer_identification,
                       image_shape=args.image_shape,
                       tokenizer=dataset.tokenizer,
@@ -133,6 +136,9 @@ def run(args):
                 print('metrics')
                 print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
                 print('-' * 68)
+
+    elif args.segmentation:
+        print('TODO')
 
     elif args.recognition:
         if args.training or args.test:
