@@ -640,6 +640,79 @@ class BaseRecognitionModel(BaseModel):
         return metrics, evaluations
 
 
+class BaseSegmentationModel(BaseModel):
+    """
+    BaseSegmentationModel extends BaseModel to provide additional
+        functionalities to handwriting segmentation models.
+    """
+
+    def __init__(self,
+                 image_shape,
+                 return_features=False,
+                 seed=None,
+                 **kwargs):
+        """
+        Initializes the segmentation model.
+
+        Parameters
+        ----------
+        image_shape : tuple or list
+            The shape of the input images.
+        return_features : bool, optional
+            Whether to return intermediate features.
+        seed : int, optional
+            Seed for random shuffle.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        if seed is not None:
+            tf.keras.utils.set_random_seed(seed)
+
+        self.image_shape = image_shape
+        self.return_features = return_features
+        self.seed = seed
+
+        self.segmentation = None
+
+        self.global_step = tf.keras.Variable(name='global_step',
+                                             initializer=0,
+                                             dtype=tf.int64,
+                                             trainable=False)
+
+        self.names = [
+            'segmentation',
+        ]
+
+        self.bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=False, name='bce_loss')
+
+        self.measure_tracker = MeasureTracker()
+        self.monitor = f"val_{self.bce_loss.name}"
+
+        self.build_model()
+        self.built = True
+
+    def get_config(self):
+        """
+        Return the configuration of the model.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'image_shape': self.image_shape,
+        })
+
+        return config
+
+
 class BaseSynthesisModel(BaseModel):
     """
     BaseSynthesisModel extends BaseModel to provide additional
