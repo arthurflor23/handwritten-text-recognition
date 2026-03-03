@@ -238,6 +238,7 @@ class BaseRecognitionModel(BaseModel):
                  style_encoder=None,
                  generator=None,
                  synthesis_probability=1.0,
+                 return_features=False,
                  seed=None,
                  **kwargs):
         """
@@ -257,6 +258,8 @@ class BaseRecognitionModel(BaseModel):
             Generator model for image generation.
         synthesis_probability : float, optional
             Synthetic data probability.
+        return_features : bool, optional
+            Whether to return the intermediate features.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -271,6 +274,7 @@ class BaseRecognitionModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.synthesis_probability = synthesis_probability
+        self.return_features = return_features
         self.seed = seed
 
         self.writer_encoder = writer_encoder
@@ -648,6 +652,7 @@ class BaseSynthesisModel(BaseModel):
                  writers_shape,
                  discriminator_steps=1,
                  generator_steps=1,
+                 return_features=False,
                  seed=None,
                  **kwargs):
         """
@@ -665,6 +670,8 @@ class BaseSynthesisModel(BaseModel):
             The repetition of steps for discriminator training.
         generator_steps : int, optional
             The skipping steps for generator training.
+        return_features : bool, optional
+            Whether to return the intermediate features.
         seed : int, optional
             Seed for random shuffle.
         **kwargs : dict
@@ -679,6 +686,7 @@ class BaseSynthesisModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
+        self.return_features = return_features
         self.seed = seed
 
         self.recognition = None
@@ -868,7 +876,7 @@ class BaseSynthesisModel(BaseModel):
 class BaseWriterIdentificationModel(BaseModel):
     """
     BaseWriterIdentificationModel extends BaseModel to provide additional
-        functionalities to synthesis and writer identification models.
+        functionalities to writer identification models.
     """
 
     def __init__(self,
