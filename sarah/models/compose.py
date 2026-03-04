@@ -350,7 +350,7 @@ class Compose():
                 ),
             ])
 
-            if self.recognition or self.writer_identification:
+            if self.recognition or self.segmentation or self.writer_identification:
                 callbacks.extend([
                     tf.keras.callbacks.ReduceLROnPlateau(
                         mode='min',
@@ -376,6 +376,7 @@ class Compose():
 
             mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
             mlflow.set_tags({'compose.recognition': str(self.recognition)})
+            mlflow.set_tags({'compose.segmentation': str(self.segmentation)})
             mlflow.set_tags({'compose.writer_identification': str(self.writer_identification)})
 
             tokenizer_path = os.path.join(run_info['artifact_path'], 'model', 'tokenizer.pkl')
@@ -435,6 +436,32 @@ class Compose():
 
         if token_decode and self.tokenizer:
             predictions = [self.tokenizer.decode_writer(x) for x in np.argmax(predictions, axis=1)]
+
+        return predictions
+
+    def predict_segmentation(self, x, steps, verbose=1):
+        """
+        Predict segmentation with segmentation model using test data.
+
+        Parameters
+        ----------
+        x : Dataset generator
+            Data for predictions.
+        steps : int
+            Number of steps for prediction.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        np.ndarray
+            Predictions.
+        """
+
+        if x is None:
+            return None
+
+        predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
 
         return predictions
 
@@ -567,6 +594,34 @@ class Compose():
             return None, None
 
         metrics, evaluations = self.model.writer_evaluator(x=x, y=y, steps=steps, verbose=verbose)
+
+        return metrics, evaluations
+
+    def evaluate_segmentation(self, x, y, steps, verbose=1):
+        """
+        Evaluate segmentation predictions on the given data.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        if y is None:
+            return None, None
+
+        metrics, evaluations = self.model.segmentation_evaluator(x=x, y=y, steps=steps, verbose=verbose)
 
         return metrics, evaluations
 
@@ -803,16 +858,16 @@ class Compose():
                 mlflow.log_params(params_dict)
 
         def log_images(label, images):
-            if images is not None:
-                evaluation_path = os.path.join(run_info['artifact_path'], 'synthesis', label)
+            if images is not None and len(images) > 0:
+                evaluation_path = os.path.join(run_info['artifact_path'], label)
                 os.makedirs(evaluation_path, exist_ok=True)
 
-                for i, image in enumerate(images):
-                    authentic_filepath = os.path.join(evaluation_path, f"{i+1}_authentic.png")
-                    generated_filepath = os.path.join(evaluation_path, f"{i+1}_generated.png")
+                for i, x in enumerate(images):
+                    for k, y in x.items():
+                        if isinstance(y, str) and os.path.isfile(y):
+                            y = cv2.imread(y)
 
-                    cv2.imwrite(authentic_filepath, image[0])
-                    cv2.imwrite(generated_filepath, image[1])
+                        cv2.imwrite(os.path.join(evaluation_path, f"{i+1}_{k}.png"), y)
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
@@ -822,9 +877,10 @@ class Compose():
             log_content('augmentor', augmentor)
             log_content('model', model)
 
-            evaluation_label = f"evaluations_{suffix or ''}".strip('_')
-            log_content(evaluation_label, evaluations)
-            log_images(evaluation_label, evaluation_images)
+            if isinstance(evaluations, dict):
+                evaluation_label = f"evaluations_{suffix or ''}".strip('_')
+                log_content(evaluation_label, evaluations.get('data'))
+                log_images(evaluation_label, evaluations.get('images'))
 
             metric_label = f"{prefix or ''}_<metric>_{suffix or ''}".strip('_')
             log_metrics(metric_label, metrics)
