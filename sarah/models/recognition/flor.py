@@ -7,6 +7,9 @@ from sarah.models.components.layers import SelfAttentionDense
 
 class RecognitionModel(BaseRecognitionModel):
     """
+    TensorFlow model for multilingual handwriting recognition using CNNs and BLSTMs.
+    Features residual gated convolutional layers for enhanced feature extraction.
+
     References
     ----------
     A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios
