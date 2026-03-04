@@ -93,7 +93,16 @@ def inference(args):
             f.write(inferences)
 
     elif args.segmentation:
-        print('TODO')
+        predictions = compose.predict_segmentation(x=infer_gen,
+                                                   steps=infer_steps,
+                                                   verbose=args.verbose)
+
+        basename = os.path.splitext(os.path.basename(args.image or ''))[0]
+        os.makedirs(args.output_path, exist_ok=True)
+
+        for i, image in enumerate(predictions):
+            filepath = os.path.join(args.output_path, f"{i+1}_{basename}.png")
+            cv2.imwrite(filepath, image)
 
     elif args.recognition:
         predictions, probabilities = compose.predict_recognition(x=infer_gen,
@@ -135,9 +144,9 @@ def inference(args):
                                                 verbose=args.verbose)
 
         basename = os.path.splitext(os.path.basename(args.image or ''))[0]
-        filepath = f"{basename}_{'guided' if args.image else 'random'}".strip('_')
+        basename = f"{basename}_{'guided' if args.image else 'random'}".strip('_')
         os.makedirs(args.output_path, exist_ok=True)
 
         for i, image in enumerate(predictions):
-            generated_filepath = os.path.join(args.output_path, f"{filepath}_{i+1}.png")
-            cv2.imwrite(generated_filepath, image)
+            filepath = os.path.join(args.output_path, f"{i+1}_{basename}.png")
+            cv2.imwrite(filepath, image)
