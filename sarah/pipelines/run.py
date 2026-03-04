@@ -129,7 +129,7 @@ def run(args):
                                                                           steps=source_steps,
                                                                           verbose=args.verbose)
 
-            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
+            compose.save_context(metrics=metrics, evaluations=evaluations)
 
             if metrics:
                 print('-' * 68)
@@ -138,7 +138,30 @@ def run(args):
                 print('-' * 68)
 
     elif args.segmentation:
-        print('TODO')
+        if args.training or args.test:
+            test_gen, test_steps = dataset.get_generator(data_partition='test',
+                                                         batch_size=args.batch_size)
+
+            predictions = compose.predict_segmentation(x=test_gen,
+                                                       steps=test_steps,
+                                                       verbose=args.verbose)
+
+            source_gen, source_steps = dataset.get_generator(data_partition='test',
+                                                             batch_size=args.batch_size,
+                                                             batch_processing=False)
+
+            metrics, evaluations = compose.evaluate_segmentation(x=predictions,
+                                                                 y=source_gen,
+                                                                 steps=source_steps,
+                                                                 verbose=args.verbose)
+
+            compose.save_context(metrics=metrics, evaluations=evaluations)
+
+            if metrics:
+                print('-' * 68)
+                print('metrics')
+                print(str(metrics).strip('{}').replace("'", '').replace(', ', '\n'))
+                print('-' * 68)
 
     elif args.recognition:
         if args.training or args.test:
@@ -163,7 +186,7 @@ def run(args):
                                                                 probabilities=probabilities,
                                                                 verbose=args.verbose)
 
-            compose.save_context(metrics=metrics, evaluations=evaluations, suffix=None)
+            compose.save_context(metrics=metrics, evaluations=evaluations)
 
             if metrics:
                 print('-' * 68)
@@ -215,7 +238,7 @@ def run(args):
                                                               steps=source_steps,
                                                               verbose=args.verbose)
 
-            compose.save_context(metrics=metrics, evaluation_images=evaluations)
+            compose.save_context(metrics=metrics, evaluations=evaluations)
 
             if metrics:
                 print('-' * 68)
