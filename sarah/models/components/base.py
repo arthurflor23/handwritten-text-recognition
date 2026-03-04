@@ -576,8 +576,8 @@ class BaseRecognitionModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
+        evaluations = {'data': [], 'images': []}
         metrics = {'cer': [], 'wer': []}
-        evaluations = []
 
         if probabilities is None:
             probabilities = [None] * len(x)
@@ -631,7 +631,8 @@ class BaseRecognitionModel(BaseModel):
                         'wer': wer,
                     })
 
-                evaluations.append(local_evaluation)
+                evaluations['data'].append(local_evaluation)
+                # evaluations['images'].append({'authentic': image_path})
 
             progbar.update(step + 1)
 
@@ -687,6 +688,7 @@ class BaseSegmentationModel(BaseModel):
         ]
 
         self.bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=False, name='bce_loss')
+        self.dice_loss = tf.keras.losses.Dice(name='dice_loss')
 
         self.measure_tracker = MeasureTracker()
         self.monitor = f"val_{self.bce_loss.name}"
@@ -711,6 +713,179 @@ class BaseSegmentationModel(BaseModel):
         })
 
         return config
+
+    def train_step(self, input_data):
+        """
+        Executes a training step.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            Model inputs and targets (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            Training metrics and losses.
+        """
+
+        x_data, _ = input_data
+        aug_image_data, _, _, _, aug_segmentation_data = x_data
+
+        with tf.GradientTape() as s_tape:
+            seg_logits = self.segmentation(aug_image_data, training=True)
+            seg_logits = self.unwrap_call_output(seg_logits)
+
+            bce_loss = self.bce_loss(aug_segmentation_data, seg_logits)
+            dice_loss = self.dice_loss(aug_segmentation_data, seg_logits)
+
+            seg_loss = bce_loss + dice_loss
+
+        s_gradients = s_tape.gradient(seg_loss, self.segmentation.trainable_weights)
+        self.optimizer.apply_gradients(zip(s_gradients, self.segmentation.trainable_weights))
+
+        self.measure_tracker.update({
+            self.bce_loss.name: bce_loss,
+            self.dice_loss.name: dice_loss,
+            'seg_loss': seg_loss,
+        })
+
+        self.global_step.assign_add(value=1)
+
+        return self.measure_tracker.result()
+
+    def test_step(self, input_data):
+        """
+        Executes a testing step.
+
+        Parameters
+        ----------
+        input_data : list or tuple
+            Model inputs and targets (x_data, y_data).
+
+        Returns
+        -------
+        dict
+            Validation metrics and losses.
+        """
+
+        _, y_data = input_data
+        image_data, _, _, _, segmentation_data = y_data
+
+        seg_logits = self.segmentation(image_data, training=False)
+        seg_logits = self.unwrap_call_output(seg_logits)
+
+        bce_loss = self.bce_loss(segmentation_data, seg_logits)
+        dice_loss = self.dice_loss(segmentation_data, seg_logits)
+
+        self.measure_tracker.update({
+            f"val_{self.bce_loss.name}": bce_loss,
+            f"val_{self.dice_loss.name}": dice_loss,
+            'val_seg_loss': bce_loss + dice_loss,
+        })
+
+        return self.measure_tracker.result(val_only=True)
+
+    def call(self, x_data, training=False):
+        """
+        Processes input handwritten images.
+
+        Parameters
+        ----------
+        x_data : list or tuple
+            Input batch (x_data).
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Predicted segmentation masks.
+        """
+
+        image_data = x_data[0] if isinstance(x_data, (list, tuple)) else x_data
+
+        seg_logits = self.segmentation(image_data, training=training)
+        seg_logits = self.unwrap_call_output(seg_logits)
+
+        return seg_logits
+
+    def segmentation_evaluator(self, x, y, steps, threshold=0.5, verbose=1):
+        """
+        Evaluate segmentation predictions on the given data.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Predictions to be evaluated.
+        y : Dataset generator
+            Label data for evaluation.
+        steps : int
+            Number of steps for evaluation.
+        threshold : float, optional
+            Threshold for binarizing predictions.
+        verbose : int, optional
+            Verbosity level.
+
+        Returns
+        -------
+        tuple
+            Metrics and evaluations.
+        """
+
+        progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
+
+        evaluations = {'data': [], 'images': []}
+        metrics = {'accuracy': [], 'dice': [], 'iou': []}
+
+        batch_index = 0
+        for step in range(steps):
+            progbar.update(step)
+
+            _, y_data = next(y)
+            image_data, _, _, _, segmentation_data = y_data
+
+            batch_size = len(image_data)
+
+            y_pred = x[batch_index:batch_index + batch_size]
+            batch_index += batch_size
+
+            for i in range(batch_size):
+                gt = np.expand_dims(segmentation_data[i], axis=-1)
+                pd = y_pred[i][:gt.shape[0], :gt.shape[1], :gt.shape[2]]
+
+                gt = (gt > threshold).astype(np.uint8)
+                pd = (pd > threshold).astype(np.uint8)
+
+                intersection = np.sum(gt * pd)
+                union = np.sum((gt + pd) > 0)
+
+                iou = np.nan_to_num(intersection / union)
+                dice = np.nan_to_num(2 * intersection / (np.sum(gt) + np.sum(pd)))
+                accuracy = np.mean(gt == pd)
+
+                evaluations['data'].append({
+                    'index': (batch_index - batch_size) + (i + 1),
+                    'accuracy': accuracy,
+                    'dice': dice,
+                    'iou': iou,
+                })
+
+                evaluations['images'].append({
+                    'authentic': image_data[i],
+                    'label': gt * 255,
+                    'segment': pd * 255,
+                })
+
+                metrics['accuracy'].append(accuracy)
+                metrics['dice'].append(dice)
+                metrics['iou'].append(iou)
+
+            progbar.update(step + 1)
+
+        metrics = {k: float(np.mean(v)) for k, v in metrics.items()}
+
+        return metrics, evaluations
 
 
 class BaseSynthesisModel(BaseModel):
@@ -917,8 +1092,8 @@ class BaseSynthesisModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
+        evaluations = {'data': [], 'images': []}
         metrics = {'kid': []}
-        evaluations = []
 
         kid = KernelInceptionDistance(scale=1.0, offset=0.0)
 
@@ -937,7 +1112,8 @@ class BaseSynthesisModel(BaseModel):
             kid.update_state(image_true_data, image_pred_data)
             metrics['kid'].append(kid.result())
 
-            evaluations.extend(list(zip(image_true_data, image_pred_data)))
+            for y, x in zip(image_true_data, image_pred_data):
+                evaluations['images'].append({'authentic': y, 'synthetic': x})
 
             progbar.update(step + 1)
 
@@ -1197,8 +1373,8 @@ class BaseWriterIdentificationModel(BaseModel):
 
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
+        evaluations = {'data': [], 'images': []}
         metrics = {'accuracy': []}
-        evaluations = []
 
         batch_index = 0
         for step in range(steps):
@@ -1215,7 +1391,7 @@ class BaseWriterIdentificationModel(BaseModel):
             for i in range(batch_size):
                 is_correct = int(writer_data[i] == y_pred[i])
 
-                evaluations.append({
+                evaluations['data'].append({
                     'index': (batch_index - batch_size) + (i + 1),
                     'image': image_data[i],
                     'writer': writer_data[i],
@@ -1223,6 +1399,7 @@ class BaseWriterIdentificationModel(BaseModel):
                     'is_correct': is_correct,
                 })
 
+                # evaluations['images'].append({'authentic': image_data[i]})
                 metrics['accuracy'].append(is_correct)
 
             progbar.update(step + 1)
