@@ -97,9 +97,9 @@ class BaseModel(tf.keras.Model):
             The attribute model.
         """
 
-        return getattr(self, name,
-                       getattr(self, f"{name}_encoder",
-                               getattr(self, f"{name}_decoder", None)))
+        return (getattr(self, name, None) or
+                getattr(self, f"{name}_encoder", None) or
+                getattr(self, f"{name}_decoder", None))
 
     def get_summary(self):
         """
@@ -295,7 +295,8 @@ class BaseRecognitionModel(BaseModel):
             'writer_encoder',
             'style_encoder',
             'generator',
-            'segmentation',
+            'segmentation_encoder',
+            'segmentation_decoder',
             'recognition',
         ]
 
