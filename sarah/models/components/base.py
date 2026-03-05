@@ -237,7 +237,6 @@ class BaseRecognitionModel(BaseModel):
                  writer_encoder=None,
                  style_encoder=None,
                  generator=None,
-                 segmentation=None,
                  synthesis_probability=1.0,
                  return_features=False,
                  seed=None,
@@ -257,8 +256,6 @@ class BaseRecognitionModel(BaseModel):
             Style encoder model for encoding extracted style features.
         generator : Generator instance
             Generator model for image generation.
-        segmentation : Segmentation instance, optional
-            Segmentation model for encoding structural data.
         synthesis_probability : float, optional
             Synthetic data probability.
         return_features : bool, optional
@@ -283,7 +280,6 @@ class BaseRecognitionModel(BaseModel):
         self.writer_encoder = writer_encoder
         self.style_encoder = style_encoder
         self.generator = generator
-        self.segmentation = segmentation
         self.recognition = None
 
         self.global_step = tf.keras.Variable(name='global_step',
