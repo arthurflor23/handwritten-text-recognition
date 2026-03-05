@@ -76,6 +76,8 @@ class Compose():
         self.segmentation = segmentation
         self.writer_identification = writer_identification
 
+        self.supervised_task = any([recognition, segmentation, writer_identification])
+
         self.image_shape = image_shape
         self.tokenizer = tokenizer
 
@@ -140,15 +142,7 @@ class Compose():
                 module = f"writer_identification.{self.writer_identification}"
                 WriterIdentificationModel = self._import_model(module=module, class_name='WriterIdentificationModel')
 
-            if SynthesisModel and not RecognitionModel and not SegmentationModel and not WriterIdentificationModel:
-                self.model = SynthesisModel(name='synthesis',
-                                            image_shape=self.image_shape,
-                                            lexical_shape=self.tokenizer.lexical_shape,
-                                            writers_shape=self.tokenizer.writers_shape,
-                                            discriminator_steps=self.discriminator_steps,
-                                            generator_steps=self.generator_steps,
-                                            seed=self.seed)
-            else:
+            if self.supervised_task:
                 synthesis_params = {}
 
                 if SynthesisModel:
@@ -188,6 +182,15 @@ class Compose():
                                                            writers_shape=self.tokenizer.writers_shape,
                                                            seed=self.seed,
                                                            **synthesis_params)
+
+            else:
+                self.model = SynthesisModel(name='synthesis',
+                                            image_shape=self.image_shape,
+                                            lexical_shape=self.tokenizer.lexical_shape,
+                                            writers_shape=self.tokenizer.writers_shape,
+                                            discriminator_steps=self.discriminator_steps,
+                                            generator_steps=self.generator_steps,
+                                            seed=self.seed)
 
     def __repr__(self):
         """
@@ -328,16 +331,12 @@ class Compose():
             monitor = self.model.monitor.lstrip('val_') \
                 if validation_gen is None else self.model.monitor
 
-            supervised_task = any([self.recognition,
-                                   self.segmentation,
-                                   self.writer_identification])
-
             callbacks.extend([
                 TrainingLogger(
                     mode='min',
                     monitor=monitor,
                     model_path=os.path.join(run_info['artifact_path'], 'model', '<model>.weights.h5'),
-                    save_best_only=supervised_task,
+                    save_best_only=self.supervised_task,
                     save_weights_only=True,
                     csv_path=os.path.join(run_info['artifact_path'], 'epochs.csv'),
                     csv_separator=',',
@@ -354,17 +353,7 @@ class Compose():
                 ),
             ])
 
-            if self.synthesis and not supervised_task:
-                callbacks.extend([
-                    GANMonitor(
-                        filepath=os.path.join(run_info['artifact_path'], 'synthesis', 'training'),
-                        sample_gen=monitor_sample_gen,
-                        sample_steps=monitor_sample_steps,
-                        latent_dim=self.model.style_encoder.latent_dim,
-                    ),
-                ])
-
-            else:
+            if self.supervised_task:
                 callbacks.extend([
                     tf.keras.callbacks.ReduceLROnPlateau(
                         mode='min',
@@ -375,6 +364,16 @@ class Compose():
                         cooldown=plateau_cooldown,
                         patience=plateau_patience,
                         verbose=verbose,
+                    ),
+                ])
+
+            else:
+                callbacks.extend([
+                    GANMonitor(
+                        filepath=os.path.join(run_info['artifact_path'], 'synthesis', 'training'),
+                        sample_gen=monitor_sample_gen,
+                        sample_steps=monitor_sample_steps,
+                        latent_dim=self.model.style_encoder.latent_dim,
                     ),
                 ])
 
