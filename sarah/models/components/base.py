@@ -237,6 +237,7 @@ class BaseRecognitionModel(BaseModel):
                  writer_encoder=None,
                  style_encoder=None,
                  generator=None,
+                 segmentation=None,
                  synthesis_probability=1.0,
                  return_features=False,
                  seed=None,
@@ -252,10 +253,12 @@ class BaseRecognitionModel(BaseModel):
             The shape of the lexical input.
         writer_encoder : Style extractor instance
             Style extractor model for features extraction.
-        style_encoder : StyleEncoder instance
-            StyleEncoder model for encoding extracted style features.
+        style_encoder : Style encoder instance
+            Style encoder model for encoding extracted style features.
         generator : Generator instance
             Generator model for image generation.
+        segmentation : Segmentation instance, optional
+            Segmentation model for encoding structural data.
         synthesis_probability : float, optional
             Synthetic data probability.
         return_features : bool, optional
@@ -280,6 +283,7 @@ class BaseRecognitionModel(BaseModel):
         self.writer_encoder = writer_encoder
         self.style_encoder = style_encoder
         self.generator = generator
+        self.segmentation = segmentation
         self.recognition = None
 
         self.global_step = tf.keras.Variable(name='global_step',
@@ -291,11 +295,15 @@ class BaseRecognitionModel(BaseModel):
             'writer_encoder',
             'style_encoder',
             'generator',
+            'segmentation',
             'recognition',
         ]
 
         self.ctc_loss = CTCLoss()
         self.edit_distance = EditDistance()
+
+        self.bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=False, name='bce_loss')
+        self.dice_loss = tf.keras.losses.Dice(name='dice_loss')
 
         self.measure_tracker = MeasureTracker()
         self.monitor = f"val_{self.edit_distance.name}"
