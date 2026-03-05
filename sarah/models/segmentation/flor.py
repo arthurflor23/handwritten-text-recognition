@@ -172,6 +172,3 @@ class SegmentationModel(BaseSegmentationModel):
         self.segmentation = tf.keras.Model(name=self.name,
                                            inputs=self.encoder.input,
                                            outputs=outputs)
-
-        # self.segmentation.summary()
-        # exit()
