@@ -544,8 +544,8 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bicubic')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
@@ -599,12 +599,12 @@ class GeneratorModel(BaseModel):
         block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
         block = tf.keras.layers.Activation(activation='swish')(block)
 
-        block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=1, padding='valid')(block)
+        block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, padding='same')(block)
         block = tf.keras.layers.Activation(activation='tanh')(block)
 
         outputs = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
                                    char_width_ratio=block.shape[2] // self.lexical_shape[1],
-                                   resize_method='bicubic')([block, text, mask])
+                                   resize_method='bilinear')([block, text, mask])
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
