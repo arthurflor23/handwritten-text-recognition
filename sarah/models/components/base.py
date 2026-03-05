@@ -691,7 +691,7 @@ class BaseSegmentationModel(BaseModel):
         self.dice_loss = tf.keras.losses.Dice(name='dice_loss')
 
         self.measure_tracker = MeasureTracker()
-        self.monitor = f"val_{self.bce_loss.name}"
+        self.monitor = f"val_{self.dice_loss.name}"
 
         self.build_model()
         self.built = True
