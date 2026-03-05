@@ -781,8 +781,8 @@ class BaseSegmentationModel(BaseModel):
         _, y_data = input_data
         image_data, _, _, _, segmentation_data = y_data
 
-        seg_logits = self.segmentation(image_data, training=False)
-        seg_logits = self.unwrap_call_output(seg_logits)
+        seg_features = self.segmentation(image_data, training=False)
+        seg_logits = self.unwrap_call_output(seg_features)
 
         bce_loss = self.bce_loss(segmentation_data, seg_logits)
         dice_loss = self.dice_loss(segmentation_data, seg_logits)
@@ -814,8 +814,8 @@ class BaseSegmentationModel(BaseModel):
 
         image_data = x_data[0] if isinstance(x_data, (list, tuple)) else x_data
 
-        seg_logits = self.segmentation(image_data, training=training)
-        seg_logits = self.unwrap_call_output(seg_logits)
+        seg_features = self.segmentation(image_data, training=training)
+        seg_logits = self.unwrap_call_output(seg_features)
 
         return seg_logits
 
