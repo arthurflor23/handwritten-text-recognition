@@ -28,7 +28,7 @@ class WriterIdentificationModel(BaseWriterIdentificationModel):
         super().compile(run_eagerly=False, jit_compile=False)
 
         if learning_rate is None:
-            learning_rate = 1e-4
+            learning_rate = 1e-3
 
         self.optimizer = tf.keras.optimizers.AdamW(
             learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01, epsilon=1e-7)
