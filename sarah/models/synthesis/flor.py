@@ -569,9 +569,11 @@ class GeneratorModel(BaseModel):
         embedding = tf.keras.layers.Embedding(input_dim=self.lexical_shape[-1],
                                               output_dim=self.text_dim)(text)
 
-        latent_tile = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(tf.expand_dims(x, axis=1), y),
+        latent_tile = tf.keras.layers.Reshape(target_shape=(1, -1))(latent)
+
+        latent_tile = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(x, y),
                                              arguments={'y': [1, embedding.shape[1], 1]},
-                                             name='latent_tile')(latent)
+                                             name='latent_tile')(latent_tile)
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
         embedding = tf.keras.layers.LayerNormalization(epsilon=1e-3)(embedding)
@@ -579,7 +581,7 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
-        block = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
+        block = tf.keras.layers.Lambda(function=lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
         latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
 
