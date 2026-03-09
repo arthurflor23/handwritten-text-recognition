@@ -288,11 +288,10 @@ class BaseRecognitionModel(BaseModel):
                                              trainable=False)
 
         self.names = [
+            'segmentation_encoder',
             'writer_encoder',
             'style_encoder',
             'generator',
-            'segmentation_encoder',
-            'segmentation_decoder',
             'recognition',
         ]
 
