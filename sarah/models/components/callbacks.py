@@ -244,7 +244,6 @@ class TrainingLogger(tf.keras.callbacks.Callback):
         self.on_batch_end(None, logs=logs)
 
         opt = [x for x in dir(self.model) if 'optimizer' in x.lower()]
-        opt = [x for x in opt if x != 'optimizer'] if len(opt) > 1 else opt
 
         lr = [getattr(self.model, x, None) for x in opt]
         lr = [float(tf.keras.backend.get_value(x.learning_rate)) for x in lr if x]
