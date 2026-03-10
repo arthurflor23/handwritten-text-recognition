@@ -498,11 +498,13 @@ class Dataset():
                         if not self.mask_by_text:
                             mask_data = utils.batch_masking(image_data)
 
-                    segmentation_data = utils.batch_binarization(image_data, method='sauvola', invert=True)
-
                     aug_text_data = text_data.copy()
                     aug_mask_data = mask_data.copy()
                     aug_image_data = image_data.copy()
+
+                    segmentation_data = utils.batch_binarization(batch_data=image_data,
+                                                                 method='sauvola',
+                                                                 invert=True)
                     aug_segmentation_data = segmentation_data.copy()
 
                     if augmentor:
@@ -515,7 +517,9 @@ class Dataset():
                         if not self.mask_by_text:
                             aug_mask_data = utils.batch_masking(aug_image_data)
 
-                        aug_segmentation_data = utils.batch_binarization(aug_image_data, method='sauvola', invert=True)
+                        aug_segmentation_data = utils.batch_binarization(batch_data=aug_image_data,
+                                                                         method='sauvola',
+                                                                         invert=True)
 
                     if multigram_length:
                         g_index = np.random.randint(0, multigram_length - len(batch))
