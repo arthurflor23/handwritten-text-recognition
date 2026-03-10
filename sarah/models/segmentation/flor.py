@@ -30,10 +30,10 @@ class SegmentationModel(BaseSegmentationModel):
         super().compile(run_eagerly=False, jit_compile=False)
 
         if learning_rate is None:
-            learning_rate = 1e-3
+            learning_rate = 1e-4
 
         self.optimizer = tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.99, weight_decay=0.01, epsilon=1e-7)
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01, epsilon=1e-7)
 
     def build_model(self):
         """
@@ -89,10 +89,10 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = tf.keras.layers.Dense(units=128)(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.5)(encoder)
-        encoder = tf.keras.layers.Dense(units=128)(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
 
