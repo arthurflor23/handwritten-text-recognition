@@ -1910,7 +1910,7 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             pool_size = strides = (2 if query_shape[-3] > 1 else 1,
                                    2 if query_shape[-2] > 1 else 1)
         else:
-            raise ValueError("Unsupported input shape: must be 1D or 2D")
+            self.pooling = False
 
         self.units = query_shape[-1]
         self.k_units = int(self.units * self.k)
