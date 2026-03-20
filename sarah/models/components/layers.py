@@ -1170,7 +1170,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         pos_emb = self.pos_embeddings[:seq_len, :]
         pos_emb = tf.expand_dims(pos_emb, axis=0)
 
-        return inputs + pos_emb
+        return pos_emb
 
 
 class PositionEmbedding2D(tf.keras.layers.Layer):
@@ -1291,7 +1291,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
 
         pos_emb = row_emb + col_emb
 
-        return inputs + pos_emb
+        return pos_emb
 
 
 class Reparameterization(tf.keras.layers.Layer):
