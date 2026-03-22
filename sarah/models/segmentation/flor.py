@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseSegmentationModel
+from sarah.models.components.layers import GraphBottleneck
 
 
 class SegmentationModel(BaseSegmentationModel):
@@ -73,17 +74,8 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.5)(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
-
         encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.5)(encoder)
         encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
@@ -91,9 +83,15 @@ class SegmentationModel(BaseSegmentationModel):
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Dropout(rate=0.5)(encoder)
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        feats.append(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+
+        encoder = GraphBottleneck(k_neighbors=3,
+                                  num_pos_scales=3,
+                                  num_graph_layers=3,
+                                  activation='swish')(encoder)
         feats.append(encoder)
 
         self.encoder = tf.keras.Model(name='segmentation_encoder', inputs=encoder_input, outputs=feats)
@@ -102,23 +100,21 @@ class SegmentationModel(BaseSegmentationModel):
         decoder_input = [tf.keras.Input(shape=x.shape[1:]) for x in feats]
 
         decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder_input[-1])
-        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=2, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[5], decoder])
-        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
         decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=48, kernel_size=2, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[4], decoder])
-        decoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Dropout(rate=0.5)(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(decoder)
+        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
         decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='bilinear')(decoder)
