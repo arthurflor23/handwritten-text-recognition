@@ -873,6 +873,273 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         return inputs + g_conv * self.beta
 
 
+class GraphBottleneck(tf.keras.layers.Layer):
+    """
+    Graph layer for modeling non-local spatial dependencies at the bottleneck level.
+
+    References
+    ----------
+    Image Segmentation: Inducing graph-based learning
+        https://arxiv.org/abs/2501.03765
+    """
+
+    def __init__(self,
+                 k_neighbors=1,
+                 num_pos_scales=1,
+                 num_graph_layers=1,
+                 kernel_initializer='glorot_uniform',
+                 activation=None,
+                 dropout=0.0,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the graph bottleneck layer.
+
+        Parameters
+        ----------
+        k_neighbors : int, optional
+            Number of nearest neighbors used to build the graph.
+        num_pos_scales : int, optional
+            Number of sine-cosine positional scales used in the spatial offsets.
+        num_graph_layers : int, optional
+            Number of graph convolution layers.
+        kernel_initializer : str or initializer, optional
+            Initializer for graph convolution weights.
+        activation : str or callable, optional
+            Activation function applied after graph aggregation.
+        dropout : float, optional
+            Dropout rate for attention weights.
+        use_bias : bool, optional
+            Whether to use bias terms in graph convolution.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.k_neighbors = k_neighbors
+        self.num_pos_scales = num_pos_scales
+        self.num_graph_layers = num_graph_layers
+        self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
+        self.activation = tf.keras.activations.get(activation)
+        self.dropout = dropout
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'k_neighbors': self.k_neighbors,
+            'num_pos_scales': self.num_pos_scales,
+            'num_graph_layers': self.num_graph_layers,
+            'kernel_initializer': tf.keras.initializers.serialize(self.kernel_initializer),
+            'activation': tf.keras.activations.serialize(self.activation),
+            'dropout': self.dropout,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Builds the layer structure based on the input shape.
+
+        Parameters
+        ----------
+        input_shape : TensorShape
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        self.height = int(input_shape[1])
+        self.width = int(input_shape[2])
+        self.channels = int(input_shape[3])
+        self.num_nodes = self.height * self.width
+
+        self.kernels = []
+        self.biases = []
+
+        for i in range(self.num_graph_layers):
+            self.kernels.append(
+                self.add_weight(name=f'{self.name}_kernel_{i}',
+                                shape=(self.channels, self.channels),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+            )
+
+            if self.use_bias:
+                self.biases.append(
+                    self.add_weight(name=f'{self.name}_bias_{i}',
+                                    shape=(self.channels,),
+                                    initializer='zeros',
+                                    trainable=True)
+                )
+            else:
+                self.biases.append(None)
+
+    def _build_base_coordinates(self):
+        """
+        Builds the base spatial coordinates.
+
+        Returns
+        -------
+        tf.Tensor
+            Coordinate tensor of shape (height, width, 2).
+        """
+
+        row_positions = tf.linspace(0.0, 1.0, self.height)
+        col_positions = tf.linspace(0.0, 1.0, self.width)
+
+        row_grid, col_grid = tf.meshgrid(row_positions, col_positions, indexing='ij')
+
+        return tf.stack([row_grid, col_grid], axis=-1)
+
+    def _build_positional_offsets(self):
+        """
+        Builds fixed sine-cosine positional offsets.
+
+        Returns
+        -------
+        tf.Tensor
+            Offset tensor of shape (height, width, 2).
+        """
+
+        coords = self._build_base_coordinates()
+        two_pi = tf.cast(2.0 * tf.experimental.numpy.pi, tf.float32)
+
+        offset_x = tf.zeros([self.height, self.width], dtype=tf.float32)
+        offset_y = tf.zeros([self.height, self.width], dtype=tf.float32)
+
+        for i in range(self.num_pos_scales):
+            freq = tf.cast(2 ** i, tf.float32)
+
+            offset_x += tf.sin(two_pi * freq * coords[..., 0])
+            offset_y += tf.cos(two_pi * freq * coords[..., 1])
+
+        offset_x = offset_x / tf.cast(self.num_pos_scales, tf.float32)
+        offset_y = offset_y / tf.cast(self.num_pos_scales, tf.float32)
+
+        offsets = tf.stack([offset_x, offset_y], axis=-1)
+
+        return offsets
+
+    def _build_edge_index(self):
+        """
+        Builds the graph edges using k-nearest neighbors.
+
+        Returns
+        -------
+        tf.Tensor
+            Edge tensor of shape (num_edges, 2), formatted as [dst, src].
+        """
+
+        base_coords = self._build_base_coordinates()
+        offsets = self._build_positional_offsets()
+
+        warped_coords = tf.reshape(base_coords + offsets, [self.num_nodes, 2])
+
+        diff = warped_coords[:, None, :] - warped_coords[None, :, :]
+        dist = tf.reduce_sum(tf.square(diff), axis=-1)
+
+        large_value = tf.constant(1e12, dtype=dist.dtype)
+        dist = dist + tf.eye(self.num_nodes, dtype=dist.dtype) * large_value
+
+        knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
+
+        dst = tf.repeat(tf.range(self.num_nodes), repeats=self.k_neighbors)
+        src = tf.reshape(knn, [-1])
+
+        edge_index = tf.stack([dst, src], axis=-1)
+        self_loops = tf.stack([tf.range(self.num_nodes), tf.range(self.num_nodes)], axis=-1)
+
+        return tf.concat([edge_index, self_loops], axis=0)
+
+    def _graph_convolution(self, inputs, edge_index, kernel, bias=None):
+        """
+        Applies one graph convolution step.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Node feature tensor of shape (batch_size, num_nodes, channels).
+        edge_index : tf.Tensor
+            Edge tensor of shape (num_edges, 2), formatted as [dst, src].
+        kernel : tf.Tensor
+            Graph convolution kernel.
+        bias : tf.Tensor or None
+            Optional bias vector.
+
+        Returns
+        -------
+        tf.Tensor
+            Updated node features.
+        """
+
+        dst = edge_index[:, 0]
+        src = edge_index[:, 1]
+
+        neighbor_features = tf.gather(inputs, src, axis=1)
+        neighbor_features = tf.linalg.matmul(neighbor_features, kernel)
+
+        outputs = tf.map_fn(
+            lambda x: tf.math.unsorted_segment_sum(data=x,
+                                                   segment_ids=dst,
+                                                   num_segments=self.num_nodes),
+            neighbor_features,
+            fn_output_signature=tf.float32
+        )
+
+        if bias is not None:
+            outputs = outputs + bias
+
+        if self.activation is not None:
+            outputs = self.activation(outputs)
+
+        return outputs
+
+    def call(self, inputs, training=False):
+        """
+        Processes the input tensor through the graph bottleneck.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input bottleneck feature map.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Output feature map after graph convolution.
+        """
+
+        batch_size = tf.shape(inputs)[0]
+        x = tf.reshape(inputs, [batch_size, self.num_nodes, self.channels])
+
+        edge_index = self._build_edge_index()
+
+        for kernel, bias in zip(self.kernels, self.biases):
+            x = self._graph_convolution(x, edge_index, kernel, bias)
+
+            if training and self.dropout:
+                x = tf.nn.dropout(x, rate=self.dropout)
+
+        x = tf.reshape(x, [batch_size, self.height, self.width, self.channels])
+
+        return x
+
+
 class OctaveConv2D(tf.keras.layers.Layer):
     """
     Implements octave convolutional layer.
@@ -1170,7 +1437,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         pos_emb = self.pos_embeddings[:seq_len, :]
         pos_emb = tf.expand_dims(pos_emb, axis=0)
 
-        return pos_emb
+        return inputs + pos_emb
 
 
 class PositionEmbedding2D(tf.keras.layers.Layer):
@@ -1291,7 +1558,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
 
         pos_emb = row_emb + col_emb
 
-        return pos_emb
+        return inputs + pos_emb
 
 
 class Reparameterization(tf.keras.layers.Layer):
