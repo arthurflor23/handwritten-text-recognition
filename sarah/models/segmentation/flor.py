@@ -88,9 +88,9 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GraphBottleneck(k_neighbors=3,
-                                  num_pos_scales=3,
-                                  num_graph_layers=3,
+        encoder = GraphBottleneck(k_neighbors=4,
+                                  num_pos_scales=4,
+                                  num_graph_layers=4,
                                   activation='swish')(encoder)
         feats.append(encoder)
 
