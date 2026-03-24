@@ -1437,7 +1437,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         pos_emb = self.pos_embeddings[:seq_len, :]
         pos_emb = tf.expand_dims(pos_emb, axis=0)
 
-        return inputs + pos_emb
+        return pos_emb
 
 
 class PositionEmbedding2D(tf.keras.layers.Layer):
@@ -1558,7 +1558,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
 
         pos_emb = row_emb + col_emb
 
-        return inputs + pos_emb
+        return pos_emb
 
 
 class Reparameterization(tf.keras.layers.Layer):
@@ -1597,17 +1597,14 @@ class Reparameterization(tf.keras.layers.Layer):
         return eps * std + mu
 
 
-class SelfAttentionConv1D(tf.keras.layers.Layer):
+class SpatialSelfAttention(tf.keras.layers.Layer):
     """
-    1D Attention layer for capturing long-range dependencies in sequence data.
+    Attention layer for capturing long-range dependencies in 1D or 2D spatial data.
 
     References
     ----------
     Attention Is All You Need
         https://arxiv.org/abs/1706.03762
-
-    DropAttention: A Regularization Method for Fully-Connected Self-Attention Networks
-        https://arxiv.org/abs/1907.11065
 
     Self-Attention Generative Adversarial Networks
         https://arxiv.org/abs/1805.08318
@@ -1621,7 +1618,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  dropout=0.0,
-                 pooling=True,
+                 use_pooling=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -1643,7 +1640,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             Beta weights initializer.
         dropout : float, optional
             Dropout rate for attention weights.
-        pooling : bool, optional
+        use_pooling : bool, optional
             Enables spatial reduction with max pooling.
         use_bias : bool, optional
             Enables bias terms in the projection layers.
@@ -1660,7 +1657,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.dropout = dropout
-        self.pooling = pooling
+        self.use_pooling = use_pooling
         self.use_bias = use_bias
 
     def get_config(self):
@@ -1683,7 +1680,7 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
-            'pooling': self.pooling,
+            'use_pooling': self.use_pooling,
             'use_bias': self.use_bias,
         })
 
@@ -1697,9 +1694,9 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
         ----------
         query_shape : TensorShape
             Shape of the Query input tensor.
-        value_shape : TensorShape
+        value_shape : TensorShape, optional
             Shape of the Value input tensor.
-        key_shape : TensorShape
+        key_shape : TensorShape, optional
             Shape of the Key input tensor.
         """
 
@@ -1712,505 +1709,59 @@ class SelfAttentionConv1D(tf.keras.layers.Layer):
             key_shape = value_shape
 
         if len(query_shape) == 3:
-            pool_size = strides = 2 if query_shape[-2] > 1 else 1
-        else:
-            raise ValueError("Unsupported input shape: must be 1D")
-
-        self.filters = query_shape[-1]
-        self.k_filters = int(self.filters * self.k)
-        self.h_filters = int(self.filters * self.h)
-
-        if self.pooling:
-            self.k_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
-            self.v_pooling = tf.keras.layers.MaxPooling1D(pool_size=pool_size, strides=strides)
-
-        self.k_conv = tf.keras.layers.Conv1D(filters=self.k_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.q_conv = tf.keras.layers.Conv1D(filters=self.k_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.v_conv = tf.keras.layers.Conv1D(filters=self.h_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        if self.h != 1:
-            self.o_conv = tf.keras.layers.Conv1D(filters=self.filters,
-                                                 kernel_size=1,
-                                                 padding='valid',
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
-
-        self.beta = self.add_weight(name=f"{self.name}_beta",
-                                    shape=(1,),
-                                    initializer=self.beta_initializer,
-                                    trainable=True)
-
-    def call(self, query, value=None, key=None, training=False):
-        """
-        Processes the input tensors through the layer.
-
-        Parameters
-        ----------
-        query : tf.Tensor
-            Query tensor.
-        value : tf.Tensor, optional
-            Value tensor.
-        key : tf.Tensor, optional
-            Key tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Output tensor after applying self-attention.
-        """
-
-        if value is None:
-            value = query
-
-        if key is None:
-            key = value
-
-        shape = tf.unstack(tf.shape(query))
-        B, T = shape[0], shape[1]
-
-        k = self.k_conv(key)
-
-        if self.pooling:
-            k = self.k_pooling(k)
-
-        k = tf.reshape(k, shape=[B, -1, k.shape[-1]])
-
-        q = self.q_conv(query)
-        q = tf.reshape(q, shape=[B, -1, q.shape[-1]])
-
-        s = tf.matmul(q, k, transpose_b=True)
-        s = tf.nn.softmax(s, axis=-1)
-
-        if training and self.dropout:
-            s = tf.nn.dropout(s, rate=self.dropout)
-            s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
-
-        v = self.v_conv(value)
-
-        if self.pooling:
-            v = self.v_pooling(v)
-
-        v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
-
-        o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, T, self.h_filters])
-
-        if self.h != 1:
-            o = self.o_conv(o)
-
-        return query + o * self.beta
-
-
-class SelfAttentionConv2D(tf.keras.layers.Layer):
-    """
-    2D Attention layer for capturing long-range dependencies in spatial data.
-
-    References
-    ----------
-    Attention Is All You Need
-        https://arxiv.org/abs/1706.03762
-
-    DropAttention: A Regularization Method for Fully-Connected Self-Attention Networks
-        https://arxiv.org/abs/1907.11065
-
-    Self-Attention Generative Adversarial Networks
-        https://arxiv.org/abs/1805.08318
-    """
-
-    def __init__(self,
-                 k=1/8,
-                 h=1/2,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 beta_initializer='zeros',
-                 dropout=0.0,
-                 pooling=True,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initialize the attention layer.
-
-        Parameters
-        ----------
-        k : float, optional
-            Projection factor for query and key features.
-        h : float, optional
-            Projection factor for value features.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        dropout : float, optional
-            Dropout rate for attention weights.
-        pooling : bool, optional
-            Enables spatial reduction with max pooling.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.k = k
-        self.h = h
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.dropout = dropout
-        self.pooling = pooling
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'k': self.k,
-            'h': self.h,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'dropout': self.dropout,
-            'pooling': self.pooling,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, query_shape, value_shape=None, key_shape=None):
-        """
-        Build the layer structure based on the input shape.
-
-        Parameters
-        ----------
-        query_shape : TensorShape
-            Shape of the Query input tensor.
-        value_shape : TensorShape
-            Shape of the Value input tensor.
-        key_shape : TensorShape
-            Shape of the Key input tensor.
-        """
-
-        super().build(query_shape)
-
-        if value_shape is None:
-            value_shape = query_shape
-
-        if key_shape is None:
-            key_shape = value_shape
-
-        if len(query_shape) == 4:
-            pool_size = strides = (2 if query_shape[-3] > 1 else 1,
-                                   2 if query_shape[-2] > 1 else 1)
-        else:
-            raise ValueError("Unsupported input shape: must be 2D")
-
-        self.filters = query_shape[-1]
-        self.k_filters = int(self.filters * self.k)
-        self.h_filters = int(self.filters * self.h)
-
-        if self.pooling:
-            self.k_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
-            self.v_pooling = tf.keras.layers.MaxPooling2D(pool_size=pool_size, strides=strides)
-
-        self.k_conv = tf.keras.layers.Conv2D(filters=self.k_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.q_conv = tf.keras.layers.Conv2D(filters=self.k_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.v_conv = tf.keras.layers.Conv2D(filters=self.h_filters,
-                                             kernel_size=1,
-                                             padding='valid',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        if self.h != 1:
-            self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
-                                                 kernel_size=1,
-                                                 padding='valid',
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
-
-        self.beta = self.add_weight(name=f"{self.name}_beta",
-                                    shape=(1,),
-                                    initializer=self.beta_initializer,
-                                    trainable=True)
-
-    def call(self, query, value=None, key=None, training=False):
-        """
-        Processes the input tensors through the layer.
-
-        Parameters
-        ----------
-        query : tf.Tensor
-            Query tensor.
-        value : tf.Tensor, optional
-            Value tensor.
-        key : tf.Tensor, optional
-            Key tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Output tensor after applying self-attention.
-        """
-
-        if value is None:
-            value = query
-
-        if key is None:
-            key = value
-
-        shape = tf.unstack(tf.shape(query))
-        B, H, W = shape[0], shape[1], shape[2]
-
-        k = self.k_conv(key)
-
-        if self.pooling:
-            k = self.k_pooling(k)
-
-        k = tf.reshape(k, shape=[B, -1, k.shape[-1]])
-
-        q = self.q_conv(query)
-        q = tf.reshape(q, shape=[B, -1, q.shape[-1]])
-
-        s = tf.matmul(q, k, transpose_b=True)
-        s = tf.nn.softmax(s, axis=-1)
-
-        if training and self.dropout:
-            s = tf.nn.dropout(s, rate=self.dropout)
-            s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
-
-        v = self.v_conv(value)
-
-        if self.pooling:
-            v = self.v_pooling(v)
-
-        v = tf.reshape(v, shape=[B, -1, v.shape[-1]])
-
-        o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[B, H, W, self.h_filters])
-
-        if self.h != 1:
-            o = self.o_conv(o)
-
-        return query + o * self.beta
-
-
-class SelfAttentionDense(tf.keras.layers.Layer):
-    """
-    Fully-Connected Attention layer for modeling global dependencies in dense inputs.
-
-    References
-    ----------
-    Attention Is All You Need
-        https://arxiv.org/abs/1706.03762
-
-    DropAttention: A Regularization Method for Fully-Connected Self-Attention Networks
-        https://arxiv.org/abs/1907.11065
-
-    Self-Attention Generative Adversarial Networks
-        https://arxiv.org/abs/1805.08318
-    """
-
-    def __init__(self,
-                 k=1/8,
-                 h=1/2,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 beta_initializer='zeros',
-                 dropout=0.0,
-                 pooling=True,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initialize the attention layer.
-
-        Parameters
-        ----------
-        k : float, optional
-            Projection factor for query and key features.
-        h : float, optional
-            Projection factor for value features.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        dropout : float, optional
-            Dropout rate for attention weights.
-        pooling : bool, optional
-            Enables spatial reduction with max pooling.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.k = k
-        self.h = h
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.dropout = dropout
-        self.pooling = pooling
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'k': self.k,
-            'h': self.h,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'dropout': self.dropout,
-            'pooling': self.pooling,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, query_shape, value_shape=None, key_shape=None):
-        """
-        Build the layer structure based on the input shape.
-
-        Parameters
-        ----------
-        query_shape : TensorShape
-            Shape of the Query input tensor.
-        value_shape : TensorShape
-            Shape of the Value input tensor.
-        key_shape : TensorShape
-            Shape of the Key input tensor.
-        """
-
-        super().build(query_shape)
-
-        if value_shape is None:
-            value_shape = query_shape
-
-        if key_shape is None:
-            key_shape = value_shape
-
-        if len(query_shape) == 3:
+            conv_layer = tf.keras.layers.Conv1D
             pooling_layer = tf.keras.layers.MaxPooling1D
             pool_size = strides = 2 if query_shape[-2] > 1 else 1
 
         elif len(query_shape) == 4:
+            conv_layer = tf.keras.layers.Conv2D
             pooling_layer = tf.keras.layers.MaxPooling2D
             pool_size = strides = (2 if query_shape[-3] > 1 else 1,
                                    2 if query_shape[-2] > 1 else 1)
+
         else:
-            self.pooling = False
+            raise ValueError("Unsupported input shape: must be 1D or 2D")
 
-        self.units = query_shape[-1]
-        self.k_units = int(self.units * self.k)
-        self.h_units = int(self.units * self.h)
+        self.filters = query_shape[-1]
+        self.k_filters = int(self.filters * self.k)
+        self.h_filters = int(self.filters * self.h)
 
-        if self.pooling:
+        if self.use_pooling:
             self.k_pooling = pooling_layer(pool_size=pool_size, strides=strides)
             self.v_pooling = pooling_layer(pool_size=pool_size, strides=strides)
 
-        self.k_dense = tf.keras.layers.Dense(units=self.k_units,
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+        self.k_conv = conv_layer(filters=self.k_filters,
+                                 kernel_size=1,
+                                 padding='valid',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=self.use_bias)
 
-        self.q_dense = tf.keras.layers.Dense(units=self.k_units,
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+        self.q_conv = conv_layer(filters=self.k_filters,
+                                 kernel_size=1,
+                                 padding='valid',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=self.use_bias)
 
-        self.v_dense = tf.keras.layers.Dense(units=self.h_units,
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+        self.v_conv = conv_layer(filters=self.h_filters,
+                                 kernel_size=1,
+                                 padding='valid',
+                                 kernel_initializer=self.kernel_initializer,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 kernel_constraint=self.kernel_constraint,
+                                 use_bias=self.use_bias)
 
         if self.h != 1:
-            self.o_dense = tf.keras.layers.Dense(units=self.units,
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+            self.o_conv = conv_layer(filters=self.filters,
+                                     kernel_size=1,
+                                     padding='valid',
+                                     kernel_initializer=self.kernel_initializer,
+                                     kernel_regularizer=self.kernel_regularizer,
+                                     kernel_constraint=self.kernel_constraint,
+                                     use_bias=self.use_bias)
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
@@ -2245,16 +1796,15 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             key = value
 
         shape = tf.unstack(tf.shape(query))
+        k = self.k_conv(key)
 
-        k = self.k_dense(key)
-
-        if self.pooling:
+        if self.use_pooling:
             k = self.k_pooling(k)
 
-        k = tf.reshape(k, shape=(shape[0], -1, k.shape[-1]))
+        k = tf.reshape(k, shape=[shape[0], -1, k.shape[-1]])
 
-        q = self.q_dense(query)
-        q = tf.reshape(q, shape=(shape[0], -1, q.shape[-1]))
+        q = self.q_conv(query)
+        q = tf.reshape(q, shape=[shape[0], -1, q.shape[-1]])
 
         s = tf.matmul(q, k, transpose_b=True)
         s = tf.nn.softmax(s, axis=-1)
@@ -2263,17 +1813,17 @@ class SelfAttentionDense(tf.keras.layers.Layer):
             s = tf.nn.dropout(s, rate=self.dropout)
             s = tf.math.divide_no_nan(s, tf.reduce_sum(s, axis=-1, keepdims=True))
 
-        v = self.v_dense(value)
+        v = self.v_conv(value)
 
-        if self.pooling:
+        if self.use_pooling:
             v = self.v_pooling(v)
 
-        v = tf.reshape(v, shape=(shape[0], -1, v.shape[-1]))
+        v = tf.reshape(v, shape=[shape[0], -1, v.shape[-1]])
 
         o = tf.matmul(s, v)
-        o = tf.reshape(o, shape=[shape[0]] + shape[1:-1] + [self.h_units])
+        o = tf.reshape(o, shape=shape[:-1] + [self.h_filters])
 
         if self.h != 1:
-            o = self.o_dense(o)
+            o = self.o_conv(o)
 
-        return query + o * self.beta
+        return o * self.beta
