@@ -24,7 +24,6 @@ class MeasureTracker():
         self.means = {}
         self.values = {}
         self.weights = {}
-        self.updated = {}
 
         if measures is not None:
             self.add(measures)
@@ -144,5 +143,7 @@ class MeasureTracker():
 
             weighted_measures[name] = weighted_value + regularization
             trainable_weights.append(self.weights[name])
+
+            self.update({name: weighted_measures[name]})
 
         return weighted_measures, trainable_weights
