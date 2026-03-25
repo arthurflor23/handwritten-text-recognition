@@ -24,6 +24,7 @@ class MeasureTracker():
         self.means = {}
         self.values = {}
         self.weights = {}
+        self.updated = {}
 
         if measures is not None:
             self.add(measures)
@@ -62,12 +63,14 @@ class MeasureTracker():
             self.values[name].assign(0.0)
             self.weights[name].assign(1.0)
 
-    def result(self, val_only=False, reduction=None):
+    def result(self, weighted=True, val_only=False, reduction=None):
         """
         Returns the current measure values.
 
         Parameters
         ----------
+        weighted : bool, optional
+            Whether to return weighted values.
         val_only : bool, optional
             Whether to return validation values only.
         reduction : str, optional
@@ -82,6 +85,9 @@ class MeasureTracker():
         results = {}
 
         for name in self.values.keys():
+            if not weighted and name.endswith('_w'):
+                continue
+
             if val_only == name.startswith('val_'):
                 v_name = name.removeprefix('val_')
 
