@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
 from sarah.models.components.layers import GatedResidualConv2D
-from sarah.models.components.layers import SelfAttentionDense
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -100,10 +99,14 @@ class RecognitionModel(BaseRecognitionModel):
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
+        decoder_att = tf.keras.layers.Identity()(decoder_input)
 
-        decoder = SelfAttentionDense(k=1/8, h=1/2, pooling=True)(decoder_input)
+        decoder_att += tf.keras.layers.MultiHeadAttention(num_heads=1,
+                                                          key_dim=decoder_att.shape[-1] // 8,
+                                                          value_dim=decoder_att.shape[-1] // 2,
+                                                          attention_axes=(1, 2))(decoder_att, decoder_att)
 
-        decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder.shape[-1]))(decoder)
+        decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder_att.shape[-1]))(decoder_att)
 
         for rate in [0.5, 0.5, 0.5]:
             forwards = tf.keras.layers.Dropout(rate=rate)(decoder)
