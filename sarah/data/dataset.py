@@ -332,8 +332,10 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                if self.order_by_text:
-                    results.sort(key=lambda x: len(x[0]['text']), reverse=True)
+                results.sort(key=lambda x: len(x[0]['text']), reverse=True)
+
+                if not self.order_by_text:
+                    np.random.shuffle(results)
 
                 source, encoded = zip(*results)
 
@@ -396,9 +398,10 @@ class Dataset():
 
             if results:
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
+                flattened.sort(key=lambda x: len(x[0]), reverse=True)
 
-                if self.order_by_text:
-                    flattened.sort(key=lambda x: len(x[0]), reverse=True)
+                if not self.order_by_text:
+                    np.random.shuffle(results)
 
                 source, encoded = zip(*flattened)
 
