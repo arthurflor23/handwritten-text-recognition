@@ -101,9 +101,6 @@ class Dataset():
 
             data = self._source.fetch_data(self.text_level)
 
-            for items in data.values():
-                items.sort(key=lambda x: x.get('image'), reverse=False)
-
         data = self._partitioning(data)
 
         self.samples = self._build_samples(data)
