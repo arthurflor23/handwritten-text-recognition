@@ -108,11 +108,11 @@ class RecognitionModel(BaseRecognitionModel):
 
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder_att.shape[-1]))(decoder_att)
 
-        for rate in [0.5, 0.5, 0.5]:
-            forwards = tf.keras.layers.Dropout(rate=rate)(decoder)
+        for _ in range(3):
+            forwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
             forwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=False)(forwards)
 
-            backwards = tf.keras.layers.Dropout(rate=rate)(decoder)
+            backwards = tf.keras.layers.Dropout(rate=0.5)(decoder)
             backwards = tf.keras.layers.LSTM(units=128, return_sequences=True, go_backwards=True)(backwards)
 
             decoder = tf.keras.layers.Concatenate(axis=-1)([forwards, tf.keras.ops.flip(backwards, axis=1)])
