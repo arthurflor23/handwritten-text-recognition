@@ -129,26 +129,26 @@ class Augmentor():
         """
 
         transformations = [
-            (self.mixup, self.mixup_params, 32),
-            (self.erode, self.erode_params, 32),
-            (self.dilate, self.dilate_params, 32),
-            (self.elastic, self.elastic_params, 32),
-            (self.perspective, self.perspective_params, 32),
-            (self.rotate, self.rotate_params, 32),
-            (self.shear, self.shear_params, 32),
-            (self.scale, self.scale_params, 32),
-            (self.shift_y, self.shift_y_params, 32),
-            (self.shift_x, self.shift_x_params, 32),
-            (self.salt_and_pepper, self.salt_and_pepper_params, 32),
-            (self.gaussian_noise, self.gaussian_noise_params, 32),
-            (self.gaussian_blur, self.gaussian_blur_params, 32),
+            (self.mixup, self.mixup_params, 28),
+            (self.erode, self.erode_params, 28),
+            (self.dilate, self.dilate_params, 28),
+            (self.elastic, self.elastic_params, 28),
+            (self.perspective, self.perspective_params, 28),
+            (self.rotate, self.rotate_params, 28),
+            (self.shear, self.shear_params, 28),
+            (self.scale, self.scale_params, 28),
+            (self.shift_y, self.shift_y_params, 28),
+            (self.shift_x, self.shift_x_params, 28),
+            (self.salt_and_pepper, self.salt_and_pepper_params, 28),
+            (self.gaussian_noise, self.gaussian_noise_params, 28),
+            (self.gaussian_blur, self.gaussian_blur_params, 28),
         ]
 
         for func, params, min_length in transformations:
             if params is None or len(params) == 0 or params[0] <= 0:
                 continue
 
-            if min(image.shape[:2]) <= min_length:
+            if min(image.shape[:2]) < min_length:
                 continue
 
             if np.random.random() <= params[0]:
@@ -278,12 +278,7 @@ class Augmentor():
             kernel_size = np.random.randint(2, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-            ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
-            ksize = ksize[np.random.randint(len(ksize))]
-        else:
-            ksize = (kernel_size, kernel_size)
-
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
         image = cv2.erode(src=image, kernel=kernel, iterations=iterations)
 
         return image
@@ -322,12 +317,7 @@ class Augmentor():
             kernel_size = np.random.randint(2, kernel_size + 1)
             iterations = np.random.randint(1, iterations + 1)
 
-            ksize = [(1, kernel_size), (kernel_size, 1), (kernel_size, kernel_size)]
-            ksize = ksize[np.random.randint(len(ksize))]
-        else:
-            ksize = (kernel_size, kernel_size)
-
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=ksize)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
         image = cv2.dilate(src=image, kernel=kernel, iterations=iterations)
 
         return image
