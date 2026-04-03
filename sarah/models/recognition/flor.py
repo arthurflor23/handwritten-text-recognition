@@ -102,8 +102,8 @@ class RecognitionModel(BaseRecognitionModel):
         decoder_att = tf.keras.layers.Identity()(decoder_input)
 
         decoder_att += tf.keras.layers.MultiHeadAttention(num_heads=1,
-                                                          key_dim=decoder_att.shape[-1] // 8,
-                                                          value_dim=decoder_att.shape[-1] // 2,
+                                                          key_dim=decoder_att.shape[-1] // 16,
+                                                          value_dim=decoder_att.shape[-1] // 4,
                                                           attention_axes=(1, 2))(decoder_att, decoder_att)
 
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder_att.shape[-1]))(decoder_att)
