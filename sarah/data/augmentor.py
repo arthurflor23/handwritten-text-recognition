@@ -14,8 +14,8 @@ class Augmentor():
                  dilate=None,
                  elastic=None,
                  perspective=None,
-                 rotate=None,
                  shear=None,
+                 rotate=None,
                  scale=None,
                  shift_y=None,
                  shift_x=None,
@@ -38,10 +38,10 @@ class Augmentor():
             Parameters for elastic transformation.
         perspective : list or None, optional
             Parameters for perspective transform transformation.
-        rotate : list or None, optional
-            Parameters for rotate transformation.
         shear : list or None, optional
             Parameters for shear transformation.
+        rotate : list or None, optional
+            Parameters for rotate transformation.
         scale : list or None, optional
             Parameters for scale transformation.
         shift_y : list or None, optional
@@ -66,8 +66,8 @@ class Augmentor():
         self.dilate_params = dilate
         self.elastic_params = elastic
         self.perspective_params = perspective
-        self.rotate_params = rotate
         self.shear_params = shear
+        self.rotate_params = rotate
         self.scale_params = scale
         self.shift_y_params = shift_y
         self.shift_x_params = shift_x
@@ -99,8 +99,8 @@ class Augmentor():
         info += f"\n{'dilate':<{pad}}: {_format(self.dilate_params)}"
         info += f"\n{'elastic':<{pad}}: {_format(self.elastic_params)}"
         info += f"\n{'perspective':<{pad}}: {_format(self.perspective_params)}"
-        info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
         info += f"\n{'shear':<{pad}}: {_format(self.shear_params)}"
+        info += f"\n{'rotate':<{pad}}: {_format(self.rotate_params)}"
         info += f"\n{'scale':<{pad}}: {_format(self.scale_params)}"
         info += f"\n{'shift_y':<{pad}}: {_format(self.shift_y_params)}"
         info += f"\n{'shift_x':<{pad}}: {_format(self.shift_x_params)}"
@@ -134,8 +134,8 @@ class Augmentor():
             (self.dilate, self.dilate_params, 28),
             (self.elastic, self.elastic_params, 28),
             (self.perspective, self.perspective_params, 28),
-            (self.rotate, self.rotate_params, 28),
             (self.shear, self.shear_params, 28),
+            (self.rotate, self.rotate_params, 28),
             (self.scale, self.scale_params, 28),
             (self.shift_y, self.shift_y_params, 28),
             (self.shift_x, self.shift_x_params, 28),
@@ -420,7 +420,7 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        max_factor = (1 - (min(height, width) / (height + width))) ** 4
+        max_factor = (1 - (min(height, width) / (height + width)))
         dxy_factor = int(np.ceil(min(height, width) * alpha * max_factor))
 
         src_points = np.array([
@@ -445,63 +445,6 @@ class Augmentor():
                                     flags=cv2.INTER_CUBIC,
                                     borderMode=cv2.BORDER_CONSTANT,
                                     borderValue=border_value)
-
-        return image
-
-    def rotate(self,
-               image,
-               alpha,
-               border_value=0,
-               radius=True,
-               **kwargs):
-        """
-        Apply rotate to the image.
-
-        Parameters
-        ----------
-        image : ndarray
-            Input image to be rotated.
-        alpha : float
-            Factor of rotate transformation.
-        border_value : int, optional
-            Border value for padding.
-        radius : bool, optional
-            Whether to use range radius for alpha.
-        **kwargs : dict
-            Additional keyword arguments.
-
-        Returns
-        -------
-        ndarray
-            Rotated image.
-        """
-
-        if radius:
-            alpha = np.random.uniform(-alpha, alpha)
-
-        height, width = image.shape[:2]
-
-        dy_factor = (1 - (height / (height + width))) ** 4
-        angle = alpha * dy_factor
-
-        center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
-
-        cos_angle = np.abs(M[0, 0])
-        sin_angle = np.abs(M[0, 1])
-
-        new_width = int((height * sin_angle) + (width * cos_angle))
-        new_height = int((height * cos_angle) + (width * sin_angle))
-
-        M[0, 2] += (new_width / 2) - center[0]
-        M[1, 2] += (new_height / 2) - center[1]
-
-        image = cv2.warpAffine(src=image,
-                               M=M,
-                               dsize=(new_width, new_height),
-                               flags=cv2.INTER_CUBIC,
-                               borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=border_value)
 
         return image
 
@@ -538,7 +481,7 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        dy_factor = (1 - (height / (height + width))) ** 4
+        dy_factor = (1 - (height / (height + width)))
         angle = alpha * dy_factor
 
         if angle > 0:
@@ -552,6 +495,63 @@ class Augmentor():
         image = cv2.warpAffine(src=image,
                                M=M,
                                dsize=(new_width, height),
+                               flags=cv2.INTER_CUBIC,
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=border_value)
+
+        return image
+
+    def rotate(self,
+               image,
+               alpha,
+               border_value=0,
+               radius=True,
+               **kwargs):
+        """
+        Apply rotate to the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image to be rotated.
+        alpha : float
+            Factor of rotate transformation.
+        border_value : int, optional
+            Border value for padding.
+        radius : bool, optional
+            Whether to use range radius for alpha.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        ndarray
+            Rotated image.
+        """
+
+        if radius:
+            alpha = np.random.uniform(-alpha, alpha)
+
+        height, width = image.shape[:2]
+
+        dy_factor = (1 - (height / (height + width)))
+        angle = alpha * dy_factor
+
+        center = (width // 2, height // 2)
+        M = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1.0)
+
+        cos_angle = np.abs(M[0, 0])
+        sin_angle = np.abs(M[0, 1])
+
+        new_width = int((height * sin_angle) + (width * cos_angle))
+        new_height = int((height * cos_angle) + (width * sin_angle))
+
+        M[0, 2] += (new_width / 2) - center[0]
+        M[1, 2] += (new_height / 2) - center[1]
+
+        image = cv2.warpAffine(src=image,
+                               M=M,
+                               dsize=(new_width, new_height),
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=border_value)
@@ -634,7 +634,7 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        dy_factor = (1 - (height / (height + width))) ** 4
+        dy_factor = (1 - (height / (height + width)))
         y_translation = int(np.ceil(height * alpha * dy_factor))
 
         M = np.float32([[1, 0, 0], [0, 1, y_translation]])
@@ -683,7 +683,7 @@ class Augmentor():
 
         height, width = image.shape[:2]
 
-        dx_factor = (1 - (width / (height + width))) ** 4
+        dx_factor = (1 - (width / (height + width)))
         x_translation = int(np.ceil(width * alpha * dx_factor))
 
         M = np.float32([[1, 0, x_translation], [0, 1, 0]])
