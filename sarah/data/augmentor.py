@@ -221,7 +221,9 @@ class Augmentor():
                 ratio = min(ratio_width, ratio_height)
 
                 dim = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-                img = cv2.resize(src=img, dsize=dim, interpolation=cv2.INTER_CUBIC)
+                interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
+
+                img = cv2.resize(src=img, dsize=dim, interpolation=interpolation)
 
                 delta_w = width - dim[0]
                 delta_h = height - dim[1]
@@ -593,7 +595,9 @@ class Augmentor():
         ratio = 1 - alpha
 
         dim = (int(width * ratio), int(height * ratio))
-        image = cv2.resize(src=image, dsize=dim, interpolation=cv2.INTER_CUBIC)
+        interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
+
+        image = cv2.resize(src=image, dsize=dim, interpolation=interpolation)
 
         if alpha > 0:
             padded_image = np.full((height, width), fill_value=border_value, dtype=np.uint8)
@@ -646,8 +650,6 @@ class Augmentor():
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=border_value)
 
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
-
         return image
 
     def shift_x(self,
@@ -694,8 +696,6 @@ class Augmentor():
                                flags=cv2.INTER_CUBIC,
                                borderMode=cv2.BORDER_CONSTANT,
                                borderValue=border_value)
-
-        image = cv2.resize(src=image, dsize=(width, height), interpolation=cv2.INTER_CUBIC)
 
         return image
 
