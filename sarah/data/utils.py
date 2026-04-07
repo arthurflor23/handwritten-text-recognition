@@ -444,24 +444,30 @@ def resize_image(image, target_width=None, target_shape=None):
     if image is None or image.size <= 1:
         return None
 
+    src_h, src_w = image.shape[:2]
+
     if target_width and target_shape:
-        new_h, new_w = target_shape[0], min(target_width, target_shape[1])
-        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+        new_h = target_shape[0]
+        new_w = min(target_width, target_shape[1])
+        interpolation = cv2.INTER_CUBIC if new_h > src_h or new_w > src_w else cv2.INTER_AREA
+
+        image = cv2.resize(src=image, dsize=(new_w, new_h), interpolation=interpolation)
 
     elif target_shape:
-        h, w = image.shape
-        target_h, target_w = target_shape[:2]
+        dst_h, dst_w = target_shape[:2]
 
-        if h > target_h or w > target_w:
-            aspect_ratio = w / h
+        if src_h > dst_h or src_w > dst_w:
+            aspect_ratio = src_w / src_h
 
-            if aspect_ratio >= 1:
-                new_w = min(target_w, int(target_h * aspect_ratio))
-                new_h = int(new_w / aspect_ratio)
-            else:
-                new_h = min(target_h, int(target_w / aspect_ratio))
+            if aspect_ratio < 1:
+                new_h = min(dst_h, int(dst_w / aspect_ratio))
                 new_w = int(new_h * aspect_ratio)
+            else:
+                new_w = min(dst_w, int(dst_h * aspect_ratio))
+                new_h = int(new_w / aspect_ratio)
 
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            interpolation = cv2.INTER_CUBIC if new_h > src_h or new_w > src_w else cv2.INTER_AREA
+
+            image = cv2.resize(src=image, dsize=(new_w, new_h), interpolation=interpolation)
 
     return np.array(image, dtype=np.uint8)
