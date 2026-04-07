@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--perspective', default=(0.66, 0.3), nargs='+', type=float, help='Perspective settings')
     parser.add_argument('--shear', default=(0.33, 0.3), nargs='+', type=float, help='Shearing settings')
     parser.add_argument('--rotate', default=(0.33, 0.3), nargs='+', type=float, help='Rotation settings')
-    parser.add_argument('--scale', default=(0.33, 0.1), nargs='+', type=float, help='Scaling settings')
+    parser.add_argument('--scale', default=None, nargs='+', type=float, help='Scaling settings')
     parser.add_argument('--shift-y', default=None, nargs='+', type=float, help='Vertical shift settings')
     parser.add_argument('--shift-x', default=None, nargs='+', type=float, help='Horizontal shift settings')
     parser.add_argument('--salt-and-pepper', default=None, nargs='+', type=float, help='Salt and pepper noise settings')
