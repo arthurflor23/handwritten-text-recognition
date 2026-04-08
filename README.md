@@ -102,8 +102,8 @@ The project has several command-line parameters that can be used to customize it
 
 #### Dataset
 
-- `--source`: Source data (e.g., iam, rimes).
-- `--text-level`: Text structure level (e.g., line, paragraph).
+- `--source`: Source data (e.g., iam).
+- `--text-level`: Text structure level (e.g., line).
 - `--image-shape`: Image dimensions (height, width, channels).
 - `--char-width`: Character width for normalization.
 - `--mask-by-text`: Mask data by text length.
@@ -122,8 +122,8 @@ The project has several command-line parameters that can be used to customize it
 - `--dilate`: Dilate transformation (probability, kernel size, iterations).
 - `--elastic`: Elastic transformation (probability, kernel size, alpha).
 - `--perspective`: Perspective transformation (probability, alpha).
-- `--rotate`: Rotate transformation (probability, alpha).
 - `--shear`: Shear transformation (probability, alpha).
+- `--rotate`: Rotate transformation (probability, alpha).
 - `--scale`: Scale transformation (probability, alpha).
 - `--shift-y`: Vertical translation (probability, alpha).
 - `--shift-x`: Horizontal translation (probability, alpha).
@@ -179,26 +179,26 @@ The project offers a range of functionalities through command-line parameters; f
 **Example 1: Perform recognition model training**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --batch-size 16 --training
+python sarah --source iam --text-level line --recognition flor --batch-size 8 --training
 ```
 
-This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 16.
+This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 8.
 
 **Example 2: Perform recognition model testing**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --beam-width 30 --top-paths 3 --recognition-run-id -1 --test
+python sarah --source iam --text-level line --recognition flor --beam-width 33 --recognition-run-id -1 --test
 ```
 
-This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 30 with 3 top paths in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
+This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 32. The selected optical model is indicated by the recognition run id, which loads the last trained model.
 
 **Example 3: Perform recognition model inference**
 
 ```bash
-python sarah --recognition flor --beam-width 30 --recognition-run-id -1 --inference --image path/to/image1.png
+python sarah --recognition flor --recognition-run-id -1 --inference --image path/to/image1.png
 ```
 
-This command will perform inference on the specified images using the Flor optical network and a beam width of 30 in the prediction. The selected optical model is indicated by the recognition run id, which loads the last trained model.
+This command will perform inference on the specified images using the Flor optical network. The selected optical model is indicated by the recognition run id, which loads the last trained model.
 
 ---
 
@@ -245,5 +245,7 @@ If you are interested in learning more about the project or the subject of Handw
 - Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [BRESSAY: A Brazilian Portuguese Dataset for Offline Handwritten Text Recognition](https://doi.org/10.1007/978-3-031-70536-6_19). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
 - Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://doi.org/10.1007/978-3-031-70552-6_21). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
+
+- Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity](https://doi.org/10.1109/ACCESS.2026.3681630). IEEE Access, 2026.
 
 These references provide additional insights and background information related to Handwritten Text Recognition and can be a valuable resource for further exploration. If any of these papers have been beneficial to your research or project, it would be greatly appreciated if you could consider citing them.
