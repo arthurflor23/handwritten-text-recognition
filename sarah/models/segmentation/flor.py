@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseSegmentationModel
-from sarah.models.components.layers import GraphBottleneck
+from sarah.models.components.layers import GraphConv2D
 
 
 class SegmentationModel(BaseSegmentationModel):
@@ -88,10 +88,10 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GraphBottleneck(k_neighbors=4,
-                                  num_pos_scales=4,
-                                  num_graph_layers=4,
-                                  activation='swish')(encoder)
+        encoder = GraphConv2D(k_neighbors=4,
+                              num_pos_scales=4,
+                              num_graph_layers=4,
+                              activation='swish')(encoder)
         feats.append(encoder)
 
         self.encoder = tf.keras.Model(name='segmentation_encoder', inputs=encoder_input, outputs=feats)
