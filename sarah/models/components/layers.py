@@ -873,7 +873,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         return inputs + g_conv * self.beta
 
 
-class GraphSpatialConvolution(tf.keras.layers.Layer):
+class GraphConv2D(tf.keras.layers.Layer):
     """
     Graph convolution layer over spatial features for modeling non-local dependencies.
 
