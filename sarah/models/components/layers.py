@@ -873,9 +873,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         return inputs + g_conv * self.beta
 
 
-class GraphBottleneck(tf.keras.layers.Layer):
+class GraphConvolutional(tf.keras.layers.Layer):
     """
-    Graph layer for modeling non-local spatial dependencies at the bottleneck level.
+    Graph layer for modeling non-local dependencies.
 
     References
     ----------
@@ -893,7 +893,7 @@ class GraphBottleneck(tf.keras.layers.Layer):
                  use_bias=True,
                  **kwargs):
         """
-        Initializes the graph bottleneck layer.
+        Initializes the graph convolutional layer.
 
         Parameters
         ----------
@@ -908,7 +908,7 @@ class GraphBottleneck(tf.keras.layers.Layer):
         activation : str or callable, optional
             Activation function applied after graph aggregation.
         dropout : float, optional
-            Dropout rate for attention weights.
+            Dropout rate applied after each graph layer during training.
         use_bias : bool, optional
             Whether to use bias terms in graph convolution.
         **kwargs : dict
@@ -920,8 +920,8 @@ class GraphBottleneck(tf.keras.layers.Layer):
         self.k_neighbors = k_neighbors
         self.num_pos_scales = num_pos_scales
         self.num_graph_layers = num_graph_layers
-        self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-        self.activation = tf.keras.activations.get(activation)
+        self.kernel_initializer = kernel_initializer
+        self.activation = activation
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -941,8 +941,8 @@ class GraphBottleneck(tf.keras.layers.Layer):
             'k_neighbors': self.k_neighbors,
             'num_pos_scales': self.num_pos_scales,
             'num_graph_layers': self.num_graph_layers,
-            'kernel_initializer': tf.keras.initializers.serialize(self.kernel_initializer),
-            'activation': tf.keras.activations.serialize(self.activation),
+            'kernel_initializer': self.kernel_initializer,
+            'activation': self.activation,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -1109,12 +1109,12 @@ class GraphBottleneck(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         """
-        Processes the input tensor through the graph bottleneck.
+        Processes the input tensor through the graph convolution.
 
         Parameters
         ----------
         inputs : tf.Tensor
-            Input bottleneck feature map.
+            Input feature map.
         training : bool, optional
             Whether the call is for training or inference.
 
@@ -1372,9 +1372,9 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.sequence_length = sequence_length
-        self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
-        self.embeddings_regularizer = tf.keras.regularizers.get(embeddings_regularizer)
-        self.embeddings_constraint = tf.keras.constraints.get(embeddings_constraint)
+        self.embeddings_initializer = embeddings_initializer
+        self.embeddings_regularizer = embeddings_regularizer
+        self.embeddings_constraint = embeddings_constraint
 
     def get_config(self):
         """
@@ -1390,9 +1390,9 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
 
         config.update({
             'sequence_length': self.sequence_length,
-            'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
-            'embeddings_regularizer': tf.keras.regularizers.serialize(self.embeddings_regularizer),
-            'embeddings_constraint': tf.keras.constraints.serialize(self.embeddings_constraint),
+            'embeddings_initializer': self.embeddings_initializer,
+            'embeddings_regularizer': self.embeddings_regularizer,
+            'embeddings_constraint': self.embeddings_constraint,
         })
 
         return config
@@ -1480,9 +1480,9 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
 
         self.height = height
         self.width = width
-        self.embeddings_initializer = tf.keras.initializers.get(embeddings_initializer)
-        self.embeddings_regularizer = tf.keras.regularizers.get(embeddings_regularizer)
-        self.embeddings_constraint = tf.keras.constraints.get(embeddings_constraint)
+        self.embeddings_initializer = embeddings_initializer
+        self.embeddings_regularizer = embeddings_regularizer
+        self.embeddings_constraint = embeddings_constraint
 
     def get_config(self):
         """
@@ -1499,9 +1499,9 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
         config.update({
             'height': self.height,
             'width': self.width,
-            'embeddings_initializer': tf.keras.initializers.serialize(self.embeddings_initializer),
-            'embeddings_regularizer': tf.keras.regularizers.serialize(self.embeddings_regularizer),
-            'embeddings_constraint': tf.keras.constraints.serialize(self.embeddings_constraint),
+            'embeddings_initializer': self.embeddings_initializer,
+            'embeddings_regularizer': self.embeddings_regularizer,
+            'embeddings_constraint': self.embeddings_constraint,
         })
 
         return config
