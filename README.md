@@ -1,4 +1,4 @@
-# Handwritten Text Synthesis and Recognition (pySarah)
+# Handwritten Text Synthesis and Recognition
 
 The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition, such as line and paragraph level. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
