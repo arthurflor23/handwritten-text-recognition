@@ -17,7 +17,7 @@ class Dataset():
                  source=None,
                  text_level='line',
                  image_shape=(1024, 64, 1),
-                 char_width=0,
+                 char_width=None,
                  mask_by_text=False,
                  order_by_text=False,
                  training_ratio=None,
@@ -78,7 +78,7 @@ class Dataset():
         self.source = source
         self.text_level = text_level
         self.image_shape = image_shape
-        self.char_width = char_width
+        self.char_width = char_width or 0
         self.mask_by_text = mask_by_text
         self.order_by_text = order_by_text
         self.training_ratio = training_ratio
