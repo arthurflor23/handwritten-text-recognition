@@ -1,6 +1,6 @@
 # Handwritten Text Synthesis and Recognition
 
-The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition, such as line and paragraph level. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
+The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
 The project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows you to log and compare experiments, track metrics, and store trained models for reproducibility. Explore the [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) and track experiments with `mlflow ui`.
 
@@ -187,7 +187,7 @@ This command will train the recognition model on IAM dataset at the line level, 
 **Example 2: Perform recognition model testing**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --beam-width 33 --recognition-run-id -1 --test
+python sarah --source iam --text-level line --recognition flor --beam-width 32 --recognition-run-id -1 --test
 ```
 
 This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 32. The selected optical model is indicated by the recognition run id, which loads the last trained model.
@@ -202,7 +202,7 @@ This command will perform inference on the specified images using the Flor optic
 
 ---
 
-Additionally, different workflows can be used, such as `--synthesis` and the combination of `--synthesis` with `--recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
+In addition, different workflows can be used, such as `--synthesis` and the combination of `--synthesis` with `--recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
 
 ## Tutorial Notebook
 
