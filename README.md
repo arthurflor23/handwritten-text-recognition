@@ -234,7 +234,7 @@ If you are interested in learning more about the project or the subject of Handw
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor++: A Handwritten Text Recognition System Based on a Pipeline of Optical and Language Models](https://doi.org/10.1145/3395027.3419603). Proceedings of the ACM Symposium on Document Engineering, 2020.
 
-- Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H. [HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios](https://doi.org/10.1109/ACCESS.2020.3039003). IEEE Access, 2020.
+- Neto, Arthur F. S. and Bezerra, Byron L. D. and Lima, Estanislau B. and Toselli, Alejandro H. [HDSR-Flor: A Robust End-to-End System to Solve the Handwritten Digit String Recognition Problem in Real Complex Scenarios](https://doi.org/10.1109/ACCESS.2020.3039003). IEEE Access, vol. 8, pp. 208543-208553, 2020.
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [Towards the Natural Language Processing as Spelling Correction for Offline Handwritten Text Recognition Systems](https://doi.org/10.3390/app10217711). Applied Sciences, 2020.
 
@@ -246,6 +246,6 @@ If you are interested in learning more about the project or the subject of Handw
 
 - Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://doi.org/10.1007/978-3-031-70552-6_21). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
-- Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity](https://doi.org/10.1109/ACCESS.2026.3681630). IEEE Access, 2026.
+- Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity](https://doi.org/10.1109/ACCESS.2026.3681630). IEEE Access, vol. 14, pp. 54395-54413, 2026.
 
 These references provide additional insights and background information related to Handwritten Text Recognition and can be a valuable resource for further exploration. If any of these papers have been beneficial to your research or project, it would be greatly appreciated if you could consider citing them.
