@@ -1,6 +1,7 @@
 # Project artifacts
 backup/
 datasets/
+fonts/
 mlruns/
 outputs/
 scripts/
