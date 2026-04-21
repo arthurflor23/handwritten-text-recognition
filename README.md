@@ -2,16 +2,15 @@
 
 The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
-The project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows you to log and compare experiments, track metrics, and store trained models for reproducibility. Explore the [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) and track experiments with `mlflow ui`.
+The project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows logging and comparing experiments, tracking metrics, and storing trained models for reproducibility. The [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) can be explored and experiments tracked with `mlflow ui`.
 
 ## Getting Started
 
-To get started with the project, follow the steps below.
+The steps below describe how to get started with the project.
 
-### Prerequisites
+### Requirements
 
-- Python 3.11 or higher
-- pip package manager
+- Python >=3.11, <3.14
 
 ### Installation
 
@@ -174,7 +173,7 @@ The project has several command-line parameters that can be used to customize it
 
 ### Usage
 
-The project offers a range of functionalities through command-line parameters; feel free to experiment with these to find the ones that best suit your specific needs. Below are some examples of usage.
+The project offers a range of functionalities through command-line parameters, which can be combined to match specific needs. Below are some examples of usage.
 
 **Example 1: Perform recognition model training**
 
@@ -206,29 +205,23 @@ In addition, different workflows can be used, such as `--synthesis` and the comb
 
 ## Tutorial Notebook
 
-To help you get started, a tutorial material has been created. This tutorial provides a step-by-step guide to exploring the main pipeline of the project.
+A tutorial material is provided to help with getting started. It offers a step-by-step guide to exploring the main pipeline of the project.
 
-The tutorial is designed to be beginner-friendly and can be easily run on [Google Colab](https://research.google.com/colaboratory/), a cloud-based Jupyter notebook environment. It provides a hands-on experience of using the project's features and demonstrates the usage of various parameters and functionalities.
+The tutorial is designed to be beginner-friendly and can be easily run on [Google Colab](https://research.google.com/colaboratory/), a cloud-based Jupyter notebook environment. It provides a hands-on experience of the project's features and demonstrates the usage of various parameters and functionalities.
 
-By following the tutorial, you'll be able to:
+The tutorial covers:
 
-- Understand the project's pipeline.
-- Learn how to set up required dependencies and environment.
-- Explore different parameters.
-- Execute data training and testing pipelines.
-- Gain insights into your own context problem.
+- The project's pipeline.
+- Setup of required dependencies and environment.
+- Exploration of different parameters.
+- Execution of data training and testing pipelines.
+- Insights applicable to specific context problems.
 
-To access the material, see the [Tutorial Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. Follow the notebook instructions to run the code and explore the features.
-
-## Sponsor
-
-This project is part of the PhD work and is currently in parallel development. Thus, your support would greatly contribute to its progress. If you find this project valuable or if it has helped you in any way, please consider showing your support by sponsoring it. The sponsorship will help me dedicate more time and resources to enhance the project and implement new features.
-
-You can support this project through [Ko-fi](https://ko-fi.com/arthurflor23). Thank you for considering sponsorship.
+The material is available in the [Tutorial Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. The notebook instructions describe how to run the code and explore the features.
 
 ## References
 
-If you are interested in learning more about the project or the subject of Handwritten Text Recognition, you may be interested in the following references:
+The following references provide additional insights and background information related to Handwritten Text Recognition, and citations are appreciated if any of these works have contributed to related research or projects.
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. and Lima, Estanislau B. [HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition](https://doi.org/10.1109/SIBGRAPI51738.2020.00016). 33rd SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), 2020.
 
@@ -248,4 +241,4 @@ If you are interested in learning more about the project or the subject of Handw
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity](https://doi.org/10.1109/ACCESS.2026.3681630). IEEE Access, vol. 14, pp. 54395-54413, 2026.
 
-These references provide additional insights and background information related to Handwritten Text Recognition and can be a valuable resource for further exploration. If any of these papers have been beneficial to your research or project, it would be greatly appreciated if you could consider citing them.
+Additional support for the project's progress is available through [Ko-fi](https://ko-fi.com/arthurflor23), which helps dedicate more time and resources to enhance the project and implement new features.
