@@ -30,6 +30,7 @@ class Dataset():
                  tokenizer=None,
                  multigrams=False,
                  input_path='datasets',
+                 fonts_path='fonts',
                  seed=None):
         """
         Initialize the Dataset instance.
@@ -68,6 +69,8 @@ class Dataset():
             Enable multigrams process.
         input_path : str, optional
             Path to input data.
+        fonts_path : str, optional
+            Path to fonts data.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -90,6 +93,7 @@ class Dataset():
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
         self.input_path = input_path
+        self.fonts_path = fonts_path
         self.seed = seed
 
         if data is None:
@@ -477,7 +481,7 @@ class Dataset():
                 image_data, text_data, writer_data, segmentation_data = map(
                     list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch]))
 
-                mask_data = utils.batch_masking(text_data if self.mask_by_text else image_data)
+                mask_data = utils.batch_mask(text_data if self.mask_by_text else image_data)
 
                 aug_text_data = None
                 aug_mask_data = None
@@ -485,8 +489,6 @@ class Dataset():
                 aug_segmentation_data = None
 
                 if batch_encoded:
-                    writer_data = np.array(writer_data)
-
                     if self.lazy_mode:
                         image_data = [
                             utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
@@ -496,15 +498,14 @@ class Dataset():
                         ]
 
                         if not self.mask_by_text:
-                            mask_data = utils.batch_masking(image_data)
+                            mask_data = utils.batch_mask(image_data)
+
+                    writer_data = np.array(writer_data)
+                    segmentation_data = utils.batch_binarization(image_data, method='sauvola', invert=True)
 
                     aug_text_data = text_data.copy()
                     aug_mask_data = mask_data.copy()
                     aug_image_data = image_data.copy()
-
-                    segmentation_data = utils.batch_binarization(batch_data=image_data,
-                                                                 method='sauvola',
-                                                                 invert=True)
                     aug_segmentation_data = segmentation_data.copy()
 
                     if augmentor:
@@ -515,16 +516,14 @@ class Dataset():
                         ]
 
                         if not self.mask_by_text:
-                            aug_mask_data = utils.batch_masking(aug_image_data)
+                            aug_mask_data = utils.batch_mask(aug_image_data)
 
-                        aug_segmentation_data = utils.batch_binarization(batch_data=aug_image_data,
-                                                                         method='sauvola',
-                                                                         invert=True)
+                        aug_segmentation_data = utils.batch_binarization(aug_image_data, method='sauvola', invert=True)
 
                     if multigram_length:
                         g_index = np.random.randint(0, multigram_length - len(batch))
                         aug_text_data = [x['text'] for x in multigrams[g_index:g_index + len(batch)]]
-                        aug_mask_data = utils.batch_masking(aug_text_data)
+                        aug_mask_data = utils.batch_mask(aug_text_data)
 
                     if batch_processing:
                         text_data = utils.batch_processing(batch_mode='text',
@@ -569,8 +568,17 @@ class Dataset():
                                                                        batch_scale=batch_scale,
                                                                        padding_shape=self.image_shape)
 
-                x_data = (aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data)
-                y_data = (image_data, text_data, writer_data, mask_data, segmentation_data)
+                x_data = (aug_image_data,
+                          aug_text_data,
+                          writer_data,
+                          aug_mask_data,
+                          aug_segmentation_data)
+
+                y_data = (image_data,
+                          text_data,
+                          writer_data,
+                          mask_data,
+                          segmentation_data)
 
                 yield x_data, y_data
 
