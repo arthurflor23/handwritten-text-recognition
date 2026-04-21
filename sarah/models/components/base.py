@@ -344,8 +344,8 @@ class BaseRecognitionModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data, _ = x_data
-        _, text_data, _, mask_data, _ = y_data
+        aug_image_data, aug_text_data, aug_mask_data = x_data[0], x_data[1], x_data[3]
+        text_data, mask_data = y_data[1], y_data[3]
 
         images, texts = [aug_image_data], [text_data]
 
@@ -434,7 +434,7 @@ class BaseRecognitionModel(BaseModel):
         """
 
         _, y_data = input_data
-        image_data, text_data, _, _, _ = y_data
+        image_data, text_data = y_data[:2]
 
         ctc_logits = self.recognition(image_data)
         ctc_logits = self.unwrap_call_output(ctc_logits)
@@ -591,7 +591,7 @@ class BaseRecognitionModel(BaseModel):
             progbar.update(step)
 
             _, y_data = next(y)
-            image_data, text_data, writer_data, _, _ = y_data
+            image_data, text_data, writer_data = y_data[:3]
 
             batch_size = len(text_data)
 
@@ -734,7 +734,7 @@ class BaseSegmentationModel(BaseModel):
         """
 
         x_data, _ = input_data
-        aug_image_data, _, _, _, aug_segmentation_data = x_data
+        aug_image_data, aug_segmentation_data = x_data[0], x_data[4]
 
         with tf.GradientTape() as s_tape:
             seg_logits = self.segmentation(aug_image_data, training=True)
@@ -774,7 +774,7 @@ class BaseSegmentationModel(BaseModel):
         """
 
         _, y_data = input_data
-        image_data, _, _, _, segmentation_data = y_data
+        image_data, segmentation_data = y_data[0], y_data[4]
 
         seg_features = self.segmentation(image_data, training=False)
         seg_logits = self.unwrap_call_output(seg_features)
@@ -847,7 +847,7 @@ class BaseSegmentationModel(BaseModel):
             progbar.update(step)
 
             _, y_data = next(y)
-            image_data, _, _, _, segmentation_data = y_data
+            image_data, segmentation_data = y_data[0], y_data[4]
 
             batch_size = len(image_data)
 
@@ -1015,7 +1015,7 @@ class BaseSynthesisModel(BaseModel):
         """
 
         _, y_data = input_data
-        image_data, text_data, _, mask_data, _ = y_data
+        image_data, text_data, mask_data = y_data[0], y_data[1], y_data[3]
 
         features_data = self.writer_encoder(image_data)
         features_data = self.unwrap_call_output(features_data)
@@ -1050,7 +1050,7 @@ class BaseSynthesisModel(BaseModel):
             Generated images.
         """
 
-        image_data, text_data, _, mask_data = x_data
+        image_data, text_data, mask_data = x_data[0], x_data[1], x_data[3]
 
         def _random_latent():
             random_latent_shape = (tf.shape(image_data)[0], self.style_encoder.latent_dim)
@@ -1106,7 +1106,7 @@ class BaseSynthesisModel(BaseModel):
             progbar.update(step)
 
             _, y_data = next(y)
-            image_true_data, _, _, _, _ = y_data
+            image_true_data = y_data[0]
 
             batch_size = len(image_true_data)
 
@@ -1240,8 +1240,8 @@ class BaseWriterIdentificationModel(BaseModel):
 
         x_data, y_data = input_data
 
-        aug_image_data, aug_text_data, _, aug_mask_data, _ = x_data
-        _, text_data, writer_data, mask_data, _ = y_data
+        aug_image_data, aug_text_data, aug_mask_data = x_data[0], x_data[1], x_data[3]
+        text_data, writer_data, mask_data = y_data[1], y_data[2], y_data[3]
 
         images, writers = [aug_image_data], [writer_data]
 
@@ -1317,7 +1317,7 @@ class BaseWriterIdentificationModel(BaseModel):
         """
 
         _, y_data = input_data
-        image_data, _, writer_data, _, _ = y_data
+        image_data, writer_data = y_data[0], y_data[2]
 
         wid_logits = self.writer_identification(image_data)
         wid_logits = self.unwrap_call_output(wid_logits)
@@ -1385,7 +1385,7 @@ class BaseWriterIdentificationModel(BaseModel):
             progbar.update(step)
 
             _, y_data = next(y)
-            image_data, _, writer_data, _, _ = y_data
+            image_data, writer_data = y_data[0], y_data[2]
 
             batch_size = len(image_data)
 

@@ -73,13 +73,13 @@ def check(args):
 
     while True:
         _, y_src = next(src_gen)
-        img_src, txt_src, wri_src, _, _ = y_src
+        img_src, txt_src, wri_src = y_src[:3]
 
         _, y_enc = next(enc_gen)
-        img_enc, txt_enc, wri_enc, _, _ = y_enc
+        img_enc, txt_enc, wri_enc = y_enc[:3]
 
         x_aug, _ = next(aug_gen)
-        img_aug, _, _, _, seg_aug = x_aug
+        img_aug, seg_aug = x_aug[0], x_aug[4]
 
         for i in range(len(img_src)):
             print('\nPath image')

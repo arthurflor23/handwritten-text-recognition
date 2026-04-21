@@ -86,7 +86,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
             for _ in range(self.sample_steps):
                 _, y_data = next(self.sample_gen)
-                image_data, text_data, _, mask_data, _ = y_data
+                image_data, text_data, mask_data = y_data[0], y_data[1], y_data[3]
 
                 self._save_images(filepath, image_data, name='authentic')
 
