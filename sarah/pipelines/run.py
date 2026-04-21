@@ -39,6 +39,7 @@ def run(args):
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
                       input_path=args.input_path,
+                      fonts_path=args.fonts_path,
                       seed=args.seed)
     print(dataset)
 
