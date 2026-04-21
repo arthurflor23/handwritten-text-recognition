@@ -921,7 +921,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.num_pos_scales = num_pos_scales
         self.num_graph_layers = num_graph_layers
         self.kernel_initializer = kernel_initializer
-        self.activation = activation
+        self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -942,7 +942,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             'num_pos_scales': self.num_pos_scales,
             'num_graph_layers': self.num_graph_layers,
             'kernel_initializer': self.kernel_initializer,
-            'activation': self.activation,
+            'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
