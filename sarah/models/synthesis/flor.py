@@ -103,7 +103,7 @@ class SynthesisModel(BaseSynthesisModel):
                                                         return_features=False).decoder
 
         self.style_encoder = StyleEncoderModel(name='style_encoder',
-                                               features_shape=self.writer_encoder.model.output[0].shape[1:],
+                                               features_shape=self.writer_encoder.output[-1].shape[1:],
                                                latent_dim=latent_dim)
 
     def train_step(self, input_data):
