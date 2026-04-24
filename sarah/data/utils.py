@@ -198,7 +198,7 @@ def batch_masking(batch_data):
 
     else:
         for x in batch_data:
-            shape = (len(x[0]) * 64, len(x) * 16)
+            shape = (len(x) * 64, len(x[0]) * 16)
             mask = np.ones(shape, dtype=np.uint8) * 255
             masks.append(mask)
 
