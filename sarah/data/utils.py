@@ -171,7 +171,7 @@ def batch_illumination(batch_data):
     return outputs
 
 
-def batch_mask(batch_data):
+def batch_masking(batch_data):
     """
     Generate masks for a batch of images.
 
