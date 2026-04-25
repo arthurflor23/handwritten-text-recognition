@@ -173,9 +173,9 @@ def batch_illumination(batch_data):
 
 def batch_masking(batch_data,
                   max_shape,
-                  from_text=False,
                   char_height=64,
-                  char_width=16):
+                  char_width=16,
+                  from_text=False):
     """
     Generate image masks for a batch.
 
@@ -185,12 +185,12 @@ def batch_masking(batch_data,
         Batch of data (images or texts).
     max_shape : tuple
         Maximum shape for each mask.
-    from_text : bool, optional
-        Whether to generate masks from images or text lengths.
     char_height : int, optional
         Pixel height per character row.
     char_width : int, optional
         Pixel width per character column.
+    from_text : bool, optional
+        Whether to generate masks from images or text lengths.
 
     Returns
     -------
@@ -198,16 +198,17 @@ def batch_masking(batch_data,
         Item masks indicating content areas.
     """
 
-    if batch_data is None or len(batch_data) == 0:
-        return []
-
     max_height, max_width = max_shape[:2]
     masks = []
 
     for item in batch_data:
-        if from_text:
+        if isinstance(item, str):
+            height, width = max_height, max_width
+
+        elif from_text:
             height = len(item) * char_height
             width = max(len(row) for row in item) * char_width
+
         else:
             height, width = item.shape
 
