@@ -84,11 +84,11 @@ class GANMonitor(tf.keras.callbacks.Callback):
             subpath = f"{str(self.global_step_index)}_{str(self.local_step_index)}_{str(self.epoch_index)}"
             filepath = os.path.join(self.filepath, subpath)
 
-            for _ in range(self.sample_steps):
+            for i in range(self.sample_steps):
                 _, y_data = next(self.sample_gen)
                 image_data, text_data, mask_data = y_data[0], y_data[1], y_data[3]
 
-                self._save_images(filepath, image_data, name='authentic')
+                self._save_images(filepath, image_data, step=i, name='authentic')
 
                 features_data = self.model.writer_encoder(image_data, training=False)
                 features_data = self.model.unwrap_call_output(features_data)
@@ -97,18 +97,18 @@ class GANMonitor(tf.keras.callbacks.Callback):
                 latent_data = self.model.unwrap_call_output(latent_data)
 
                 fake_guided = self.model.generator([text_data, latent_data, mask_data], training=False)
-                self._save_images(filepath, fake_guided, name='guided')
+                self._save_images(filepath, fake_guided, step=i, name='guided')
 
                 random_latent_data = (len(image_data), self.latent_dim)
                 random_latent_data = tf.random.normal(shape=random_latent_data)
 
                 fake_random = self.model.generator([text_data, random_latent_data, mask_data], training=False)
-                self._save_images(filepath, fake_random, name='random')
+                self._save_images(filepath, fake_random, step=i, name='random')
 
         self.global_step_index += 1
         self.local_step_index += 1
 
-    def _save_images(self, filepath, images, name):
+    def _save_images(self, filepath, images, step, name):
         """
         Save a batch of images.
 
@@ -117,17 +117,21 @@ class GANMonitor(tf.keras.callbacks.Callback):
         filepath : str
             Path where images will be saved.
         images : np.ndarray
-            Array of images to be saved.
+            Array of images to save.
+        step : int
+            Sample step for global image index.
         name : str
-            Base name for the saved image files.
+            Category label appended to the filename.
         """
 
         os.makedirs(filepath, exist_ok=True)
 
         images = np.array((images + 1.0) * 127.5, dtype=np.uint8)
+        batch_size = len(images)
 
         for i, image in enumerate(images):
-            cv2.imwrite(os.path.join(filepath, f"{i + 1}_{name}.png"), image)
+            index = step * batch_size + i + 1
+            cv2.imwrite(os.path.join(filepath, f"{index}_{name}.png"), image)
 
 
 class TrainingLogger(tf.keras.callbacks.Callback):
