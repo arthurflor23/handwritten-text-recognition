@@ -588,13 +588,13 @@ class Dataset():
         else:
             data_length = len(self.samples[subset][data_partition])
 
-            quartile_lens = [samples // 4 + (1 if i < samples % 4 else 0) for i in range(4)]
-            quartile_starts = [(i * data_length) // 4 for i in range(4)]
+            sizes = [samples // 4 + (1 if i < samples % 4 else 0) for i in range(4)]
+            offsets = [(i * data_length) // 4 for i in range(4)]
 
             data = np.array([
                 sample
-                for start, length in zip(quartile_starts, quartile_lens)
-                for sample in self.samples[subset][data_partition][start:start + length]
+                for offset, size in zip(offsets, sizes)
+                for sample in self.samples[subset][data_partition][offset:offset + size]
             ])
 
         multigrams = self.multigrams[subset]
