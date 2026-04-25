@@ -171,36 +171,48 @@ def batch_illumination(batch_data):
     return outputs
 
 
-def batch_masking(batch_data):
+def batch_masking(batch_data,
+                  max_shape,
+                  from_text=False,
+                  char_height=64,
+                  char_width=16):
     """
-    Generate masks for a batch of images.
+    Generate image masks for a batch.
 
     Parameters
     ----------
-    data : ndarray
-        Batch of images.
+    batch_data : ndarray
+        Batch of data (images or texts).
+    max_shape : tuple
+        Maximum shape for each mask.
+    from_text : bool, optional
+        Whether to generate masks from images or text lengths.
+    char_height : int, optional
+        Pixel height per character row.
+    char_width : int, optional
+        Pixel width per character column.
 
     Returns
     -------
-    ndarray
-        Masks indicating content areas.
+    list of ndarray
+        Item masks indicating content areas.
     """
 
+    if batch_data is None or len(batch_data) == 0:
+        return []
+
+    max_height, max_width = max_shape[:2]
     masks = []
 
-    if batch_data is None or len(batch_data) == 0:
-        return masks
+    for item in batch_data:
+        if from_text:
+            height = len(item) * char_height
+            width = max(len(row) for row in item) * char_width
+        else:
+            height, width = item.shape
 
-    if isinstance(batch_data[0], np.ndarray):
-        for x in batch_data:
-            mask = np.ones(x.shape, dtype=np.uint8) * 255
-            masks.append(mask)
-
-    else:
-        for x in batch_data:
-            shape = (len(x) * 64, len(x[0]) * 16)
-            mask = np.ones(shape, dtype=np.uint8) * 255
-            masks.append(mask)
+        shape = (min(height, max_height), min(width, max_width))
+        masks.append(np.full(shape=shape, fill_value=255, dtype=np.uint8))
 
     return masks
 

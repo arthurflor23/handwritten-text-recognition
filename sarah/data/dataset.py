@@ -481,7 +481,8 @@ class Dataset():
                 image_data, text_data, writer_data, segmentation_data = map(
                     list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch]))
 
-                mask_data = utils.batch_masking(text_data if self.mask_by_text else image_data)
+                mask_data = text_data if self.mask_by_text else image_data
+                mask_data = utils.batch_masking(mask_data, max_shape=self.image_shape, from_text=self.mask_by_text)
 
                 aug_text_data = None
                 aug_mask_data = None
@@ -498,7 +499,7 @@ class Dataset():
                         ]
 
                         if not self.mask_by_text:
-                            mask_data = utils.batch_masking(image_data)
+                            mask_data = utils.batch_masking(image_data, max_shape=self.image_shape)
 
                     writer_data = np.array(writer_data)
                     segmentation_data = utils.batch_binarization(image_data, method='sauvola', invert=True)
@@ -516,14 +517,14 @@ class Dataset():
                         ]
 
                         if not self.mask_by_text:
-                            aug_mask_data = utils.batch_masking(aug_image_data)
+                            aug_mask_data = utils.batch_masking(aug_image_data, max_shape=self.image_shape)
 
                         aug_segmentation_data = utils.batch_binarization(aug_image_data, method='sauvola', invert=True)
 
                     if multigram_length:
                         g_index = np.random.randint(0, multigram_length - len(batch))
                         aug_text_data = [x['text'] for x in multigrams[g_index:g_index + len(batch)]]
-                        aug_mask_data = utils.batch_masking(aug_text_data)
+                        aug_mask_data = utils.batch_masking(aug_text_data, max_shape=self.image_shape, from_text=True)
 
                     if batch_processing:
                         text_data = utils.batch_processing(batch_mode='text',
