@@ -96,7 +96,7 @@ def run(args):
 
         sample_gen, sample_steps = dataset.get_generator(data_partition='training',
                                                          batch_size=args.batch_size,
-                                                         samples=args.batch_size * 4)
+                                                         samples=args.monitor_samples)
 
         compose.fit(epochs=args.epochs,
                     training_gen=training_gen,
