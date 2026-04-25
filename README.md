@@ -135,6 +135,7 @@ The project has several command-line parameters that can be used to customize it
 
 - `--discriminator-steps`: Repetition of steps for discriminator training in synthesis workflow.
 - `--generator-steps`: Skipping steps for generator training in synthesis workflow.
+- `--monitor-samples`: Number of sample images saved by the training monitor.
 
 #### Training
 
