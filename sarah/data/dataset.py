@@ -299,7 +299,7 @@ class Dataset():
 
                 try:
                     image = utils.resize_image(image=utils.read_image(item['image'], item['bbox']),
-                                               target_width=len(item['text']) * self.char_width,
+                                               target_width=int(len(item['text']) * self.char_width),
                                                target_shape=self.image_shape)
 
                     if image is None or image.size < 16:
@@ -452,6 +452,10 @@ class Dataset():
             The generator of batches and the steps per epoch.
         """
 
+        def batch_processing(data, aug_data, **kwargs):
+            return (utils.batch_processing(batch_data=data, **kwargs),
+                    utils.batch_processing(batch_data=aug_data, **kwargs))
+
         def batch_generator(data, multigrams):
             data_length = len(data)
             multigram_length = len(multigrams)
@@ -463,26 +467,38 @@ class Dataset():
                 if self.order_by_text:
                     if shuffle:
                         batch_index = np.random.randint(0, data_length - batch_size)
+
                     elif batch_index >= data_length:
                         batch_index = 0
 
-                    batch = data[batch_index:batch_index + batch_size]
+                    batch_data = data[batch_index:batch_index + batch_size]
 
                 else:
                     if batch_index >= data_length:
                         batch_index = 0
+
                     if shuffle and batch_index == 0:
                         np.random.shuffle(indices)
 
-                    batch = data[indices[batch_index:batch_index + batch_size]]
+                    batch_data = data[indices[batch_index:batch_index + batch_size]]
 
                 batch_index += batch_size
 
                 image_data, text_data, writer_data, segmentation_data = map(
-                    list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch]))
+                    list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch_data]))
+
+                if batch_encoded and self.lazy_mode:
+                    image_data = [
+                        utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
+                                           target_width=int(len(x['text']) * self.char_width),
+                                           target_shape=self.image_shape)
+                        for x in batch_data
+                    ]
 
                 mask_data = text_data if self.mask_by_text else image_data
-                mask_data = utils.batch_masking(mask_data, max_shape=self.image_shape, from_text=self.mask_by_text)
+                mask_data = utils.batch_masking(batch_data=mask_data,
+                                                max_shape=self.image_shape,
+                                                from_text=self.mask_by_text)
 
                 aug_text_data = None
                 aug_mask_data = None
@@ -490,22 +506,13 @@ class Dataset():
                 aug_segmentation_data = None
 
                 if batch_encoded:
-                    if self.lazy_mode:
-                        image_data = [
-                            utils.resize_image(image=utils.read_image(x['image'], x['bbox']),
-                                               target_width=len(x['text']) * self.char_width,
-                                               target_shape=self.image_shape)
-                            for x in batch
-                        ]
-
-                        if not self.mask_by_text:
-                            mask_data = utils.batch_masking(image_data, max_shape=self.image_shape)
-
                     writer_data = np.array(writer_data)
-                    segmentation_data = utils.batch_binarization(image_data, method='sauvola', invert=True)
+
+                    segmentation_data = utils.batch_binarization(batch_data=image_data,
+                                                                 method='sauvola',
+                                                                 invert=True)
 
                     aug_text_data = text_data.copy()
-                    aug_mask_data = mask_data.copy()
                     aug_image_data = image_data.copy()
                     aug_segmentation_data = segmentation_data.copy()
 
@@ -516,58 +523,48 @@ class Dataset():
                             for x in aug_image_data
                         ]
 
-                        if not self.mask_by_text:
-                            aug_mask_data = utils.batch_masking(aug_image_data, max_shape=self.image_shape)
-
-                        aug_segmentation_data = utils.batch_binarization(aug_image_data, method='sauvola', invert=True)
+                        aug_segmentation_data = utils.batch_binarization(batch_data=aug_image_data,
+                                                                         method='sauvola',
+                                                                         invert=True)
 
                     if multigram_length:
-                        g_index = np.random.randint(0, multigram_length - len(batch))
-                        aug_text_data = [x['text'] for x in multigrams[g_index:g_index + len(batch)]]
-                        aug_mask_data = utils.batch_masking(aug_text_data, max_shape=self.image_shape, from_text=True)
+                        index = np.random.randint(0, multigram_length - len(batch_data))
+                        aug_text_data = [x['text'] for x in multigrams[index:index + len(batch_data)]]
+
+                        aug_mask_data = utils.batch_masking(batch_data=aug_text_data,
+                                                            max_shape=self.image_shape,
+                                                            from_text=True)
+                    else:
+                        aug_mask_data = aug_text_data if self.mask_by_text else aug_image_data
+                        aug_mask_data = utils.batch_masking(batch_data=aug_mask_data,
+                                                            max_shape=self.image_shape,
+                                                            from_text=self.mask_by_text)
 
                     if batch_processing:
-                        text_data = utils.batch_processing(batch_mode='text',
-                                                           batch_data=text_data,
-                                                           padding_shape=self.tokenizer.lexical_shape)
+                        text_data, aug_text_data = batch_processing(data=text_data,
+                                                                    aug_data=aug_text_data,
+                                                                    batch_mode='text',
+                                                                    padding_shape=self.tokenizer.lexical_shape)
 
-                        aug_text_data = utils.batch_processing(batch_mode='text',
-                                                               batch_data=aug_text_data,
-                                                               padding_shape=self.tokenizer.lexical_shape)
+                        mask_data, aug_mask_data = batch_processing(data=mask_data,
+                                                                    aug_data=aug_mask_data,
+                                                                    batch_mode='binary',
+                                                                    batch_scale=batch_scale,
+                                                                    padding_shape=self.image_shape)
 
-                        mask_data = utils.batch_processing(batch_mode='binary',
-                                                           batch_data=mask_data,
-                                                           batch_scale=batch_scale,
-                                                           padding_shape=self.image_shape)
+                        image_data, aug_image_data = batch_processing(data=image_data,
+                                                                      aug_data=aug_image_data,
+                                                                      batch_mode='image',
+                                                                      batch_scale=batch_scale,
+                                                                      padding_shape=self.image_shape,
+                                                                      illumination=self.illumination,
+                                                                      binarization=self.binarization)
 
-                        aug_mask_data = utils.batch_processing(batch_mode='binary',
-                                                               batch_data=aug_mask_data,
-                                                               batch_scale=batch_scale,
-                                                               padding_shape=self.image_shape)
-
-                        image_data = utils.batch_processing(batch_mode='image',
-                                                            batch_data=image_data,
-                                                            batch_scale=batch_scale,
-                                                            padding_shape=self.image_shape,
-                                                            illumination=self.illumination,
-                                                            binarization=self.binarization)
-
-                        aug_image_data = utils.batch_processing(batch_mode='image',
-                                                                batch_data=aug_image_data,
-                                                                batch_scale=batch_scale,
-                                                                padding_shape=self.image_shape,
-                                                                illumination=self.illumination,
-                                                                binarization=self.binarization)
-
-                        segmentation_data = utils.batch_processing(batch_mode='binary',
-                                                                   batch_data=segmentation_data,
-                                                                   batch_scale=batch_scale,
-                                                                   padding_shape=self.image_shape)
-
-                        aug_segmentation_data = utils.batch_processing(batch_mode='binary',
-                                                                       batch_data=aug_segmentation_data,
-                                                                       batch_scale=batch_scale,
-                                                                       padding_shape=self.image_shape)
+                        segmentation_data, aug_segmentation_data = batch_processing(data=segmentation_data,
+                                                                                    aug_data=aug_segmentation_data,
+                                                                                    batch_mode='binary',
+                                                                                    batch_scale=batch_scale,
+                                                                                    padding_shape=self.image_shape)
 
                 x_data = (aug_image_data,
                           aug_text_data,
@@ -587,26 +584,18 @@ class Dataset():
 
         if samples is None:
             data = self.samples[subset][data_partition]
+
         else:
-            q1_len = (samples // 4) + (1 if (samples % 4) > 0 else 0)
-            q2_len = (samples // 4) + (1 if (samples % 4) > 1 else 0)
-            q3_len = (samples // 4) + (1 if (samples % 4) > 2 else 0)
-            q4_len = (samples // 4)
+            data_length = len(self.samples[subset][data_partition])
 
-            data_len = len(self.samples[subset][data_partition])
+            quartile_lens = [samples // 4 + (1 if i < samples % 4 else 0) for i in range(4)]
+            quartile_starts = [(i * data_length) // 4 for i in range(4)]
 
-            q1_start = 0
-            q2_start = data_len // 4
-            q3_start = data_len // 2
-            q4_start = (3 * data_len) // 4
-
-            q1_samples = self.samples[subset][data_partition][q1_start:q1_start + q1_len]
-            q2_samples = self.samples[subset][data_partition][q2_start:q2_start + q2_len]
-            q3_samples = self.samples[subset][data_partition][q3_start:q3_start + q3_len]
-            q4_samples = self.samples[subset][data_partition][q4_start:q4_start + q4_len]
-
-            data = list(q1_samples) + list(q2_samples) + list(q3_samples) + list(q4_samples)
-            data = np.array(data)
+            data = np.array([
+                sample
+                for start, length in zip(quartile_starts, quartile_lens)
+                for sample in self.samples[subset][data_partition][start:start + length]
+            ])
 
         multigrams = self.multigrams[subset]
         batch_size = min(len(data), batch_size)
