@@ -100,7 +100,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder_input = [tf.keras.Input(shape=x.shape[1:]) for x in feats]
         decoder = tf.keras.layers.Identity()(decoder_input[-1])
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[5], decoder])
@@ -109,7 +109,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[4], decoder])
@@ -118,7 +118,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=40, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[3], decoder])
@@ -127,7 +127,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder = tf.keras.layers.Conv2D(filters=40, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=32, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[2], decoder])
@@ -136,7 +136,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=16, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[1], decoder])
@@ -145,7 +145,7 @@ class SegmentationModel(BaseSegmentationModel):
         decoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='nearest')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=8, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[0], decoder])
