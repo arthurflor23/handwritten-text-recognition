@@ -276,7 +276,7 @@ class Compose():
             plateau_cooldown=0,
             plateau_patience=20,
             patience=40,
-            epochs=None,
+            epochs=1000,
             verbose=1):
         """
         Trains the model.
@@ -393,7 +393,7 @@ class Compose():
                                      validation_data=validation_gen,
                                      validation_steps=validation_steps,
                                      callbacks=callbacks,
-                                     epochs=(epochs or 1000000),
+                                     epochs=epochs,
                                      shuffle=False,
                                      verbose=verbose)
             mlflow.end_run()
