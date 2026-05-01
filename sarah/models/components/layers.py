@@ -325,7 +325,7 @@ class ContentAlignment(tf.keras.layers.Layer):
                 image = tf.concat([image, chunk], axis=1)
 
             if self.target_shape[2] > tf.shape(image)[1]:
-                size = [tf.shape(image)[0], self.target_shape[2] - tf.shape(image)[1], 1]
+                size = [tf.shape(image)[0], self.target_shape[2] - tf.shape(image)[1], tf.shape(image)[-1]]
                 chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
                 image = tf.concat([image, tf.stop_gradient(chunk)], axis=1)
 
@@ -335,7 +335,7 @@ class ContentAlignment(tf.keras.layers.Layer):
                 image = tf.concat([image, chunk], axis=0)
 
             if self.target_shape[1] > tf.shape(image)[0]:
-                size = [self.target_shape[1] - tf.shape(image)[0], tf.shape(image)[1], 1]
+                size = [self.target_shape[1] - tf.shape(image)[0], tf.shape(image)[1], tf.shape(image)[-1]]
                 chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
                 image = tf.concat([image, tf.stop_gradient(chunk)], axis=0)
 
@@ -415,7 +415,10 @@ class ContentAlignment(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
-        return tf.TensorShape(input_shape[-1])
+        image_shape = input_shape[0]
+        mask_shape = input_shape[-1]
+
+        return tf.TensorShape(mask_shape[:3] + image_shape[-1:])
 
 
 class ExtractPatches(tf.keras.layers.Layer):
