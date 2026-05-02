@@ -209,10 +209,9 @@ class ContentAlignment(tf.keras.layers.Layer):
     def __init__(self,
                  char_height_ratio,
                  char_width_ratio,
-                 image_padding_value=-1,
                  text_padding_value=0,
                  mask_padding_value=0,
-                 resize_method='bilinear',
+                 resize_method='nearest',
                  **kwargs):
         """
         Initializes the layer.
@@ -223,8 +222,6 @@ class ContentAlignment(tf.keras.layers.Layer):
             The height factor of the character in the image.
         char_width_ratio : int
             The width factor of the character in the image.
-        image_padding_value : int, optional
-            Padding value for image inputs.
         text_padding_value : int, optional
             Padding value for text inputs.
         mask_padding_value : int, optional
@@ -239,7 +236,6 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         self.char_height_ratio = char_height_ratio
         self.char_width_ratio = char_width_ratio
-        self.image_padding_value = image_padding_value
         self.text_padding_value = text_padding_value
         self.mask_padding_value = mask_padding_value
         self.resize_method = resize_method
@@ -259,7 +255,6 @@ class ContentAlignment(tf.keras.layers.Layer):
         config.update({
             'char_height_ratio': self.char_height_ratio,
             'char_width_ratio': self.char_width_ratio,
-            'image_padding_value': self.image_padding_value,
             'text_padding_value': self.text_padding_value,
             'mask_padding_value': self.mask_padding_value,
             'resize_method': self.resize_method,
@@ -312,8 +307,13 @@ class ContentAlignment(tf.keras.layers.Layer):
                                              clip_by=self.input_shape[2],
                                              axis=2)
 
-        mask_height = self.get_content_length(input_mask, self.mask_padding_value, axis=1)
-        mask_width = self.get_content_length(input_mask, self.mask_padding_value, axis=2)
+        mask_height = self.get_content_length(input_data=input_mask,
+                                              pad_value=self.mask_padding_value,
+                                              axis=1)
+
+        mask_width = self.get_content_length(input_data=input_mask,
+                                             pad_value=self.mask_padding_value,
+                                             axis=2)
 
         def content_alignment(elems):
             img, text_h, text_w, mask_h, mask_w = elems
@@ -326,7 +326,7 @@ class ContentAlignment(tf.keras.layers.Layer):
 
             if self.target_shape[2] > tf.shape(image)[1]:
                 size = [tf.shape(image)[0], self.target_shape[2] - tf.shape(image)[1], tf.shape(image)[-1]]
-                chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
+                chunk = tf.cast(tf.fill(size, value=-1), dtype=image.dtype)
                 image = tf.concat([image, tf.stop_gradient(chunk)], axis=1)
 
             if tf.shape(img)[0] > text_h and self.target_shape[1] > mask_h:
@@ -336,19 +336,24 @@ class ContentAlignment(tf.keras.layers.Layer):
 
             if self.target_shape[1] > tf.shape(image)[0]:
                 size = [self.target_shape[1] - tf.shape(image)[0], tf.shape(image)[1], tf.shape(image)[-1]]
-                chunk = tf.cast(tf.fill(size, value=self.image_padding_value), dtype=image.dtype)
+                chunk = tf.cast(tf.fill(size, value=-1), dtype=image.dtype)
                 image = tf.concat([image, tf.stop_gradient(chunk)], axis=0)
 
             return image
 
-        elems = (input_data, text_height, text_width, mask_height, mask_width)
+        elems = (tf.nn.tanh(input_data), text_height, text_width, mask_height, mask_width)
 
         outputs = tf.map_fn(content_alignment, elems=elems, fn_output_signature=tf.float32)
-        outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, self.image_padding_value, 0)
+        outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, clip_value_min=-1, clip_value_max=0)
 
         return outputs
 
-    def get_content_length(self, input_data, pad_value, scale_by=None, clip_by=None, axis=1):
+    def get_content_length(self,
+                           input_data,
+                           pad_value=0,
+                           scale_by=None,
+                           clip_by=None,
+                           axis=1):
         """
         Computes content length along an axis.
 
@@ -356,7 +361,7 @@ class ContentAlignment(tf.keras.layers.Layer):
         ----------
         input_data : tf.Tensor
             Input data tensor.
-        pad_value : float
+        pad_value : float, optional
             Padding value.
         scale_by : float, optional
             Factor to scale the length values.
@@ -384,7 +389,7 @@ class ContentAlignment(tf.keras.layers.Layer):
             input_data = tf.squeeze(input_data, axis=-1)
 
         reduced = tf.reduce_sum(input_data, axis=(2 if axis == 1 else 1))
-        content = tf.cast(tf.not_equal(reduced, pad_value), tf.int32)
+        content = tf.cast(tf.not_equal(reduced, pad_value), dtype=tf.int32)
 
         lengths = tf.reduce_sum(content, axis=1)
         lengths = tf.stop_gradient(lengths)
@@ -393,7 +398,7 @@ class ContentAlignment(tf.keras.layers.Layer):
             lengths = lengths * scale_by
 
         if clip_by is not None:
-            lengths = tf.clip_by_value(lengths, 0, clip_by)
+            lengths = tf.clip_by_value(lengths, clip_value_min=0, clip_value_max=clip_by)
 
         return lengths
 
