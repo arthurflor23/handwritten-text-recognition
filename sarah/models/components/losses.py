@@ -88,8 +88,9 @@ class CTXLoss(tf.keras.losses.Loss):
     """
 
     def __init__(self,
-                 sigma=0.5,
                  distance='cosine',
+                 sigma=0.5,
+                 epsilon=1e-5,
                  name='ctx_loss',
                  **kwargs):
         """
@@ -97,10 +98,12 @@ class CTXLoss(tf.keras.losses.Loss):
 
         Parameters
         ----------
-        sigma : float, optional
-            Sharpness parameter of the similarity function.
         distance : str, optional
             Distance measure to use: 'cosine', 'l1', or 'l2'.
+        sigma : float, optional
+            Sharpness parameter of the similarity function.
+        epsilon : float, optional
+            Small constant added to denominators and log argument.
         name : str, optional
             A name for the instance.
         **kwargs : dict
@@ -109,8 +112,9 @@ class CTXLoss(tf.keras.losses.Loss):
 
         super().__init__(name=name, **kwargs)
 
-        self.sigma = sigma
         self.distance = distance
+        self.sigma = sigma
+        self.epsilon = epsilon
 
     def call(self, y_true, y_pred):
         """
@@ -129,19 +133,22 @@ class CTXLoss(tf.keras.losses.Loss):
             The computed contextual loss.
         """
 
-        y_true_flat = tf.reshape(y_true, shape=(tf.shape(y_true)[0], -1))
-        y_pred_flat = tf.reshape(y_pred, shape=(tf.shape(y_pred)[0], -1))
+        shape = tf.shape(y_true)
+
+        y_true_flat = tf.reshape(y_true, shape=[shape[0], -1, shape[-1]])
+        y_pred_flat = tf.reshape(y_pred, shape=[shape[0], -1, shape[-1]])
 
         if self.distance == 'cosine':
-            y_true_flat = tf.nn.l2_normalize(y_true_flat, axis=-1)
-            y_pred_flat = tf.nn.l2_normalize(y_pred_flat, axis=-1)
+            y_true_norm = tf.nn.l2_normalize(y_true_flat, axis=-1)
+            y_pred_norm = tf.nn.l2_normalize(y_pred_flat, axis=-1)
 
-            cosine_similarity = tf.matmul(y_true_flat, y_pred_flat, transpose_b=True)
+            cosine_similarity = tf.matmul(y_pred_norm, y_true_norm, transpose_b=True)
             distance = 1.0 - cosine_similarity
+
         else:
+            y_pred_expanded = tf.expand_dims(y_pred_flat, axis=2)
             y_true_expanded = tf.expand_dims(y_true_flat, axis=1)
-            y_pred_expanded = tf.expand_dims(y_pred_flat, axis=0)
-            diff = y_true_expanded - y_pred_expanded
+            diff = y_pred_expanded - y_true_expanded
 
             if self.distance == 'l1':
                 distance = tf.reduce_sum(tf.abs(diff), axis=-1)
@@ -149,14 +156,16 @@ class CTXLoss(tf.keras.losses.Loss):
             elif self.distance == 'l2':
                 distance = tf.reduce_sum(tf.square(diff), axis=-1)
 
-        d_min = tf.math.reduce_min(distance, axis=1, keepdims=True)
-        d_tilde = tf.math.divide_no_nan(distance, d_min)
+        d_min = tf.reduce_min(distance, axis=-1, keepdims=True)
+        d_tilde = distance / (d_min + self.epsilon)
 
-        w = tf.math.exp((1 - d_tilde) / self.sigma)
-        ctx_ij = tf.math.divide_no_nan(w, tf.reduce_sum(w, axis=1, keepdims=True))
+        w = tf.math.exp((1.0 - d_tilde) / self.sigma)
+        ctx_ij = w / (tf.reduce_sum(w, axis=-1, keepdims=True) + self.epsilon)
 
-        ctx = tf.reduce_mean(tf.reduce_max(ctx_ij, axis=1))
-        ctx_loss = tf.math.reduce_mean(-tf.math.log(ctx + tf.keras.backend.epsilon()))
+        ctx_per_pred = tf.reduce_max(ctx_ij, axis=-1)
+        cx_per_image = tf.reduce_mean(ctx_per_pred, axis=-1)
+
+        ctx_loss = tf.reduce_mean(-tf.math.log(cx_per_image + self.epsilon))
 
         return ctx_loss
 
