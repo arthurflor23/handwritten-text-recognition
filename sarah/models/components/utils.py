@@ -48,7 +48,7 @@ class MeasureTracker():
                                                       trainable=False)
 
                 self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
-                                                       initializer=1.0,
+                                                       initializer=0.0,
                                                        dtype=tf.float32,
                                                        trainable=True)
 
@@ -60,7 +60,6 @@ class MeasureTracker():
         for name in self.values.keys():
             self.means[name].reset_states()
             self.values[name].assign(0.0)
-            self.weights[name].assign(1.0)
 
     def result(self, weighted=True, val_only=False, reduction=None):
         """
@@ -138,8 +137,8 @@ class MeasureTracker():
             if name not in self.values:
                 self.add([name])
 
-            weighted_value = 0.5 / (self.weights[name] ** 2) * value
-            regularization = tf.math.log(1 + self.weights[name] ** 2)
+            weighted_value = 0.5 * tf.math.exp(-self.weights[name]) * value
+            regularization = 0.5 * self.weights[name]
 
             weighted_measures[name] = weighted_value + regularization
             trainable_weights.append(self.weights[name])
