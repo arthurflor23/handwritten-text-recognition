@@ -287,7 +287,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_res_loss = fake_fake_res_loss + real_fake_res_loss
 
             # content reconstruction
-            g_rec_loss = tf.reduce_mean(tf.math.square(image_data - real_real_images))
+            g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
 
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
@@ -537,19 +537,19 @@ class GeneratorModel(BaseModel):
         Builds the model architecture.
         """
 
-        def residual_block(x, y, filters, up=None):
+        def residual_block(filters, x, y, up=None):
             h = tf.keras.layers.Identity()(x)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
@@ -582,10 +582,10 @@ class GeneratorModel(BaseModel):
         block = tf.keras.layers.Reshape(target_shape=(self.base_shape[1], self.base_shape[0], -1))(block)
         block = tf.keras.layers.Lambda(function=lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm')(block)
 
-        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * self.num_blocks)(latent)
+        latent_chunks = tf.keras.layers.Dense(units=self.latent_dim * (self.num_blocks + 1))(latent)
 
         latent_chunks = tf.keras.layers.Lambda(function=lambda x, y: tf.split(x, num_or_size_splits=y, axis=1),
-                                               arguments={'y': self.num_blocks},
+                                               arguments={'y': self.num_blocks + 1},
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
@@ -595,17 +595,17 @@ class GeneratorModel(BaseModel):
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
                 block = GatedResidualConv2D()(block)
 
-            block = residual_block(block, latent_chunks[i], filters, up=up)
+            block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
-        block = residual_block(block, latent, self.blocks[-1] // 2, up=(1, 2))
+        block = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
+                                 char_width_ratio=block.shape[2] // self.lexical_shape[1],
+                                 resize_method='bilinear')([block, text, mask])
+
+        block = residual_block(filters=self.blocks[-1] // 2, x=block, y=latent_chunks[-1])
         block = tf.keras.layers.Activation(activation='swish')(block)
 
-        block = tf.keras.layers.Conv2D(filters=1, kernel_size=3, padding='same')(block)
-        block = tf.keras.layers.Activation(activation='tanh')(block)
-
-        outputs = ContentAlignment(char_height_ratio=block.shape[1] // self.lexical_shape[0],
-                                   char_width_ratio=block.shape[2] // self.lexical_shape[1],
-                                   resize_method='bilinear')([block, text, mask])
+        outputs = tf.keras.layers.Conv2D(filters=1, kernel_size=3, padding='same')(block)
+        outputs = tf.keras.layers.Activation(activation='tanh')(outputs)
 
         self.model = tf.keras.Model(name=self.name,
                                     inputs=[text_input, latent_input, mask_input],
@@ -707,7 +707,7 @@ class DiscriminatorModel(BaseModel):
         Builds the model architecture.
         """
 
-        def residual_block(x, filters, preactive=True, down=None):
+        def residual_block(filters, x, preactive=True, down=None):
             h = tf.keras.layers.Identity()(x)
 
             if preactive:
@@ -738,13 +738,13 @@ class DiscriminatorModel(BaseModel):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
-            block = residual_block(block, filters, preactive=(i > 0), down=down)
+            block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
             if block.shape[1] * block.shape[2] == self.nonlocal_size:
                 block = GatedResidualConv2D()(block)
 
         if not self.patch_shape:
-            block = residual_block(block, self.blocks[-1], preactive=True, down=None)
+            block = residual_block(filters=self.blocks[-1], x=block, preactive=True, down=None)
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
