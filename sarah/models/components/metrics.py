@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-from sarah.models.components.layers import ExtractPatches
-
 
 class EditDistance(tf.keras.metrics.Metric):
     """
@@ -97,10 +95,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         https://arxiv.org/abs/1512.00567
     """
 
-    def __init__(self,
-                 image_shape,
-                 name='kid',
-                 **kwargs):
+    def __init__(self, image_shape, name='kid', **kwargs):
         """
         Initialize the KID metric instance.
 
@@ -117,20 +112,23 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         super().__init__(name=name, **kwargs)
 
         self.image_shape = image_shape
-
-        self.kid_image_size = (299, 299, 3)
+        self.inception_image_shape = (299, 299, 3)
         self.tracker = tf.keras.metrics.Mean()
-
-        self.height = int(tf.math.ceil(self.image_shape[0] / self.kid_image_size[0]) * self.kid_image_size[0])
-        self.width = int(tf.math.ceil(self.image_shape[1] / self.kid_image_size[1]) * self.kid_image_size[1])
 
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
-            tf.keras.layers.Resizing(height=self.height, width=self.width, interpolation='nearest'),
-            ExtractPatches(patch_shape=self.kid_image_size[:2], strides=(1, 1), padding='valid'),
+            tf.keras.layers.Resizing(
+                height=self.inception_image_shape[0],
+                width=self.inception_image_shape[1],
+                interpolation='bilinear',
+            ),
             tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
-            tf.keras.applications.InceptionV3(include_top=False, input_shape=self.kid_image_size, weights='imagenet'),
-            tf.keras.layers.GlobalAveragePooling2D(),
+            tf.keras.applications.InceptionV3(
+                include_top=False,
+                input_shape=self.inception_image_shape,
+                weights='imagenet',
+                pooling='avg',
+            ),
         ], name='inception_encoder')
 
     def update_state(self, y_true, y_pred):
@@ -152,8 +150,8 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         kernel_generated = self.polynomial_kernel(generated_features, generated_features)
         kernel_cross = self.polynomial_kernel(real_features, generated_features)
 
-        batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
-        batch_factor = batch_size * (batch_size - 1.0)
+        batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.int32)
+        batch_factor = tf.cast(batch_size * (batch_size - 1), dtype=tf.float32)
 
         sum_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size)))
         mean_kernel_real = tf.math.divide_no_nan(sum_kernel_real, batch_factor)
@@ -161,7 +159,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         sum_kernel_generated = tf.reduce_sum(kernel_generated * (1.0 - tf.eye(batch_size)))
         mean_kernel_generated = tf.math.divide_no_nan(sum_kernel_generated, batch_factor)
 
-        kid = ((mean_kernel_real + mean_kernel_generated) - (2.0 * tf.reduce_mean(kernel_cross)))
+        kid = mean_kernel_real + mean_kernel_generated - 2.0 * tf.reduce_mean(kernel_cross)
 
         self.tracker.update_state(kid)
 
@@ -185,7 +183,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
         features = features_1 @ tf.transpose(features_2)
 
-        return tf.math.divide_no_nan(features, feature_dimensions + 1.0) ** 3.0
+        return (tf.math.divide_no_nan(features, feature_dimensions) + 1.0) ** 3.0
 
     def result(self):
         """
