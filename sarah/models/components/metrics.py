@@ -81,18 +81,145 @@ class EditDistance(tf.keras.metrics.Metric):
         self.tracker.reset_state()
 
 
+class FrechetInceptionDistance(tf.keras.metrics.Metric):
+    """
+    Fréchet Inception Distance (FID) for assessing image generation quality.
+
+    References
+    ----------
+    GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash Equilibrium
+        https://arxiv.org/abs/1706.08500
+    """
+
+    def __init__(self, image_shape, name='fid', **kwargs):
+        """
+        Initialize the FID metric instance.
+
+        Parameters
+        ----------
+        image_shape : list or tuple
+            Input image shape.
+        name : str, optional
+            A name for the instance.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.image_shape = image_shape
+        self.inception_image_shape = (299, 299, 3)
+        self.tracker = tf.keras.metrics.Mean()
+
+        self.inception_encoder = tf.keras.Sequential([
+            tf.keras.layers.InputLayer(shape=(None, None, 1)),
+            tf.keras.layers.Resizing(
+                height=self.inception_image_shape[0],
+                width=self.inception_image_shape[1],
+                interpolation='bilinear',
+            ),
+            tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
+            tf.keras.applications.InceptionV3(
+                include_top=False,
+                input_shape=self.inception_image_shape,
+                weights='imagenet',
+                pooling='avg',
+            ),
+        ], name='inception_encoder')
+
+    def update_state(self, y_true, y_pred):
+        """
+        Compute the FID between true and predicted images.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            Batch of real images.
+        y_pred : tf.Tensor
+            Batch of generated images.
+        """
+
+        real_features = self.inception_encoder(y_true, training=False)
+        generated_features = self.inception_encoder(y_pred, training=False)
+
+        mean_real = tf.reduce_mean(real_features, axis=0)
+        mean_generated = tf.reduce_mean(generated_features, axis=0)
+
+        mean_diff = mean_real - mean_generated
+        mean_term = tf.reduce_sum(tf.square(mean_diff))
+
+        centered_real = real_features - mean_real
+        centered_generated = generated_features - mean_generated
+
+        batch_size = tf.cast(tf.shape(real_features)[0], dtype=tf.float32)
+        denom = tf.maximum(batch_size - 1.0, 1.0)
+
+        cov_term = (tf.reduce_sum(tf.square(centered_real)) +
+                    tf.reduce_sum(tf.square(centered_generated))) / denom
+
+        cov_sqrt_term = 2.0 * self.matrix_sqrt_trace(centered_real, centered_generated, denom)
+
+        fid = mean_term + cov_term - cov_sqrt_term
+
+        self.tracker.update_state(fid)
+
+    def matrix_sqrt_trace(self, centered_a, centered_b, denom):
+        """
+        Compute trace of the matrix square root using SVD.
+
+        Parameters
+        ----------
+        centered_a : tf.Tensor
+            Centered features from distribution A.
+        centered_b : tf.Tensor
+            Centered features from distribution B.
+        denom : tf.Tensor
+            Scalar normalization factor.
+
+        Returns
+        -------
+        tf.Tensor
+            Trace of the matrix square root of the covariance product.
+        """
+
+        m_ab = tf.matmul(centered_a, centered_b, transpose_b=True)
+        m_ba = tf.matmul(centered_b, centered_a, transpose_b=True)
+        product = tf.matmul(m_ab, m_ba) / (denom * denom)
+
+        eigenvalues = tf.linalg.eigvals(product)
+        eigenvalues = tf.math.real(eigenvalues)
+        eigenvalues = tf.maximum(eigenvalues, 0.0)
+
+        return tf.reduce_sum(tf.sqrt(tf.sqrt(eigenvalues)))
+
+    def result(self):
+        """
+        Return the current value.
+
+        Returns
+        -------
+        float
+            The current value.
+        """
+
+        return self.tracker.result()
+
+    def reset_state(self):
+        """
+        Reset the state of the tracker.
+        """
+
+        self.tracker.reset_state()
+
+
 class KernelInceptionDistance(tf.keras.metrics.Metric):
     """
     Kernel Inception Distance (KID) for assessing image generation quality.
-    KID is an unbiased alternative to FID, suitable for per-batch estimation.
 
     References
     ----------
     Demystifying MMD GANs
         https://arxiv.org/abs/1801.01401
-
-    Rethinking the Inception Architecture for Computer Vision
-        https://arxiv.org/abs/1512.00567
     """
 
     def __init__(self, image_shape, name='kid', **kwargs):
