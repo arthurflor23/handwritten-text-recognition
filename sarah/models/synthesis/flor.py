@@ -351,8 +351,7 @@ class SynthesisModel(BaseSynthesisModel):
                                              trainable_weights))
         del g_tape
 
-        # kid
-        self.kid.update_state(image_data, real_real_images)
+        self.fid.update_state(image_data, real_real_images)
 
         self.measure_tracker.update({
             **adv_dict,
@@ -362,7 +361,7 @@ class SynthesisModel(BaseSynthesisModel):
             **wtd_aux_dict,
             'loss': g_loss,
             'loss_w': g_loss_w,
-            self.kid.name: self.kid.result(),
+            self.fid.name: self.fid.result(),
         })
 
 
@@ -544,8 +543,8 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
