@@ -9,7 +9,7 @@ from sarah.models.components.losses import CTCLoss
 from sarah.models.components.losses import CTXLoss
 from sarah.models.components.losses import KLDivergence
 from sarah.models.components.metrics import EditDistance
-from sarah.models.components.metrics import KernelInceptionDistance
+from sarah.models.components.metrics import FrechetInceptionDistance
 from sarah.models.components.utils import MeasureTracker
 
 
@@ -970,7 +970,7 @@ class BaseSynthesisModel(BaseModel):
         self.sce_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, name='sce_loss')
         self.ctc_loss = CTCLoss()
         self.ctx_loss = CTXLoss()
-        self.kid = KernelInceptionDistance(image_shape=self.image_shape)
+        self.fid = FrechetInceptionDistance(image_shape=self.image_shape)
         self.kld_loss = KLDivergence()
 
         self.measure_tracker = MeasureTracker()
@@ -1025,10 +1025,10 @@ class BaseSynthesisModel(BaseModel):
 
         generated_images = self.generator([text_data, latent_data, mask_data])
 
-        self.kid.update_state(image_data, generated_images)
+        self.fid.update_state(image_data, generated_images)
 
         self.measure_tracker.update({
-            f"val_{self.kid.name}": self.kid.result(),
+            f"val_{self.fid.name}": self.fid.result(),
         })
 
         return self.measure_tracker.result(val_only=True)
@@ -1097,9 +1097,9 @@ class BaseSynthesisModel(BaseModel):
         progbar = tf.keras.utils.Progbar(target=steps, unit_name='evaluate', verbose=verbose)
 
         evaluations = {'data': [], 'images': []}
-        metrics = {'kid': []}
+        metrics = {'fid': []}
 
-        kid = KernelInceptionDistance(scale=1.0, offset=0.0)
+        fid = FrechetInceptionDistance(image_shape=self.image_shape)
 
         batch_index = 0
         for step in range(steps):
@@ -1113,8 +1113,8 @@ class BaseSynthesisModel(BaseModel):
             image_pred_data = x[batch_index:batch_index + batch_size]
             batch_index += batch_size
 
-            kid.update_state(image_true_data, image_pred_data)
-            metrics['kid'].append(kid.result())
+            fid.update_state(image_true_data, image_pred_data)
+            metrics['fid'].append(fid.result())
 
             for y, x in zip(image_true_data, image_pred_data):
                 evaluations['images'].append({'authentic': y, 'synthetic': x})
