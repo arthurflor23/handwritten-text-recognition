@@ -111,19 +111,29 @@ class FrechetInceptionDistance(tf.keras.metrics.Metric):
         self.inception_image_shape = (299, 299, 3)
         self.tracker = tf.keras.metrics.Mean()
 
+        height_patches = max(1, round(self.image_shape[0] / self.inception_image_shape[0]))
+        width_patches = max(1, round(self.image_shape[1] / self.inception_image_shape[1]))
+
+        height = self.inception_image_shape[0] * height_patches
+        width = self.inception_image_shape[1] * width_patches
+
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
-            tf.keras.layers.Resizing(
-                height=self.inception_image_shape[0],
-                width=self.inception_image_shape[1],
-                interpolation='bilinear',
-            ),
-            tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
+            tf.keras.layers.Resizing(height=height, width=width, interpolation='bilinear'),
+            tf.keras.layers.Lambda(lambda x: tf.image.extract_patches(
+                images=x,
+                sizes=[1, *self.inception_image_shape[:2], 1],
+                strides=[1, *self.inception_image_shape[:2], 1],
+                rates=[1, 1, 1, 1],
+                padding='VALID',
+            )),
+            tf.keras.layers.Lambda(lambda x: tf.reshape(x, shape=[-1, *self.inception_image_shape[:2], 1])),
+            tf.keras.layers.Lambda(lambda x: tf.tile(x, multiples=[1, 1, 1, 3])),
             tf.keras.applications.InceptionV3(
                 include_top=False,
-                input_shape=self.inception_image_shape,
                 weights='imagenet',
                 pooling='avg',
+                input_shape=self.inception_image_shape,
             ),
         ], name='inception_encoder')
 
@@ -242,19 +252,29 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
         self.inception_image_shape = (299, 299, 3)
         self.tracker = tf.keras.metrics.Mean()
 
+        height_patches = max(1, round(self.image_shape[0] / self.inception_image_shape[0]))
+        width_patches = max(1, round(self.image_shape[1] / self.inception_image_shape[1]))
+
+        height = self.inception_image_shape[0] * height_patches
+        width = self.inception_image_shape[1] * width_patches
+
         self.inception_encoder = tf.keras.Sequential([
             tf.keras.layers.InputLayer(shape=(None, None, 1)),
-            tf.keras.layers.Resizing(
-                height=self.inception_image_shape[0],
-                width=self.inception_image_shape[1],
-                interpolation='bilinear',
-            ),
-            tf.keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
+            tf.keras.layers.Resizing(height=height, width=width, interpolation='bilinear'),
+            tf.keras.layers.Lambda(lambda x: tf.image.extract_patches(
+                images=x,
+                sizes=[1, *self.inception_image_shape[:2], 1],
+                strides=[1, *self.inception_image_shape[:2], 1],
+                rates=[1, 1, 1, 1],
+                padding='VALID',
+            )),
+            tf.keras.layers.Lambda(lambda x: tf.reshape(x, shape=[-1, *self.inception_image_shape[:2], 1])),
+            tf.keras.layers.Lambda(lambda x: tf.tile(x, multiples=[1, 1, 1, 3])),
             tf.keras.applications.InceptionV3(
                 include_top=False,
-                input_shape=self.inception_image_shape,
                 weights='imagenet',
                 pooling='avg',
+                input_shape=self.inception_image_shape,
             ),
         ], name='inception_encoder')
 
