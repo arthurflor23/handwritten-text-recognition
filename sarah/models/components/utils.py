@@ -7,11 +7,14 @@ class MeasureTracker():
 
     References
     ----------
+    Auxiliary Tasks in Multi-task Learning
+        https://arxiv.org/abs/1805.06334
+
     Multi-Task Learning Using Uncertainty to Weigh Losses for Scene Geometry and Semantics
         https://arxiv.org/abs/1705.07115
     """
 
-    def __init__(self, measures=None):
+    def __init__(self, measures=None, variance_weighting=False):
         """
         Initializes trackers.
 
@@ -19,11 +22,16 @@ class MeasureTracker():
         ----------
         measures : list of str, optional
             Measure names to initialize.
+        variance_weighting : bool, optional
+            Whether to use direct variance weighting.
         """
 
         self.means = {}
         self.values = {}
         self.weights = {}
+
+        self.variance_weighting = variance_weighting
+        self.weight_initializer = 1.0 if variance_weighting else 0.0
 
         if measures is not None:
             self.add(measures)
@@ -48,7 +56,7 @@ class MeasureTracker():
                                                       trainable=False)
 
                 self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
-                                                       initializer=0.0,
+                                                       initializer=self.weight_initializer,
                                                        dtype=tf.float32,
                                                        trainable=True)
 
@@ -137,8 +145,12 @@ class MeasureTracker():
             if name not in self.values:
                 self.add([name])
 
-            weighted_value = 0.5 * tf.math.exp(-self.weights[name]) * value
-            regularization = 0.5 * self.weights[name]
+            if self.variance_weighting:
+                weighted_value = 0.5 / (self.weights[name] ** 2) * value
+                regularization = tf.math.log(1 + self.weights[name] ** 2)
+            else:
+                weighted_value = 0.5 * tf.math.exp(-self.weights[name]) * value
+                regularization = 0.5 * self.weights[name]
 
             weighted_measures[name] = weighted_value + regularization
             trainable_weights.append(self.weights[name])
