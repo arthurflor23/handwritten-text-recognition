@@ -128,7 +128,7 @@ class FrechetInceptionDistance(tf.keras.metrics.Metric):
                 padding='VALID',
             )),
             tf.keras.layers.Lambda(lambda x: tf.reshape(x, shape=[-1, *self.inception_image_shape[:2], 1])),
-            tf.keras.layers.Lambda(lambda x: tf.tile(x, multiples=[1, 1, 1, 3])),
+            tf.keras.layers.Lambda(lambda x: tf.repeat(x, repeats=3, axis=-1)),
             tf.keras.applications.InceptionV3(
                 include_top=False,
                 weights='imagenet',
@@ -173,9 +173,10 @@ class FrechetInceptionDistance(tf.keras.metrics.Metric):
 
         self.tracker.update_state(fid)
 
+    @tf.function
     def matrix_sqrt_trace(self, centered_a, centered_b, denom):
         """
-        Compute trace of the matrix square root using SVD.
+        Compute trace of the matrix square root using eigendecomposition.
 
         Parameters
         ----------
@@ -269,7 +270,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
                 padding='VALID',
             )),
             tf.keras.layers.Lambda(lambda x: tf.reshape(x, shape=[-1, *self.inception_image_shape[:2], 1])),
-            tf.keras.layers.Lambda(lambda x: tf.tile(x, multiples=[1, 1, 1, 3])),
+            tf.keras.layers.Lambda(lambda x: tf.repeat(x, repeats=3, axis=-1)),
             tf.keras.applications.InceptionV3(
                 include_top=False,
                 weights='imagenet',
@@ -310,6 +311,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         self.tracker.update_state(kid)
 
+    @tf.function
     def polynomial_kernel(self, features_1, features_2):
         """
         Compute the polynomial kernel between two feature sets.
