@@ -70,8 +70,8 @@ class SynthesisModel(BaseSynthesisModel):
         Builds the model architecture.
         """
 
-        text_dim = 32
-        latent_dim = 96
+        text_dim = 64
+        latent_dim = 128
 
         generator_blocks = [256, 128, 64, 32]
         discriminator_blocks = [32, 64, 128, 256]
@@ -287,7 +287,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_res_loss = fake_fake_res_loss + real_fake_res_loss
 
             # content reconstruction
-            g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
+            g_rec_loss = tf.reduce_mean(tf.math.square(image_data - real_real_images))
 
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
@@ -484,9 +484,8 @@ class GeneratorModel(BaseModel):
         self.strides = strides
 
         self.num_blocks = len(self.blocks)
-        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 4
-
         self.base_patch = (4, 4)
+
         self.base_shape = (self.lexical_shape[0] * self.base_patch[0],
                            self.lexical_shape[1] * self.base_patch[1])
 
@@ -539,7 +538,7 @@ class GeneratorModel(BaseModel):
         def residual_block(filters, x, y, up=None):
             h = tf.keras.layers.Identity()(x)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
@@ -548,7 +547,7 @@ class GeneratorModel(BaseModel):
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
@@ -588,10 +587,10 @@ class GeneratorModel(BaseModel):
                                                name='latent_chunks')(latent_chunks)
 
         for i, (filters, up) in enumerate(zip(self.blocks, self.strides)):
-            up = (up[0] if block.shape[1] < self.image_shape[0] * 2 else 1,
-                  up[1] if block.shape[2] < self.image_shape[1] * 2 else 1)
+            up = (up[0] if block.shape[1] < self.image_shape[0] else 1,
+                  up[1] if block.shape[2] < self.image_shape[1] else 1)
 
-            if block.shape[1] * block.shape[2] == self.nonlocal_size:
+            if i == self.num_blocks - 1:
                 block = GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
@@ -654,8 +653,6 @@ class DiscriminatorModel(BaseModel):
         self.patch_shape = patch_shape
 
         self.num_blocks = len(self.blocks)
-        self.nonlocal_size = (self.image_shape[0] * self.image_shape[1]) / 4
-
         self.base_patch = (4, 4)
 
         if not self.strides:
@@ -737,13 +734,13 @@ class DiscriminatorModel(BaseModel):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
-            block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
-
-            if block.shape[1] * block.shape[2] == self.nonlocal_size:
+            if i == 1:
                 block = GatedResidualConv2D()(block)
 
+            block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
+
         if not self.patch_shape:
-            block = residual_block(filters=self.blocks[-1], x=block, preactive=True, down=None)
+            block = residual_block(filters=self.blocks[-1], x=block, preactive=True)
 
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
