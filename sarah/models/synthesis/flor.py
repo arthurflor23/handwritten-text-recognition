@@ -70,7 +70,7 @@ class SynthesisModel(BaseSynthesisModel):
         Builds the model architecture.
         """
 
-        text_dim = 64
+        text_dim = 128
         latent_dim = 128
 
         generator_blocks = [256, 128, 64, 32]
@@ -287,7 +287,7 @@ class SynthesisModel(BaseSynthesisModel):
             g_res_loss = fake_fake_res_loss + real_fake_res_loss
 
             # content reconstruction
-            g_rec_loss = tf.reduce_mean(tf.math.square(image_data - real_real_images))
+            g_rec_loss = tf.reduce_mean(tf.math.abs(image_data - real_real_images))
 
             # kl divergence
             g_kld_loss = self.kld_loss(mu, logvar)
@@ -317,7 +317,7 @@ class SynthesisModel(BaseSynthesisModel):
             adv_dict = {
                 'g_adv_loss': g_adv_loss,
                 'g_ctx_loss': g_ctx_loss * 2,
-                'g_kld_loss': g_kld_loss * 0.01,
+                'g_kld_loss': g_kld_loss * 1e-3,
             }
 
             gen_dict = {
@@ -538,16 +538,16 @@ class GeneratorModel(BaseModel):
         def residual_block(filters, x, y, up=None):
             h = tf.keras.layers.Identity()(x)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
-                h = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(h)
-                x = tf.keras.layers.UpSampling2D(size=up, interpolation='nearest')(x)
+                h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
+                x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-3)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
