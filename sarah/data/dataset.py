@@ -106,7 +106,6 @@ class Dataset():
             data = self._source.fetch_data(self.text_level)
 
         data = self._partitioning(data)
-
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
 
@@ -209,21 +208,18 @@ class Dataset():
             The partitioned data.
         """
 
-        def parse_ratio(ratio):
-            if ratio is None:
-                return None
+        ratios = {}
+
+        for key in ['training', 'validation', 'test']:
+            data.setdefault(key, [])
+            data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
+
+            ratio = getattr(self, f'{key}_ratio')
+
             if isinstance(ratio, str):
-                return float(ratio) if '.' in ratio else int(ratio)
-            return ratio
-
-        data.setdefault('training', [])
-        data.setdefault('validation', [])
-
-        ratios = {
-            'training': parse_ratio(self.training_ratio),
-            'validation': parse_ratio(self.validation_ratio),
-            'test': parse_ratio(self.test_ratio),
-        }
+                ratios[key] = float(ratio) if '.' in ratio else int(ratio)
+            else:
+                ratios[key] = ratio
 
         ratio_list = [ratios[i] for i in ratios if ratios[i] is not None]
 
@@ -333,7 +329,7 @@ class Dataset():
                 results = [future.result() for future in futures if future.result() is not None]
 
             if results:
-                results.sort(key=lambda x: len(x[0]['text']), reverse=True)
+                results.sort(key=lambda x: len(x[0]['text']), reverse=False)
 
                 if not self.order_by_text:
                     np.random.shuffle(results)
@@ -399,7 +395,7 @@ class Dataset():
 
             if results:
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
-                flattened.sort(key=lambda x: len(x[0]), reverse=True)
+                flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
                 if not self.order_by_text:
                     np.random.shuffle(results)
