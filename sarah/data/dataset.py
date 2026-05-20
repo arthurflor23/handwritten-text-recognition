@@ -326,13 +326,11 @@ class Dataset():
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(validate_and_build, item) for item in data[partition]]
-                results = [future.result() for future in futures if future.result() is not None]
+                results = [x for x in (f.result() for f in futures) if x is not None]
 
             if results:
-                results.sort(key=lambda x: len(x[0]['text']), reverse=False)
-
-                if not self.order_by_text:
-                    np.random.shuffle(results)
+                if self.order_by_text:
+                    results.sort(key=lambda x: len(x[0]['text']), reverse=False)
 
                 source, encoded = zip(*results)
 
@@ -391,14 +389,13 @@ class Dataset():
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(build, x) for x in data[partition]]
-                results = [future.result() for future in futures if future.result() is not None]
+                results = [x for x in (f.result() for f in futures) if x is not None]
 
             if results:
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
-                flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
-                if not self.order_by_text:
-                    np.random.shuffle(results)
+                if self.order_by_text:
+                    flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
                 source, encoded = zip(*flattened)
 
