@@ -212,7 +212,9 @@ class Dataset():
 
         for key in ['training', 'validation', 'test']:
             data.setdefault(key, [])
+
             data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
+            np.random.shuffle(data[key])
 
             ratio = getattr(self, f'{key}_ratio')
 
@@ -229,37 +231,32 @@ class Dataset():
             if isinstance(ratio, float) and ratio == 1.0:
                 merged = []
 
-                for i in ratios:
-                    if ratios[i] is None:
+                for key in ratios:
+                    if ratios[key] is None:
                         continue
 
-                    merged.extend(data[i])
+                    merged.extend(data[key])
 
                 total_merged = len(merged)
 
                 if total_merged > 0:
-                    np.random.shuffle(merged)
-
-                    for i in ratios:
-                        if ratios[i] is None:
+                    for key in ratios:
+                        if ratios[key] is None:
                             continue
 
-                        index = round(ratios[i] * total_merged)
-                        data[i] = merged[:index]
+                        index = round(ratios[key] * total_merged)
+                        data[key] = merged[:index]
                         merged = merged[index:]
 
             else:
-                for i in ratios:
-                    if ratios[i] is None:
+                for key in ratios:
+                    if ratios[key] is None:
                         continue
 
-                    if ratios[i] > 0:
-                        np.random.shuffle(data[i])
+                    index = round(ratios[key] * len(data[key])) \
+                        if isinstance(ratios[key], float) else ratios[key]
 
-                    index = round(ratios[i] * len(data[i])) \
-                        if isinstance(ratios[i], float) else ratios[i]
-
-                    data[i] = data[i][:index]
+                    data[key] = data[key][:index]
 
         return data
 
