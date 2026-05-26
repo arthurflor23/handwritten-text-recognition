@@ -14,7 +14,7 @@ class MeasureTracker():
         https://arxiv.org/abs/1705.07115
     """
 
-    def __init__(self, measures=None, variance_weighting=False):
+    def __init__(self, measures=None):
         """
         Initializes trackers.
 
@@ -22,16 +22,11 @@ class MeasureTracker():
         ----------
         measures : list of str, optional
             Measure names to initialize.
-        variance_weighting : bool, optional
-            Whether to use direct variance weighting.
         """
 
         self.means = {}
         self.values = {}
         self.weights = {}
-
-        self.variance_weighting = variance_weighting
-        self.weight_initializer = 1.0 if variance_weighting else 0.0
 
         if measures is not None:
             self.add(measures)
@@ -56,7 +51,7 @@ class MeasureTracker():
                                                       trainable=False)
 
                 self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
-                                                       initializer=self.weight_initializer,
+                                                       initializer=1.0,
                                                        dtype=tf.float32,
                                                        trainable=True)
 
@@ -121,7 +116,7 @@ class MeasureTracker():
             self.means[name].update_state(value)
             self.values[name].assign(value)
 
-    def weight(self, measures):
+    def weight(self, measures, use_variance=False):
         """
         Calculates weighted measures with adaptive regularization.
 
@@ -129,6 +124,8 @@ class MeasureTracker():
         ----------
         measures : dict of tf.Tensor
             Dictionary of measure names and their current values.
+        use_variance : bool, optional
+            Whether to use Kendall or Liebel weighting.
 
         Returns
         -------
@@ -145,7 +142,7 @@ class MeasureTracker():
             if name not in self.values:
                 self.add([name])
 
-            if self.variance_weighting:
+            if use_variance:
                 weighted_value = 0.5 / (self.weights[name] ** 2) * value
                 regularization = tf.math.log(1 + self.weights[name] ** 2)
             else:
