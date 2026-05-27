@@ -14,24 +14,16 @@ class MeasureTracker():
         https://arxiv.org/abs/1705.07115
     """
 
-    def __init__(self, measures=None):
+    def __init__(self):
         """
         Initializes trackers.
-
-        Parameters
-        ----------
-        measures : list of str, optional
-            Measure names to initialize.
         """
 
         self.means = {}
         self.values = {}
         self.weights = {}
 
-        if measures is not None:
-            self.add(measures)
-
-    def add(self, measures):
+    def add(self, measures, weight_initializer=None):
         """
         Adds new measures to track if not already present.
 
@@ -39,6 +31,8 @@ class MeasureTracker():
         ----------
         measures : list of str
             Measure names to add.
+        weight_initializer : float, optional
+            Initial value for trainable weights, if applicable.
         """
 
         for name in measures:
@@ -50,8 +44,9 @@ class MeasureTracker():
                                                       dtype=tf.float32,
                                                       trainable=False)
 
+            if weight_initializer is not None and name not in self.weights:
                 self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
-                                                       initializer=0.0,
+                                                       initializer=weight_initializer,
                                                        dtype=tf.float32,
                                                        trainable=True)
 
@@ -139,8 +134,8 @@ class MeasureTracker():
         for name, value in measures.items():
             name = f"{name}_w"
 
-            if name not in self.values:
-                self.add([name])
+            if name not in self.weights:
+                self.add([name], weight_initializer=(1.0 if use_variance else 0.0))
 
             if use_variance:
                 weighted_value = 0.5 / (self.weights[name] ** 2) * value
