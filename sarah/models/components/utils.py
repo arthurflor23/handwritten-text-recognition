@@ -51,7 +51,7 @@ class MeasureTracker():
                                                       trainable=False)
 
                 self.weights[name] = tf.keras.Variable(name=f"{name}_weight",
-                                                       initializer=1.0,
+                                                       initializer=0.0,
                                                        dtype=tf.float32,
                                                        trainable=True)
 
