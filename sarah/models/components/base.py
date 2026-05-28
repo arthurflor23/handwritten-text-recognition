@@ -430,7 +430,7 @@ class BaseRecognitionModel(BaseModel):
         Returns
         -------
         dict
-            Training metrics and losses.
+            Testing metrics and losses.
         """
 
         _, y_data = input_data
@@ -770,7 +770,7 @@ class BaseSegmentationModel(BaseModel):
         Returns
         -------
         dict
-            Validation metrics and losses.
+            Testing metrics and losses.
         """
 
         _, y_data = input_data
@@ -1011,7 +1011,7 @@ class BaseSynthesisModel(BaseModel):
         Returns
         -------
         dict
-            Training metrics and losses.
+            Testing metrics and losses.
         """
 
         _, y_data = input_data
@@ -1313,7 +1313,7 @@ class BaseWriterIdentificationModel(BaseModel):
         Returns
         -------
         dict
-            Training metrics and losses.
+            Testing metrics and losses.
         """
 
         _, y_data = input_data
