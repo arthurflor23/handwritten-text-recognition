@@ -138,7 +138,7 @@ class MeasureTracker():
                 self.add([name], weight_initializer=(1.0 if use_variance else 0.0))
 
             if use_variance:
-                weighted_value = 0.5 / (self.weights[name] ** 2) * value
+                weighted_value = 0.5 / ((self.weights[name] ** 2) + 1e-7) * value
                 regularization = tf.math.log(1 + self.weights[name] ** 2)
             else:
                 weighted_value = 0.5 * tf.math.exp(-self.weights[name]) * value
