@@ -10,7 +10,7 @@ The steps below describe how to get started with the project.
 
 ### Requirements
 
-- Python >=3.11, <3.14
+- Python >=3.11, <3.13
 
 ### Installation
 
@@ -77,6 +77,10 @@ The project supports a wide range of datasets for handwritten text recognition. 
 - [Saint Gall](https://drive.google.com/file/d/1X66lsJFEK-RixO4dQ0DP9ZH6yVc64P2m/view?usp=sharing) [[paper]](https://dl.acm.org/doi/10.1145/2037342.2037348)
 
 - [Washington](https://drive.google.com/file/d/1MuKc3D3SoWVUJPYqhmnOT9Xd-CWnmpk4/view?usp=sharing) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
+
+### Fonts
+
+The project also supports font prototypes as input. Folders of `.ttf` files placed under `fonts/` are loaded by the batch generator for training and evaluation. A collection of open fonts is available [here](https://drive.google.com/file/d/1cVpMpcdcHutcn_Yo25_NvqhyguyFvztX/view?usp=sharing).
 
 ## Parameters
 
@@ -167,6 +171,7 @@ The project has several command-line parameters that can be used to customize it
 
 - `--check`: Perform check pipeline.
 - `--input-path`: Path to input data.
+- `--fonts-path`: Path to fonts data.
 - `--output-path`: Path to output data.
 - `--gpu`: GPU index or sequence of indices.
 - `--seed`: Seed value.
