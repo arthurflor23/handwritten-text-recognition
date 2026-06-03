@@ -3,6 +3,7 @@ import cv2
 import glob
 import json
 import pickle
+import shutil
 import mlflow
 import sqlite3
 import importlib
@@ -871,85 +872,6 @@ class Compose():
             mlflow.end_run()
 
     @staticmethod
-    def setup_gpu(gpu):
-        """
-        Configures GPU visibility and memory settings.
-
-        Parameters
-        ----------
-        gpu : int, list, or tuple
-            GPU index or sequence of indices.
-        """
-
-        try:
-            tf.keras.backend.clear_session(free_memory=True)
-
-            indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
-            indices = [int(i) for i in indices if str(i).isdigit()]
-
-            devices = tf.config.list_physical_devices('GPU')
-            devices = [devices[i] for i in indices]
-
-            tf.config.set_visible_devices(devices=devices, device_type='GPU')
-
-            for device in devices:
-                tf.config.experimental.set_memory_growth(device=device, enable=True)
-
-        except Exception:
-            pass
-
-    @staticmethod
-    def setup_mlflow(output_path, experiment_name=None):
-        """
-        Sets the MLflow tracking URI and updates experiment artifact locations.
-
-        Parameters
-        ----------
-        output_path : str
-            Path to the output directory.
-        experiment_name : str, optional
-            MLflow experiment name to set as active.
-        """
-
-        db_file = os.path.join(output_path, 'mlflow.db')
-        artifact_path = os.path.join(output_path, 'mlruns')
-
-        mlflow.set_tracking_uri(uri=f"sqlite:///{db_file}")
-
-        if experiment_name is not None:
-            mlflow.set_experiment(experiment_name)
-
-        if not os.path.isfile(db_file):
-            return
-
-        with sqlite3.connect(db_file) as conn:
-            rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
-
-            for experiment_id, artifact_location in rows:
-                new_artifact_location = os.path.join(artifact_path, str(experiment_id))
-                new_artifact_location = os.path.abspath(new_artifact_location)
-
-                if artifact_location != new_artifact_location:
-                    conn.execute(
-                        "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
-                        (new_artifact_location, experiment_id)
-                    )
-
-            rows = conn.execute("SELECT run_uuid, experiment_id, artifact_uri FROM runs").fetchall()
-
-            for run_uuid, experiment_id, artifact_uri in rows:
-                new_artifact_uri = os.path.join(artifact_path, str(experiment_id), run_uuid, 'artifacts')
-                new_artifact_uri = os.path.abspath(new_artifact_uri)
-
-                if artifact_uri != new_artifact_uri:
-                    conn.execute(
-                        "UPDATE runs SET artifact_uri = ? WHERE run_uuid = ?",
-                        (new_artifact_uri, run_uuid)
-                    )
-
-            conn.commit()
-
-    @staticmethod
     def get_tokenizer(synthesis=None,
                       synthesis_run_id=None,
                       recognition=None,
@@ -995,53 +917,65 @@ class Compose():
             (tokenizer, run_context) or (None, None) if not found.
         """
 
+        Compose.setup_mlflow(output_path=output_path)
+
+        experiment = mlflow.set_experiment(experiment_name)
+        experiment_ids = [experiment.experiment_id]
+
         def get_artifacts_path(tag_name, tag_value, run_id):
             run, artifact_path = None, None
 
-            if run_id is not None:
-                experiment = mlflow.set_experiment(experiment_name)
-                experiment_ids = [experiment.experiment_id]
+            if run_id is None:
+                return run, artifact_path
 
-                filter_string = f"tag.compose.{tag_name}='{tag_value}'"
+            filter_string = f"tag.compose.{tag_name}='{tag_value}'"
 
-                if finished_runs:
-                    filter_string = f"status='FINISHED' AND {filter_string}"
+            if finished_runs:
+                filter_string = f"status='FINISHED' AND {filter_string}"
 
-                df = mlflow.search_runs(experiment_ids=experiment_ids,
-                                        filter_string=filter_string,
-                                        order_by=['tags.mlflow.runName ASC'])
+            df = mlflow.search_runs(experiment_ids=experiment_ids,
+                                    filter_string=filter_string,
+                                    order_by=['tags.mlflow.runName ASC'])
 
-                if not df.empty:
-                    df['valid'] = df['artifact_uri'].apply(
-                        lambda x: bool(glob.glob(os.path.join(x, '**', '*.weights.h5'), recursive=True)))
+            if df.empty:
+                return run, artifact_path
 
-                    df = df[df['valid']].reset_index(drop=True)
+            df['valid'] = df['artifact_uri'].apply(
+                lambda x: bool(glob.glob(os.path.join(x, '**', '*.weights.h5'), recursive=True)))
 
-                    try:
-                        if str(run_id).replace('-', '').isnumeric():
-                            run = mlflow.get_run(df.iloc[int(run_id)]['run_id'])
-                        else:
-                            df = df[df['run_id'] == run_id]
-                            run = mlflow.get_run(df.iloc[0]['run_id'])
+            df = df[df['valid']].reset_index(drop=True)
 
-                    except Exception:
-                        print(f"Run ID not found: {run_id}")
-                        exit(1)
+            try:
+                if str(run_id).replace('-', '').isnumeric():
+                    run = mlflow.get_run(df.iloc[int(run_id)]['run_id'])
+                else:
+                    df = df[df['run_id'] == run_id]
+                    run = mlflow.get_run(df.iloc[0]['run_id'])
 
-                    if run is not None:
-                        artifact_path = run.info.artifact_uri
+            except Exception:
+                print(f"Run ID not found: {run_id}")
+                exit(1)
+
+            if run is not None:
+                artifact_path = run.info.artifact_uri
 
             return run, artifact_path
 
-        Compose.setup_mlflow(output_path=output_path)
+        tasks = {
+            'synthesis': (synthesis, synthesis_run_id),
+            'recognition': (recognition, recognition_run_id),
+            'segmentation': (segmentation, segmentation_run_id),
+            'writer_identification': (writer_identification, writer_identification_run_id),
+        }
 
-        r_syn, p_syn = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
-        r_rec, p_rec = get_artifacts_path('recognition', recognition, recognition_run_id)
-        r_seg, p_seg = get_artifacts_path('segmentation', segmentation, segmentation_run_id)
-        r_wid, p_wid = get_artifacts_path('writer_identification', writer_identification, writer_identification_run_id)
+        run_context, artifacts_path = None, None
 
-        run_context = r_syn or r_rec or r_seg or r_wid
-        artifacts_path = p_syn or p_rec or p_seg or p_wid
+        for task_name, (task_value, run_id) in tasks.items():
+            run, artifact_path = get_artifacts_path(task_name, task_value, run_id)
+
+            run_context = run_context or run
+            artifacts_path = artifacts_path or artifact_path
+
         tokenizer = None
 
         if artifacts_path:
@@ -1057,3 +991,190 @@ class Compose():
                     exit(1)
 
         return tokenizer, run_context
+
+    @staticmethod
+    def setup_gpu(gpu):
+        """
+        Configures GPU visibility and memory settings.
+
+        Parameters
+        ----------
+        gpu : int, list, or tuple
+            GPU index or sequence of indices.
+        """
+
+        try:
+            tf.keras.backend.clear_session(free_memory=True)
+
+            indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
+            indices = [int(i) for i in indices if str(i).isdigit()]
+
+            devices = tf.config.list_physical_devices('GPU')
+            devices = [devices[i] for i in indices]
+
+            tf.config.set_visible_devices(devices=devices, device_type='GPU')
+
+            for device in devices:
+                tf.config.experimental.set_memory_growth(device=device, enable=True)
+
+        except Exception:
+            pass
+
+    @staticmethod
+    def setup_mlflow(output_path, experiment_name=None):
+        """
+        Sets the MLflow tracking URI and updates experiment artifact locations.
+
+        Parameters
+        ----------
+        output_path : str
+            Path to output data.
+        experiment_name : str, optional
+            Name of the MLflow experiment.
+        """
+
+        database_path = os.path.join(output_path, 'mlflow.db')
+        artifact_path = os.path.join(output_path, 'mlruns')
+
+        Compose.setup_mlflow_merge(database_path=database_path,
+                                   artifact_path=artifact_path)
+
+        mlflow.set_tracking_uri(uri=f"sqlite:///{database_path}")
+
+        if experiment_name is not None:
+            mlflow.set_experiment(experiment_name)
+
+        if not os.path.isfile(database_path):
+            return
+
+        with sqlite3.connect(database_path) as conn:
+            sql = "SELECT experiment_id, artifact_location FROM experiments"
+            rows = conn.execute(sql).fetchall()
+
+            for experiment_id, artifact_location in rows:
+                new_artifact_location = os.path.join(artifact_path, str(experiment_id))
+                new_artifact_location = os.path.abspath(new_artifact_location)
+
+                if artifact_location != new_artifact_location:
+                    sql = "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?"
+                    conn.execute(sql, (new_artifact_location, experiment_id))
+
+            sql = "SELECT run_uuid, experiment_id, artifact_uri FROM runs"
+            rows = conn.execute(sql).fetchall()
+
+            for run_uuid, experiment_id, artifact_uri in rows:
+                new_artifact_uri = os.path.join(artifact_path, str(experiment_id), run_uuid, 'artifacts')
+                new_artifact_uri = os.path.abspath(new_artifact_uri)
+
+                if artifact_uri != new_artifact_uri:
+                    sql = "UPDATE runs SET artifact_uri = ? WHERE run_uuid = ?"
+                    conn.execute(sql, (new_artifact_uri, run_uuid))
+
+            conn.commit()
+
+    @staticmethod
+    def setup_mlflow_merge(database_path):
+        """
+        Merges multiple MLflow databases into a single file.
+
+        Parameters
+        ----------
+        database_path : str
+            Path to the base MLflow database.
+        """
+
+        output_path = os.path.dirname(database_path)
+        merged_path = os.path.join(output_path, 'db_merged')
+
+        merge_files = [x for x in glob.glob(os.path.join(output_path, '*.db')) if x != database_path]
+
+        if not merge_files:
+            return
+
+        os.makedirs(merged_path, exist_ok=True)
+
+        if not os.path.isfile(database_path):
+            merge_item = merge_files.pop(0)
+            shutil.copy2(merge_item, database_path)
+            shutil.move(merge_item, os.path.join(merged_path, os.path.basename(merge_item)))
+
+        for merge_file in merge_files:
+            with sqlite3.connect(database_path) as base_conn:
+                with sqlite3.connect(merge_file) as merge_conn:
+                    sql = "PRAGMA table_info(experiments)"
+                    exp_cols = [x[1] for x in merge_conn.execute(sql).fetchall()]
+
+                    sql = "PRAGMA table_info(runs)"
+                    run_cols = [x[1] for x in merge_conn.execute(sql).fetchall()]
+
+                    sql = "SELECT name FROM sqlite_master WHERE type='table'"
+                    all_tables = merge_conn.execute(sql).fetchall()
+
+                    run_tables = []
+                    for table_row in all_tables:
+                        table_name = table_row[0]
+
+                        if table_name == 'runs':
+                            continue
+
+                        sql = f"PRAGMA table_info({table_name})"
+                        table_cols = merge_conn.execute(sql).fetchall()
+
+                        if 'run_uuid' in [col[1] for col in table_cols]:
+                            run_tables.append(table_name)
+
+                    sql = "SELECT MAX(CAST(experiment_id AS INTEGER)) FROM experiments"
+                    max_id = base_conn.execute(sql).fetchone()[0] or 0
+
+                    sql = "SELECT name, experiment_id FROM experiments"
+                    base_experiments = dict(base_conn.execute(sql).fetchall())
+
+                    sql = "SELECT * FROM experiments"
+                    merge_experiments = merge_conn.execute(sql).fetchall()
+
+                    for experiment in merge_experiments:
+                        exp = dict(zip(exp_cols, experiment))
+                        old_exp_id = str(exp['experiment_id'])
+
+                        if exp['name'] in base_experiments:
+                            new_exp_id = str(base_experiments[exp['name']])
+                        else:
+                            max_id += 1
+                            new_exp_id = str(max_id)
+
+                            exp['experiment_id'] = new_exp_id
+                            exp['artifact_location'] = ''
+
+                            cols = ', '.join(exp.keys())
+                            placeholders = ', '.join(['?'] * len(exp))
+
+                            sql = f"INSERT OR IGNORE INTO experiments ({cols}) VALUES ({placeholders})"
+                            base_conn.execute(sql, list(exp.values()))
+
+                        sql = "SELECT * FROM runs WHERE experiment_id = ?"
+                        runs = merge_conn.execute(sql, (old_exp_id,)).fetchall()
+
+                        for run in runs:
+                            run = dict(zip(run_cols, run))
+                            run_uuid = str(run['run_uuid'])
+                            run['experiment_id'] = new_exp_id
+
+                            cols = ', '.join(run.keys())
+                            placeholders = ', '.join(['?'] * len(run))
+
+                            sql = f"INSERT OR IGNORE INTO runs ({cols}) VALUES ({placeholders})"
+                            base_conn.execute(sql, list(run.values()))
+
+                            for table in run_tables:
+                                sql = f"SELECT * FROM {table} WHERE run_uuid = ?"
+                                rows = merge_conn.execute(sql, (run_uuid,)).fetchall()
+
+                                for row in rows:
+                                    placeholders = ', '.join(['?'] * len(row))
+
+                                    sql = f"INSERT OR IGNORE INTO {table} VALUES ({placeholders})"
+                                    base_conn.execute(sql, row)
+
+                    base_conn.commit()
+
+            shutil.move(merge_file, os.path.join(merged_path, os.path.basename(merge_file)))
