@@ -78,10 +78,6 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 - [Washington](https://drive.google.com/file/d/1MuKc3D3SoWVUJPYqhmnOT9Xd-CWnmpk4/view?usp=sharing) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
 
-### Fonts
-
-The project also supports font prototypes as input. Folders of `.ttf` files placed under `fonts/` are loaded by the batch generator for training and evaluation. A collection of open fonts is available [here](https://drive.google.com/file/d/1cVpMpcdcHutcn_Yo25_NvqhyguyFvztX/view?usp=sharing).
-
 ## Parameters
 
 The project has several command-line parameters that can be used to customize its behavior. The list of available parameters is outlined below, along with their descriptions.
