@@ -1,10 +1,10 @@
 import os
 import cv2
-import yaml
 import glob
 import json
 import pickle
 import mlflow
+import sqlite3
 import importlib
 import numpy as np
 import tensorflow as tf
@@ -31,8 +31,8 @@ class Compose():
                  discriminator_steps=1,
                  generator_steps=1,
                  synthesis_probability=1.0,
-                 experiment_name=None,
-                 output_path='mlruns',
+                 experiment_name='Default',
+                 output_path='outputs',
                  gpu=0,
                  seed=None):
         """
@@ -85,7 +85,7 @@ class Compose():
         self.generator_steps = generator_steps
         self.synthesis_probability = synthesis_probability
 
-        self.experiment_name = experiment_name or 'Default'
+        self.experiment_name = experiment_name
         self.output_path = output_path
 
         self.gpu = gpu
@@ -95,102 +95,18 @@ class Compose():
         self.spelling_model = None
         self.run_context = None
 
-        if self.synthesis or self.recognition or self.segmentation or self.writer_identification:
-            mlflow.set_tracking_uri(self.output_path)
-            mlflow.set_experiment(self.experiment_name)
+        self.tags = {
+            'compose.synthesis': self.synthesis,
+            'compose.recognition': self.recognition,
+            'compose.segmentation': self.segmentation,
+            'compose.writer_identification': self.writer_identification,
+        }
 
-            try:
-                tf.keras.backend.clear_session(free_memory=True)
+        if sum(bool(x) for x in self.tags.values()) > 0:
+            Compose.setup_mlflow(self.output_path, self.experiment_name)
+            Compose.setup_gpu(self.gpu)
 
-                indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
-                indices = [int(i) for i in indices if str(i).isdigit()]
-
-                devices = tf.config.list_physical_devices('GPU')
-                devices = [devices[i] for i in indices]
-
-                tf.config.set_visible_devices(devices=devices, device_type='GPU')
-
-                for device in devices:
-                    tf.config.experimental.set_memory_growth(device=device, enable=True)
-
-            except Exception:
-                pass
-
-            SynthesisModel = None
-            RecognitionModel = None
-            SpellingModel = None
-            SegmentationModel = None
-            WriterIdentificationModel = None
-
-            if self.synthesis:
-                module = f"synthesis.{self.synthesis}"
-                SynthesisModel = self._import_model(module=module, class_name='SynthesisModel')
-
-            if self.recognition:
-                module = f"recognition.{self.recognition}"
-                RecognitionModel = self._import_model(module=module, class_name='RecognitionModel')
-
-                if self.spelling:
-                    module = f"spelling.{self.spelling}"
-                    SpellingModel = self._import_model(module=module, class_name='SpellingModel')
-
-            if self.segmentation:
-                module = f"segmentation.{self.segmentation}"
-                SegmentationModel = self._import_model(module=module, class_name='SegmentationModel')
-
-            if self.writer_identification:
-                module = f"writer_identification.{self.writer_identification}"
-                WriterIdentificationModel = self._import_model(module=module, class_name='WriterIdentificationModel')
-
-            if self.supervised_task:
-                synthesis_params = {}
-
-                if SynthesisModel:
-                    synthesis = SynthesisModel(name='synthesis',
-                                               image_shape=self.image_shape,
-                                               lexical_shape=self.tokenizer.lexical_shape,
-                                               writers_shape=self.tokenizer.writers_shape,
-                                               discriminator_steps=self.discriminator_steps,
-                                               generator_steps=self.generator_steps,
-                                               seed=self.seed)
-                    synthesis_params = {
-                        'writer_encoder': synthesis.writer_encoder,
-                        'style_encoder': synthesis.style_encoder,
-                        'generator': synthesis.generator,
-                        'synthesis_probability': self.synthesis_probability,
-                    }
-
-                if RecognitionModel:
-                    self.model = RecognitionModel(name='recognition',
-                                                  image_shape=self.image_shape,
-                                                  lexical_shape=self.tokenizer.lexical_shape,
-                                                  seed=self.seed,
-                                                  **synthesis_params)
-
-                    if SpellingModel:
-                        self.spelling_model = SpellingModel()
-
-                elif SegmentationModel:
-                    self.model = SegmentationModel(name='segmentation',
-                                                   image_shape=self.image_shape,
-                                                   seed=self.seed,
-                                                   **synthesis_params)
-
-                elif WriterIdentificationModel:
-                    self.model = WriterIdentificationModel(name='writer_identification',
-                                                           image_shape=self.image_shape,
-                                                           writers_shape=self.tokenizer.writers_shape,
-                                                           seed=self.seed,
-                                                           **synthesis_params)
-
-            else:
-                self.model = SynthesisModel(name='synthesis',
-                                            image_shape=self.image_shape,
-                                            lexical_shape=self.tokenizer.lexical_shape,
-                                            writers_shape=self.tokenizer.writers_shape,
-                                            discriminator_steps=self.discriminator_steps,
-                                            generator_steps=self.generator_steps,
-                                            seed=self.seed)
+            self._build_model()
 
     def __repr__(self):
         """
@@ -213,32 +129,98 @@ class Compose():
 
         return info
 
-    def _import_model(self, module, class_name):
+    def _build_model(self):
         """
-        Dynamically imports and returns a class from a specified module.
-
-        Parameters
-        ----------
-        module : str
-            Module name containing the class.
-        class_name : str
-            Class name to be imported.
-
-        Returns
-        -------
-        class
-            The dynamically imported class.
+        Imports and instantiates model components based on the active task configuration.
         """
 
-        module_name = importlib.util.resolve_name(f".{module}", __package__)
-        module_spec = importlib.util.find_spec(module_name)
-        assert module_spec is not None, 'model file must be created'
+        def get_model(module, class_name):
+            module_name = importlib.util.resolve_name(f".{module}", __package__)
+            module_spec = importlib.util.find_spec(module_name)
+            assert module_spec is not None, 'model file must be created'
 
-        module = importlib.import_module(module_name, __package__)
-        assert hasattr(module, class_name), f"`{class_name}` class must be created"
+            module = importlib.import_module(module_name, __package__)
+            assert hasattr(module, class_name), f"`{class_name}` class must be created"
 
-        model = getattr(module, class_name)
-        return model
+            model = getattr(module, class_name)
+            return model
+
+        SynthesisModel = None
+        RecognitionModel = None
+        SpellingModel = None
+        SegmentationModel = None
+        WriterIdentificationModel = None
+
+        if self.synthesis:
+            module = f"synthesis.{self.synthesis}"
+            SynthesisModel = get_model(module=module, class_name='SynthesisModel')
+
+        if self.recognition:
+            module = f"recognition.{self.recognition}"
+            RecognitionModel = get_model(module=module, class_name='RecognitionModel')
+
+            if self.spelling:
+                module = f"spelling.{self.spelling}"
+                SpellingModel = get_model(module=module, class_name='SpellingModel')
+
+        if self.segmentation:
+            module = f"segmentation.{self.segmentation}"
+            SegmentationModel = get_model(module=module, class_name='SegmentationModel')
+
+        if self.writer_identification:
+            module = f"writer_identification.{self.writer_identification}"
+            WriterIdentificationModel = get_model(module=module, class_name='WriterIdentificationModel')
+
+        if self.supervised_task:
+            synthesis_params = {}
+
+            if SynthesisModel:
+                synthesis = SynthesisModel(name='synthesis',
+                                           image_shape=self.image_shape,
+                                           lexical_shape=self.tokenizer.lexical_shape,
+                                           writers_shape=self.tokenizer.writers_shape,
+                                           discriminator_steps=self.discriminator_steps,
+                                           generator_steps=self.generator_steps,
+                                           seed=self.seed)
+
+                synthesis_params = {
+                    'writer_encoder': synthesis.writer_encoder,
+                    'style_encoder': synthesis.style_encoder,
+                    'generator': synthesis.generator,
+                    'synthesis_probability': self.synthesis_probability,
+                }
+
+            if RecognitionModel:
+                self.model = RecognitionModel(name='recognition',
+                                              image_shape=self.image_shape,
+                                              lexical_shape=self.tokenizer.lexical_shape,
+                                              seed=self.seed,
+                                              **synthesis_params)
+
+                if SpellingModel:
+                    self.spelling_model = SpellingModel()
+
+            elif SegmentationModel:
+                self.model = SegmentationModel(name='segmentation',
+                                               image_shape=self.image_shape,
+                                               seed=self.seed,
+                                               **synthesis_params)
+
+            elif WriterIdentificationModel:
+                self.model = WriterIdentificationModel(name='writer_identification',
+                                                       image_shape=self.image_shape,
+                                                       writers_shape=self.tokenizer.writers_shape,
+                                                       seed=self.seed,
+                                                       **synthesis_params)
+
+        else:
+            self.model = SynthesisModel(name='synthesis',
+                                        image_shape=self.image_shape,
+                                        lexical_shape=self.tokenizer.lexical_shape,
+                                        writers_shape=self.tokenizer.writers_shape,
+                                        discriminator_steps=self.discriminator_steps,
+                                        generator_steps=self.generator_steps,
+                                        seed=self.seed)
 
     def compile(self, learning_rate=None, run_context=None):
         """
@@ -317,19 +299,21 @@ class Compose():
         new_context = True
 
         if self.run_context is not None:
-            path = self.run_context.info.artifact_uri.replace('file://', '')
-            new_context = bool(glob.glob(os.path.join(path, '**', '*.weights.h5'), recursive=True))
+            path = os.path.join(self.run_context.info.artifact_uri, '**', '*.weights.h5')
+            new_context = bool(glob.glob(path, recursive=True))
 
         run_info = self.get_run_info(new_context=new_context)
 
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
-            run_info = self.get_run_info(run_context=run)
+            mlflow.set_tags(self.tags)
 
             callbacks = [tf.keras.callbacks.SwapEMAWeights(swap_on_epoch=True)] \
                 if self.model.optimizer.use_ema else []
 
             monitor = self.model.monitor.lstrip('val_') \
                 if validation_gen is None else self.model.monitor
+
+            run_info = self.get_run_info(run_context=run)
 
             callbacks.extend([
                 TrainingLogger(
@@ -377,11 +361,6 @@ class Compose():
                     ),
                 ])
 
-            mlflow.set_tags({'compose.synthesis': str(self.synthesis)})
-            mlflow.set_tags({'compose.recognition': str(self.recognition)})
-            mlflow.set_tags({'compose.segmentation': str(self.segmentation)})
-            mlflow.set_tags({'compose.writer_identification': str(self.writer_identification)})
-
             tokenizer_path = os.path.join(run_info['artifact_path'], 'model', 'tokenizer.pkl')
             os.makedirs(os.path.dirname(tokenizer_path), exist_ok=True)
 
@@ -396,6 +375,7 @@ class Compose():
                                      epochs=epochs,
                                      shuffle=False,
                                      verbose=verbose)
+
             mlflow.end_run()
 
         if monitor in history.history:
@@ -568,7 +548,7 @@ class Compose():
             return None
 
         predictions = self.model.predict(x=x, steps=steps, verbose=verbose)
-        predictions = np.array((predictions + 1.0) * 127.5, dtype=np.uint8)
+        predictions = np.uint8((predictions + 1.0) * 127.5)
 
         return predictions
 
@@ -768,7 +748,7 @@ class Compose():
         if self.run_context is not None and not new_context:
             run_id = self.run_context.info.run_id
             run_name = self.run_context.info.run_name
-            artifact_path = self.run_context.info.artifact_uri.replace('file://', '')
+            artifact_path = self.run_context.info.artifact_uri
 
         info = {
             'id': run_id,
@@ -785,7 +765,6 @@ class Compose():
                      model=None,
                      metrics=None,
                      evaluations=None,
-                     evaluation_images=None,
                      prefix='test',
                      suffix=None,
                      new_context=False):
@@ -806,8 +785,6 @@ class Compose():
             Model metrics.
         evaluations : list or None, optional
             Model evaluation data.
-        evaluation_images: list or None, optional
-            Model evaluation images.
         prefix : str, optional
             Prefix used in the metric logs.
         suffix : str, optional
@@ -815,11 +792,6 @@ class Compose():
         new_context : bool, optional
             Create a new run context.
         """
-
-        if new_context and self.run_context is not None:
-            new_context = bool(self.run_context.data.params)
-
-        run_info = self.get_run_info(new_context=new_context)
 
         def log_content(label, content):
             if content is not None:
@@ -835,10 +807,10 @@ class Compose():
                 with open(filepath, 'w') as f:
                     f.write(f"{content}".strip())
 
-        def log_metrics(label, content):
-            if content is not None:
+        def log_metrics(label, metrics):
+            if metrics is not None:
                 filepath = os.path.join(run_info['artifact_path'], 'metrics.json')
-                data = {label.replace('<metric>', '').replace('__', '_').strip('_'): content}
+                data = {label.replace('<metric>', '').replace('__', '_').strip('_'): metrics}
 
                 if os.path.exists(filepath):
                     local_data = data.copy()
@@ -852,11 +824,11 @@ class Compose():
                 with open(filepath, 'w') as f:
                     f.write(json.dumps(data, indent=4, ensure_ascii=False))
 
-                for key, value in content.items():
+                for key, value in metrics.items():
                     mlflow.log_metric(label.replace('<metric>', key), value)
 
-        def log_params(content):
-            if content is not None:
+        def log_params(params):
+            if params is not None:
                 params_dict = params if isinstance(params, dict) else vars(params)
                 mlflow.log_params(params_dict)
 
@@ -872,8 +844,14 @@ class Compose():
 
                         cv2.imwrite(os.path.join(evaluation_path, f"{i+1}_{k}.png"), y)
 
+        if new_context and self.run_context is not None:
+            new_context = bool(self.run_context.data.params)
+
+        run_info = self.get_run_info(new_context=new_context)
+
         with mlflow.start_run(run_id=run_info['id'], run_name=run_info['name']) as run:
             run_info = self.get_run_info(run_context=run)
+            os.makedirs(run_info['artifact_path'], exist_ok=True)
 
             log_params(params)
             log_content('data', dataset)
@@ -891,6 +869,68 @@ class Compose():
             mlflow.end_run()
 
     @staticmethod
+    def setup_gpu(gpu):
+        """
+        Configures GPU visibility and memory settings.
+
+        Parameters
+        ----------
+        gpu : int, list, or tuple
+            GPU index or sequence of indices.
+        """
+
+        try:
+            tf.keras.backend.clear_session(free_memory=True)
+
+            indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
+            indices = [int(i) for i in indices if str(i).isdigit()]
+
+            devices = tf.config.list_physical_devices('GPU')
+            devices = [devices[i] for i in indices]
+
+            tf.config.set_visible_devices(devices=devices, device_type='GPU')
+
+            for device in devices:
+                tf.config.experimental.set_memory_growth(device=device, enable=True)
+
+        except Exception:
+            pass
+
+    @staticmethod
+    def setup_mlflow(output_path, experiment_name=None):
+        """
+        Sets the MLflow tracking URI and updates experiment artifact locations.
+
+        Parameters
+        ----------
+        output_path : str
+            Path to the output directory.
+        experiment_name : str, optional
+            MLflow experiment name to set as active.
+        """
+
+        db_path = os.path.join(output_path, 'mlflow.db')
+
+        mlflow.set_tracking_uri(uri=f"sqlite:///{db_path}")
+
+        if experiment_name is not None:
+            mlflow.set_experiment(experiment_name)
+
+        with sqlite3.connect(db_path) as conn:
+            rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
+
+            for experiment_id, artifact_location in rows:
+                new_location = os.path.abspath(os.path.join(output_path, 'mlruns', str(experiment_id)))
+
+                if artifact_location != new_location:
+                    conn.execute(
+                        "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
+                        (new_location, experiment_id)
+                    )
+
+            conn.commit()
+
+    @staticmethod
     def get_tokenizer(synthesis=None,
                       synthesis_run_id=None,
                       recognition=None,
@@ -899,9 +939,9 @@ class Compose():
                       segmentation_run_id=None,
                       writer_identification=None,
                       writer_identification_run_id=None,
-                      experiment_name=None,
+                      experiment_name='Default',
                       finished_runs=False,
-                      output_path='mlruns'):
+                      output_path='outputs'):
         """
         Retrieves a tokenizer from MLflow artifacts.
 
@@ -936,13 +976,13 @@ class Compose():
             (tokenizer, run_context) or (None, None) if not found.
         """
 
-        Compose().fix_mlflow_artifacts_path(output_path)
+        Compose.setup_mlflow(output_path)
 
         def get_artifacts_path(tag_name, tag_value, run_id):
             run, artifact_path = None, None
 
             if run_id is not None:
-                experiment = mlflow.set_experiment(experiment_name or 'Default')
+                experiment = mlflow.set_experiment(experiment_name)
                 experiment_ids = [experiment.experiment_id]
 
                 filter_string = f"tag.compose.{tag_name}='{tag_value}'"
@@ -955,8 +995,6 @@ class Compose():
                                         order_by=['tags.mlflow.runName ASC'])
 
                 if not df.empty:
-                    df['artifact_uri'] = df['artifact_uri'].str.replace('file://', '')
-
                     df['valid'] = df['artifact_uri'].apply(
                         lambda x: bool(glob.glob(os.path.join(x, '**', '*.weights.h5'), recursive=True)))
 
@@ -974,7 +1012,7 @@ class Compose():
                         exit(1)
 
                     if run is not None:
-                        artifact_path = run.info.artifact_uri.replace('file://', '')
+                        artifact_path = run.info.artifact_uri
 
             return run, artifact_path
 
@@ -1000,56 +1038,3 @@ class Compose():
                     exit(1)
 
         return tokenizer, run_context
-
-    @staticmethod
-    def fix_mlflow_artifacts_path(output_path='mlruns'):
-        """
-        This static method addresses the issue where MLflow artifact paths become
-            incorrect after moving the MLflow folder, by updating the paths in 'meta.yaml' files.
-
-        Notes
-        -----
-        Current workaround for fixing paths when mlflow folder is moved.
-        GitHub Issue: https://github.com/mlflow/mlflow/issues/3144
-
-        Parameters
-        ----------
-        output_path : str, optional
-            Path to output data.
-        """
-
-        mlflow.set_tracking_uri(output_path)
-
-        artifact_path_keys = {'artifact_location': '', 'artifact_uri': 'artifacts'}
-        meta_files = glob.glob(os.path.join(output_path, '**', 'meta.yaml'), recursive=True)
-
-        for metadata_file in meta_files:
-            with open(metadata_file, 'r') as f:
-                yaml_file = yaml.safe_load(f)
-
-            if yaml_file is None:
-                continue
-
-            experiment_id = metadata_file.split('/')[1]
-            update_needed = False
-
-            if yaml_file.get('experiment_id', experiment_id) != experiment_id:
-                for key in artifact_path_keys:
-                    if yaml_file.get(key):
-                        yaml_file[key] = yaml_file[key].replace(yaml_file['experiment_id'], experiment_id)
-
-                yaml_file['experiment_id'] = experiment_id
-                update_needed = True
-
-            for key in artifact_path_keys:
-                new_path = os.path.dirname(os.path.abspath(metadata_file))
-                new_path = os.path.join(new_path, artifact_path_keys[key])
-                new_path = f"file://{new_path}".removesuffix('/')
-
-                if yaml_file.get(key, new_path) != new_path:
-                    yaml_file[key] = new_path
-                    update_needed = True
-
-            if update_needed:
-                with open(metadata_file, 'w') as f:
-                    yaml.dump(yaml_file, f, default_flow_style=False)
