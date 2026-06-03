@@ -909,26 +909,28 @@ class Compose():
             MLflow experiment name to set as active.
         """
 
-        db_path = os.path.join(output_path, 'mlflow.db')
+        db_file = os.path.join(output_path, 'mlflow.db')
 
-        mlflow.set_tracking_uri(uri=f"sqlite:///{db_path}")
+        mlflow.set_tracking_uri(uri=f"sqlite:///{db_file}")
 
         if experiment_name is not None:
             mlflow.set_experiment(experiment_name)
 
-        with sqlite3.connect(db_path) as conn:
-            rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
+        if os.path.isfile(db_file):
+            with sqlite3.connect(db_file) as conn:
+                rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
 
-            for experiment_id, artifact_location in rows:
-                new_location = os.path.abspath(os.path.join(output_path, 'mlruns', str(experiment_id)))
+                for experiment_id, artifact_location in rows:
+                    artifact_path = os.path.join(output_path, 'mlruns', str(experiment_id))
+                    new_artifact_location = os.path.abspath(artifact_path)
 
-                if artifact_location != new_location:
-                    conn.execute(
-                        "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
-                        (new_location, experiment_id)
-                    )
+                    if artifact_location != new_artifact_location:
+                        conn.execute(
+                            "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
+                            (new_artifact_location, experiment_id)
+                        )
 
-            conn.commit()
+                conn.commit()
 
     @staticmethod
     def get_tokenizer(synthesis=None,
