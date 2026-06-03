@@ -30,7 +30,6 @@ class Dataset():
                  tokenizer=None,
                  multigrams=False,
                  input_path='datasets',
-                 fonts_path='fonts',
                  seed=None):
         """
         Initialize the Dataset instance.
@@ -69,8 +68,6 @@ class Dataset():
             Enable multigrams process.
         input_path : str, optional
             Path to input data.
-        fonts_path : str, optional
-            Path to fonts data.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -93,7 +90,6 @@ class Dataset():
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
         self.input_path = input_path
-        self.fonts_path = fonts_path
         self.seed = seed
 
         if data is None:
