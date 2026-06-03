@@ -129,4 +129,4 @@ if __name__ == '__main__':
         # mlflow path compatibility
         #   https://github.com/mlflow/mlflow/issues/3144
         from sarah.models.compose import Compose
-        Compose().setup_mlflow(args.output_path)
+        Compose.setup_mlflow(output_path=args.output_path)
