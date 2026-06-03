@@ -103,8 +103,10 @@ class Compose():
         }
 
         if sum(bool(x) for x in self.tags.values()) > 0:
-            Compose.setup_mlflow(self.output_path, self.experiment_name)
-            Compose.setup_gpu(self.gpu)
+            Compose.setup_gpu(gpu=self.gpu)
+
+            Compose.setup_mlflow(output_path=self.output_path,
+                                 experiment_name=self.experiment_name)
 
             self._build_model()
 
@@ -978,8 +980,6 @@ class Compose():
             (tokenizer, run_context) or (None, None) if not found.
         """
 
-        Compose.setup_mlflow(output_path)
-
         def get_artifacts_path(tag_name, tag_value, run_id):
             run, artifact_path = None, None
 
@@ -1017,6 +1017,8 @@ class Compose():
                         artifact_path = run.info.artifact_uri
 
             return run, artifact_path
+
+        Compose.setup_mlflow(output_path=output_path)
 
         r_syn, p_syn = get_artifacts_path('synthesis', synthesis, synthesis_run_id)
         r_rec, p_rec = get_artifacts_path('recognition', recognition, recognition_run_id)
