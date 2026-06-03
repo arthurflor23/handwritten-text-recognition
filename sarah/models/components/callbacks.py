@@ -126,7 +126,7 @@ class GANMonitor(tf.keras.callbacks.Callback):
 
         os.makedirs(filepath, exist_ok=True)
 
-        images = np.array((images + 1.0) * 127.5, dtype=np.uint8)
+        images = np.uint8((images + 1.0) * 127.5)
         batch_size = len(images)
 
         for i, image in enumerate(images):
