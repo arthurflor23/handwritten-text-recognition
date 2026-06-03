@@ -50,7 +50,6 @@ def inference(args):
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
                       seed=args.seed)
     print(dataset)
 

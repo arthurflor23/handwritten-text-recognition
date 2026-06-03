@@ -26,7 +26,6 @@ def check(args):
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
                       seed=args.seed)
     print(dataset)
 
