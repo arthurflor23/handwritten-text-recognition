@@ -912,27 +912,42 @@ class Compose():
         """
 
         db_file = os.path.join(output_path, 'mlflow.db')
+        artifact_path = os.path.join(output_path, 'mlruns')
 
         mlflow.set_tracking_uri(uri=f"sqlite:///{db_file}")
 
         if experiment_name is not None:
             mlflow.set_experiment(experiment_name)
 
-        if os.path.isfile(db_file):
-            with sqlite3.connect(db_file) as conn:
-                rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
+        if not os.path.isfile(db_file):
+            return
 
-                for experiment_id, artifact_location in rows:
-                    artifact_path = os.path.join(output_path, 'mlruns', str(experiment_id))
-                    new_artifact_location = os.path.abspath(artifact_path)
+        with sqlite3.connect(db_file) as conn:
+            rows = conn.execute("SELECT experiment_id, artifact_location FROM experiments").fetchall()
 
-                    if artifact_location != new_artifact_location:
-                        conn.execute(
-                            "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
-                            (new_artifact_location, experiment_id)
-                        )
+            for experiment_id, artifact_location in rows:
+                new_artifact_location = os.path.join(artifact_path, str(experiment_id))
+                new_artifact_location = os.path.abspath(new_artifact_location)
 
-                conn.commit()
+                if artifact_location != new_artifact_location:
+                    conn.execute(
+                        "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
+                        (new_artifact_location, experiment_id)
+                    )
+
+            rows = conn.execute("SELECT run_uuid, experiment_id, artifact_uri FROM runs").fetchall()
+
+            for run_uuid, experiment_id, artifact_uri in rows:
+                new_artifact_uri = os.path.join(artifact_path, str(experiment_id), run_uuid, 'artifacts')
+                new_artifact_uri = os.path.abspath(new_artifact_uri)
+
+                if artifact_uri != new_artifact_uri:
+                    conn.execute(
+                        "UPDATE runs SET artifact_uri = ? WHERE run_uuid = ?",
+                        (new_artifact_uri, run_uuid)
+                    )
+
+            conn.commit()
 
     @staticmethod
     def get_tokenizer(synthesis=None,
