@@ -855,11 +855,11 @@ class BaseSegmentationModel(BaseModel):
             batch_index += batch_size
 
             for i in range(batch_size):
-                gt = np.expand_dims(segmentation_data[i], axis=-1)
+                gt = segmentation_data[i]
                 pd = y_pred[i][:gt.shape[0], :gt.shape[1], :gt.shape[2]]
 
-                gt = (gt > threshold).astype(np.uint8)
-                pd = (pd > threshold).astype(np.uint8)
+                gt = np.uint8(gt > threshold)
+                pd = np.uint8(pd > threshold)
 
                 intersection = np.sum(gt * pd)
                 union = np.sum((gt + pd) > 0)
@@ -876,9 +876,9 @@ class BaseSegmentationModel(BaseModel):
                 })
 
                 evaluations['images'].append({
-                    'authentic': image_data[i],
-                    'label': gt * 255,
-                    'segment': pd * 255,
+                    'authentic': np.uint8((image_data[i] + 1.0) * 127.5),
+                    'label': np.uint8(gt * 255),
+                    'segment': np.uint8(pd * 255),
                 })
 
                 metrics['accuracy'].append(accuracy)
