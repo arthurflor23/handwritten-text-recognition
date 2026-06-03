@@ -563,7 +563,6 @@ class Augmentor():
     def scale(self,
               image,
               alpha,
-              border_value=0,
               radius=True,
               **kwargs):
         """
@@ -574,7 +573,7 @@ class Augmentor():
         image : ndarray
             Input image to be scaled.
         alpha : float
-            scale alpha.
+            Scale alpha.
         border_value : int, optional
             Border value for padding.
         radius : bool, optional
@@ -598,10 +597,6 @@ class Augmentor():
         interpolation = cv2.INTER_CUBIC if ratio > 1 else cv2.INTER_AREA
 
         image = cv2.resize(src=image, dsize=dim, interpolation=interpolation)
-
-        if alpha > 0:
-            padded_image = np.full((height, width), fill_value=border_value, dtype=np.uint8)
-            padded_image[:image.shape[0], :image.shape[1]] = image
 
         return image
 
