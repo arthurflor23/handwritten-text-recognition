@@ -171,7 +171,6 @@ The project has several command-line parameters that can be used to customize it
 
 - `--check`: Perform check pipeline.
 - `--input-path`: Path to input data.
-- `--fonts-path`: Path to fonts data.
 - `--output-path`: Path to output data.
 - `--gpu`: GPU index or sequence of indices.
 - `--seed`: Seed value.
