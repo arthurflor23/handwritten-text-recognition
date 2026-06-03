@@ -1036,8 +1036,7 @@ class Compose():
         database_path = os.path.join(output_path, 'mlflow.db')
         artifact_path = os.path.join(output_path, 'mlruns')
 
-        Compose.setup_mlflow_merge(database_path=database_path,
-                                   artifact_path=artifact_path)
+        Compose.setup_mlflow_merge(database_path=database_path)
 
         mlflow.set_tracking_uri(uri=f"sqlite:///{database_path}")
 
