@@ -881,6 +881,224 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         return inputs + g_conv * self.beta
 
 
+class GraphConv(tf.keras.layers.Layer):
+    """
+    Graph convolution layer over explicit node and edge data.
+
+    References
+    ----------
+    Semi-Supervised Classification with Graph Convolutional Networks
+        https://arxiv.org/abs/1609.02907
+    """
+
+    def __init__(self,
+                 units,
+                 num_graph_layers=1,
+                 kernel_initializer='glorot_uniform',
+                 activation=None,
+                 dropout=0.0,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        units : int
+            Number of output features per node.
+        num_graph_layers : int, optional
+            Number of stacked graph convolution layers.
+        kernel_initializer : str or initializer, optional
+            Initializer for the kernel weights.
+        activation : str or callable, optional
+            Activation function applied after each graph layer.
+        dropout : float, optional
+            Whether to apply dropout or not.
+        use_bias : bool, optional
+            Whether to add bias terms.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.units = units
+        self.num_graph_layers = num_graph_layers
+        self.kernel_initializer = kernel_initializer
+        self.activation = tf.keras.activations.get(activation)
+        self.dropout = dropout
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'units': self.units,
+            'num_graph_layers': self.num_graph_layers,
+            'kernel_initializer': self.kernel_initializer,
+            'activation': tf.keras.activations.serialize(self.activation),
+            'dropout': self.dropout,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        nodes_shape = input_shape[0]
+        in_features = int(nodes_shape[-1])
+
+        self.kernels = []
+        self.biases = []
+
+        for i in range(self.num_graph_layers):
+            input_dim = in_features if i == 0 else self.units
+
+            self.kernels.append(
+                self.add_weight(name=f'{self.name}_kernel_{i}',
+                                shape=(input_dim, self.units),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+            )
+
+            if self.use_bias:
+                self.biases.append(
+                    self.add_weight(name=f'{self.name}_bias_{i}',
+                                    shape=(self.units,),
+                                    initializer='zeros',
+                                    trainable=True)
+                )
+            else:
+                self.biases.append(None)
+
+    def _graph_convolution(self, nodes, edges, kernel, bias=None):
+        """
+        Applies one graph convolution step with self-loops and degree normalization.
+
+        Parameters
+        ----------
+        nodes : tf.Tensor
+            Node feature tensor of shape (B, N, F).
+        edges : tf.Tensor
+            Edge index of shape (B, 2, E), formatted as [src, dst].
+        kernel : tf.Tensor
+            Convolution kernel.
+        bias : tf.Tensor or None, optional
+            Optional bias vector.
+
+        Returns
+        -------
+        tf.Tensor
+            Updated node features of shape (B, N, units).
+        """
+
+        num_nodes = tf.shape(nodes)[1]
+
+        src = tf.cast(edges[:, 0, :], tf.int32)
+        dst = tf.cast(edges[:, 1, :], tf.int32)
+
+        self_idx = tf.expand_dims(tf.range(num_nodes, dtype=tf.int32), axis=0)
+        self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
+
+        src = tf.concat([src, self_idx], axis=1)
+        dst = tf.concat([dst, self_idx], axis=1)
+
+        transformed = tf.linalg.matmul(nodes, kernel)
+
+        ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
+
+        degrees = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+                            elems=(ones, dst),
+                            fn_output_signature=tf.float32)
+
+        deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
+
+        src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
+        dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
+        norm = src_norm * dst_norm
+
+        messages = tf.gather(transformed, src, batch_dims=1)
+        messages = messages * tf.expand_dims(norm, axis=-1)
+
+        outputs = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+                            elems=(messages, dst),
+                            fn_output_signature=tf.float32)
+
+        if bias is not None:
+            outputs = outputs + bias
+
+        if self.activation is not None:
+            outputs = self.activation(outputs)
+
+        return outputs
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Tuple (nodes, edges) where nodes is (B, N, F) and edges is (B, 2, E).
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Updated node features of shape (B, N, units).
+        """
+
+        nodes, edges = inputs
+        x = nodes
+
+        for kernel, bias in zip(self.kernels, self.biases):
+            x = self._graph_convolution(x, edges, kernel, bias)
+
+            if training and self.dropout:
+                x = tf.nn.dropout(x, rate=self.dropout)
+
+        return x
+
+    def compute_output_shape(self, input_shape):
+        """
+        Compute the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple or list
+            The Shape of the input tensors.
+
+        Returns
+        -------
+        tf.TensorShape
+            The computed shape of the output from the layer.
+        """
+
+        nodes_shape = input_shape[0]
+
+        return tf.TensorShape([nodes_shape[0], nodes_shape[1], self.units])
+
+
 class GraphConv2D(tf.keras.layers.Layer):
     """
     Graph convolution layer over spatial features for modeling non-local dependencies.
@@ -1151,7 +1369,6 @@ class GraphConv2D(tf.keras.layers.Layer):
 class OctaveConv2D(tf.keras.layers.Layer):
     """
     Implements octave convolutional layer.
-    This layer processes input feature maps by splitting them into high and low frequency components
 
     References
     ----------
