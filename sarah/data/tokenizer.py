@@ -26,7 +26,7 @@ class Tokenizer():
         self.lexical_shape = []
         self.writers_shape = []
 
-        self._chars_length = len(self.chars)
+        self._chars_length = 3
         self._marks_length = 2
 
         self._initialize_metadata()
@@ -51,8 +51,9 @@ class Tokenizer():
         info += f"\n{'chars':<{pad}}: {len(self.chars) - self._chars_length:,}"
         info += f"\n{'writers':<{pad}}: {len(self.writers):,}"
         info += "\n" + "-" * width
-        info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
         info += f"\n{'writers_shape':<{pad}}: {self.writers_shape}"
+        info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
+        info += f"\n{'graph_shape':<{pad}}: {self.graph_shape or '-'}"
         info += "\n" + "-" * width
 
         chars = ''.join(self.chars)
@@ -99,6 +100,8 @@ class Tokenizer():
                                'count_line': 0,
                                'count_word': 0,
                                'count_char': 0})
+
+        self.graph_shape = None
 
     def _update_text_stats(self, text):
         """
@@ -285,3 +288,25 @@ class Tokenizer():
         writer = index_to_writer.get(encoded_writer, 0)
 
         return writer
+
+    def set_graph_shape(self, graph_nodes, from_charset=False):
+        """
+        Sets the graph shape based on the charset or lexical nodes.
+
+        Parameters
+        ----------
+        graph_nodes : int
+            Maximum nodes per character graph.
+        from_charset : bool, optional
+            Whether to compute from charset length or full lexical shape.
+        """
+
+        if from_charset:
+            nodes = len(self.chars) * graph_nodes
+        else:
+            nodes = self.lexical_shape[0] * self.lexical_shape[1] * graph_nodes
+
+        nodes_shape = (nodes, 4)
+        edges_shape = (2, nodes * 2)
+
+        self.graph_shape = nodes_shape, edges_shape
