@@ -12,17 +12,17 @@ def run(args):
         A namespace object containing all the arguments required.
     """
 
-    tokenizer, run_context = Compose().get_tokenizer(synthesis=args.synthesis,
-                                                     synthesis_run_id=args.synthesis_run_id,
-                                                     recognition=args.recognition,
-                                                     recognition_run_id=args.recognition_run_id,
-                                                     segmentation=args.segmentation,
-                                                     segmentation_run_id=args.segmentation_run_id,
-                                                     writer_identification=args.writer_identification,
-                                                     writer_identification_run_id=args.writer_identification_run_id,
-                                                     experiment_name=args.experiment_name,
-                                                     finished_runs=args.finished_runs,
-                                                     output_path=args.output_path)
+    tokenizer, run_context = Compose.get_tokenizer(synthesis=args.synthesis,
+                                                   synthesis_run_id=args.synthesis_run_id,
+                                                   recognition=args.recognition,
+                                                   recognition_run_id=args.recognition_run_id,
+                                                   segmentation=args.segmentation,
+                                                   segmentation_run_id=args.segmentation_run_id,
+                                                   writer_identification=args.writer_identification,
+                                                   writer_identification_run_id=args.writer_identification_run_id,
+                                                   experiment_name=args.experiment_name,
+                                                   finished_runs=args.finished_runs,
+                                                   output_path=args.output_path)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
