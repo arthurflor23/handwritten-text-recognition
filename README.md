@@ -78,6 +78,10 @@ The project supports a wide range of datasets for handwritten text recognition. 
 
 - [Washington](https://drive.google.com/file/d/1MuKc3D3SoWVUJPYqhmnOT9Xd-CWnmpk4/view?usp=sharing) [[paper]](http://dx.doi.org/10.1016/j.patrec.2011.09.009)
 
+### Fonts
+
+The project also supports font prototypes as input. Folders of `.ttf` files placed under `fonts/` are loaded by the batch generator for training and evaluation. A collection of open fonts is available [here](https://drive.google.com/file/d/1cVpMpcdcHutcn_Yo25_NvqhyguyFvztX/view?usp=sharing).
+
 ## Parameters
 
 The project has several command-line parameters that can be used to customize its behavior. The list of available parameters is outlined below, along with their descriptions.
@@ -104,7 +108,8 @@ The project has several command-line parameters that can be used to customize it
 - `--source`: Source data (e.g., iam).
 - `--text-level`: Text structure level (e.g., line).
 - `--image-shape`: Image dimensions (height, width, channels).
-- `--char-width`: Character width for normalization.
+- `--char-width`: Character width for image normalization.
+- `--font-graph-nodes`: Maximum nodes per character font graph.
 - `--mask-by-text`: Mask data by text length.
 - `--order-by-text`: Sort data by text length.
 - `--training-ratio`: Training partition ratio.
@@ -167,6 +172,7 @@ The project has several command-line parameters that can be used to customize it
 
 - `--check`: Perform check pipeline.
 - `--input-path`: Path to input data.
+- `--fonts-path`: Path to fonts data.
 - `--output-path`: Path to output data.
 - `--gpu`: GPU index or sequence of indices.
 - `--seed`: Seed value.
