@@ -192,6 +192,7 @@ class Tokenizer():
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
             self.chars_length = len(self.chars)
+            self.font_graph_shape = None
 
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_lines_per_page']),
