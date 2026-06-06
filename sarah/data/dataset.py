@@ -1,8 +1,11 @@
 import os
+import glob
 import zipfile
 import importlib
 import numpy as np
 import concurrent.futures
+
+from fontTools.ttLib import TTFont
 
 from sarah.data import utils
 from sarah.data.tokenizer import Tokenizer
@@ -16,8 +19,9 @@ class Dataset():
     def __init__(self,
                  source=None,
                  text_level='line',
-                 image_shape=(1024, 64, 1),
+                 image_shape=(64, 1024, 1),
                  char_width=None,
+                 font_graph_nodes=8,
                  mask_by_text=False,
                  order_by_text=False,
                  training_ratio=None,
@@ -30,6 +34,7 @@ class Dataset():
                  tokenizer=None,
                  multigrams=False,
                  input_path='datasets',
+                 fonts_path='fonts',
                  seed=None):
         """
         Initialize the Dataset instance.
@@ -41,9 +46,11 @@ class Dataset():
         text_level : str, optional
             The text structure level.
         image_shape : list, optional
-            The images shape.
+            The image dimensions.
         char_width : int, optional
             The width per character.
+        font_graph_nodes : list, optional
+            Nodes per character font graph.
         mask_by_text : bool, optional
             Whether to mask data by text length.
         order_by_text : bool, optional
@@ -63,11 +70,13 @@ class Dataset():
         data : list, optional
             Data for inference mode.
         tokenizer : object, optional
-            Tokenizer used in input data.
+            Tokenizer instance for input data.
         multigrams : bool, optional
             Enable multigrams process.
         input_path : str, optional
             Path to input data.
+        fonts_path : str, optional
+            Path to fonts data.
         seed : int, optional
             Seed for random shuffle.
         """
@@ -79,6 +88,7 @@ class Dataset():
         self.text_level = text_level
         self.image_shape = image_shape
         self.char_width = char_width or 0
+        self.font_graph_nodes = font_graph_nodes
         self.mask_by_text = mask_by_text
         self.order_by_text = order_by_text
         self.training_ratio = training_ratio
@@ -90,6 +100,7 @@ class Dataset():
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
         self.input_path = input_path
+        self.fonts_path = fonts_path
         self.seed = seed
 
         if data is None:
@@ -104,6 +115,11 @@ class Dataset():
         data = self._partitioning(data)
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
+
+        self.tokenizer.set_graph_shape(self.font_graph_nodes, from_charset=True)
+
+        fonts = self._fetch_fonts(self.fonts_path)
+        self.graphs = self._build_graphs(fonts, self.tokenizer.chars, self.tokenizer.graph_shape)
 
     def __repr__(self):
         """
@@ -138,6 +154,8 @@ class Dataset():
         info += f"\n{'total_data':<{pad}}: {sum(len(x) for x in self.samples['source'].values()):,}"
         info += "\n" + "-" * width
         info += f"\n{'multigrams':<{pad}}: {len(self.multigrams['source']):,}"
+        info += "\n" + "-" * width
+        info += f"\n{'fonts':<{pad}}: {len(self.graphs):,}"
         info += f"\n{self.tokenizer}"
 
         return info
@@ -188,6 +206,39 @@ class Dataset():
         if not os.path.exists(source) and os.path.isfile(f'{source}.zip'):
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
                 zip_ref.extractall(input_path)
+
+    def _fetch_fonts(self, fonts_path):
+        """
+        Loads .ttf files from the given path that contain glyph outlines.
+
+        Parameters
+        ----------
+        fonts_path : str
+            Path to fonts folder.
+
+        Returns
+        -------
+        list
+            List of font entries with font and cmap.
+        """
+
+        paths = sorted(glob.glob(os.path.join(fonts_path, '**', '*.ttf'), recursive=True))
+        fonts = []
+
+        for path in paths:
+            try:
+                font = TTFont(path)
+                cmap = font.getBestCmap() or {}
+
+                if 'glyf' not in font:
+                    continue
+
+                fonts.append({'font': font, 'cmap': cmap})
+
+            except Exception:
+                print(f"Font `{path}` cannot be loaded.")
+
+        return fonts
 
     def _partitioning(self, data):
         """
@@ -255,6 +306,96 @@ class Dataset():
                     data[key] = data[key][:index]
 
         return data
+
+    def _build_graphs(self, fonts, chars, graph_shape):
+        """
+        Extracts graph representations from each character font.
+
+        Parameters
+        ----------
+        fonts : str
+            List of font entries with font and cmap.
+        chars : list
+            The tokenizer charset.
+        graph_shape : tuple or list
+            Graph shape for nodes and edges tensors.
+
+        Returns
+        -------
+        list
+            List of graph representations from each character font.
+        """
+
+        max_nodes = graph_shape[0][0] // len(chars)
+        max_edges = graph_shape[1][1] // len(chars)
+
+        def glyph_to_edges(glyph):
+            edges = []
+            start = 0
+
+            for end in glyph.endPtsOfContours:
+                for i in range(start, end):
+                    edges.append((i, i + 1))
+                    edges.append((i + 1, i))
+
+                edges.append((end, start))
+                edges.append((start, end))
+
+                start = end + 1
+
+            if not edges:
+                return np.empty((2, 0), dtype=np.int32)
+
+            return np.array(edges, dtype=np.int32).T
+
+        def glyph_to_nodes(glyph):
+            coords = np.array(glyph.coordinates, dtype=np.float32)
+            flags = np.uint8(glyph.flags)
+            end_pts = set(glyph.endPtsOfContours)
+
+            x_min, y_min = coords.min(axis=0)
+            x_max, y_max = coords.max(axis=0)
+            scale = max(x_max - x_min, y_max - y_min) or 1.0
+
+            xy = (coords - [x_min, y_min]) / scale
+            on_curve = (flags & 1).astype(np.float32)
+            end_of_contour = np.array([i in end_pts for i in range(len(coords))], dtype=np.float32)
+
+            return np.stack([xy[:, 0], xy[:, 1], on_curve, end_of_contour], axis=1)
+
+        def glyph_to_graph(font, cmap, char):
+            glyph_name = cmap.get(ord(char))
+
+            if glyph_name is None:
+                return {'nodes': [], 'edges': []}
+
+            glyph = font['glyf'][glyph_name]
+
+            if glyph.numberOfContours <= 0:
+                return {'nodes': [], 'edges': []}
+
+            nodes = glyph_to_nodes(glyph)
+            edges = glyph_to_edges(glyph)
+
+            if len(nodes) > max_nodes:
+                step = max(1, len(nodes) // max_nodes)
+                kept = np.arange(0, len(nodes), step)[:max_nodes]
+                nodes = nodes[kept]
+
+                n = len(nodes)
+                src = np.arange(n, dtype=np.int32)
+                dst = np.arange(1, n + 1, dtype=np.int32) % n
+
+                edges = np.stack([np.concatenate([src, dst]),
+                                  np.concatenate([dst, src])], axis=0)
+
+            if edges.shape[1] > max_edges:
+                kept = np.linspace(0, edges.shape[1] - 1, max_edges, dtype=np.int32)
+                edges = edges[:, kept]
+
+            return {'nodes': nodes, 'edges': edges}
+
+        return [[glyph_to_graph(x['font'], x['cmap'], y) for y in chars] for x in fonts]
 
     def _build_samples(self, data):
         """
@@ -438,7 +579,7 @@ class Dataset():
             The generator of batches and the steps per epoch.
         """
 
-        def batch_processing(data, aug_data, **kwargs):
+        def batch_processing_sync(data, aug_data, **kwargs):
             return (utils.batch_processing(batch_data=data, **kwargs),
                     utils.batch_processing(batch_data=aug_data, **kwargs))
 
@@ -469,9 +610,10 @@ class Dataset():
                     batch_data = data[indices[batch_index:batch_index + batch_size]]
 
                 batch_index += batch_size
+                batch_length = len(batch_data)
 
-                image_data, text_data, writer_data, segmentation_data = map(
-                    list, zip(*[(x['image'], x['text'], x['writer'], None) for x in batch_data]))
+                image_data, text_data, writer_data = map(
+                    list, zip(*[(x['image'], x['text'], x['writer']) for x in batch_data]))
 
                 if batch_encoded and self.lazy_mode:
                     image_data = [
@@ -481,27 +623,28 @@ class Dataset():
                         for x in batch_data
                     ]
 
-                mask_data = text_data if self.mask_by_text else image_data
-                mask_data = utils.batch_masking(batch_data=mask_data,
+                writer_data = np.array(writer_data)
+
+                segmentation_data = utils.batch_binarization(batch_data=image_data,
+                                                             method='sauvola',
+                                                             invert=True)
+
+                mask_data = utils.batch_masking(batch_data=text_data if self.mask_by_text else image_data,
                                                 max_shape=self.image_shape,
                                                 from_text=self.mask_by_text)
 
-                aug_text_data = None
-                aug_mask_data = None
-                aug_image_data = None
-                aug_segmentation_data = None
+                graph_data = utils.batch_graph(graphs=self.graphs,
+                                               graph_shape=self.tokenizer.graph_shape,
+                                               batch_size=batch_length,
+                                               augmentor=False)
+
+                aug_text_data = text_data.copy()
+                aug_mask_data = mask_data.copy()
+                aug_image_data = image_data.copy()
+                aug_segmentation_data = segmentation_data.copy()
+                aug_graph_data = [x.copy() for x in graph_data]
 
                 if batch_encoded:
-                    writer_data = np.array(writer_data)
-
-                    segmentation_data = utils.batch_binarization(batch_data=image_data,
-                                                                 method='sauvola',
-                                                                 invert=True)
-
-                    aug_text_data = text_data.copy()
-                    aug_image_data = image_data.copy()
-                    aug_segmentation_data = segmentation_data.copy()
-
                     if augmentor:
                         aug_image_data = [
                             utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
@@ -513,9 +656,14 @@ class Dataset():
                                                                          method='sauvola',
                                                                          invert=True)
 
+                        aug_graph_data = utils.batch_graph(graphs=self.graphs,
+                                                           graph_shape=self.tokenizer.graph_shape,
+                                                           batch_size=batch_length,
+                                                           augmentor=True)
+
                     if multigram_length:
-                        index = np.random.randint(0, multigram_length - len(batch_data))
-                        aug_text_data = [x['text'] for x in multigrams[index:index + len(batch_data)]]
+                        index = np.random.randint(0, multigram_length - batch_length)
+                        aug_text_data = [x['text'] for x in multigrams[index:index + batch_length]]
 
                         aug_mask_data = utils.batch_masking(batch_data=aug_text_data,
                                                             max_shape=self.image_shape,
@@ -527,44 +675,39 @@ class Dataset():
                                                             from_text=self.mask_by_text)
 
                     if batch_processing:
-                        text_data, aug_text_data = batch_processing(data=text_data,
-                                                                    aug_data=aug_text_data,
-                                                                    batch_mode='text',
-                                                                    padding_shape=self.tokenizer.lexical_shape)
+                        text_data, aug_text_data = batch_processing_sync(data=text_data,
+                                                                         aug_data=aug_text_data,
+                                                                         batch_mode='text',
+                                                                         padding_shape=self.tokenizer.lexical_shape)
 
-                        mask_data, aug_mask_data = batch_processing(data=mask_data,
-                                                                    aug_data=aug_mask_data,
-                                                                    batch_mode='binary',
-                                                                    batch_scale=batch_scale,
-                                                                    padding_shape=self.image_shape)
+                        mask_data, aug_mask_data = batch_processing_sync(data=mask_data,
+                                                                         aug_data=aug_mask_data,
+                                                                         batch_mode='binary',
+                                                                         batch_scale=batch_scale,
+                                                                         padding_shape=self.image_shape)
 
-                        image_data, aug_image_data = batch_processing(data=image_data,
-                                                                      aug_data=aug_image_data,
-                                                                      batch_mode='image',
-                                                                      batch_scale=batch_scale,
-                                                                      padding_shape=self.image_shape,
-                                                                      illumination=self.illumination,
-                                                                      binarization=self.binarization)
+                        image_data, aug_image_data = batch_processing_sync(data=image_data,
+                                                                           aug_data=aug_image_data,
+                                                                           batch_mode='image',
+                                                                           batch_scale=batch_scale,
+                                                                           padding_shape=self.image_shape,
+                                                                           illumination=self.illumination,
+                                                                           binarization=self.binarization)
 
-                        segmentation_data, aug_segmentation_data = batch_processing(data=segmentation_data,
-                                                                                    aug_data=aug_segmentation_data,
-                                                                                    batch_mode='binary',
-                                                                                    batch_scale=batch_scale,
-                                                                                    padding_shape=self.image_shape)
+                        segmentation_data, aug_segmentation_data = batch_processing_sync(data=segmentation_data,
+                                                                                         aug_data=aug_segmentation_data,
+                                                                                         batch_mode='binary',
+                                                                                         batch_scale=batch_scale,
+                                                                                         padding_shape=self.image_shape)
 
-                x_data = (aug_image_data,
-                          aug_text_data,
-                          writer_data,
-                          aug_mask_data,
-                          aug_segmentation_data)
+                x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
+                y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
-                y_data = (image_data,
-                          text_data,
-                          writer_data,
-                          mask_data,
-                          segmentation_data)
+                if graph_data:
+                    x_data.extend(aug_graph_data)
+                    y_data.extend(graph_data)
 
-                yield x_data, y_data
+                yield tuple(x_data), tuple(y_data)
 
         subset = 'encoded' if batch_encoded else 'source'
 
