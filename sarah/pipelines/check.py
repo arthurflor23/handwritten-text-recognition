@@ -17,7 +17,6 @@ def check(args):
                       text_level=args.text_level,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      font_graph_nodes=args.font_graph_nodes,
                       mask_by_text=args.mask_by_text,
                       order_by_text=args.order_by_text,
                       training_ratio=args.training_ratio,

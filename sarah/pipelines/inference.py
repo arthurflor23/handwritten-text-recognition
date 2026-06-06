@@ -44,7 +44,6 @@ def inference(args):
     dataset = Dataset(data=data,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      font_graph_nodes=args.font_graph_nodes,
                       mask_by_text=args.mask_by_text,
                       illumination=args.illumination,
                       binarization=args.binarization,
