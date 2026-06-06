@@ -234,6 +234,7 @@ class BaseRecognitionModel(BaseModel):
     def __init__(self,
                  image_shape,
                  lexical_shape,
+                 graph_shape=None,
                  writer_encoder=None,
                  style_encoder=None,
                  generator=None,
@@ -250,11 +251,13 @@ class BaseRecognitionModel(BaseModel):
             The shape of the input images.
         lexical_shape : tuple or list
             The shape of the lexical input.
-        writer_encoder : Style extractor instance
+        graph_shape : tuple or list, optional
+            The shape of the input graphs.
+        writer_encoder : Style extractor instance, optional
             Style extractor model for features extraction.
-        style_encoder : Style encoder instance
+        style_encoder : Style encoder instance, optional
             Style encoder model for encoding extracted style features.
-        generator : Generator instance
+        generator : Generator instance, optional
             Generator model for image generation.
         synthesis_probability : float, optional
             Synthetic data probability.
@@ -273,6 +276,8 @@ class BaseRecognitionModel(BaseModel):
 
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
+        self.graph_shape = graph_shape
+
         self.synthesis_probability = synthesis_probability
         self.return_features = return_features
         self.seed = seed
@@ -288,11 +293,11 @@ class BaseRecognitionModel(BaseModel):
                                              trainable=False)
 
         self.names = [
-            'segmentation_encoder',
-            'writer_encoder',
-            'style_encoder',
             'generator',
             'recognition',
+            'segmentation_encoder',
+            'style_encoder',
+            'writer_encoder',
         ]
 
         self.ctc_loss = CTCLoss()
@@ -322,6 +327,7 @@ class BaseRecognitionModel(BaseModel):
         config.update({
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
+            'graph_shape': self.graph_shape,
         })
 
         return config
@@ -653,6 +659,7 @@ class BaseSegmentationModel(BaseModel):
 
     def __init__(self,
                  image_shape,
+                 graph_shape=None,
                  return_features=False,
                  seed=None,
                  **kwargs):
@@ -663,6 +670,8 @@ class BaseSegmentationModel(BaseModel):
         ----------
         image_shape : tuple or list
             The shape of the input images.
+        graph_shape : tuple or list, optional
+            The shape of the input graphs.
         return_features : bool, optional
             Whether to return intermediate features.
         seed : int, optional
@@ -677,6 +686,8 @@ class BaseSegmentationModel(BaseModel):
             tf.keras.utils.set_random_seed(seed)
 
         self.image_shape = image_shape
+        self.graph_shape = graph_shape
+
         self.return_features = return_features
         self.seed = seed
 
@@ -714,6 +725,7 @@ class BaseSegmentationModel(BaseModel):
 
         config.update({
             'image_shape': self.image_shape,
+            'graph_shape': self.graph_shape,
         })
 
         return config
@@ -855,7 +867,7 @@ class BaseSegmentationModel(BaseModel):
             batch_index += batch_size
 
             for i in range(batch_size):
-                gt = segmentation_data[i]
+                gt = np.expand_dims(segmentation_data[i], axis=-1)
                 pd = y_pred[i][:gt.shape[0], :gt.shape[1], :gt.shape[2]]
 
                 gt = np.uint8(gt > threshold)
@@ -876,7 +888,7 @@ class BaseSegmentationModel(BaseModel):
                 })
 
                 evaluations['images'].append({
-                    'authentic': np.uint8((image_data[i] + 1.0) * 127.5),
+                    'authentic': np.uint8(image_data[i]),
                     'label': np.uint8(gt * 255),
                     'segment': np.uint8(pd * 255),
                 })
@@ -902,6 +914,7 @@ class BaseSynthesisModel(BaseModel):
                  image_shape,
                  lexical_shape,
                  writers_shape,
+                 graph_shape=None,
                  discriminator_steps=1,
                  generator_steps=1,
                  return_features=False,
@@ -918,6 +931,8 @@ class BaseSynthesisModel(BaseModel):
             The shape of the lexical input.
         writers_shape : int
             The dimension for the writer identification.
+        graph_shape : tuple or list, optional
+            The shape of the input graphs.
         discriminator_steps : int, optional
             The repetition of steps for discriminator training.
         generator_steps : int, optional
@@ -938,6 +953,8 @@ class BaseSynthesisModel(BaseModel):
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
+        self.graph_shape = graph_shape
+
         self.return_features = return_features
         self.seed = seed
 
@@ -958,13 +975,13 @@ class BaseSynthesisModel(BaseModel):
                                              trainable=False)
 
         self.names = [
-            'recognition',
-            'writer_encoder',
-            'writer_decoder',
-            'style_encoder',
-            'generator',
             'discriminator',
+            'generator',
             'patch_discriminator',
+            'recognition',
+            'style_encoder',
+            'writer_decoder',
+            'writer_encoder',
         ]
 
         self.sce_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, name='sce_loss')
@@ -995,6 +1012,7 @@ class BaseSynthesisModel(BaseModel):
             'image_shape': self.image_shape,
             'lexical_shape': self.lexical_shape,
             'writers_shape': self.writers_shape,
+            'graph_shape': self.graph_shape,
         })
 
         return config
@@ -1135,6 +1153,7 @@ class BaseWriterIdentificationModel(BaseModel):
     def __init__(self,
                  image_shape,
                  writers_shape,
+                 graph_shape=None,
                  writer_encoder=None,
                  style_encoder=None,
                  generator=None,
@@ -1151,11 +1170,13 @@ class BaseWriterIdentificationModel(BaseModel):
             The shape of the input images.
         writers_shape : tuple or list
             The shape of the writers input.
-        writer_encoder : Style extractor instance
+        graph_shape : tuple or list, optional
+            The shape of the input graphs.
+        writer_encoder : Style extractor instance, optional
             Style extractor model for features extraction.
-        style_encoder : StyleEncoder instance
+        style_encoder : StyleEncoder instance, optional
             StyleEncoder model for encoding extracted style features.
-        generator : Generator instance
+        generator : Generator instance, optional
             Generator model for image generation.
         synthesis_probability : float, optional
             Synthetic data probability.
@@ -1174,6 +1195,8 @@ class BaseWriterIdentificationModel(BaseModel):
 
         self.image_shape = image_shape
         self.writers_shape = writers_shape
+        self.graph_shape = graph_shape
+
         self.synthesis_probability = synthesis_probability
         self.return_features = return_features
         self.seed = seed
@@ -1189,9 +1212,9 @@ class BaseWriterIdentificationModel(BaseModel):
                                              trainable=False)
 
         self.names = [
-            'writer_encoder',
-            'style_encoder',
             'generator',
+            'style_encoder',
+            'writer_encoder',
             'writer_identification',
         ]
 
@@ -1218,6 +1241,7 @@ class BaseWriterIdentificationModel(BaseModel):
         config.update({
             'image_shape': self.image_shape,
             'writers_shape': self.writers_shape,
+            'graph_shape': self.graph_shape,
         })
 
         return config
