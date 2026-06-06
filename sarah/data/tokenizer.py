@@ -303,6 +303,9 @@ class Tokenizer():
             List of graph representations from each character font.
         """
 
+        if not font_graphs:
+            return
+
         max_nodes = max(
             graph['nodes'].shape[0]
             for font in font_graphs
