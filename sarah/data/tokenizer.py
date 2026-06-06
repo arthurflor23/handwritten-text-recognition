@@ -289,22 +289,22 @@ class Tokenizer():
 
         return writer
 
-    def set_graph_shape(self, graph_nodes, from_charset=False):
+    def set_graph_shape(self, font_graph_nodes, from_charset=False):
         """
         Sets the graph shape based on the charset or lexical nodes.
 
         Parameters
         ----------
-        graph_nodes : int
-            Maximum nodes per character graph.
+        font_graph_nodes : int
+            Maximum nodes per character font graph.
         from_charset : bool, optional
             Whether to compute from charset length or full lexical shape.
         """
 
         if from_charset:
-            nodes = len(self.chars) * graph_nodes
+            nodes = len(self.chars) * font_graph_nodes
         else:
-            nodes = self.lexical_shape[0] * self.lexical_shape[1] * graph_nodes
+            nodes = self.lexical_shape[0] * self.lexical_shape[1] * font_graph_nodes
 
         nodes_shape = (nodes, 4)
         edges_shape = (2, nodes * 2)
