@@ -182,7 +182,7 @@ class Compose():
                                            image_shape=self.image_shape,
                                            lexical_shape=self.tokenizer.lexical_shape,
                                            writers_shape=self.tokenizer.writers_shape,
-                                           graph_shape=self.tokenizer.graph_shape,
+                                           font_graph_shape=self.tokenizer.font_graph_shape,
                                            discriminator_steps=self.discriminator_steps,
                                            generator_steps=self.generator_steps,
                                            seed=self.seed)
@@ -198,7 +198,7 @@ class Compose():
                 self.model = RecognitionModel(name='recognition',
                                               image_shape=self.image_shape,
                                               lexical_shape=self.tokenizer.lexical_shape,
-                                              graph_shape=self.tokenizer.graph_shape,
+                                              font_graph_shape=self.tokenizer.font_graph_shape,
                                               seed=self.seed,
                                               **synthesis_params)
 
@@ -208,7 +208,7 @@ class Compose():
             elif SegmentationModel:
                 self.model = SegmentationModel(name='segmentation',
                                                image_shape=self.image_shape,
-                                               graph_shape=self.tokenizer.graph_shape,
+                                               font_graph_shape=self.tokenizer.font_graph_shape,
                                                seed=self.seed,
                                                **synthesis_params)
 
@@ -216,7 +216,7 @@ class Compose():
                 self.model = WriterIdentificationModel(name='writer_identification',
                                                        image_shape=self.image_shape,
                                                        writers_shape=self.tokenizer.writers_shape,
-                                                       graph_shape=self.tokenizer.graph_shape,
+                                                       font_graph_shape=self.tokenizer.font_graph_shape,
                                                        seed=self.seed,
                                                        **synthesis_params)
 
@@ -225,7 +225,7 @@ class Compose():
                                         image_shape=self.image_shape,
                                         lexical_shape=self.tokenizer.lexical_shape,
                                         writers_shape=self.tokenizer.writers_shape,
-                                        graph_shape=self.tokenizer.graph_shape,
+                                        font_graph_shape=self.tokenizer.font_graph_shape,
                                         discriminator_steps=self.discriminator_steps,
                                         generator_steps=self.generator_steps,
                                         seed=self.seed)
