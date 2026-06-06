@@ -35,7 +35,6 @@ if __name__ == '__main__':
     parser.add_argument('--text-level', default='line', help='Text structure level')
     parser.add_argument('--image-shape', default=(64, 1024, 1), nargs=3, type=int, help='Image dimensions (h, w, c)')
     parser.add_argument('--char-width', default=None, type=int, help='Character width for image normalization')
-    parser.add_argument('--font-graph-nodes', default=8, type=int, help='Maximum nodes per character font graph')
     parser.add_argument('--mask-by-text', default=False, action='store_true', help='Mask data by text length')
     parser.add_argument('--order-by-text', default=False, action='store_true', help='Sort data by text length')
     parser.add_argument('--training-ratio', default=None, help='Training partition ratio')
