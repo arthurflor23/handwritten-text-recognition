@@ -76,16 +76,16 @@ def batch_binarization(batch_data, method, invert=False):
     return outputs
 
 
-def batch_graph(graphs, graph_shape, batch_size, augmentor=False):
+def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False):
     """
     Builds a batch of graph data from character font graphs.
 
     Parameters
     ----------
-    graphs : list
+    font_graphs : list
         List of graph representations from each character font.
-    graph_shape : tuple or list
-        Graph shape for nodes and edges tensors.
+    font_graph_shape : tuple or list
+        The shape of the input font graphs.
     batch_size : int
         Number of samples in the batch.
     augmentor : bool, optional
@@ -97,15 +97,16 @@ def batch_graph(graphs, graph_shape, batch_size, augmentor=False):
         Nodes and Edges as padded numpy arrays.
     """
 
-    num_fonts = len(graphs)
+    num_fonts = len(font_graphs)
 
     if not num_fonts:
         return []
 
-    num_chars = len(graphs[0])
+    nodes, edges = font_graph_shape
+    num_chars = len(font_graphs[0])
 
-    max_nodes = graph_shape[0][0] // num_chars
-    max_edges = graph_shape[1][1] // num_chars
+    max_nodes = nodes[0] // num_chars
+    max_edges = edges[1] // num_chars
 
     nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
     edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
@@ -113,7 +114,7 @@ def batch_graph(graphs, graph_shape, batch_size, augmentor=False):
     for i in range(batch_size):
         for j in range(num_chars):
             index = np.random.randint(num_fonts)
-            graph = graphs[index][j]
+            graph = font_graphs[index][j]
 
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
