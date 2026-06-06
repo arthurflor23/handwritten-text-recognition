@@ -34,7 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('--source', default=None, help='Source data')
     parser.add_argument('--text-level', default='line', help='Text structure level')
     parser.add_argument('--image-shape', default=(64, 1024, 1), nargs=3, type=int, help='Image dimensions (h, w, c)')
-    parser.add_argument('--char-width', default=None, type=int, help='Character width for normalization')
+    parser.add_argument('--char-width', default=None, type=int, help='Character width for image normalization')
+    parser.add_argument('--font-graph-nodes', default=8, type=int, help='Maximum nodes per character font graph')
     parser.add_argument('--mask-by-text', default=False, action='store_true', help='Mask data by text length')
     parser.add_argument('--order-by-text', default=False, action='store_true', help='Sort data by text length')
     parser.add_argument('--training-ratio', default=None, help='Training partition ratio')
@@ -91,6 +92,7 @@ if __name__ == '__main__':
     # others
     parser.add_argument('--check', default=False, action='store_true', help='Perform check pipeline')
     parser.add_argument('--input-path', default='datasets', help='Path to input data')
+    parser.add_argument('--fonts-path', default='fonts', help='Path to fonts data')
     parser.add_argument('--output-path', default='outputs', help='Path to output data')
     parser.add_argument('--gpu', default=0, nargs='+', help='GPU index or sequence of indices')
     parser.add_argument('--seed', default=42, type=int, help='Seed value')
