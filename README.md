@@ -109,7 +109,6 @@ The project has several command-line parameters that can be used to customize it
 - `--text-level`: Text structure level (e.g., line).
 - `--image-shape`: Image dimensions (height, width, channels).
 - `--char-width`: Character width for image normalization.
-- `--font-graph-nodes`: Maximum nodes per character font graph.
 - `--mask-by-text`: Mask data by text length.
 - `--order-by-text`: Sort data by text length.
 - `--training-ratio`: Training partition ratio.
