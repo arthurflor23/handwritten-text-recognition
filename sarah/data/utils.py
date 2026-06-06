@@ -102,11 +102,11 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
     if not num_fonts:
         return []
 
-    nodes, edges = font_graph_shape
+    nodes_shape, edges_shape = font_graph_shape
     num_chars = len(font_graphs[0])
 
-    max_nodes = nodes[0] // num_chars
-    max_edges = edges[1] // num_chars
+    max_nodes = nodes_shape[0] // num_chars
+    max_edges = edges_shape[1] // num_chars
 
     nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
     edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
