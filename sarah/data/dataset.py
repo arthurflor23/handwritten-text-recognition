@@ -21,7 +21,6 @@ class Dataset():
                  text_level='line',
                  image_shape=(64, 1024, 1),
                  char_width=None,
-                 font_graph_nodes=8,
                  mask_by_text=False,
                  order_by_text=False,
                  training_ratio=None,
@@ -49,8 +48,6 @@ class Dataset():
             The image dimensions.
         char_width : int, optional
             The width per character.
-        font_graph_nodes : list, optional
-            Nodes per character font graph.
         mask_by_text : bool, optional
             Whether to mask data by text length.
         order_by_text : bool, optional
@@ -88,7 +85,6 @@ class Dataset():
         self.text_level = text_level
         self.image_shape = image_shape
         self.char_width = char_width or 0
-        self.font_graph_nodes = font_graph_nodes
         self.mask_by_text = mask_by_text
         self.order_by_text = order_by_text
         self.training_ratio = training_ratio
@@ -116,10 +112,10 @@ class Dataset():
         self.samples = self._build_samples(data)
         self.multigrams = self._build_multigrams(data)
 
-        self.tokenizer.set_graph_shape(self.font_graph_nodes, from_charset=True)
-
         fonts = self._fetch_fonts(self.fonts_path)
-        self.graphs = self._build_graphs(fonts, self.tokenizer.chars, self.tokenizer.graph_shape)
+        self.font_graphs = self._build_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+
+        self.tokenizer.set_font_graph_shape(self.font_graphs)
 
     def __repr__(self):
         """
@@ -155,7 +151,7 @@ class Dataset():
         info += "\n" + "-" * width
         info += f"\n{'multigrams':<{pad}}: {len(self.multigrams['source']):,}"
         info += "\n" + "-" * width
-        info += f"\n{'fonts':<{pad}}: {len(self.graphs):,}"
+        info += f"\n{'fonts':<{pad}}: {len(self.font_graphs):,}"
         info += f"\n{self.tokenizer}"
 
         return info
@@ -307,7 +303,7 @@ class Dataset():
 
         return data
 
-    def _build_graphs(self, fonts, chars, graph_shape):
+    def _build_graphs(self, fonts, chars, epsilon=0.0):
         """
         Extracts graph representations from each character font.
 
@@ -317,8 +313,8 @@ class Dataset():
             List of font entries with font and cmap.
         chars : list
             The tokenizer charset.
-        graph_shape : tuple or list
-            Graph shape for nodes and edges tensors.
+        epsilon : float, optional
+            Simplification tolerance for contour reduction.
 
         Returns
         -------
@@ -326,27 +322,27 @@ class Dataset():
             List of graph representations from each character font.
         """
 
-        max_nodes = graph_shape[0][0] // len(chars)
-        max_edges = graph_shape[1][1] // len(chars)
+        def compress_contour(points, epsilon):
+            if len(points) < 3 or epsilon == 0:
+                return np.ones(len(points), dtype=bool)
 
-        def glyph_to_edges(glyph):
-            edges = []
-            start = 0
+            a, b = points[0], points[-1]
+            edge = b - a
+            length = np.linalg.norm(edge)
 
-            for end in glyph.endPtsOfContours:
-                for i in range(start, end):
-                    edges.append((i, i + 1))
-                    edges.append((i + 1, i))
+            dists = np.linalg.norm(points - a, axis=1) if length == 0 else \
+                np.abs(np.cross(edge, a - points)) / length
 
-                edges.append((end, start))
-                edges.append((start, end))
+            peak = np.argmax(dists)
+            mask = np.zeros(len(points), dtype=bool)
 
-                start = end + 1
+            if dists[peak] > epsilon:
+                mask[:peak + 1] = compress_contour(points[:peak + 1], epsilon)
+                mask[peak:] |= compress_contour(points[peak:], epsilon)
+            else:
+                mask[0] = mask[-1] = True
 
-            if not edges:
-                return np.empty((2, 0), dtype=np.int32)
-
-            return np.array(edges, dtype=np.int32).T
+            return mask
 
         def glyph_to_nodes(glyph):
             coords = np.array(glyph.coordinates, dtype=np.float32)
@@ -371,29 +367,53 @@ class Dataset():
 
             glyph = font['glyf'][glyph_name]
 
-            if glyph.numberOfContours <= 0:
+            if glyph.numberOfContours == 0:
                 return {'nodes': [], 'edges': []}
 
-            nodes = glyph_to_nodes(glyph)
-            edges = glyph_to_edges(glyph)
+            if glyph.numberOfContours < 0:
+                components = [font['glyf'][x.glyphName] for x in glyph.components
+                              if font['glyf'][x.glyphName].numberOfContours > 0]
 
-            if len(nodes) > max_nodes:
-                step = max(1, len(nodes) // max_nodes)
-                kept = np.arange(0, len(nodes), step)[:max_nodes]
-                nodes = nodes[kept]
+                if not components:
+                    return {'nodes': [], 'edges': []}
 
-                n = len(nodes)
-                src = np.arange(n, dtype=np.int32)
-                dst = np.arange(1, n + 1, dtype=np.int32) % n
+                glyphs = components
+            else:
+                glyphs = [glyph]
 
-                edges = np.stack([np.concatenate([src, dst]),
-                                  np.concatenate([dst, src])], axis=0)
+            pts, src, dst = [], [], []
+            offset = 0
 
-            if edges.shape[1] > max_edges:
-                kept = np.linspace(0, edges.shape[1] - 1, max_edges, dtype=np.int32)
-                edges = edges[:, kept]
+            for g in glyphs:
+                nodes = glyph_to_nodes(g)
+                bounds = [0] + [e + 1 for e in g.endPtsOfContours]
+                contours = [np.arange(bounds[i], bounds[i + 1]) for i in range(len(bounds) - 1)]
 
-            return {'nodes': nodes, 'edges': edges}
+                for idx in contours:
+                    mask = compress_contour(nodes[idx, :2], epsilon)
+                    kept = idx[mask]
+
+                    if len(kept) < 2:
+                        continue
+
+                    pts.append(nodes[kept])
+
+                    k = len(kept)
+                    s = np.arange(k, dtype=np.int32) + offset
+                    t = np.arange(1, k + 1, dtype=np.int32) % k + offset
+
+                    src.append(np.concatenate([s, t]))
+                    dst.append(np.concatenate([t, s]))
+
+                    offset += k
+
+            if not pts:
+                return {'nodes': [], 'edges': []}
+
+            return {
+                'nodes': np.concatenate(pts, axis=0),
+                'edges': np.stack([np.concatenate(src), np.concatenate(dst)], axis=0),
+            }
 
         return [[glyph_to_graph(x['font'], x['cmap'], y) for y in chars] for x in fonts]
 
@@ -633,16 +653,16 @@ class Dataset():
                                                 max_shape=self.image_shape,
                                                 from_text=self.mask_by_text)
 
-                graph_data = utils.batch_graph(graphs=self.graphs,
-                                               graph_shape=self.tokenizer.graph_shape,
-                                               batch_size=batch_length,
-                                               augmentor=False)
+                font_graph_data = utils.batch_font_graph(font_graphs=self.font_graphs,
+                                                         font_graph_shape=self.tokenizer.font_graph_shape,
+                                                         batch_size=batch_length,
+                                                         augmentor=False)
 
                 aug_text_data = text_data.copy()
                 aug_mask_data = mask_data.copy()
                 aug_image_data = image_data.copy()
                 aug_segmentation_data = segmentation_data.copy()
-                aug_graph_data = [x.copy() for x in graph_data]
+                aug_font_graph_data = [x.copy() for x in font_graph_data]
 
                 if batch_encoded:
                     if augmentor:
@@ -656,10 +676,10 @@ class Dataset():
                                                                          method='sauvola',
                                                                          invert=True)
 
-                        aug_graph_data = utils.batch_graph(graphs=self.graphs,
-                                                           graph_shape=self.tokenizer.graph_shape,
-                                                           batch_size=batch_length,
-                                                           augmentor=True)
+                        aug_font_graph_data = utils.batch_font_graph(font_graphs=self.font_graphs,
+                                                                     font_graph_shape=self.tokenizer.font_graph_shape,
+                                                                     batch_size=batch_length,
+                                                                     augmentor=True)
 
                     if multigram_length:
                         index = np.random.randint(0, multigram_length - batch_length)
@@ -703,9 +723,9 @@ class Dataset():
                 x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
                 y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
-                if graph_data:
-                    x_data.extend(aug_graph_data)
-                    y_data.extend(graph_data)
+                if font_graph_data:
+                    x_data.extend(aug_font_graph_data)
+                    y_data.extend(font_graph_data)
 
                 yield tuple(x_data), tuple(y_data)
 
