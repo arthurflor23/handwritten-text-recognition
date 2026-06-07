@@ -58,10 +58,10 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.channels = input_shape[0][-1]
+        self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
+        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
 
         self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
                                                              scale=False,
@@ -90,8 +90,8 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         beta = self.beta_dense(conditional)
         gamma = self.gamma_dense(conditional)
 
-        beta = tf.reshape(beta, [-1, 1, 1, self.channels])
-        gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
+        beta = tf.reshape(beta, [-1, 1, 1, self.features])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
 
         normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
@@ -160,10 +160,10 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.channels = input_shape[0][-1]
+        self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.channels, use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
+        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -192,8 +192,8 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
         beta = self.beta_dense(conditional)
         gamma = self.gamma_dense(conditional)
 
-        beta = tf.reshape(beta, [-1, 1, 1, self.channels])
-        gamma = tf.reshape(gamma, [-1, 1, 1, self.channels])
+        beta = tf.reshape(beta, [-1, 1, 1, self.features])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
 
         normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
@@ -1094,9 +1094,10 @@ class GraphConv(tf.keras.layers.Layer):
             The computed shape of the output from the layer.
         """
 
-        nodes_shape = input_shape[0]
+        batch_size = input_shape[0][0]
+        nodes_size = input_shape[0][1]
 
-        return tf.TensorShape([nodes_shape[0], nodes_shape[1], self.units])
+        return tf.TensorShape([batch_size, nodes_size, self.units])
 
 
 class GraphConv2D(tf.keras.layers.Layer):
@@ -1119,7 +1120,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                  use_bias=True,
                  **kwargs):
         """
-        Initializes the graph convolution layer.
+        Initializes the layer.
 
         Parameters
         ----------
@@ -1128,15 +1129,15 @@ class GraphConv2D(tf.keras.layers.Layer):
         num_pos_scales : int, optional
             Number of sine-cosine positional scales used in the spatial offsets.
         num_graph_layers : int, optional
-            Number of graph convolution layers.
+            Number of stacked graph convolution layers.
         kernel_initializer : str or initializer, optional
-            Initializer for graph convolution weights.
+            Initializer for the kernel weights.
         activation : str or callable, optional
-            Activation function applied after graph aggregation.
+            Activation function applied after each graph layer.
         dropout : float, optional
-            Dropout rate applied after each graph layer during training.
+            Whether to apply dropout or not.
         use_bias : bool, optional
-            Whether to use bias terms in graph convolution.
+            Whether to add bias terms.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -1177,19 +1178,19 @@ class GraphConv2D(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         """
-        Builds the layer structure based on the input shape.
+        Initializes layer weights.
 
         Parameters
         ----------
-        input_shape : TensorShape
-            Shape of the input tensor.
+        input_shape : tuple
+            Shape of the input tensors.
         """
 
         super().build(input_shape)
 
         self.height = int(input_shape[1])
         self.width = int(input_shape[2])
-        self.channels = int(input_shape[3])
+        self.features = int(input_shape[3])
         self.num_nodes = self.height * self.width
 
         self.kernels = []
@@ -1198,7 +1199,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         for i in range(self.num_graph_layers):
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
-                                shape=(self.channels, self.channels),
+                                shape=(self.features, self.features),
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
@@ -1206,7 +1207,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             if self.use_bias:
                 self.biases.append(
                     self.add_weight(name=f'{self.name}_bias_{i}',
-                                    shape=(self.channels,),
+                                    shape=(self.features,),
                                     initializer='zeros',
                                     trainable=True)
                 )
@@ -1255,9 +1256,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         offset_x = offset_x / tf.cast(self.num_pos_scales, tf.float32)
         offset_y = offset_y / tf.cast(self.num_pos_scales, tf.float32)
 
-        offsets = tf.stack([offset_x, offset_y], axis=-1)
-
-        return offsets
+        return tf.stack([offset_x, offset_y], axis=-1)
 
     def _build_edge_index(self):
         """
@@ -1276,19 +1275,17 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         diff = warped_coords[:, None, :] - warped_coords[None, :, :]
         dist = tf.reduce_sum(tf.square(diff), axis=-1)
-
-        large_value = tf.constant(1e12, dtype=dist.dtype)
-        dist = dist + tf.eye(self.num_nodes, dtype=dist.dtype) * large_value
+        dist = dist + tf.eye(self.num_nodes, dtype=dist.dtype) * 1e12
 
         knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
 
         dst = tf.repeat(tf.range(self.num_nodes), repeats=self.k_neighbors)
         src = tf.reshape(knn, [-1])
 
-        edge_index = tf.stack([dst, src], axis=-1)
+        edges = tf.stack([dst, src], axis=-1)
         self_loops = tf.stack([tf.range(self.num_nodes), tf.range(self.num_nodes)], axis=-1)
 
-        return tf.concat([edge_index, self_loops], axis=0)
+        return tf.concat([edges, self_loops], axis=0)
 
     def _graph_convolution(self, inputs, edge_index, kernel, bias=None):
         """
@@ -1297,25 +1294,24 @@ class GraphConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Node feature tensor of shape (batch_size, num_nodes, channels).
+            Node feature tensor of shape (B, num_nodes, features).
         edge_index : tf.Tensor
             Edge tensor of shape (num_edges, 2), formatted as [dst, src].
         kernel : tf.Tensor
-            Graph convolution kernel.
-        bias : tf.Tensor or None
+            Convolution kernel.
+        bias : tf.Tensor or None, optional
             Optional bias vector.
 
         Returns
         -------
         tf.Tensor
-            Updated node features.
+            Updated node features of shape (B, num_nodes, features).
         """
 
         dst = edge_index[:, 0]
         src = edge_index[:, 1]
 
-        neighbor_features = tf.gather(inputs, src, axis=1)
-        neighbor_features = tf.linalg.matmul(neighbor_features, kernel)
+        neighbor_features = tf.linalg.matmul(tf.gather(inputs, src, axis=1), kernel)
 
         outputs = tf.map_fn(
             lambda x: tf.math.unsorted_segment_sum(data=x,
@@ -1335,23 +1331,23 @@ class GraphConv2D(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         """
-        Processes the input tensor through the graph convolution.
+        Forward pass of the layer.
 
         Parameters
         ----------
         inputs : tf.Tensor
-            Input feature map.
+            Input feature map of shape (B, H, W, C).
         training : bool, optional
             Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            Output feature map after graph convolution.
+            Output feature map.
         """
 
         batch_size = tf.shape(inputs)[0]
-        x = tf.reshape(inputs, [batch_size, self.num_nodes, self.channels])
+        x = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
 
         edge_index = self._build_edge_index()
 
@@ -1361,9 +1357,26 @@ class GraphConv2D(tf.keras.layers.Layer):
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
 
-        x = tf.reshape(x, [batch_size, self.height, self.width, self.channels])
+        return tf.reshape(x, [batch_size, self.height, self.width, self.features])
 
-        return x
+    def compute_output_shape(self, input_shape):
+        """
+        Computes the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+
+        Returns
+        -------
+        tf.TensorShape
+            Output shape.
+        """
+
+        batch_size = input_shape[0]
+
+        return tf.TensorShape([batch_size, self.height, self.width, self.features])
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
@@ -1422,8 +1435,8 @@ class OctaveConv2D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
 
-        self.low_channels = int(self.filters * self.alpha)
-        self.high_channels = self.filters - self.low_channels
+        self.low_features = int(self.filters * self.alpha)
+        self.high_features = self.filters - self.low_features
 
     def get_config(self):
         """
@@ -1466,25 +1479,25 @@ class OctaveConv2D(tf.keras.layers.Layer):
         low_in = int(input_shape[1][3])
 
         self.high_to_high_kernel = self.add_weight(name='high_to_high_kernel',
-                                                   shape=(*self.kernel_size, high_in, self.high_channels),
+                                                   shape=(*self.kernel_size, high_in, self.high_features),
                                                    initializer=self.kernel_initializer,
                                                    regularizer=self.kernel_regularizer,
                                                    constraint=self.kernel_constraint)
 
         self.high_to_low_kernel = self.add_weight(name='high_to_low_kernel',
-                                                  shape=(*self.kernel_size, high_in, self.low_channels),
+                                                  shape=(*self.kernel_size, high_in, self.low_features),
                                                   initializer=self.kernel_initializer,
                                                   regularizer=self.kernel_regularizer,
                                                   constraint=self.kernel_constraint)
 
         self.low_to_high_kernel = self.add_weight(name='low_to_high_kernel',
-                                                  shape=(*self.kernel_size, low_in, self.high_channels),
+                                                  shape=(*self.kernel_size, low_in, self.high_features),
                                                   initializer=self.kernel_initializer,
                                                   regularizer=self.kernel_regularizer,
                                                   constraint=self.kernel_constraint)
 
         self.low_to_low_kernel = self.add_weight(name='low_to_low_kernel',
-                                                 shape=(*self.kernel_size, low_in, self.low_channels),
+                                                 shape=(*self.kernel_size, low_in, self.low_features),
                                                  initializer=self.kernel_initializer,
                                                  regularizer=self.kernel_regularizer,
                                                  constraint=self.kernel_constraint)
@@ -1556,8 +1569,8 @@ class OctaveConv2D(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
-        output_shape = [(*input_shape[:3], self.high_channels),
-                        (*input_shape[:3], self.low_channels)]
+        output_shape = [(*input_shape[:3], self.high_features),
+                        (*input_shape[:3], self.low_features)]
 
         return tf.TensorShape(output_shape)
 
@@ -1669,7 +1682,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
     """
     2D Positional Embedding layer.
     Adds learnable row and column embeddings to 2D input tensors.
-    Typically used for image-like inputs (batch_size, height, width, channels).
+    Typically used for image-like inputs (batch_size, height, width, features).
 
     References
     ----------
@@ -1764,7 +1777,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Tensor of shape (batch_size, height, width, channels)
+            Tensor of shape (batch_size, height, width, features)
 
         Returns
         -------
