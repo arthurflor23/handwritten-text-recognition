@@ -76,7 +76,7 @@ class Source():
         if not os.path.isdir(partition_path):
             return []
 
-        image_paths = sorted(glob.glob(os.path.join(partition_path, '*.png')))
+        image_paths = glob.glob(os.path.join(partition_path, '*.png'))
         partition_data = []
 
         for image_path in image_paths:
