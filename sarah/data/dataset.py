@@ -218,8 +218,10 @@ class Dataset():
             List of font entries with font and cmap.
         """
 
-        paths = sorted(glob.glob(os.path.join(fonts_path, '**', '*.ttf'), recursive=True))
         fonts = []
+
+        paths = glob.glob(os.path.join(fonts_path, '**', '*.ttf'), recursive=True)
+        paths.sort()
 
         for path in paths:
             try:
