@@ -767,7 +767,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         beta_initializer : initializer, optional
             Beta weights initializer.
         dropout : float, optional
-            Whether to apply dropout or not.
+            Dropout rate applied to the layer during training.
         use_bias : bool, optional
             Enables bias terms in the projection layers.
         **kwargs : dict
@@ -913,7 +913,7 @@ class GraphConv(tf.keras.layers.Layer):
         activation : str or callable, optional
             Activation function applied after each graph layer.
         dropout : float, optional
-            Whether to apply dropout or not.
+            Dropout rate applied to the layer during training.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -1135,7 +1135,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         activation : str or callable, optional
             Activation function applied after each graph layer.
         dropout : float, optional
-            Whether to apply dropout or not.
+            Dropout rate applied to the layer during training.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -1374,9 +1374,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output shape.
         """
 
-        batch_size = input_shape[0]
-
-        return tf.TensorShape([batch_size, self.height, self.width, self.features])
+        return tf.TensorShape([input_shape[0], self.height, self.width, self.features])
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
