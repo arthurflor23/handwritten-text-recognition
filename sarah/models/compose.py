@@ -827,10 +827,11 @@ class Compose():
                         data = json.load(f)
                         data.update(local_data)
 
-                data = dict(sorted(data.items()))
+                data = list(data.items())
+                data.sort()
 
                 with open(filepath, 'w') as f:
-                    f.write(json.dumps(data, indent=4, ensure_ascii=False))
+                    f.write(json.dumps(dict(data), indent=4, ensure_ascii=False))
 
                 for key, value in metrics.items():
                     mlflow.log_metric(label.replace('<metric>', key), value)
