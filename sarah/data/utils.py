@@ -93,7 +93,7 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
 
     Returns
     -------
-    list
+    tuple
         Nodes and Edges as padded numpy arrays.
     """
 
