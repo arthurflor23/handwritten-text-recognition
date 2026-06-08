@@ -26,52 +26,57 @@ def batch_binarization(batch_data, method, invert=False):
     outputs = []
 
     for image in batch_data:
-        if isinstance(image, np.ndarray):
-            if method == 'global':
-                _, image = cv2.threshold(src=image,
-                                         thresh=127,
-                                         maxval=255,
-                                         type=cv2.THRESH_BINARY)
+        if not isinstance(image, np.ndarray):
+            outputs.append(image)
+            continue
 
-            elif method == 'otsu':
-                _, image = cv2.threshold(src=image,
-                                         thresh=0,
-                                         maxval=255,
-                                         type=cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        if method == 'global':
+            _, image = cv2.threshold(src=image,
+                                     thresh=127,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY)
 
-            elif method == 'adaptive_mean':
-                image = cv2.adaptiveThreshold(src=image,
-                                              maxValue=255,
-                                              adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
-                                              thresholdType=cv2.THRESH_BINARY,
-                                              blockSize=11,
-                                              C=2)
+        elif method == 'otsu':
+            _, image = cv2.threshold(src=image,
+                                     thresh=0,
+                                     maxval=255,
+                                     type=cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-            elif method == 'adaptive_gaussian':
-                image = cv2.adaptiveThreshold(src=image,
-                                              maxValue=255,
-                                              adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                              thresholdType=cv2.THRESH_BINARY,
-                                              blockSize=11,
-                                              C=2)
+        elif method == 'adaptive_mean':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
 
-            elif method == 'sauvola':
-                window_size = 31
-                thresh = 128
-                k = 0.1
+        elif method == 'adaptive_gaussian':
+            image = cv2.adaptiveThreshold(src=image,
+                                          maxValue=255,
+                                          adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                          thresholdType=cv2.THRESH_BINARY,
+                                          blockSize=11,
+                                          C=2)
 
-                mean = cv2.boxFilter(src=image, ddepth=-1, ksize=(window_size, window_size))
-                mean_sq = cv2.boxFilter(src=image**2, ddepth=-1, ksize=(window_size, window_size))
+        elif method == 'sauvola':
+            window_size = 31
+            R = 128.0
+            k = 0.1
 
-                stddev = np.sqrt(mean_sq - mean**2)
-                threshold = mean * (1 + k * (stddev / thresh - 1))
+            image = image.astype(np.float32)
 
-                image = np.where(image > threshold, 255, 0).astype(np.uint8)
+            mean = cv2.boxFilter(src=image, ddepth=-1, ksize=(window_size, window_size))
+            mean_sq = cv2.boxFilter(src=image ** 2, ddepth=-1, ksize=(window_size, window_size))
 
-            if invert:
-                image = cv2.bitwise_not(image)
+            stddev = np.sqrt(np.maximum(mean_sq - mean ** 2, 0.0))
+            threshold = mean * (1.0 + k * (stddev / R - 1.0))
 
-        outputs.append(image)
+            image = np.where(image > threshold, 255, 0)
+
+        if invert:
+            image = cv2.bitwise_not(image)
+
+        outputs.append(np.uint8(image))
 
     return outputs
 
@@ -193,7 +198,7 @@ def batch_illumination(batch_data):
         rng = (rng - rng.min()) * 255.
 
         tli = ~((rng >= 30) | (cei >= 60))
-        tli = tli.astype(np.uint8) * 255
+        tli = np.uint8(tli) * 255
         erosion = cv2.erode(tli, np.ones((3, 3), np.uint8), 1)
 
         img = cei.copy()
@@ -236,7 +241,7 @@ def batch_illumination(batch_data):
         image[erosion != 0] *= 1.5
 
         image = np.clip(image, 0, 255)
-        image = image.astype(np.uint8)
+        image = np.uint8(image)
 
         outputs.append(image)
 
