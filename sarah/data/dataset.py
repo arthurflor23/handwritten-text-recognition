@@ -100,7 +100,7 @@ class Dataset():
         self.seed = seed
 
         if data is None:
-            self._source = self._import_source(self.source)
+            self._source = self._import_source_module(self.source)
             self._source = self._source(self.input_path)
 
             if hasattr(self._source, 'base_path'):
@@ -108,12 +108,12 @@ class Dataset():
 
             data = self._source.fetch_data(self.text_level)
 
-        data = self._partitioning(data)
-        self.samples = self._build_samples(data)
-        self.multigrams = self._build_multigrams(data)
+        data = self._load_partitions(data)
+        self.samples = self._prepare_samples(data)
+        self.multigrams = self._prepare_multigrams(data)
 
-        fonts = self._fetch_fonts(self.fonts_path)
-        self.font_graphs = self._build_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+        fonts = self._load_fonts(self.fonts_path)
+        self.font_graphs = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
 
         self.tokenizer.set_font_graph_shape(self.font_graphs)
 
@@ -156,34 +156,6 @@ class Dataset():
 
         return info
 
-    def _import_source(self, source):
-        """
-        Dynamically imports and returns a class from a specified source.
-
-        Parameters
-        ----------
-        source : str
-            The name of the source to be imported.
-
-        Returns
-        -------
-        class
-            The dynamically imported class.
-        """
-
-        module_name = importlib.util.resolve_name(f".source.{source}", __package__)
-        module_spec = importlib.util.find_spec(module_name)
-        assert module_spec is not None, 'source file must be created'
-
-        module = importlib.import_module(module_name, __package__)
-
-        class_name = 'Source'
-        assert hasattr(module, class_name), f"`{class_name}` class must be created"
-
-        source = getattr(module, class_name)
-
-        return source
-
     def _extract_source_zip(self, input_path, source):
         """
         Extracts a .zip file into a directory if the directory doesn't exist yet.
@@ -203,7 +175,35 @@ class Dataset():
             with zipfile.ZipFile(f'{source}.zip', 'r') as zip_ref:
                 zip_ref.extractall(input_path)
 
-    def _fetch_fonts(self, fonts_path):
+    def _import_source_module(self, source):
+        """
+        Imports and returns a class from a specified source.
+
+        Parameters
+        ----------
+        source : str
+            The name of the source to be imported.
+
+        Returns
+        -------
+        class
+            The imported class module.
+        """
+
+        module_name = importlib.util.resolve_name(f".source.{source}", __package__)
+        module_spec = importlib.util.find_spec(module_name)
+        assert module_spec is not None, 'source file must be created'
+
+        module = importlib.import_module(module_name, __package__)
+
+        class_name = 'Source'
+        assert hasattr(module, class_name), f"`{class_name}` class must be created"
+
+        source = getattr(module, class_name)
+
+        return source
+
+    def _load_fonts(self, fonts_path):
         """
         Loads .ttf files from the given path that contain glyph outlines.
 
@@ -238,7 +238,7 @@ class Dataset():
 
         return fonts
 
-    def _partitioning(self, data):
+    def _load_partitions(self, data):
         """
         Prepares the data in partitioning.
 
@@ -305,9 +305,9 @@ class Dataset():
 
         return data
 
-    def _build_graphs(self, fonts, chars, epsilon=0.0):
+    def _prepare_graphs(self, fonts, chars, epsilon=0.0):
         """
-        Extracts graph representations from each character font.
+        Builds graph representations from each character font.
 
         Parameters
         ----------
@@ -419,7 +419,76 @@ class Dataset():
 
         return [[glyph_to_graph(x['font'], x['cmap'], y) for y in chars] for x in fonts]
 
-    def _build_samples(self, data):
+    def _prepare_multigrams(self, data):
+        """
+        Builds multigrams from the data partitions.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing data partitions.
+
+        Returns
+        -------
+        dict
+            A dictionary with raw and processed multigrams.
+        """
+
+        multigrams = {'source': [], 'encoded': []}
+
+        if not self.multigrams:
+            return multigrams
+
+        def build(x):
+            lines = x['text'].split('\n')
+            max_line_length = max(len(line) for line in lines)
+
+            words = x['text'].replace('\n', ' ').split()
+            multigrams = []
+
+            for i in range(len(words)):
+                for j in range(i + 1, len(words) + 1):
+                    multigram = ''
+                    for u in range(i, j):
+                        last_line = multigram.split('\n')[-1]
+                        next_line_length = len(last_line) + len(words[u])
+
+                        br = '\n' if u < j and next_line_length > max_line_length else ' '
+                        multigram += f"{br}{words[u]}"
+
+                    multigrams.append(multigram.strip())
+
+            source = multigrams.copy()
+            encoded = [self.tokenizer.encode_text(x, keepstats=False) for x in multigrams]
+
+            return source, encoded
+
+        for partition in data:
+            if 'test' in partition:
+                continue
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(build, x) for x in data[partition]]
+                results = [x for x in (f.result() for f in futures) if x is not None]
+
+            if results:
+                flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
+
+                if self.order_by_text:
+                    flattened.sort(key=lambda x: len(x[0]), reverse=False)
+
+                source, encoded = zip(*flattened)
+
+                for s, e in zip(source, encoded):
+                    multigrams['source'].append({'text': s})
+                    multigrams['encoded'].append({'text': e})
+
+        multigrams['source'] = np.array(multigrams['source'], dtype=object)
+        multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
+
+        return multigrams
+
+    def _prepare_samples(self, data):
         """
         Validates and builds the samples from data partitions.
 
@@ -494,75 +563,6 @@ class Dataset():
                 samples['encoded'][partition] = np.array(encoded, dtype=object)
 
         return samples
-
-    def _build_multigrams(self, data):
-        """
-        Builds multigrams from the data partitions.
-
-        Parameters
-        ----------
-        data : dict
-            Dictionary containing data partitions.
-
-        Returns
-        -------
-        dict
-            A dictionary with raw and processed multigrams.
-        """
-
-        multigrams = {'source': [], 'encoded': []}
-
-        if not self.multigrams:
-            return multigrams
-
-        def build(x):
-            lines = x['text'].split('\n')
-            max_line_length = max(len(line) for line in lines)
-
-            words = x['text'].replace('\n', ' ').split()
-            multigrams = []
-
-            for i in range(len(words)):
-                for j in range(i + 1, len(words) + 1):
-                    multigram = ''
-                    for u in range(i, j):
-                        last_line = multigram.split('\n')[-1]
-                        next_line_length = len(last_line) + len(words[u])
-
-                        br = '\n' if u < j and next_line_length > max_line_length else ' '
-                        multigram += f"{br}{words[u]}"
-
-                    multigrams.append(multigram.strip())
-
-            source = multigrams.copy()
-            encoded = [self.tokenizer.encode_text(x, keepstats=False) for x in multigrams]
-
-            return source, encoded
-
-        for partition in data:
-            if 'test' in partition:
-                continue
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(build, x) for x in data[partition]]
-                results = [x for x in (f.result() for f in futures) if x is not None]
-
-            if results:
-                flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
-
-                if self.order_by_text:
-                    flattened.sort(key=lambda x: len(x[0]), reverse=False)
-
-                source, encoded = zip(*flattened)
-
-                for s, e in zip(source, encoded):
-                    multigrams['source'].append({'text': s})
-                    multigrams['encoded'].append({'text': e})
-
-        multigrams['source'] = np.array(multigrams['source'], dtype=object)
-        multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
-
-        return multigrams
 
     def get_generator(self,
                       data_partition,
