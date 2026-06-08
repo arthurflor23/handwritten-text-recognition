@@ -113,7 +113,7 @@ class Dataset():
         self.multigrams = self._prepare_multigrams(data)
 
         fonts = self._load_fonts(self.fonts_path)
-        self.font_graphs = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+        self.font_graphs = self._prepare_graphs(fonts, self.tokenizer.chars)
 
         self.tokenizer.set_font_graph_shape(self.font_graphs)
 
