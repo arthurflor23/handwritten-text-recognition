@@ -73,10 +73,12 @@ def batch_binarization(batch_data, method, invert=False):
 
             image = np.where(image > threshold, 255, 0)
 
+        image = np.uint8(image)
+
         if invert:
             image = cv2.bitwise_not(image)
 
-        outputs.append(np.uint8(image))
+        outputs.append(image)
 
     return outputs
 
