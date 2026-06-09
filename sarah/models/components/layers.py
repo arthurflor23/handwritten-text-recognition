@@ -897,6 +897,7 @@ class GraphConv(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
+                 use_residual=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -914,6 +915,8 @@ class GraphConv(tf.keras.layers.Layer):
             Activation function applied after each graph layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
+        use_residual : bool, optional
+            Whether to add residual connection.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -927,6 +930,7 @@ class GraphConv(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
+        self.use_residual = use_residual
         self.use_bias = use_bias
 
     def get_config(self):
@@ -947,6 +951,7 @@ class GraphConv(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
+            'use_residual': self.use_residual,
             'use_bias': self.use_bias,
         })
 
@@ -964,14 +969,12 @@ class GraphConv(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        nodes_shape = input_shape[0]
-        in_features = int(nodes_shape[-1])
-
         self.kernels = []
+        self.residual_kernels = []
         self.biases = []
 
         for i in range(self.num_graph_layers):
-            input_dim = in_features if i == 0 else self.units
+            input_dim = input_shape[0][-1] if i == 0 else self.units
 
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
@@ -979,6 +982,16 @@ class GraphConv(tf.keras.layers.Layer):
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
+
+            if self.use_residual and input_dim != self.units:
+                self.residual_kernels.append(
+                    self.add_weight(name=f'{self.name}_residual_kernel_{i}',
+                                    shape=(input_dim, self.units),
+                                    initializer=self.kernel_initializer,
+                                    trainable=True)
+                )
+            else:
+                self.residual_kernels.append(None)
 
             if self.use_bias:
                 self.biases.append(
@@ -1069,15 +1082,20 @@ class GraphConv(tf.keras.layers.Layer):
         """
 
         nodes, edges = inputs
-        x = nodes
 
-        for kernel, bias in zip(self.kernels, self.biases):
-            x = self._graph_convolution(x, edges, kernel, bias)
+        for bias, kernel, residual_kernel in zip(self.biases, self.kernels, self.residual_kernels):
+            x = self._graph_convolution(nodes, edges, kernel, bias)
+
+            if self.use_residual:
+                x += nodes if residual_kernel is None \
+                    else tf.linalg.matmul(nodes, residual_kernel)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
 
-        return x
+            nodes = tf.identity(x)
+
+        return nodes
 
     def compute_output_shape(self, input_shape):
         """
@@ -1117,6 +1135,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
+                 use_residual=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -1136,6 +1155,8 @@ class GraphConv2D(tf.keras.layers.Layer):
             Activation function applied after each graph layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
+        use_residual : bool, optional
+            Whether to add residual connection.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -1150,6 +1171,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
+        self.use_residual = use_residual
         self.use_bias = use_bias
 
     def get_config(self):
@@ -1171,6 +1193,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
+            'use_residual': self.use_residual,
             'use_bias': self.use_bias,
         })
 
@@ -1278,7 +1301,6 @@ class GraphConv2D(tf.keras.layers.Layer):
         dist = dist + tf.eye(self.num_nodes, dtype=dist.dtype) * 1e12
 
         knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
-
         dst = tf.repeat(tf.range(self.num_nodes), repeats=self.k_neighbors)
         src = tf.reshape(knn, [-1])
 
@@ -1347,17 +1369,22 @@ class GraphConv2D(tf.keras.layers.Layer):
         """
 
         batch_size = tf.shape(inputs)[0]
-        x = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
 
+        nodes = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
         edge_index = self._build_edge_index()
 
         for kernel, bias in zip(self.kernels, self.biases):
-            x = self._graph_convolution(x, edge_index, kernel, bias)
+            x = self._graph_convolution(nodes, edge_index, kernel, bias)
+
+            if self.use_residual:
+                x += nodes
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
 
-        return tf.reshape(x, [batch_size, self.height, self.width, self.features])
+            nodes = tf.identity(x)
+
+        return tf.reshape(nodes, [batch_size, self.height, self.width, self.features])
 
     def compute_output_shape(self, input_shape):
         """
