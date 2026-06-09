@@ -523,230 +523,23 @@ class GatedConv2D(tf.keras.layers.Layer):
     ----------
     Gated convolutional recurrent neural networks for multilingual handwriting recognition
         https://ieeexplore.ieee.org/document/8270042
-    """
 
-    def __init__(self,
-                 kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        kernel_size : int or tuple, optional
-            Convolution window size.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.kernel_size = kernel_size
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'kernel_size': self.kernel_size,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
-                                             kernel_size=self.kernel_size,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-    def call(self, inputs):
-        """
-        Apply gated convolution to the input.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Input tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor resulting from the gated convolution.
-        """
-
-        s_conv = self.s_conv(inputs)
-        s_conv = tf.nn.sigmoid(s_conv)
-
-        return s_conv * inputs
-
-
-class GatedDualConv2D(tf.keras.layers.Layer):
-    """
-    Implements a Dual Gated Convolutional layer.
-
-    References
-    ----------
     HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
         https://ieeexplore.ieee.org/document/9266005
 
-    Language modeling with gated convolutional networks
-        https://arxiv.org/abs/1612.08083
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
     """
 
     def __init__(self,
-                 kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        kernel_size : int or tuple, optional
-            Convolution window size.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.kernel_size = kernel_size
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'kernel_size': self.kernel_size,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.sl_conv = tf.keras.layers.Conv2D(filters=input_shape[-1] * 2,
-                                              kernel_size=self.kernel_size,
-                                              padding='same',
-                                              kernel_initializer=self.kernel_initializer,
-                                              kernel_regularizer=self.kernel_regularizer,
-                                              kernel_constraint=self.kernel_constraint,
-                                              use_bias=self.use_bias)
-
-    def call(self, inputs):
-        """
-        Apply dual gated convolution to the input.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Input tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor resulting from the dual gated convolution.
-        """
-
-        sl_conv = self.sl_conv(inputs)
-
-        s_conv, l_conv = tf.split(sl_conv, num_or_size_splits=2, axis=-1)
-        s_conv = tf.nn.sigmoid(s_conv)
-
-        return s_conv * l_conv
-
-
-class GatedResidualConv2D(tf.keras.layers.Layer):
-    """
-    Implements a Residual Gated Convolutional layer.
-    """
-
-    def __init__(self,
-                 h=1.0,
                  kernel_size=(3, 3),
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  dropout=0.0,
+                 feature_scale=1.0,
+                 use_residual=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -754,8 +547,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        h : float, optional
-            Projection factor for features.
         kernel_size : int or tuple, optional
             Convolution window size.
         kernel_initializer : initializer, optional
@@ -765,9 +556,13 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         kernel_constraint : constraint, optional
             Kernel weights constraint.
         beta_initializer : initializer, optional
-            Beta weights initializer.
+            Beta weights initializer, used in residual mode.
         dropout : float, optional
-            Dropout rate applied to the layer during training.
+            Dropout rate applied during training, used in residual mode.
+        feature_scale : float, optional
+            Channel projection scale factor, used in residual mode.
+        use_residual : bool, optional
+            Whether to use residual gated convolution.
         use_bias : bool, optional
             Enables bias terms in the projection layers.
         **kwargs : dict
@@ -776,13 +571,14 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.h = h
         self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.dropout = dropout
+        self.feature_scale = feature_scale
+        self.use_residual = use_residual
         self.use_bias = use_bias
 
     def get_config(self):
@@ -798,13 +594,14 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'h': self.h,
             'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
+            'feature_scale': self.feature_scale,
+            'use_residual': self.use_residual,
             'use_bias': self.use_bias,
         })
 
@@ -823,9 +620,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         super().build(input_shape)
 
         self.filters = input_shape[-1]
-        self.h_filters = int(self.filters * self.h)
+        self.filters_projected = int(self.filters * self.feature_scale)
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=self.h_filters,
+        self.s_conv = tf.keras.layers.Conv2D(filters=self.filters_projected,
                                              kernel_size=self.kernel_size,
                                              padding='same',
                                              kernel_initializer=self.kernel_initializer,
@@ -833,7 +630,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                              kernel_constraint=self.kernel_constraint,
                                              use_bias=self.use_bias)
 
-        if self.h != 1:
+        if self.feature_scale != 1:
             self.o_conv = tf.keras.layers.Conv2D(filters=self.filters,
                                                  kernel_size=1,
                                                  padding='valid',
@@ -842,19 +639,20 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=self.use_bias)
 
-        self.beta = self.add_weight(name=f"{self.name}_beta",
-                                    shape=(1,),
-                                    initializer=self.beta_initializer,
-                                    trainable=True)
+        if self.use_residual:
+            self.beta = self.add_weight(name=f'{self.name}_beta',
+                                        shape=(1,),
+                                        initializer=self.beta_initializer,
+                                        trainable=True)
 
-        self.gamma = self.add_weight(name=f"{self.name}_gamma",
-                                     shape=(1,),
-                                     initializer='ones',
-                                     trainable=True)
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer='ones',
+                                         trainable=True)
 
     def call(self, inputs, training=False):
         """
-        Apply residual gated convolution to the input.
+        Forward pass of the layer.
 
         Parameters
         ----------
@@ -866,19 +664,28 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Tensor resulting from the residual gated convolution.
+            Output tensor.
         """
 
         s_conv = self.s_conv(inputs)
-        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
+
+        if self.use_residual:
+            g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
+
+            if self.feature_scale != 1:
+                g_conv = self.o_conv(g_conv)
+
+            if training and self.dropout:
+                g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+
+            return inputs + g_conv * self.beta
+
+        g_conv = inputs * tf.nn.sigmoid(s_conv)
 
         if training and self.dropout:
             g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
 
-        if self.h != 1:
-            g_conv = self.o_conv(g_conv)
-
-        return inputs + g_conv * self.beta
+        return g_conv
 
 
 class GraphConv(tf.keras.layers.Layer):
