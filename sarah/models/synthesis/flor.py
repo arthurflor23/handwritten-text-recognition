@@ -54,16 +54,16 @@ class SynthesisModel(BaseSynthesisModel):
             learning_rate = 1e-4
 
         self.d_optimizer = tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, weight_decay=0.01, epsilon=1e-7)
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, weight_decay=0.01, epsilon=1e-8)
 
         self.g_optimizer = tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, weight_decay=0.01, epsilon=1e-7)
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.95, weight_decay=0.01, epsilon=1e-8)
 
         self.r_optimizer = tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.99, weight_decay=0.01, epsilon=1e-7)
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.99, weight_decay=0.01, epsilon=1e-8)
 
         self.w_optimizer = tf.keras.optimizers.AdamW(
-            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01, epsilon=1e-7)
+            learning_rate=learning_rate, beta_1=0.5, beta_2=0.999, weight_decay=0.01, epsilon=1e-8)
 
     def build_model(self):
         """
