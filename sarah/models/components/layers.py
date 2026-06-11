@@ -688,6 +688,114 @@ class GatedConv2D(tf.keras.layers.Layer):
         return g_conv
 
 
+class GraphAttentionPooling(tf.keras.layers.Layer):
+    """
+    Graph attention pooling layer for aggregating node features into embeddings.
+
+    References
+    ----------
+    Gated Graph Sequence Neural Networks
+        https://arxiv.org/abs/1511.05493
+
+    Self-Attention Graph Pooling
+        https://arxiv.org/pdf/1904.08082
+    """
+
+    def __init__(self,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        kernel_initializer : initializer, optional
+            Kernel weights initializer for the gate projection.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer for the gate projection.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint for the gate projection.
+        use_bias : bool, optional
+            Enables bias term in the gate projection layer.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : TensorShape
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        self.gate_dense = tf.keras.layers.Dense(units=1,
+                                                kernel_initializer=self.kernel_initializer,
+                                                kernel_regularizer=self.kernel_regularizer,
+                                                kernel_constraint=self.kernel_constraint,
+                                                use_bias=self.use_bias)
+
+        self.softmax = tf.keras.layers.Softmax(axis=1)
+
+    def call(self, inputs):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Node feature tensor.
+
+        Returns
+        -------
+        tf.Tensor
+            Graph-level feature vector.
+        """
+
+        attn_scores = self.gate_dense(inputs)
+        attn_weights = self.softmax(attn_scores)
+
+        outputs = inputs * attn_weights
+        outputs = tf.reduce_sum(outputs, axis=1)
+
+        return outputs
+
+
 class GraphConv(tf.keras.layers.Layer):
     """
     Graph convolution layer over explicit node and edge data.
