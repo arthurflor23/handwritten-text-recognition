@@ -404,17 +404,17 @@ class ContentAlignment(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         """
-        Compute the output shape of the layer.
+        Computes the output shape of the layer.
 
         Parameters
         ----------
-        input_shape : tuple or list
-            The Shape of the input tensors.
+        input_shape : tuple
+            Shape of the input tensors.
 
         Returns
         -------
         tf.TensorShape
-            The computed shape of the output from the layer.
+            Output shape.
         """
 
         if not self.built:
@@ -700,7 +700,6 @@ class GraphConv(tf.keras.layers.Layer):
 
     def __init__(self,
                  units,
-                 num_graph_layers=1,
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
@@ -712,10 +711,8 @@ class GraphConv(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        units : int
-            Number of output features per node.
-        num_graph_layers : int, optional
-            Number of stacked graph convolution layers.
+        units : int or list of int
+            Number of output features per node and layer.
         kernel_initializer : str or initializer, optional
             Initializer for the kernel weights.
         activation : str or callable, optional
@@ -732,8 +729,7 @@ class GraphConv(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.units = units
-        self.num_graph_layers = num_graph_layers
+        self.units = [units] if isinstance(units, int) else list(units)
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
@@ -754,7 +750,6 @@ class GraphConv(tf.keras.layers.Layer):
 
         config.update({
             'units': self.units,
-            'num_graph_layers': self.num_graph_layers,
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
@@ -776,24 +771,27 @@ class GraphConv(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
+        self.num_nodes = int(input_shape[0][1])
+        self.features = int(input_shape[0][2])
+
         self.kernels = []
         self.residual_kernels = []
         self.biases = []
 
-        for i in range(self.num_graph_layers):
-            input_dim = input_shape[0][-1] if i == 0 else self.units
+        for i, out_dim in enumerate(self.units):
+            in_dim = self.features if i == 0 else self.units[i - 1]
 
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
-                                shape=(input_dim, self.units),
+                                shape=(in_dim, out_dim),
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
 
-            if self.use_residual and input_dim != self.units:
+            if self.use_residual and in_dim != out_dim:
                 self.residual_kernels.append(
                     self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                    shape=(input_dim, self.units),
+                                    shape=(in_dim, out_dim),
                                     initializer=self.kernel_initializer,
                                     trainable=True)
                 )
@@ -803,7 +801,7 @@ class GraphConv(tf.keras.layers.Layer):
             if self.use_bias:
                 self.biases.append(
                     self.add_weight(name=f'{self.name}_bias_{i}',
-                                    shape=(self.units,),
+                                    shape=(out_dim,),
                                     initializer='zeros',
                                     trainable=True)
                 )
@@ -817,9 +815,9 @@ class GraphConv(tf.keras.layers.Layer):
         Parameters
         ----------
         nodes : tf.Tensor
-            Node feature tensor of shape (B, N, F).
+            Node feature tensor.
         edges : tf.Tensor
-            Edge index of shape (B, 2, E), formatted as [src, dst].
+            Edge index tensor, formatted as [src, dst].
         kernel : tf.Tensor
             Convolution kernel.
         bias : tf.Tensor or None, optional
@@ -828,15 +826,13 @@ class GraphConv(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Updated node features of shape (B, N, units).
+            Updated node features.
         """
-
-        num_nodes = tf.shape(nodes)[1]
 
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
-        self_idx = tf.expand_dims(tf.range(num_nodes, dtype=tf.int32), axis=0)
+        self_idx = tf.expand_dims(tf.range(self.num_nodes, dtype=tf.int32), axis=0)
         self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
 
         src = tf.concat([src, self_idx], axis=1)
@@ -846,7 +842,7 @@ class GraphConv(tf.keras.layers.Layer):
 
         ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
 
-        degrees = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+        degrees = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
                             elems=(ones, dst),
                             fn_output_signature=tf.float32)
 
@@ -859,7 +855,7 @@ class GraphConv(tf.keras.layers.Layer):
         messages = tf.gather(transformed, src, batch_dims=1)
         messages = messages * tf.expand_dims(norm, axis=-1)
 
-        outputs = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+        outputs = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
                             elems=(messages, dst),
                             fn_output_signature=tf.float32)
 
@@ -878,14 +874,14 @@ class GraphConv(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tuple of tf.Tensor
-            Tuple (nodes, edges) where nodes is (B, N, F) and edges is (B, 2, E).
+            Tuple of node features and edge indices.
         training : bool, optional
             Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            Updated node features of shape (B, N, units).
+            Updated node features.
         """
 
         nodes, edges = inputs
@@ -906,23 +902,20 @@ class GraphConv(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         """
-        Compute the output shape of the layer.
+        Computes the output shape of the layer.
 
         Parameters
         ----------
-        input_shape : tuple or list
-            The Shape of the input tensors.
+        input_shape : tuple
+            Shape of the input tensors.
 
         Returns
         -------
         tf.TensorShape
-            The computed shape of the output from the layer.
+            Output shape.
         """
 
-        batch_size = input_shape[0][0]
-        nodes_size = input_shape[0][1]
-
-        return tf.TensorShape([batch_size, nodes_size, self.units])
+        return tf.TensorShape([input_shape[0][0], self.num_nodes, self.units[-1]])
 
 
 class GraphConv2D(tf.keras.layers.Layer):
@@ -936,9 +929,9 @@ class GraphConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 units,
                  k_neighbors=1,
                  num_pos_scales=1,
-                 num_graph_layers=1,
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
@@ -950,12 +943,12 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        units : int or list of int
+            Number of output features per node and layer.
         k_neighbors : int, optional
             Number of nearest neighbors used to build the graph.
         num_pos_scales : int, optional
             Number of sine-cosine positional scales used in the spatial offsets.
-        num_graph_layers : int, optional
-            Number of stacked graph convolution layers.
         kernel_initializer : str or initializer, optional
             Initializer for the kernel weights.
         activation : str or callable, optional
@@ -972,9 +965,9 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.units = [units] if isinstance(units, int) else list(units)
         self.k_neighbors = k_neighbors
         self.num_pos_scales = num_pos_scales
-        self.num_graph_layers = num_graph_layers
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
@@ -994,9 +987,9 @@ class GraphConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'units': self.units,
             'k_neighbors': self.k_neighbors,
             'num_pos_scales': self.num_pos_scales,
-            'num_graph_layers': self.num_graph_layers,
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
@@ -1021,23 +1014,37 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.height = int(input_shape[1])
         self.width = int(input_shape[2])
         self.features = int(input_shape[3])
+
         self.num_nodes = self.height * self.width
 
         self.kernels = []
+        self.residual_kernels = []
         self.biases = []
 
-        for i in range(self.num_graph_layers):
+        for i, out_dim in enumerate(self.units):
+            in_dim = self.features if i == 0 else self.units[i - 1]
+
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
-                                shape=(self.features, self.features),
+                                shape=(in_dim, out_dim),
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
 
+            if self.use_residual and in_dim != out_dim:
+                self.residual_kernels.append(
+                    self.add_weight(name=f'{self.name}_residual_kernel_{i}',
+                                    shape=(in_dim, out_dim),
+                                    initializer=self.kernel_initializer,
+                                    trainable=True)
+                )
+            else:
+                self.residual_kernels.append(None)
+
             if self.use_bias:
                 self.biases.append(
                     self.add_weight(name=f'{self.name}_bias_{i}',
-                                    shape=(self.features,),
+                                    shape=(out_dim,),
                                     initializer='zeros',
                                     trainable=True)
                 )
@@ -1051,7 +1058,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Coordinate tensor of shape (height, width, 2).
+            Coordinate tensor.
         """
 
         row_positions = tf.linspace(0.0, 1.0, self.height)
@@ -1068,7 +1075,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Offset tensor of shape (height, width, 2).
+            Offset tensor.
         """
 
         coords = self._build_base_coordinates()
@@ -1095,7 +1102,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Edge tensor of shape (num_edges, 2), formatted as [dst, src].
+            Edge tensor, formatted as [dst, src].
         """
 
         base_coords = self._build_base_coordinates()
@@ -1123,9 +1130,9 @@ class GraphConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Node feature tensor of shape (B, num_nodes, features).
+            Node feature tensor.
         edge_index : tf.Tensor
-            Edge tensor of shape (num_edges, 2), formatted as [dst, src].
+            Edge tensor, formatted as [dst, src].
         kernel : tf.Tensor
             Convolution kernel.
         bias : tf.Tensor or None, optional
@@ -1134,7 +1141,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Updated node features of shape (B, num_nodes, features).
+            Updated node features.
         """
 
         dst = edge_index[:, 0]
@@ -1165,7 +1172,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Input feature map of shape (B, H, W, C).
+            Input feature map.
         training : bool, optional
             Whether the call is for training or inference.
 
@@ -1180,18 +1187,19 @@ class GraphConv2D(tf.keras.layers.Layer):
         nodes = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
         edge_index = self._build_edge_index()
 
-        for kernel, bias in zip(self.kernels, self.biases):
+        for kernel, residual_kernel, bias in zip(self.kernels, self.residual_kernels, self.biases):
             x = self._graph_convolution(nodes, edge_index, kernel, bias)
 
             if self.use_residual:
-                x += nodes
+                x += nodes if residual_kernel is None \
+                    else tf.linalg.matmul(nodes, residual_kernel)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
 
             nodes = tf.identity(x)
 
-        return tf.reshape(nodes, [batch_size, self.height, self.width, self.features])
+        return tf.reshape(nodes, [batch_size, self.height, self.width, self.units[-1]])
 
     def compute_output_shape(self, input_shape):
         """
@@ -1208,7 +1216,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output shape.
         """
 
-        return tf.TensorShape([input_shape[0], self.height, self.width, self.features])
+        return tf.TensorShape([input_shape[0], self.height, self.width, self.units[-1]])
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
@@ -1385,17 +1393,17 @@ class OctaveConv2D(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         """
-        Compute the output shape of the layer.
+        Computes the output shape of the layer.
 
         Parameters
         ----------
-        input_shape : tuple or list
-            The Shape of the input tensors.
+        input_shape : tuple
+            Shape of the input tensors.
 
         Returns
         -------
         tf.TensorShape
-            The computed shape of the output from the layer.
+            Output shape.
         """
 
         if not self.built:
