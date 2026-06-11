@@ -425,7 +425,7 @@ class Dataset():
 
         font_graphs = [build(font, 0.0) for font in fonts]
 
-        if epsilon > 0:
+        if font_graphs and epsilon > 0:
             counts = np.array([count(graphs) for graphs in font_graphs])
             median = np.median(counts)
 
