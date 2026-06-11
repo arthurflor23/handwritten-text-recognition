@@ -88,7 +88,7 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GraphConv2D(units=[64, 64, 64, 64], k_neighbors=4, num_pos_scales=4, activation='swish')(encoder)
+        encoder = GraphConv2D(units=[64] * 4, k_neighbors=4, num_pos_scales=4, activation='swish')(encoder)
         feats.append(encoder)
 
         self.encoder = tf.keras.Model(name='segmentation_encoder', inputs=encoder_input, outputs=feats)
