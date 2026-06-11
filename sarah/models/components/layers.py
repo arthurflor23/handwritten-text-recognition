@@ -788,25 +788,19 @@ class GraphConv(tf.keras.layers.Layer):
                                 trainable=True)
             )
 
-            if self.use_residual and in_dim != out_dim:
-                self.residual_kernels.append(
-                    self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                    shape=(in_dim, out_dim),
-                                    initializer=self.kernel_initializer,
-                                    trainable=True)
-                )
-            else:
-                self.residual_kernels.append(None)
+            self.residual_kernels.append(
+                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
+                                shape=(in_dim, out_dim),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+                if self.use_residual and in_dim != out_dim else None)
 
-            if self.use_bias:
-                self.biases.append(
-                    self.add_weight(name=f'{self.name}_bias_{i}',
-                                    shape=(out_dim,),
-                                    initializer='zeros',
-                                    trainable=True)
-                )
-            else:
-                self.biases.append(None)
+            self.biases.append(
+                self.add_weight(name=f'{self.name}_bias_{i}',
+                                shape=(out_dim,),
+                                initializer='zeros',
+                                trainable=True)
+                if self.use_bias else None)
 
     def _graph_convolution(self, nodes, edges, kernel, bias=None):
         """
@@ -862,9 +856,6 @@ class GraphConv(tf.keras.layers.Layer):
         if bias is not None:
             outputs = outputs + bias
 
-        if self.activation is not None:
-            outputs = self.activation(outputs)
-
         return outputs
 
     def call(self, inputs, training=False):
@@ -886,12 +877,17 @@ class GraphConv(tf.keras.layers.Layer):
 
         nodes, edges = inputs
 
-        for bias, kernel, residual_kernel in zip(self.biases, self.kernels, self.residual_kernels):
+        for kernel, residual_kernel, bias in \
+                zip(self.kernels, self.residual_kernels, self.biases):
+
             x = self._graph_convolution(nodes, edges, kernel, bias)
 
             if self.use_residual:
                 x += nodes if residual_kernel is None \
                     else tf.linalg.matmul(nodes, residual_kernel)
+
+            if self.activation is not None:
+                x = self.activation(x)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
@@ -1031,25 +1027,19 @@ class GraphConv2D(tf.keras.layers.Layer):
                                 trainable=True)
             )
 
-            if self.use_residual and in_dim != out_dim:
-                self.residual_kernels.append(
-                    self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                    shape=(in_dim, out_dim),
-                                    initializer=self.kernel_initializer,
-                                    trainable=True)
-                )
-            else:
-                self.residual_kernels.append(None)
+            self.residual_kernels.append(
+                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
+                                shape=(in_dim, out_dim),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+                if self.use_residual and in_dim != out_dim else None)
 
-            if self.use_bias:
-                self.biases.append(
-                    self.add_weight(name=f'{self.name}_bias_{i}',
-                                    shape=(out_dim,),
-                                    initializer='zeros',
-                                    trainable=True)
-                )
-            else:
-                self.biases.append(None)
+            self.biases.append(
+                self.add_weight(name=f'{self.name}_bias_{i}',
+                                shape=(out_dim,),
+                                initializer='zeros',
+                                trainable=True)
+                if self.use_bias else None)
 
     def _build_base_coordinates(self):
         """
@@ -1160,9 +1150,6 @@ class GraphConv2D(tf.keras.layers.Layer):
         if bias is not None:
             outputs = outputs + bias
 
-        if self.activation is not None:
-            outputs = self.activation(outputs)
-
         return outputs
 
     def call(self, inputs, training=False):
@@ -1187,12 +1174,17 @@ class GraphConv2D(tf.keras.layers.Layer):
         nodes = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
         edge_index = self._build_edge_index()
 
-        for kernel, residual_kernel, bias in zip(self.kernels, self.residual_kernels, self.biases):
+        for kernel, residual_kernel, bias in \
+                zip(self.kernels, self.residual_kernels, self.biases):
+
             x = self._graph_convolution(nodes, edge_index, kernel, bias)
 
             if self.use_residual:
                 x += nodes if residual_kernel is None \
                     else tf.linalg.matmul(nodes, residual_kernel)
+
+            if self.activation is not None:
+                x = self.activation(x)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
