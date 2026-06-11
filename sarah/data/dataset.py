@@ -325,10 +325,10 @@ class Dataset():
         """
 
         def build(font_data, eps):
-            return [glyph_to_graph(font_data['font'], font_data['cmap'], char, eps) for char in chars]
+            return [glyph_to_graph(font_data['font'], font_data['cmap'], c, eps) for c in chars]
 
-        def compress_contour(points, epsilon):
-            if len(points) < 3 or epsilon == 0:
+        def compress_contour(points, eps):
+            if len(points) < 3 or eps == 0:
                 return np.ones(len(points), dtype=bool)
 
             a, b = points[0], points[-1]
@@ -341,9 +341,9 @@ class Dataset():
             peak = np.argmax(dists)
             mask = np.zeros(len(points), dtype=bool)
 
-            if dists[peak] > epsilon:
-                mask[:peak + 1] = compress_contour(points[:peak + 1], epsilon)
-                mask[peak:] |= compress_contour(points[peak:], epsilon)
+            if dists[peak] > eps:
+                mask[:peak + 1] = compress_contour(points[:peak + 1], eps)
+                mask[peak:] |= compress_contour(points[peak:], eps)
             else:
                 mask[0] = mask[-1] = True
 
@@ -353,7 +353,7 @@ class Dataset():
             return sum(len(graph['nodes']) for graph in graphs)
 
         def glyph_to_nodes(glyph):
-            coords = np.array(glyph.coordinates, dtype=np.float32)
+            coords = np.array(glyph.coordinates)
             flags = np.uint8(glyph.flags)
             end_pts = set(glyph.endPtsOfContours)
 
@@ -363,7 +363,7 @@ class Dataset():
 
             xy = (coords - [x_min, y_min]) / scale
             on_curve = (flags & 1).astype(np.float32)
-            end_of_contour = np.array([i in end_pts for i in range(len(coords))], dtype=np.float32)
+            end_of_contour = np.array([i in end_pts for i in range(len(coords))])
 
             return np.stack([xy[:, 0], xy[:, 1], on_curve, end_of_contour], axis=1)
 
