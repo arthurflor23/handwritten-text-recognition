@@ -119,9 +119,10 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
     edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
 
     for i in range(batch_size):
+        font_index = np.random.randint(num_fonts)
+
         for j in range(num_chars):
-            index = np.random.randint(num_fonts)
-            graph = font_graphs[index][j]
+            graph = font_graphs[font_index][j]
 
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
