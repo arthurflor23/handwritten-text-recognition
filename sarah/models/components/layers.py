@@ -703,7 +703,6 @@ class GraphConv(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
-                 use_residual=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -719,8 +718,6 @@ class GraphConv(tf.keras.layers.Layer):
             Activation function applied after each graph layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
-        use_residual : bool, optional
-            Whether to add residual connection.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -733,7 +730,6 @@ class GraphConv(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
-        self.use_residual = use_residual
         self.use_bias = use_bias
 
     def get_config(self):
@@ -753,7 +749,6 @@ class GraphConv(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
-            'use_residual': self.use_residual,
             'use_bias': self.use_bias,
         })
 
@@ -775,7 +770,6 @@ class GraphConv(tf.keras.layers.Layer):
         self.features = int(input_shape[0][2])
 
         self.kernels = []
-        self.residual_kernels = []
         self.biases = []
 
         for i, out_dim in enumerate(self.units):
@@ -787,13 +781,6 @@ class GraphConv(tf.keras.layers.Layer):
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
-
-            self.residual_kernels.append(
-                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                shape=(in_dim, out_dim),
-                                initializer=self.kernel_initializer,
-                                trainable=True)
-                if self.use_residual and in_dim != out_dim else None)
 
             self.biases.append(
                 self.add_weight(name=f'{self.name}_bias_{i}',
@@ -877,14 +864,8 @@ class GraphConv(tf.keras.layers.Layer):
 
         nodes, edges = inputs
 
-        for kernel, residual_kernel, bias in \
-                zip(self.kernels, self.residual_kernels, self.biases):
-
+        for kernel, bias in zip(self.kernels, self.biases):
             x = self._graph_convolution(nodes, edges, kernel, bias)
-
-            if self.use_residual:
-                x += nodes if residual_kernel is None \
-                    else tf.linalg.matmul(nodes, residual_kernel)
 
             if self.activation is not None:
                 x = self.activation(x)
@@ -931,7 +912,6 @@ class GraphConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
-                 use_residual=True,
                  use_bias=True,
                  **kwargs):
         """
@@ -951,8 +931,6 @@ class GraphConv2D(tf.keras.layers.Layer):
             Activation function applied after each graph layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
-        use_residual : bool, optional
-            Whether to add residual connection.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -967,7 +945,6 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
-        self.use_residual = use_residual
         self.use_bias = use_bias
 
     def get_config(self):
@@ -989,7 +966,6 @@ class GraphConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
-            'use_residual': self.use_residual,
             'use_bias': self.use_bias,
         })
 
@@ -1014,7 +990,6 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.num_nodes = self.height * self.width
 
         self.kernels = []
-        self.residual_kernels = []
         self.biases = []
 
         for i, out_dim in enumerate(self.units):
@@ -1026,13 +1001,6 @@ class GraphConv2D(tf.keras.layers.Layer):
                                 initializer=self.kernel_initializer,
                                 trainable=True)
             )
-
-            self.residual_kernels.append(
-                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                shape=(in_dim, out_dim),
-                                initializer=self.kernel_initializer,
-                                trainable=True)
-                if self.use_residual and in_dim != out_dim else None)
 
             self.biases.append(
                 self.add_weight(name=f'{self.name}_bias_{i}',
@@ -1174,14 +1142,8 @@ class GraphConv2D(tf.keras.layers.Layer):
         nodes = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
         edge_index = self._build_edge_index()
 
-        for kernel, residual_kernel, bias in \
-                zip(self.kernels, self.residual_kernels, self.biases):
-
+        for kernel, bias in zip(self.kernels, self.biases):
             x = self._graph_convolution(nodes, edge_index, kernel, bias)
-
-            if self.use_residual:
-                x += nodes if residual_kernel is None \
-                    else tf.linalg.matmul(nodes, residual_kernel)
 
             if self.activation is not None:
                 x = self.activation(x)
