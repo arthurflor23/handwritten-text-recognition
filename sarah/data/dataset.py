@@ -221,6 +221,7 @@ class Dataset():
         fonts = []
 
         paths = glob.glob(os.path.join(fonts_path, '**', '*.ttf'), recursive=True)
+        paths = list(set(paths))
         paths.sort()
 
         for path in paths:
