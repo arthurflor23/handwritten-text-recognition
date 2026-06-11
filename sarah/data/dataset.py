@@ -316,13 +316,16 @@ class Dataset():
         chars : list
             The tokenizer charset.
         epsilon : float, optional
-            Simplification tolerance for contour reduction.
+            Maximum simplification applied to high-node outlier fonts.
 
         Returns
         -------
         list
             List of graph representations from each character font.
         """
+
+        def build(font_data, eps):
+            return [glyph_to_graph(font_data['font'], font_data['cmap'], char, eps) for char in chars]
 
         def compress_contour(points, epsilon):
             if len(points) < 3 or epsilon == 0:
@@ -346,6 +349,9 @@ class Dataset():
 
             return mask
 
+        def count(graphs):
+            return sum(len(graph['nodes']) for graph in graphs)
+
         def glyph_to_nodes(glyph):
             coords = np.array(glyph.coordinates, dtype=np.float32)
             flags = np.uint8(glyph.flags)
@@ -361,7 +367,7 @@ class Dataset():
 
             return np.stack([xy[:, 0], xy[:, 1], on_curve, end_of_contour], axis=1)
 
-        def glyph_to_graph(font, cmap, char):
+        def glyph_to_graph(font, cmap, char, eps):
             glyph_name = cmap.get(ord(char))
 
             if glyph_name is None:
@@ -392,7 +398,7 @@ class Dataset():
                 contours = [np.arange(bounds[i], bounds[i + 1]) for i in range(len(bounds) - 1)]
 
                 for idx in contours:
-                    mask = compress_contour(nodes[idx, :2], epsilon)
+                    mask = compress_contour(nodes[idx, :2], eps)
                     kept = idx[mask]
 
                     if len(kept) < 2:
@@ -417,7 +423,37 @@ class Dataset():
                 'edges': np.stack([np.concatenate(src), np.concatenate(dst)], axis=0),
             }
 
-        return [[glyph_to_graph(x['font'], x['cmap'], y) for y in chars] for x in fonts]
+        font_graphs = [build(font, 0.0) for font in fonts]
+
+        if epsilon > 0:
+            counts = np.array([count(graphs) for graphs in font_graphs])
+            median = np.median(counts)
+
+            q1, q3 = np.percentile(counts, [25, 75])
+            threshold = q3 + 1.5 * (q3 - q1)
+
+            for i in np.where(counts > threshold)[0]:
+                best_graphs = font_graphs[i]
+                best_count = counts[i]
+                low, high = 0.0, epsilon
+
+                for _ in range(10):
+                    mid = (low + high) / 2.0
+                    graphs = build(fonts[i], mid)
+                    total = count(graphs)
+
+                    if abs(total - median) < abs(best_count - median):
+                        best_graphs = graphs
+                        best_count = total
+
+                    if total > median:
+                        low = mid
+                    else:
+                        high = mid
+
+                font_graphs[i] = best_graphs
+
+        return font_graphs
 
     def _prepare_multigrams(self, data):
         """
