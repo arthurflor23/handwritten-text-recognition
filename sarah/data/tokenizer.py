@@ -314,7 +314,7 @@ class Tokenizer():
             if len(graph['edges']) > 0
         )
 
-        nodes_shape = (max_nodes * self.lexical_shape[-1], 4)
-        edges_shape = (2, max_edges * self.lexical_shape[-1])
+        nodes_shape = (max_nodes * len(self.chars), 4)
+        edges_shape = (2, max_edges * len(self.chars))
 
         self.font_graph_shape = nodes_shape, edges_shape
