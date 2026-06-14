@@ -326,7 +326,7 @@ class Dataset():
         """
 
         def build(font, eps):
-            return [glyph_to_graph(font['font'], font['cmap'], x, eps) for x in chars + [' ']]
+            return [glyph_to_graph(font['font'], font['cmap'], x, eps) for x in chars]
 
         def compress_contour(points, eps):
             if len(points) < 3 or eps == 0:
