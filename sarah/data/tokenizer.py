@@ -175,11 +175,11 @@ class Tokenizer():
         if keepstats:
             self._update_text_stats(text)
 
-            for word in set(text.replace('\n', ' ').split()):
+            for word in text.replace('\n', ' ').split():
                 if word not in self.words:
                     self.words.append(word)
 
-            for char in set(text.replace('\n', '')):
+            for char in text.replace('\n', ''):
                 if char not in self.chars:
                     self.chars.append(char)
 
