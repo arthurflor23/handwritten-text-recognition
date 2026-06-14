@@ -3,6 +3,7 @@ import glob
 import zipfile
 import importlib
 import numpy as np
+import concurrent.futures
 
 from fontTools.ttLib import TTFont
 from sarah.data import utils
@@ -484,6 +485,7 @@ class Dataset():
             for i in range(len(words)):
                 for j in range(i + 1, len(words) + 1):
                     multigram = ''
+
                     for u in range(i, j):
                         last_line = multigram.split('\n')[-1]
                         next_line_length = len(last_line) + len(words[u])
@@ -502,19 +504,23 @@ class Dataset():
             if 'test' in partition:
                 continue
 
-            results = [y for y in (build(x) for x in data[partition]) if y is not None]
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(build, x) for x in data[partition]]
+                results = [x for x in (f.result() for f in futures) if x is not None]
 
-            if results:
-                flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
+            if not results:
+                continue
 
-                if self.order_by_text:
-                    flattened.sort(key=lambda x: len(x[0]), reverse=False)
+            flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
 
-                source, encoded = zip(*flattened)
+            if self.order_by_text:
+                flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
-                for s, e in zip(source, encoded):
-                    multigrams['source'].append({'text': s})
-                    multigrams['encoded'].append({'text': e})
+            source, encoded = zip(*flattened)
+
+            for s, e in zip(source, encoded):
+                multigrams['source'].append({'text': s})
+                multigrams['encoded'].append({'text': e})
 
         multigrams['source'] = np.array(multigrams['source'], dtype=object)
         multigrams['encoded'] = np.array(multigrams['encoded'], dtype=object)
@@ -573,25 +579,29 @@ class Dataset():
             if not self.lazy_mode:
                 encoded['image'] = image
 
-            encoded['text'] = self.tokenizer.encode_text(item['text'], keepstats=keepstats)
-            encoded['writer'] = self.tokenizer.encode_writer(item['writer'], keepstats=keepstats)
-
             return source, encoded
 
         for partition in data:
-            samples['source'][partition] = []
-            samples['encoded'][partition] = []
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(build, x) for x in data[partition]]
+                results = [x for x in (f.result() for f in futures) if x is not None]
 
-            results = [y for y in (build(x) for x in data[partition]) if y is not None]
+            if not results:
+                samples['source'][partition] = np.array((), dtype=object)
+                samples['encoded'][partition] = np.array((), dtype=object)
+                continue
 
-            if results:
-                if self.order_by_text:
-                    results.sort(key=lambda x: len(x[0]['text']), reverse=False)
+            if self.order_by_text:
+                results.sort(key=lambda x: len(x[0]['text']), reverse=False)
 
-                source, encoded = zip(*results)
+            source, encoded = zip(*results)
 
-                samples['source'][partition] = np.array(source, dtype=object)
-                samples['encoded'][partition] = np.array(encoded, dtype=object)
+            for item in encoded:
+                item['text'] = self.tokenizer.encode_text(item['text'], keepstats=keepstats)
+                item['writer'] = self.tokenizer.encode_writer(item['writer'], keepstats=keepstats)
+
+            samples['source'][partition] = np.array(source, dtype=object)
+            samples['encoded'][partition] = np.array(encoded, dtype=object)
 
         return samples
 
