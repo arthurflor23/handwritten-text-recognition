@@ -149,8 +149,8 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
             nodes[i, j, :n] = graph_nodes[:n]
             edges[i, j, :, :e] = graph_edges[:, :e] + j * max_nodes
 
-    nodes = nodes.reshape(batch_size, num_chars * max_nodes, 4)
-    edges = edges.reshape(batch_size, 2, num_chars * max_edges)
+    nodes = nodes.reshape(batch_size, max_nodes * num_chars, 4)
+    edges = edges.reshape(batch_size, 2, max_edges * num_chars)
 
     return nodes, edges
 
