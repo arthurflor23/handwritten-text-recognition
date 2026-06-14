@@ -3,10 +3,8 @@ import glob
 import zipfile
 import importlib
 import numpy as np
-import concurrent.futures
 
 from fontTools.ttLib import TTFont
-
 from sarah.data import utils
 from sarah.data.tokenizer import Tokenizer
 
@@ -476,11 +474,11 @@ class Dataset():
         if not self.multigrams:
             return multigrams
 
-        def build(x):
-            lines = x['text'].split('\n')
+        def build(item):
+            lines = item['text'].split('\n')
             max_line_length = max(len(line) for line in lines)
 
-            words = x['text'].replace('\n', ' ').split()
+            words = item['text'].replace('\n', ' ').split()
             multigrams = []
 
             for i in range(len(words)):
@@ -504,9 +502,7 @@ class Dataset():
             if 'test' in partition:
                 continue
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(build, x) for x in data[partition]]
-                results = [x for x in (f.result() for f in futures) if x is not None]
+            results = [y for y in (build(x) for x in data[partition]) if y is not None]
 
             if results:
                 flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
@@ -543,7 +539,7 @@ class Dataset():
         samples = {'source': {}, 'encoded': {}}
         keepstats = hasattr(self, '_source')
 
-        def validate_and_build(item):
+        def build(item):
             item['text'] = utils.format_text(item['text'] or '')
 
             if not item['text'] and hasattr(self, '_source'):
@@ -586,9 +582,7 @@ class Dataset():
             samples['source'][partition] = []
             samples['encoded'][partition] = []
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(validate_and_build, item) for item in data[partition]]
-                results = [x for x in (f.result() for f in futures) if x is not None]
+            results = [y for y in (build(x) for x in data[partition]) if y is not None]
 
             if results:
                 if self.order_by_text:
