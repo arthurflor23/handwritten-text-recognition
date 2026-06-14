@@ -3,16 +3,12 @@ import re
 
 class Tokenizer():
     """
-    A tokenizer class for encoding and decoding text and writer IDs.
-
-    This class provides functionality to convert text into encoded representations and
-        vice versa, as well as handling encoding and decoding of writer IDs.
-    It maintains statistical metadata about the text processed.
+    Tokenizer for text, writer IDs, and graph shape metadata.
     """
 
     def __init__(self):
         """
-        Initialize the Tokenizer instance.
+        Initializes the tokenizer.
         """
 
         self.pad_tk = '¶'
@@ -26,20 +22,19 @@ class Tokenizer():
         self.lexical_shape = []
         self.writers_shape = []
 
-        self.chars_length = len(self.chars)
-        self.special_chars_length = self.chars_length
-        self.special_marks_length = self.chars_length - 1
+        self.special_chars_length = len(self.chars)
+        self.special_marks_length = self.special_chars_length - 1
 
         self._initialize_metadata()
 
     def __repr__(self):
         """
-        Provides a formatted string with useful information.
+        Returns a formatted tokenizer summary.
 
         Returns
         -------
         str
-            Formatted string with useful information.
+            Formatted summary.
         """
 
         pad, width = 25, 68
@@ -49,7 +44,7 @@ class Tokenizer():
         info += f'\n{self.__class__.__name__.center(width)}'
         info += "\n" + "-" * width
         info += f"\n{'words':<{pad}}: {len(self.words):,}"
-        info += f"\n{'chars':<{pad}}: {self.chars_length - self.special_chars_length:,}"
+        info += f"\n{'chars':<{pad}}: {len(self.chars) - self.special_chars_length:,}"
         info += f"\n{'writers':<{pad}}: {len(self.writers):,}"
         info += "\n" + "-" * width
         info += f"\n{'writers_shape':<{pad}}: {self.writers_shape}"
@@ -73,7 +68,7 @@ class Tokenizer():
 
     def _initialize_metadata(self):
         """
-        Initializes metadata dictionary with statistical keys for text analysis.
+        Initializes text statistics and shape metadata.
         """
 
         self.stats_keys = [
@@ -106,12 +101,12 @@ class Tokenizer():
 
     def _update_text_stats(self, text):
         """
-        Updates text statistics based on the input text.
+        Updates text statistics.
 
         Parameters
         ----------
         text : str
-            Text for updating statistical metadata.
+            Input text.
         """
 
         def update_stats(key, value):
@@ -162,19 +157,19 @@ class Tokenizer():
 
     def encode_text(self, text, keepstats=False):
         """
-        Encode text into a nested list of character indices.
+        Encodes text into character indices.
 
         Parameters
         ----------
         text : str
-            The text to be encoded.
+            Input text.
         keepstats : bool, optional
-            If True, updates the character set.
+            Whether to update text statistics and vocabulary.
 
         Returns
         -------
-        list of list of list of int
-            The encoded representation of the text.
+        list
+            Encoded text.
         """
 
         if keepstats:
@@ -191,13 +186,12 @@ class Tokenizer():
             def next_power_of_two(n):
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
-            self.chars_length = len(self.chars)
             self.font_graph_shape = None
 
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_lines_per_page']),
                 next_power_of_two(self.metadata['max_chars_per_line'] + self.special_marks_length),
-                self.chars_length + 1,
+                len(self.chars) + 1,
             )
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
@@ -221,17 +215,17 @@ class Tokenizer():
 
     def decode_text(self, encoded_text):
         """
-        Decode the encoded text back to its original form.
+        Decodes character indices into text.
 
         Parameters
         ----------
-        encoded_text : list of list of list of int
-            The encoded text to be decoded.
+        encoded_text : list
+            Encoded text.
 
         Returns
         -------
         str
-            The decoded text.
+            Decoded text.
         """
 
         translation_table = str.maketrans('', '', ''.join(self.chars[:self.special_chars_length]))
@@ -249,19 +243,19 @@ class Tokenizer():
 
     def encode_writer(self, writer, keepstats=False):
         """
-        Encode a writer's ID into an integer index.
+        Encodes a writer ID into an index.
 
         Parameters
         ----------
         writer : str
-            The writer's ID to encode.
+            Writer ID.
         keepstats : bool, optional
-            If True, updates the writer set.
+            Whether to update the writer vocabulary.
 
         Returns
         -------
         int
-            The encoded index of the writer.
+            Encoded writer index.
         """
 
         if keepstats and writer not in self.writers:
@@ -275,17 +269,17 @@ class Tokenizer():
 
     def decode_writer(self, encoded_writer):
         """
-        Decode the encoded writer index back to the writer's ID.
+        Decodes a writer index into a writer ID.
 
         Parameters
         ----------
         encoded_writer : int
-            The encoded index of the writer.
+            Encoded writer index.
 
         Returns
         -------
         str
-            The decoded writer's ID.
+            Decoded writer ID.
         """
 
         index_to_writer = {idx: char for idx, char in enumerate(self.writers)}
@@ -295,12 +289,12 @@ class Tokenizer():
 
     def set_font_graph_shape(self, font_graphs):
         """
-        Sets the font graph shape from the built graph data.
+        Sets the maximum font graph shape.
 
         Parameters
         ----------
         font_graphs : list
-            List of graph representations from each character font.
+            Font graph data.
         """
 
         if not font_graphs:
@@ -320,7 +314,7 @@ class Tokenizer():
             if len(graph['edges']) > 0
         )
 
-        nodes_shape = (max_nodes * self.chars_length, 4)
-        edges_shape = (2, max_edges * self.chars_length)
+        nodes_shape = (max_nodes * self.lexical_shape[-1], 4)
+        edges_shape = (2, max_edges * self.lexical_shape[-1])
 
         self.font_graph_shape = nodes_shape, edges_shape
