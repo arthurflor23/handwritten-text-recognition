@@ -325,8 +325,8 @@ class Dataset():
             List of graph representations from each character font.
         """
 
-        def build(font_data, eps):
-            return [glyph_to_graph(font_data['font'], font_data['cmap'], c, eps) for c in chars]
+        def build(font, eps):
+            return [glyph_to_graph(font['font'], font['cmap'], x, eps) for x in chars + [' ']]
 
         def compress_contour(points, eps):
             if len(points) < 3 or eps == 0:
