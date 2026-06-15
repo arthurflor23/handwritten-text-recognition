@@ -211,7 +211,7 @@ class ContentAlignment(tf.keras.layers.Layer):
                  char_width_ratio,
                  text_padding_value=0,
                  mask_padding_value=0,
-                 resize_method='nearest',
+                 resize_method='bilinear',
                  **kwargs):
         """
         Initializes the layer.
@@ -1050,7 +1050,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         units : int or list of int
             Number of output features per node and layer.
         k_neighbors : int, optional
-            Number of nearest neighbors used to build the graph.
+            Number of neighbors used to build the graph.
         num_pos_scales : int, optional
             Number of sine-cosine positional scales used in the spatial offsets.
         kernel_initializer : str or initializer, optional
@@ -1195,7 +1195,7 @@ class GraphConv2D(tf.keras.layers.Layer):
 
     def _build_edge_index(self):
         """
-        Builds the graph edges using k-nearest neighbors.
+        Builds the graph edges using k-neighbors.
 
         Returns
         -------
