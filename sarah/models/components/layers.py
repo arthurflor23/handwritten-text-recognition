@@ -539,7 +539,7 @@ class GatedConv2D(tf.keras.layers.Layer):
                  beta_initializer='zeros',
                  dropout=0.0,
                  feature_scale=1.0,
-                 use_residual=True,
+                 use_residual=False,
                  use_bias=True,
                  **kwargs):
         """
@@ -811,7 +811,7 @@ class GraphConv(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
-                 use_residual=True,
+                 use_residual=False,
                  use_bias=True,
                  **kwargs):
         """
@@ -1039,7 +1039,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  activation=None,
                  dropout=0.0,
-                 use_residual=True,
+                 use_residual=False,
                  use_bias=True,
                  **kwargs):
         """
