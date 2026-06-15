@@ -91,7 +91,6 @@ class SegmentationModel(BaseSegmentationModel):
         encoder = GraphConv2D(units=[64, 64, 64, 64],
                               k_neighbors=4,
                               num_pos_scales=4,
-                              use_residual=True,
                               activation='swish')(encoder)
         feats.append(encoder)
 
