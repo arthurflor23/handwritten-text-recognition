@@ -175,11 +175,14 @@ class Tokenizer():
         if keepstats:
             self._update_text_stats(text)
 
-            for word in sorted(set(text.replace('\n', ' ').split())):
+            words = sorted(set(text.replace('\n', ' ').split()), reverse=False)
+            chars = sorted(set(text.replace('\n', ' ')), reverse=False)
+
+            for word in words:
                 if word not in self.words:
                     self.words.append(word)
 
-            for char in sorted(set(text.replace('\n', ''))):
+            for char in chars:
                 if char not in self.chars:
                     self.chars.append(char)
 
