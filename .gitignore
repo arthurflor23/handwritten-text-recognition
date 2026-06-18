@@ -6,10 +6,8 @@ mlruns/
 outputs/
 scripts/
 
-# Hidden files
-.directory
-.DS_Store
-.vscode
+# Hidden artifacts
+.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
