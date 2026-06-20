@@ -11,6 +11,9 @@ class SegmentationModel(BaseSegmentationModel):
 
     References
     ----------
+    Image Segmentation: Inducing graph-based learning
+        https://arxiv.org/abs/2501.03765
+
     Processamento digital de imagens para detecção automática de fissuras em revestimentos cerâmicos de edifícios
         https://www.scielo.br/j/ac/a/fkNKmmBtpzy9LsB7sg5fbBm
 
@@ -48,50 +51,36 @@ class SegmentationModel(BaseSegmentationModel):
 
         encoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(encoder_input)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 4), strides=(2, 4))(encoder)
-
-        encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
-        encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(encoder)
-        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
+        feats.append(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
+
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
-        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
+        encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GraphConv2D(units=[64, 64, 64, 64],
-                              k_neighbors=4,
-                              num_pos_scales=4,
-                              activation='swish')(encoder)
+        encoder = GraphConv2D(units=64, k_neighbors=4, num_pos_scales=1, use_residual=True)(encoder)
+        encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         feats.append(encoder)
 
         self.encoder = tf.keras.Model(name='segmentation_encoder', inputs=encoder_input, outputs=feats)
@@ -100,57 +89,45 @@ class SegmentationModel(BaseSegmentationModel):
         decoder_input = [tf.keras.Input(shape=x.shape[1:]) for x in feats]
         decoder = tf.keras.layers.Identity()(decoder_input[-1])
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 1), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[5], decoder])
         decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 1), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[4], decoder])
         decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=56, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=40, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[3], decoder])
         decoder = tf.keras.layers.Conv2D(filters=40, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=40, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 1), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=32, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[2], decoder])
         decoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 1), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=16, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[1], decoder])
         decoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
-        decoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
-        decoder = tf.keras.layers.UpSampling2D(size=(2, 4), interpolation='bilinear')(decoder)
+        decoder = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=8, kernel_size=2, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Concatenate(axis=-1)([decoder_input[0], decoder])
-        decoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(decoder)
-        decoder = tf.keras.layers.Activation(activation='swish')(decoder)
         decoder = tf.keras.layers.Conv2D(filters=8, kernel_size=3, padding='same')(decoder)
         decoder = tf.keras.layers.Activation(activation='swish')(decoder)
 
