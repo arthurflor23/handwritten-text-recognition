@@ -181,33 +181,31 @@ The project has several command-line parameters that can be used to customize it
 
 The project offers a range of functionalities through command-line parameters, which can be combined to match specific needs. Below are some examples of usage.
 
-**Example 1: Perform recognition model training**
+**Example 1: Train the recognition model across multiple datasets**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --batch-size 8 --training
+python sarah --source iam --recognition flor --training --gpu 0;
+python sarah --source rimes --recognition flor --training-ratio 0.9 --validation-ratio 0.1 --training --gpu 0;
 ```
 
-This command will train the recognition model on IAM dataset at the line level, using the Flor optical network with batch size of 8.
+These commands train the Flor recognition model independently on the IAM and RIMES datasets. For RIMES, the data is split into 90% training and 10% validation.
 
-**Example 2: Perform recognition model testing**
+**Example 2: Test the recognition model across multiple datasets**
 
 ```bash
-python sarah --source iam --text-level line --recognition flor --beam-width 32 --recognition-run-id -1 --test
+python sarah --source iam --recognition flor --test --recognition-run-id -1;
+python sarah --source rimes --recognition flor --test --recognition-run-id -1;
 ```
 
-This command will perform testing phase on IAM dataset using the Flor optical network and a beam width of 32. The selected optical model is indicated by the recognition run id, which loads the last trained model.
+These commands run the test pipeline on IAM and RIMES using the Flor recognition model. The `--recognition-run-id -1` flag selects the most recently logged MLflow run for each dataset.
 
-**Example 3: Perform recognition model inference**
+**Example 3: Train the synthesis model on the combined dataset**
 
 ```bash
-python sarah --recognition flor --recognition-run-id -1 --inference --image path/to/image1.png
+python sarah --source all-in-one --synthesis flor --training-ratio 1.0 --validation-ratio 0.0 --test-ratio 0.0 --training --gpu 0;
 ```
 
-This command will perform inference on the specified images using the Flor optical network. The selected optical model is indicated by the recognition run id, which loads the last trained model.
-
----
-
-In addition, different workflows can be used, such as `--synthesis` and the combination of `--synthesis` with `--recognition`. For the first, the synthesis model is trained and used to synthesize fake manuscripts; in the second, the synthesis serves as data augmentation for the recognition models in an integrated training pipeline.
+This command trains the Flor synthesis model on the combined source, using the full dataset for training with no validation or test partitions.
 
 ## Tutorial Notebook
 
