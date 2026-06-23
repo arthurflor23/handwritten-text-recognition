@@ -1783,15 +1783,12 @@ class GraphEncoder(tf.keras.layers.Layer):
             Batch of binary images.
         """
 
-        if len(inputs.shape) == 4:
-            inputs = inputs[..., 0]
+        images = (inputs + 1.0) * 127.5
 
-        images = tf.expand_dims((tf.cast(inputs, tf.float32) + 1.0) / 2.0 * 255.0, axis=-1)
-
-        local_mean = tf.nn.avg_pool2d(images, ksize=31, strides=1, padding='SAME')
-        mean_of_sq = tf.nn.avg_pool2d(images ** 2, ksize=31, strides=1, padding='SAME')
-        local_stddev = tf.sqrt(tf.maximum(mean_of_sq - local_mean ** 2, 0.0))
-        threshold = local_mean * (1.0 + 0.1 * (local_stddev / 128.0 - 1.0))
+        mean = tf.nn.avg_pool2d(images, ksize=31, strides=1, padding='SAME')
+        mean_sq = tf.nn.avg_pool2d(tf.square(images), ksize=31, strides=1, padding='SAME')
+        stddev = tf.sqrt(tf.maximum(mean_sq - tf.square(mean), 0.0))
+        threshold = mean * (1.0 + 0.1 * (stddev / 128.0 - 1.0))
 
         return tf.cast(tf.squeeze(images <= threshold, axis=-1), tf.uint8) * 255
 
@@ -1834,6 +1831,8 @@ class GraphEncoder(tf.keras.layers.Layer):
             Node feature tensor.
         edges : tf.Tensor
             Edge index tensor, formatted as [src, dst].
+        edge_mask : tf.Tensor
+            Edge validity mask.
         kernel : tf.Tensor
             Convolution kernel.
         bias : tf.Tensor or None, optional
