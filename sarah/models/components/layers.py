@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 import tensorflow as tf
 
 
@@ -824,7 +826,7 @@ class GraphConv(tf.keras.layers.Layer):
         kernel_initializer : str or initializer, optional
             Initializer for the kernel weights.
         activation : str or callable, optional
-            Activation function applied after each graph layer.
+            Activation function applied after each layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
         use_residual : bool, optional
@@ -990,15 +992,15 @@ class GraphConv(tf.keras.layers.Layer):
 
             x = self._graph_convolution(nodes, edges, kernel, bias)
 
-            if training and self.dropout:
-                x = tf.nn.dropout(x, rate=self.dropout)
-
             if self.use_residual:
                 x += nodes if residual_kernel is None \
                     else tf.linalg.matmul(nodes, residual_kernel)
 
             if self.activation is not None:
                 x = self.activation(x)
+
+            if training and self.dropout:
+                x = tf.nn.dropout(x, rate=self.dropout)
 
             nodes = tf.identity(x)
 
@@ -1056,7 +1058,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         kernel_initializer : str or initializer, optional
             Initializer for the kernel weights.
         activation : str or callable, optional
-            Activation function applied after each graph layer.
+            Activation function applied after each layer.
         dropout : float, optional
             Dropout rate applied to the layer during training.
         use_residual : bool, optional
@@ -1287,15 +1289,15 @@ class GraphConv2D(tf.keras.layers.Layer):
 
             x = self._graph_convolution(nodes, edge_index, kernel, bias)
 
-            if training and self.dropout:
-                x = tf.nn.dropout(x, rate=self.dropout)
-
             if self.use_residual:
                 x += nodes if residual_kernel is None \
                     else tf.linalg.matmul(nodes, residual_kernel)
 
             if self.activation is not None:
                 x = self.activation(x)
+
+            if training and self.dropout:
+                x = tf.nn.dropout(x, rate=self.dropout)
 
             nodes = tf.identity(x)
 
@@ -1317,6 +1319,633 @@ class GraphConv2D(tf.keras.layers.Layer):
         """
 
         return tf.TensorShape([input_shape[0], self.height, self.width, self.units[-1]])
+
+
+class GraphEncoder(tf.keras.layers.Layer):
+    """
+    Encodes handwriting images into fixed-size vectors via graph convolution.
+
+    References
+    ----------
+    Graph Embedding for Offline Handwritten Signature Verification
+        https://dl.acm.org/doi/10.1145/3345336.3345346
+
+    Towards Visuo-Structural Handwriting Evaluation Based on Graph Matching
+        https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
+    """
+
+    def __init__(self,
+                 units,
+                 h_units,
+                 step_length=5,
+                 kernel_initializer='glorot_uniform',
+                 activation=None,
+                 dropout=0.0,
+                 use_residual=False,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        units : int or list of int
+            Number of output features per node and graph layers.
+        h_units : int or list of int
+            Number of hidden units for dense layers.
+        step_length : int, optional
+            Arc-length distance between keypoint pixels.
+        kernel_initializer : str or initializer, optional
+            Initializer for the kernel weights.
+        activation : str or callable, optional
+            Activation function applied after each layer.
+        dropout : float, optional
+            Dropout rate applied to the layer during training.
+        use_residual : bool, optional
+            Whether to add residual connection.
+        use_bias : bool, optional
+            Whether to add bias terms.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.units = [units] if isinstance(units, int) else list(units)
+        self.h_units = [h_units] if isinstance(h_units, int) else list(h_units)
+        self.step_length = step_length
+        self.kernel_initializer = kernel_initializer
+        self.activation = tf.keras.activations.get(activation)
+        self.dropout = dropout
+        self.use_residual = use_residual
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'units': self.units,
+            'h_units': self.h_units,
+            'step_length': self.step_length,
+            'kernel_initializer': self.kernel_initializer,
+            'activation': tf.keras.activations.serialize(self.activation),
+            'dropout': self.dropout,
+            'use_residual': self.use_residual,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.kernels = []
+        self.residual_kernels = []
+        self.biases = []
+
+        for i, out_dim in enumerate(self.units):
+            in_dim = 4 if i == 0 else self.units[i - 1]
+
+            self.kernels.append(
+                self.add_weight(name=f'{self.name}_kernel_{i}',
+                                shape=(in_dim, out_dim),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+            )
+
+            self.residual_kernels.append(
+                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
+                                shape=(in_dim, out_dim),
+                                initializer=self.kernel_initializer,
+                                trainable=True)
+                if self.use_residual and in_dim != out_dim else None)
+
+            self.biases.append(
+                self.add_weight(name=f'{self.name}_bias_{i}',
+                                shape=(out_dim,),
+                                initializer='zeros',
+                                trainable=True)
+                if self.use_bias else None)
+
+        self.dense_layers = [
+            tf.keras.layers.Dense(units=out_dim,
+                                  kernel_initializer=self.kernel_initializer,
+                                  use_bias=self.use_bias)
+            for out_dim in self.h_units
+        ]
+
+    def _build_endpoints(self, skeleton):
+        """
+        Detects stroke endpoints and junction points in a skeleton image.
+
+        Parameters
+        ----------
+        skeleton : np.ndarray
+            Binary skeleton image.
+
+        Returns
+        -------
+        endpoints : list
+            Stroke endpoint positions.
+        junctions : list
+            Deduplicated junction positions.
+        possible_junctions : list
+            Raw junction candidates before deduplication.
+        """
+
+        mask = (1 - skeleton).astype(np.float32)
+        kernel = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.float32)
+
+        weighted_count = mask * cv2.filter2D(src=mask,
+                                             ddepth=-1,
+                                             kernel=kernel,
+                                             borderType=cv2.BORDER_CONSTANT)
+
+        rows_j, cols_j = np.nonzero(weighted_count > 2)
+        possible_junctions = list(zip(rows_j.tolist(), cols_j.tolist()))
+
+        rows_e, cols_e = np.nonzero(weighted_count == 1)
+        endpoints = list(zip(rows_e.tolist(), cols_e.tolist()))
+
+        junctions = []
+
+        for point in possible_junctions:
+            has_stronger_neighbor = False
+
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if not (dy or dx):
+                        continue
+
+                    neighbor = (point[0] + dy, point[1] + dx)
+
+                    if neighbor in junctions:
+                        if weighted_count[neighbor] <= weighted_count[point]:
+                            junctions.remove(neighbor)
+                        else:
+                            has_stronger_neighbor = True
+
+            if not has_stronger_neighbor:
+                junctions.append(point)
+
+        return endpoints, junctions, possible_junctions
+
+    def _build_paths(self, skeleton, start_point, step_length):
+        """
+        Extracts evenly spaced keypoints along the skeleton.
+
+        Parameters
+        ----------
+        skeleton : np.ndarray
+            Binary skeleton image.
+        start_point : tuple
+            Starting pixel position.
+        step_length : float
+            Arc-length distance between keypoints.
+
+        Returns
+        -------
+        keypoints : list
+            Sampled positions along the path.
+        skeleton : np.ndarray
+            Updated skeleton with visited pixels consumed.
+        """
+
+        keypoints = [start_point]
+        accumulated_distance = 0.0
+        current_point = start_point
+        skeleton[current_point] = 1
+
+        neighbor_offsets = [
+            ((-1, -1), np.sqrt(2)), ((-1, 0), 1.0), ((-1, 1), np.sqrt(2)),
+            ((0,   1), 1.0),        ((1,  1), np.sqrt(2)), ((1,  0), 1.0),
+            ((1,  -1), np.sqrt(2)), ((0, -1), 1.0),
+        ]
+
+        while True:
+            next_point = None
+            step_distance = 0.0
+
+            for (dy, dx), dist in neighbor_offsets:
+                neighbor = (current_point[0] + dy, current_point[1] + dx)
+
+                try:
+                    if skeleton[neighbor] == 0:
+                        next_point = neighbor
+                        step_distance = dist
+                        break
+                except IndexError:
+                    pass
+
+            if next_point is None:
+                break
+
+            accumulated_distance += step_distance
+            skeleton[next_point] = 1
+            current_point = next_point
+
+            if accumulated_distance >= step_length:
+                keypoints.append(current_point)
+                accumulated_distance = 0.0
+
+        if current_point not in keypoints:
+            keypoints.append(current_point)
+
+        return keypoints, skeleton
+
+    def _convert_skeleton_to_paths(self, skeleton, step_length):
+        """
+        Converts skeletons to ordered paths, handling complex topologies.
+
+        Parameters
+        ----------
+        skeleton : np.ndarray
+            Binary skeleton image.
+        step_length : float
+            Arc-length distance between keypoints.
+
+        Returns
+        -------
+        list of list of tuple
+            Keypoint sequences, one per stroke segment.
+        """
+
+        _, _, possible_junctions = self._build_endpoints(skeleton)
+
+        skeleton_no_junctions = np.copy(skeleton)
+        junction_pixel_map = np.zeros(skeleton.shape, dtype=np.uint8)
+
+        for junction in possible_junctions:
+            skeleton_no_junctions[junction] = 1
+            junction_pixel_map[junction] = 1
+
+        num_labels, junction_labels = cv2.connectedComponents(junction_pixel_map, connectivity=8)
+
+        junction_groups = [[] for _ in range(num_labels - 1)]
+        rows_lbl, cols_lbl = np.nonzero(junction_labels)
+
+        for row, col in zip(rows_lbl.tolist(), cols_lbl.tolist()):
+            junction_groups[junction_labels[row, col] - 1].append((row, col))
+
+        junction_centroids = [tuple(int(round(sum(y) / len(y))) for y in zip(*x)) for x in junction_groups]
+        endpoints_on_arc, _, _ = self._build_endpoints(skeleton_no_junctions)
+
+        nearest_junction = {}
+        ignore_endpoints = []
+        junction_bridge_paths = []
+        endpoints_isolated = []
+
+        offset = [(-1, -1), (-1, 0), (-1, 1), (0, 1),
+                  (1,   1),  (1, 0), (1,  -1), (0, -1)]
+
+        for point in endpoints_on_arc:
+            neighbor_labels = []
+
+            for dy, dx in offset:
+                neighbor = (point[0] + dy, point[1] + dx)
+
+                try:
+                    lv = junction_labels[neighbor]
+                    if lv:
+                        neighbor_labels.append(lv)
+                except IndexError:
+                    pass
+
+            if len(neighbor_labels) == 1:
+                nearest_junction[point] = junction_centroids[neighbor_labels[0] - 1]
+
+            elif len(neighbor_labels) == 2:
+                ignore_endpoints.append(point)
+                junction_bridge_paths.append([junction_centroids[neighbor_labels[0] - 1],
+                                             junction_centroids[neighbor_labels[1] - 1]])
+            else:
+                endpoints_isolated.append(point)
+
+        endpoints_near_junction = sorted(nearest_junction.keys(), key=lambda x: (x[1], x[0]))
+
+        endpoints_isolated = sorted(endpoints_isolated, key=lambda x: (x[1], x[0]))
+        ignore_endpoints_set = set(ignore_endpoints)
+        endpoints_near_junction_set = set(endpoints_near_junction)
+
+        working_skeleton = np.copy(skeleton_no_junctions)
+        paths = []
+
+        for endpoint in endpoints_near_junction + endpoints_isolated:
+            if endpoint in ignore_endpoints_set:
+                working_skeleton[endpoint] = 1
+            else:
+                path, working_skeleton = self._build_paths(working_skeleton, endpoint, step_length)
+
+                if path[0] in nearest_junction:
+                    path.insert(0, nearest_junction[path[0]])
+
+                if path[-1] in nearest_junction:
+                    path.append(nearest_junction[path[-1]])
+
+                paths.append(path)
+
+        paths.extend(junction_bridge_paths)
+
+        num_labels, loop_labels = cv2.connectedComponents(np.uint8((1 - working_skeleton) > 0), connectivity=8)
+
+        circle_start_points = [None] * (num_labels - 1)
+        rows_loop, cols_loop = np.nonzero(loop_labels)
+
+        for row, col in zip(rows_loop.tolist(), cols_loop.tolist()):
+            lv = loop_labels[row, col]
+            cur = circle_start_points[lv - 1]
+
+            if cur is None or col < cur[1] or (col == cur[1] and row < cur[0]):
+                circle_start_points[lv - 1] = (row, col)
+
+        for circle_start in circle_start_points:
+            path, working_skeleton = self._build_paths(working_skeleton, circle_start, step_length)
+            paths.append(path[:-1] + path[0:1])
+
+        return [[x for x in path if x not in endpoints_near_junction_set] for path in paths]
+
+    def _convert_images_to_graphs(self, binary_images_tensor):
+        """
+        Extracts graphs for a full batch and returns zero-padded arrays.
+
+        Parameters
+        ----------
+        binary_images_tensor : tf.Tensor
+            Batch of binary images.
+
+        Returns
+        -------
+        padded_nodes : np.ndarray
+            Node feature arrays padded to the batch maximum.
+        padded_edges : np.ndarray
+            Bidirectional edge index arrays padded to the batch maximum.
+        edge_mask : np.ndarray
+            Mask with 1.0 for real edges, 0.0 for padding.
+        """
+
+        binary_images = binary_images_tensor.numpy()
+        batch_size = binary_images.shape[0]
+
+        all_nodes = []
+        all_edges = []
+
+        for i in range(batch_size):
+            thinned = cv2.ximgproc.thinning(binary_images[i])
+            skeleton = np.where(thinned == 255, 0.0, 1.0).astype(np.float32)
+            paths = self._convert_skeleton_to_paths(skeleton.copy(), self.step_length)
+
+            if not any(paths):
+                all_nodes.append(np.zeros((0, 4), dtype=np.float32))
+                all_edges.append(np.zeros((2, 0), dtype=np.int32))
+                continue
+
+            unique_points = sorted({point for path in paths for point in path}, key=lambda x: (x[1], x[0]))
+            node_id_of = {x: idx for idx, x in enumerate(unique_points)}
+            num_nodes = len(unique_points)
+
+            coords = np.array(unique_points, dtype=np.float32)
+            y_pixels, x_pixels = coords[:, 0], coords[:, 1]
+            scale = max(x_pixels.max() - x_pixels.min(), y_pixels.max() - y_pixels.min()) or 1.0
+
+            nodes = np.stack([
+                (x_pixels - x_pixels.min()) / scale,
+                (y_pixels - y_pixels.min()) / scale,
+                np.zeros(num_nodes, dtype=np.float32),
+                np.zeros(num_nodes, dtype=np.float32),
+            ], axis=1)
+
+            edge_pairs = set()
+
+            for path in paths:
+                for pa, pb in zip(path, path[1:]):
+                    a, b = node_id_of[pa], node_id_of[pb]
+
+                    if a != b:
+                        edge_pairs.add((min(a, b), max(a, b)))
+
+            if edge_pairs:
+                edge_src = np.array([e[0] for e in edge_pairs], dtype=np.int32)
+                edge_dst = np.array([e[1] for e in edge_pairs], dtype=np.int32)
+
+                edges = np.stack([np.concatenate([edge_src, edge_dst]),
+                                  np.concatenate([edge_dst, edge_src]), ], axis=0)
+            else:
+                edges = np.zeros((2, 0), dtype=np.int32)
+
+            all_nodes.append(nodes)
+            all_edges.append(edges)
+
+        max_nodes = max((n.shape[0] for n in all_nodes), default=1) or 1
+        max_edges = max((e.shape[1] for e in all_edges), default=1) or 1
+
+        padded_nodes = np.zeros((batch_size, max_nodes, 4), dtype=np.float32)
+        padded_edges = np.zeros((batch_size, 2, max_edges), dtype=np.int32)
+        edge_mask = np.zeros((batch_size, max_edges), dtype=np.float32)
+
+        for i, (nodes, edges) in enumerate(zip(all_nodes, all_edges)):
+            n, e = nodes.shape[0], edges.shape[1]
+            padded_nodes[i, :n] = nodes
+            padded_edges[i, :, :e] = edges
+            edge_mask[i, :e] = 1.0
+
+        return padded_nodes, padded_edges, edge_mask
+
+    def _convert_images_to_binary(self, inputs):
+        """
+        Converts a batch of images into binary images using Sauvola adaptive binarization.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Batch of grayscale images.
+
+        Returns
+        -------
+        tf.Tensor
+            Batch of binary images.
+        """
+
+        if len(inputs.shape) == 4:
+            inputs = inputs[..., 0]
+
+        images = tf.expand_dims((tf.cast(inputs, tf.float32) + 1.0) / 2.0 * 255.0, axis=-1)
+
+        local_mean = tf.nn.avg_pool2d(images, ksize=31, strides=1, padding='SAME')
+        mean_of_sq = tf.nn.avg_pool2d(images ** 2, ksize=31, strides=1, padding='SAME')
+        local_stddev = tf.sqrt(tf.maximum(mean_of_sq - local_mean ** 2, 0.0))
+        threshold = local_mean * (1.0 + 0.1 * (local_stddev / 128.0 - 1.0))
+
+        return tf.cast(tf.squeeze(images <= threshold, axis=-1), tf.uint8) * 255
+
+    def _extract_graphs(self, binary_images):
+        """
+        Runs graph extraction on a batch of binary images.
+
+        Parameters
+        ----------
+        binary_images : tf.Tensor
+            Batch of binary images.
+
+        Returns
+        -------
+        nodes : tf.Tensor
+            Zero-padded node features.
+        edges : tf.Tensor
+            Zero-padded edge indices.
+        edge_mask : tf.Tensor
+            Edge validity mask.
+        """
+
+        nodes, edges, edge_mask = tf.py_function(func=self._convert_images_to_graphs,
+                                                 inp=[binary_images],
+                                                 Tout=[tf.float32, tf.int32, tf.float32])
+
+        nodes.set_shape([None, None, 4])
+        edges.set_shape([None, 2, None])
+        edge_mask.set_shape([None, None])
+
+        return (tf.stop_gradient(nodes), tf.stop_gradient(edges), tf.stop_gradient(edge_mask))
+
+    def _graph_convolution(self, nodes, edges, edge_mask, kernel, bias=None):
+        """
+        Applies one graph convolution step with self-loops and degree normalization.
+
+        Parameters
+        ----------
+        nodes : tf.Tensor
+            Node feature tensor.
+        edges : tf.Tensor
+            Edge index tensor, formatted as [src, dst].
+        kernel : tf.Tensor
+            Convolution kernel.
+        bias : tf.Tensor or None, optional
+            Optional bias vector.
+
+        Returns
+        -------
+        tf.Tensor
+            Updated node features.
+        """
+
+        num_nodes = tf.shape(nodes)[1]
+
+        src = tf.cast(edges[:, 0, :], tf.int32)
+        dst = tf.cast(edges[:, 1, :], tf.int32)
+
+        self_idx = tf.expand_dims(tf.range(num_nodes, dtype=tf.int32), axis=0)
+        self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
+
+        src = tf.concat([src, self_idx], axis=1)
+        dst = tf.concat([dst, self_idx], axis=1)
+
+        self_mask = tf.ones([tf.shape(nodes)[0], num_nodes], dtype=tf.float32)
+        mask_all = tf.concat([edge_mask, self_mask], axis=1)
+
+        transformed = tf.linalg.matmul(nodes, kernel)
+
+        ones = tf.ones(tf.shape(src), dtype=transformed.dtype) * mask_all
+
+        degrees = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+                            elems=(ones, dst),
+                            fn_output_signature=tf.float32)
+
+        deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
+
+        src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
+        dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
+        norm = src_norm * dst_norm * mask_all
+
+        messages = tf.gather(transformed, src, batch_dims=1)
+        messages = messages * tf.expand_dims(norm, axis=-1)
+
+        outputs = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+                            elems=(messages, dst),
+                            fn_output_signature=tf.float32)
+
+        if bias is not None:
+            outputs = outputs + bias
+
+        return outputs
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Batch of grayscale images.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Graph embeddings.
+        """
+
+        binary_images = self._convert_images_to_binary(inputs)
+        nodes, edges, edge_mask = self._extract_graphs(binary_images)
+
+        for kernel, residual_kernel, bias in \
+                zip(self.kernels, self.residual_kernels, self.biases):
+
+            x = self._graph_convolution(nodes, edges, edge_mask, kernel, bias)
+
+            if self.use_residual:
+                x += nodes if residual_kernel is None \
+                    else tf.linalg.matmul(nodes, residual_kernel)
+
+            if self.activation is not None:
+                x = self.activation(x)
+
+            if training and self.dropout:
+                x = tf.nn.dropout(x, rate=self.dropout)
+
+            nodes = tf.identity(x)
+
+        for dense in self.dense_layers:
+            nodes = dense(nodes)
+
+            if self.activation is not None:
+                nodes = self.activation(nodes)
+
+        return tf.reduce_mean(nodes, axis=1)
+
+    def compute_output_shape(self, input_shape):
+        """
+        Computes the output shape of the layer.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+
+        Returns
+        -------
+        tf.TensorShape
+            Output shape.
+        """
+
+        return tf.TensorShape([input_shape[0], self.h_units[-1]])
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
