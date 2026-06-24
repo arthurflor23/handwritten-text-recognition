@@ -1635,7 +1635,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             elif len(neighbor_labels) == 2:
                 ignore_endpoints.append(point)
                 junction_bridge_paths.append([junction_centroids[neighbor_labels[0] - 1],
-                                             junction_centroids[neighbor_labels[1] - 1]])
+                                              junction_centroids[neighbor_labels[1] - 1]])
             else:
                 endpoints_isolated.append(point)
 
@@ -1693,29 +1693,19 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         Returns
         -------
-        padded_nodes : np.ndarray
-            Node feature arrays padded to the batch maximum.
-        padded_edges : np.ndarray
-            Bidirectional edge index arrays padded to the batch maximum.
-        edge_mask : np.ndarray
-            Mask with 1.0 for real edges, 0.0 for padding.
+        nodes_ragged : tf.RaggedTensor
+            Node features per image.
+        edges_ragged : tf.RaggedTensor
+            Edge pairs per image.
         """
 
-        binary_images = binary_images_tensor.numpy()
-        batch_size = binary_images.shape[0]
-
-        all_nodes = []
-        all_edges = []
-
-        for i in range(batch_size):
-            thinned = cv2.ximgproc.thinning(binary_images[i])
+        def fn(image):
+            thinned = cv2.ximgproc.thinning(image.numpy())
             skeleton = np.where(thinned == 255, 0.0, 1.0).astype(np.float32)
             paths = self._convert_skeleton_to_paths(skeleton.copy(), self.step_length)
 
             if not any(paths):
-                all_nodes.append(np.zeros((0, 4), dtype=np.float32))
-                all_edges.append(np.zeros((2, 0), dtype=np.int32))
-                continue
+                return np.zeros((0, 4), dtype=np.float32), np.zeros((0, 2), dtype=np.int32)
 
             unique_points = sorted({point for path in paths for point in path}, key=lambda x: (x[1], x[0]))
             node_id_of = {x: idx for idx, x in enumerate(unique_points)}
@@ -1746,27 +1736,20 @@ class GraphEncoder(tf.keras.layers.Layer):
                 edge_dst = np.array([e[1] for e in edge_pairs], dtype=np.int32)
 
                 edges = np.stack([np.concatenate([edge_src, edge_dst]),
-                                  np.concatenate([edge_dst, edge_src]), ], axis=0)
+                                  np.concatenate([edge_dst, edge_src])], axis=0).T
             else:
-                edges = np.zeros((2, 0), dtype=np.int32)
+                edges = np.zeros((0, 2), dtype=np.int32)
 
-            all_nodes.append(nodes)
-            all_edges.append(edges)
+            return nodes, edges
 
-        max_nodes = max((n.shape[0] for n in all_nodes), default=1) or 1
-        max_edges = max((e.shape[1] for e in all_edges), default=1) or 1
+        nodes, edges = tf.py_function(fn, [binary_images_tensor], [tf.float32, tf.int32])
+        nodes.set_shape([None, 4])
+        edges.set_shape([None, 2])
 
-        padded_nodes = np.zeros((batch_size, max_nodes, 4), dtype=np.float32)
-        padded_edges = np.zeros((batch_size, 2, max_edges), dtype=np.int32)
-        edge_mask = np.zeros((batch_size, max_edges), dtype=np.float32)
+        nodes_ragged = tf.RaggedTensor.from_uniform_row_length(tf.reshape(nodes, [-1]), 4)
+        edges_ragged = tf.RaggedTensor.from_uniform_row_length(tf.reshape(edges, [-1]), 2)
 
-        for i, (nodes, edges) in enumerate(zip(all_nodes, all_edges)):
-            n, e = nodes.shape[0], edges.shape[1]
-            padded_nodes[i, :n] = nodes
-            padded_edges[i, :, :e] = edges
-            edge_mask[i, :e] = 1.0
-
-        return padded_nodes, padded_edges, edge_mask
+        return nodes_ragged, edges_ragged
 
     def _convert_images_to_binary(self, inputs):
         """
@@ -1811,13 +1794,18 @@ class GraphEncoder(tf.keras.layers.Layer):
             Edge validity mask.
         """
 
-        nodes, edges, edge_mask = tf.py_function(func=self._convert_images_to_graphs,
-                                                 inp=[binary_images],
-                                                 Tout=[tf.float32, tf.int32, tf.float32])
+        ragged_nodes, ragged_edges = tf.map_fn(
+            self._convert_images_to_graphs,
+            elems=binary_images,
+            fn_output_signature=(
+                tf.RaggedTensorSpec(shape=[None, 4], dtype=tf.float32, ragged_rank=1),
+                tf.RaggedTensorSpec(shape=[None, 2], dtype=tf.int32, ragged_rank=1),
+            ),
+        )
 
-        nodes.set_shape([None, None, 4])
-        edges.set_shape([None, 2, None])
-        edge_mask.set_shape([None, None])
+        nodes = ragged_nodes.to_tensor(default_value=0.0)
+        edges = tf.transpose(ragged_edges.to_tensor(default_value=0), perm=[0, 2, 1])
+        edge_mask = tf.sequence_mask(ragged_edges.row_lengths(), dtype=tf.float32)
 
         return (tf.stop_gradient(nodes), tf.stop_gradient(edges), tf.stop_gradient(edge_mask))
 
