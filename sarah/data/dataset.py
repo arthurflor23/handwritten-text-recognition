@@ -1,4 +1,5 @@
 import os
+import re
 import glob
 import zipfile
 import importlib
@@ -305,7 +306,7 @@ class Dataset():
 
         return data
 
-    def _prepare_graphs(self, fonts, chars, epsilon=0.0):
+    def _prepare_graphs(self, fonts, charset, epsilon=0.0):
         """
         Builds graph representations from each character font.
 
@@ -313,7 +314,7 @@ class Dataset():
         ----------
         fonts : str
             List of font entries with font and cmap.
-        chars : list
+        charset : list
             The tokenizer charset.
         epsilon : float, optional
             Maximum simplification applied to high-node outlier fonts.
@@ -324,7 +325,7 @@ class Dataset():
             List of graph representations from each character font.
         """
 
-        def build(font, eps):
+        def build(chars, font, eps):
             return [glyph_to_graph(font['font'], font['cmap'], x, eps) for x in chars]
 
         def compress_contour(points, eps):
@@ -423,7 +424,7 @@ class Dataset():
                 'edges': np.stack([np.concatenate(src), np.concatenate(dst)], axis=0),
             }
 
-        font_graphs = [build(font, 0.0) for font in fonts]
+        font_graphs = [build(charset, font, 0.0) for font in fonts]
 
         if font_graphs and epsilon > 0:
             counts = np.array([count(graphs) for graphs in font_graphs])
