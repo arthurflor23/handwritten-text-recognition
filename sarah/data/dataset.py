@@ -424,7 +424,8 @@ class Dataset():
                 'edges': np.stack([np.concatenate(src), np.concatenate(dst)], axis=0),
             }
 
-        font_graphs = [build(charset, font, 0.0) for font in fonts]
+        chars = list(re.sub(r'[^\w\s]', ' ', ''.join(charset), flags=re.UNICODE))
+        font_graphs = [build(chars, font, eps=0.0) for font in fonts]
 
         if font_graphs and epsilon > 0:
             counts = np.array([count(graphs) for graphs in font_graphs])
@@ -440,7 +441,7 @@ class Dataset():
 
                 for _ in range(10):
                     mid = (low + high) / 2.0
-                    graphs = build(fonts[i], mid)
+                    graphs = build(chars, fonts[i], eps=mid)
                     total = count(graphs)
 
                     if abs(total - median) < abs(best_count - median):
