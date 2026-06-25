@@ -425,7 +425,7 @@ class Dataset():
             }
 
         chars = list(re.sub(r'[^\w\s]', '', ''.join(charset), flags=re.UNICODE))
-        font_graphs = [build(chars, font, eps=0.0) for font in fonts]
+        font_graphs = [build(chars, font, eps=0.0) for font in fonts if font.strip()]
 
         if font_graphs and epsilon > 0:
             counts = np.array([count(graphs) for graphs in font_graphs])
