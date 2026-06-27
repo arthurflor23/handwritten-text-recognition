@@ -814,6 +814,7 @@ class GraphConv(tf.keras.layers.Layer):
                  activation=None,
                  dropout=0.0,
                  use_residual=False,
+                 use_norm=False,
                  use_bias=True,
                  **kwargs):
         """
@@ -831,6 +832,8 @@ class GraphConv(tf.keras.layers.Layer):
             Dropout rate applied to the layer during training.
         use_residual : bool, optional
             Whether to add residual connection.
+        use_norm : bool, optional
+            Whether to apply graph normalization.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -844,6 +847,7 @@ class GraphConv(tf.keras.layers.Layer):
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
         self.use_residual = use_residual
+        self.use_norm = use_norm
         self.use_bias = use_bias
 
     def get_config(self):
@@ -864,6 +868,7 @@ class GraphConv(tf.keras.layers.Layer):
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
             'use_residual': self.use_residual,
+            'use_norm': self.use_norm,
             'use_bias': self.use_bias,
         })
 
@@ -887,6 +892,7 @@ class GraphConv(tf.keras.layers.Layer):
         self.kernels = []
         self.residual_kernels = []
         self.biases = []
+        self.norm_layers = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = self.features if i == 0 else self.units[i - 1]
@@ -911,6 +917,8 @@ class GraphConv(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
+
+            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
     def _graph_convolution(self, nodes, edges, kernel, bias=None):
         """
@@ -987,20 +995,21 @@ class GraphConv(tf.keras.layers.Layer):
 
         nodes, edges = inputs
 
-        for kernel, residual_kernel, bias in \
-                zip(self.kernels, self.residual_kernels, self.biases):
+        for i in range(len(self.units)):
+            x = self._graph_convolution(nodes, edges, self.kernels[i], self.biases[i])
 
-            x = self._graph_convolution(nodes, edges, kernel, bias)
-
-            if self.use_residual:
-                x += nodes if residual_kernel is None \
-                    else tf.linalg.matmul(nodes, residual_kernel)
+            if self.use_norm:
+                x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
+
+            if self.use_residual:
+                x += nodes if self.residual_kernels[i] is None \
+                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
 
             nodes = tf.identity(x)
 
@@ -1042,6 +1051,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                  activation=None,
                  dropout=0.0,
                  use_residual=False,
+                 use_norm=False,
                  use_bias=True,
                  **kwargs):
         """
@@ -1063,6 +1073,8 @@ class GraphConv2D(tf.keras.layers.Layer):
             Dropout rate applied to the layer during training.
         use_residual : bool, optional
             Whether to add residual connection.
+        use_norm : bool, optional
+            Whether to apply graph normalization.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -1078,6 +1090,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
         self.use_residual = use_residual
+        self.use_norm = use_norm
         self.use_bias = use_bias
 
     def get_config(self):
@@ -1100,6 +1113,7 @@ class GraphConv2D(tf.keras.layers.Layer):
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
             'use_residual': self.use_residual,
+            'use_norm': self.use_norm,
             'use_bias': self.use_bias,
         })
 
@@ -1126,6 +1140,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.kernels = []
         self.residual_kernels = []
         self.biases = []
+        self.norm_layers = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = self.features if i == 0 else self.units[i - 1]
@@ -1150,6 +1165,8 @@ class GraphConv2D(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
+
+            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
     def _build_base_coordinates(self):
         """
@@ -1284,20 +1301,21 @@ class GraphConv2D(tf.keras.layers.Layer):
         nodes = tf.reshape(inputs, [batch_size, self.num_nodes, self.features])
         edge_index = self._build_edge_index()
 
-        for kernel, residual_kernel, bias in \
-                zip(self.kernels, self.residual_kernels, self.biases):
+        for i in range(len(self.units)):
+            x = self._graph_convolution(nodes, edge_index, self.kernels[i], self.biases[i])
 
-            x = self._graph_convolution(nodes, edge_index, kernel, bias)
-
-            if self.use_residual:
-                x += nodes if residual_kernel is None \
-                    else tf.linalg.matmul(nodes, residual_kernel)
+            if self.use_norm:
+                x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
+
+            if self.use_residual:
+                x += nodes if self.residual_kernels[i] is None \
+                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
 
             nodes = tf.identity(x)
 
@@ -1342,6 +1360,7 @@ class GraphEncoder(tf.keras.layers.Layer):
                  activation=None,
                  dropout=0.0,
                  use_residual=False,
+                 use_norm=False,
                  use_bias=True,
                  **kwargs):
         """
@@ -1363,6 +1382,8 @@ class GraphEncoder(tf.keras.layers.Layer):
             Dropout rate applied to the layer during training.
         use_residual : bool, optional
             Whether to add residual connection.
+        use_norm : bool, optional
+            Whether to apply graph normalization.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -1378,6 +1399,7 @@ class GraphEncoder(tf.keras.layers.Layer):
         self.activation = tf.keras.activations.get(activation)
         self.dropout = dropout
         self.use_residual = use_residual
+        self.use_norm = use_norm
         self.use_bias = use_bias
 
     def get_config(self):
@@ -1400,6 +1422,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             'activation': tf.keras.activations.serialize(self.activation),
             'dropout': self.dropout,
             'use_residual': self.use_residual,
+            'use_norm': self.use_norm,
             'use_bias': self.use_bias,
         })
 
@@ -1420,6 +1443,7 @@ class GraphEncoder(tf.keras.layers.Layer):
         self.kernels = []
         self.residual_kernels = []
         self.biases = []
+        self.norm_layers = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = 4 if i == 0 else self.units[i - 1]
@@ -1444,6 +1468,8 @@ class GraphEncoder(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
+
+            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
         self.dense_layers = [
             tf.keras.layers.Dense(units=out_dim,
@@ -1892,14 +1918,11 @@ class GraphEncoder(tf.keras.layers.Layer):
         binary_images = self._convert_images_to_binary(inputs)
         nodes, edges, edge_mask = self._extract_graphs(binary_images)
 
-        for kernel, residual_kernel, bias in \
-                zip(self.kernels, self.residual_kernels, self.biases):
+        for i in range(len(self.units)):
+            x = self._graph_convolution(nodes, edges, edge_mask, self.kernels[i], self.biases[i])
 
-            x = self._graph_convolution(nodes, edges, edge_mask, kernel, bias)
-
-            if self.use_residual:
-                x += nodes if residual_kernel is None \
-                    else tf.linalg.matmul(nodes, residual_kernel)
+            if self.use_norm:
+                x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
@@ -1907,10 +1930,14 @@ class GraphEncoder(tf.keras.layers.Layer):
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
 
+            if self.use_residual:
+                x += nodes if self.residual_kernels[i] is None \
+                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
+
             nodes = tf.identity(x)
 
-        for dense in self.dense_layers:
-            nodes = dense(nodes)
+        for i in range(len(self.dense_layers)):
+            nodes = self.dense_layers[i](nodes)
 
             if self.activation is not None:
                 nodes = self.activation(nodes)
@@ -1933,6 +1960,103 @@ class GraphEncoder(tf.keras.layers.Layer):
         """
 
         return tf.TensorShape([input_shape[0], self.h_units[-1]])
+
+
+class GraphNormalization(tf.keras.layers.Layer):
+    """
+    Graph normalization layer for stabilizing training of graph neural networks.
+
+    References
+    ----------
+    GraphNorm: A Principled Approach to Accelerating Graph Neural Network Training
+        https://arxiv.org/abs/2009.03294
+    """
+
+    def __init__(self, epsilon=1e-3, **kwargs):
+        """
+        Initializes the graph normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        self.features = input_shape[-1]
+
+        self.alpha = self.add_weight(name='alpha',
+                                     shape=(self.features,),
+                                     initializer='ones',
+                                     trainable=True)
+
+        self.gamma = self.add_weight(name='gamma',
+                                     shape=(self.features,),
+                                     initializer='ones',
+                                     trainable=True)
+
+        self.beta = self.add_weight(name='beta',
+                                    shape=(self.features,),
+                                    initializer='zeros',
+                                    trainable=True)
+
+    def call(self, inputs):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Node feature tensor.
+
+        Returns
+        -------
+        tf.Tensor
+            Normalized node feature tensor.
+        """
+
+        mean = tf.reduce_mean(inputs, axis=1, keepdims=True)
+        variance = tf.math.reduce_variance(inputs, axis=1, keepdims=True)
+
+        normed = (inputs - self.alpha * mean) / tf.sqrt(variance + self.epsilon)
+        outputs = normed * self.gamma + self.beta
+
+        return outputs
 
 
 class OctaveConv2D(tf.keras.layers.Layer):
