@@ -995,14 +995,14 @@ class GraphConv(tf.keras.layers.Layer):
         for i in range(len(self.units)):
             x = self._graph_convolution(nodes, edges, self.kernels[i], self.biases[i])
 
-            if self.use_residual:
-                x += nodes if self.residual_layers[i] is None else self.residual_layers[i](nodes)
-
             if self.use_norm:
                 x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
+
+            if self.use_residual:
+                x += nodes if self.residual_layers[i] is None else self.residual_layers[i](nodes)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
