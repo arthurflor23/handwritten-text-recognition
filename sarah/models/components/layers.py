@@ -889,27 +889,26 @@ class GraphConv(tf.keras.layers.Layer):
         self.num_nodes = int(input_shape[0][1])
         self.features = int(input_shape[0][2])
 
-        self.kernels = []
-        self.residual_kernels = []
-        self.biases = []
+        self.residual_layers = []
         self.norm_layers = []
+
+        self.kernels = []
+        self.biases = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = self.features if i == 0 else self.units[i - 1]
+
+            self.residual_layers.append(
+                tf.keras.layers.Dense(units=out_dim) if self.use_residual and in_dim != out_dim else None)
+
+            self.norm_layers.append(
+                GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
                                 shape=(in_dim, out_dim),
                                 initializer=self.kernel_initializer,
-                                trainable=True)
-            )
-
-            self.residual_kernels.append(
-                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                shape=(in_dim, out_dim),
-                                initializer=self.kernel_initializer,
-                                trainable=True)
-                if self.use_residual and in_dim != out_dim else None)
+                                trainable=True))
 
             self.biases.append(
                 self.add_weight(name=f'{self.name}_bias_{i}',
@@ -917,8 +916,6 @@ class GraphConv(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
-
-            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
     def _graph_convolution(self, nodes, edges, kernel, bias=None):
         """
@@ -999,8 +996,7 @@ class GraphConv(tf.keras.layers.Layer):
             x = self._graph_convolution(nodes, edges, self.kernels[i], self.biases[i])
 
             if self.use_residual:
-                x += nodes if self.residual_kernels[i] is None \
-                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
+                x += nodes if self.residual_layers[i] is None else self.residual_layers[i](nodes)
 
             if self.use_norm:
                 x = self.norm_layers[i](x)
@@ -1137,27 +1133,26 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         self.num_nodes = self.height * self.width
 
-        self.kernels = []
-        self.residual_kernels = []
-        self.biases = []
+        self.residual_layers = []
         self.norm_layers = []
+
+        self.kernels = []
+        self.biases = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = self.features if i == 0 else self.units[i - 1]
+
+            self.residual_layers.append(
+                tf.keras.layers.Dense(units=out_dim) if self.use_residual and in_dim != out_dim else None)
+
+            self.norm_layers.append(
+                GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
                                 shape=(in_dim, out_dim),
                                 initializer=self.kernel_initializer,
-                                trainable=True)
-            )
-
-            self.residual_kernels.append(
-                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                shape=(in_dim, out_dim),
-                                initializer=self.kernel_initializer,
-                                trainable=True)
-                if self.use_residual and in_dim != out_dim else None)
+                                trainable=True))
 
             self.biases.append(
                 self.add_weight(name=f'{self.name}_bias_{i}',
@@ -1165,8 +1160,6 @@ class GraphConv2D(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
-
-            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
     def _build_base_coordinates(self):
         """
@@ -1304,15 +1297,14 @@ class GraphConv2D(tf.keras.layers.Layer):
         for i in range(len(self.units)):
             x = self._graph_convolution(nodes, edge_index, self.kernels[i], self.biases[i])
 
-            if self.use_residual:
-                x += nodes if self.residual_kernels[i] is None \
-                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
-
             if self.use_norm:
                 x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
+
+            if self.use_residual:
+                x += nodes if self.residual_layers[i] is None else self.residual_layers[i](nodes)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
@@ -1440,27 +1432,26 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.kernels = []
-        self.residual_kernels = []
-        self.biases = []
+        self.residual_layers = []
         self.norm_layers = []
+
+        self.kernels = []
+        self.biases = []
 
         for i, out_dim in enumerate(self.units):
             in_dim = 4 if i == 0 else self.units[i - 1]
+
+            self.residual_layers.append(
+                tf.keras.layers.Dense(units=out_dim) if self.use_residual and in_dim != out_dim else None)
+
+            self.norm_layers.append(
+                GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
             self.kernels.append(
                 self.add_weight(name=f'{self.name}_kernel_{i}',
                                 shape=(in_dim, out_dim),
                                 initializer=self.kernel_initializer,
-                                trainable=True)
-            )
-
-            self.residual_kernels.append(
-                self.add_weight(name=f'{self.name}_residual_kernel_{i}',
-                                shape=(in_dim, out_dim),
-                                initializer=self.kernel_initializer,
-                                trainable=True)
-                if self.use_residual and in_dim != out_dim else None)
+                                trainable=True))
 
             self.biases.append(
                 self.add_weight(name=f'{self.name}_bias_{i}',
@@ -1468,8 +1459,6 @@ class GraphEncoder(tf.keras.layers.Layer):
                                 initializer='zeros',
                                 trainable=True)
                 if self.use_bias else None)
-
-            self.norm_layers.append(GraphNormalization(epsilon=1e-3) if self.use_norm else None)
 
         self.dense_layers = [
             tf.keras.layers.Dense(units=out_dim,
@@ -1921,15 +1910,14 @@ class GraphEncoder(tf.keras.layers.Layer):
         for i in range(len(self.units)):
             x = self._graph_convolution(nodes, edges, edge_mask, self.kernels[i], self.biases[i])
 
-            if self.use_residual:
-                x += nodes if self.residual_kernels[i] is None \
-                    else tf.linalg.matmul(nodes, self.residual_kernels[i])
-
             if self.use_norm:
                 x = self.norm_layers[i](x)
 
             if self.activation is not None:
                 x = self.activation(x)
+
+            if self.use_residual:
+                x += nodes if self.residual_layers[i] is None else self.residual_layers[i](nodes)
 
             if training and self.dropout:
                 x = tf.nn.dropout(x, rate=self.dropout)
