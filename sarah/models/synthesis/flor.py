@@ -4,7 +4,6 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import AdaptiveInstanceNormalization
 from sarah.models.components.layers import ContentAlignment
-from sarah.models.components.layers import ExtractPatches
 from sarah.models.components.layers import GatedConv2D
 from sarah.models.components.layers import Reparameterization
 
@@ -78,8 +77,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator = DiscriminatorModel(name='discriminator',
                                                 image_shape=self.image_shape,
-                                                blocks=discriminator_blocks,
-                                                patch_shape=None)
+                                                blocks=discriminator_blocks)
 
         self.generator = GeneratorModel(name='generator',
                                         image_shape=self.image_shape,
@@ -620,7 +618,6 @@ class DiscriminatorModel(BaseModel):
                  blocks,
                  strides=None,
                  lexical_shape=None,
-                 patch_shape=None,
                  name='discriminator',
                  **kwargs):
         """
@@ -636,8 +633,6 @@ class DiscriminatorModel(BaseModel):
             List of downsampling strides (WxH).
         lexical_shape : list or tuple
             Shape of text sequences and vocabulary.
-        patch_shape : list, tuple or None
-            Patch shape, if applicable.
         name : str, optional
             Model instance name.
         **kwargs : dict
@@ -650,7 +645,6 @@ class DiscriminatorModel(BaseModel):
         self.blocks = blocks
         self.strides = strides
         self.lexical_shape = lexical_shape
-        self.patch_shape = patch_shape
 
         self.num_blocks = len(self.blocks)
         self.base_patch = (4, 4)
@@ -695,7 +689,6 @@ class DiscriminatorModel(BaseModel):
             'blocks': self.blocks,
             'strides': self.strides,
             'lexical_shape': self.lexical_shape,
-            'patch_shape': self.patch_shape,
         })
 
     def build_model(self):
@@ -727,8 +720,7 @@ class DiscriminatorModel(BaseModel):
             return tf.keras.layers.Add()([h, x])
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
-
-        block = ExtractPatches(patch_shape=self.patch_shape, strides=(2, 2), padding='valid')(image_input)
+        block = tf.keras.layers.Identity()(image_input)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
@@ -739,9 +731,7 @@ class DiscriminatorModel(BaseModel):
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
-        if not self.patch_shape:
-            block = residual_block(filters=self.blocks[-1], x=block, preactive=True)
-
+        block = residual_block(filters=self.blocks[-1], x=block, preactive=True)
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
 
