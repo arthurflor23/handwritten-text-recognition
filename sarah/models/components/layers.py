@@ -1449,8 +1449,8 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         images = (inputs + 1.0) * 127.5
 
-        mean = tf.nn.avg_pool2d(images, ksize=31, strides=1, padding='SAME')
-        mean_sq = tf.nn.avg_pool2d(tf.square(images), ksize=31, strides=1, padding='SAME')
+        mean = tf.nn.avg_pool2d(images, ksize=32, strides=1, padding='SAME')
+        mean_sq = tf.nn.avg_pool2d(tf.square(images), ksize=32, strides=1, padding='SAME')
 
         stddev = tf.sqrt(tf.maximum(mean_sq - tf.square(mean), 0.0))
         threshold = mean * (1.0 + 0.1 * (stddev / 128.0 - 1.0))
