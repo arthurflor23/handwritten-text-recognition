@@ -343,9 +343,11 @@ class ContentAlignment(tf.keras.layers.Layer):
 
             return image
 
-        elems = (tf.nn.tanh(input_data), text_height, text_width, mask_height, mask_width)
+        outputs = tf.map_fn(
+            fn=content_alignment,
+            elems=(tf.nn.tanh(input_data), text_height, text_width, mask_height, mask_width),
+            fn_output_signature=tf.float32)
 
-        outputs = tf.map_fn(content_alignment, elems=elems, fn_output_signature=tf.float32)
         outputs = (outputs * input_mask) + tf.clip_by_value(input_mask - 1, clip_value_min=-1, clip_value_max=0)
 
         return outputs
@@ -817,7 +819,7 @@ class GraphConv(tf.keras.layers.Layer):
         ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
 
         degrees = tf.map_fn(
-            lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
+            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
             elems=(ones, dst),
             fn_output_signature=tf.float32)
 
@@ -830,9 +832,10 @@ class GraphConv(tf.keras.layers.Layer):
         messages = tf.gather(transformed, src, batch_dims=1)
         messages = messages * tf.expand_dims(norm, axis=-1)
 
-        outputs = tf.map_fn(lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
-                            elems=(messages, dst),
-                            fn_output_signature=tf.float32)
+        outputs = tf.map_fn(
+            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
+            elems=(messages, dst),
+            fn_output_signature=tf.float32)
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -1051,10 +1054,8 @@ class GraphConv2D(tf.keras.layers.Layer):
         neighbor_features = tf.linalg.matmul(tf.gather(nodes, src, axis=1), self.kernel)
 
         outputs = tf.map_fn(
-            lambda x: tf.math.unsorted_segment_sum(data=x,
-                                                   segment_ids=dst,
-                                                   num_segments=self.num_nodes),
-            neighbor_features,
+            fn=lambda x: tf.math.unsorted_segment_sum(x, dst, self.num_nodes),
+            elems=neighbor_features,
             fn_output_signature=tf.float32)
 
         if self.use_bias:
@@ -1372,10 +1373,12 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         Returns
         -------
-        nodes_ragged : tf.RaggedTensor
+        nodes : tf.RaggedTensor
             Node features per image.
-        edges_ragged : tf.RaggedTensor
+        edges : tf.RaggedTensor
             Edge pairs per image.
+        coordinates : tf.RaggedTensor
+            Pixel coordinates per image.
         """
 
         def fn(image):
@@ -1401,6 +1404,7 @@ class GraphExtraction(tf.keras.layers.Layer):
                 np.zeros(num_nodes, dtype=np.float32),
             ], axis=1)
 
+            coordinates = np.stack([x_pixels, y_pixels], axis=1).astype(np.int32)
             edge_pairs = set()
 
             for path in paths:
@@ -1419,18 +1423,23 @@ class GraphExtraction(tf.keras.layers.Layer):
             else:
                 edges = np.zeros((0, 2), dtype=np.int32)
 
-            return nodes, edges
+            return nodes, edges, coordinates
 
-        nodes, edges = tf.py_function(fn, [binary_images_tensor], [tf.float32, tf.int32])
+        nodes, edges, coordinates = tf.py_function(func=fn,
+                                                   inp=[binary_images_tensor],
+                                                   Tout=[tf.float32, tf.int32, tf.int32])
+
         nodes.set_shape([None, 4])
         edges.set_shape([None, 2])
+        coordinates.set_shape([None, 2])
 
-        nodes_ragged = tf.RaggedTensor.from_uniform_row_length(tf.reshape(nodes, [-1]), 4)
-        edges_ragged = tf.RaggedTensor.from_uniform_row_length(tf.reshape(edges, [-1]), 2)
+        nodes = tf.RaggedTensor.from_uniform_row_length(tf.reshape(nodes, [-1]), 4)
+        edges = tf.RaggedTensor.from_uniform_row_length(tf.reshape(edges, [-1]), 2)
+        coordinates = tf.RaggedTensor.from_uniform_row_length(tf.reshape(coordinates, [-1]), 2)
 
-        return nodes_ragged, edges_ragged
+        return nodes, edges, coordinates
 
-    def call(self, inputs):
+    def call(self, inputs, return_coordinates=False):
         """
         Forward pass of the layer.
 
@@ -1438,6 +1447,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Batch of grayscale images.
+        return_coordinates : bool, optional
+            Whether to also return coordinates.
 
         Returns
         -------
@@ -1445,6 +1456,8 @@ class GraphExtraction(tf.keras.layers.Layer):
             Zero-padded node features.
         edges : tf.Tensor
             Zero-padded edge indices.
+        coordinates : tf.Tensor, optional
+            Zero-padded pixel coordinates.
         """
 
         images = (inputs + 1.0) * 127.5
@@ -1457,21 +1470,24 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         binary_images = tf.cast(tf.squeeze(images <= threshold, axis=-1), tf.uint8) * 255
 
-        ragged_nodes, ragged_edges = tf.map_fn(
-            self._convert_images_to_graphs,
+        nodes, edges, coordinates = tf.map_fn(
+            fn=self._convert_images_to_graphs,
             elems=binary_images,
             fn_output_signature=(
                 tf.RaggedTensorSpec(shape=[None, 4], dtype=tf.float32, ragged_rank=1),
                 tf.RaggedTensorSpec(shape=[None, 2], dtype=tf.int32, ragged_rank=1),
-            ),
+                tf.RaggedTensorSpec(shape=[None, 2], dtype=tf.int32, ragged_rank=1),
+            )
         )
 
-        nodes = ragged_nodes.to_tensor(default_value=0.0)
-        edges = tf.transpose(ragged_edges.to_tensor(default_value=0), perm=[0, 2, 1])
+        nodes = tf.stop_gradient(nodes.to_tensor(default_value=0.0))
+        edges = tf.stop_gradient(tf.transpose(edges.to_tensor(default_value=0), perm=[0, 2, 1]))
+        coordinates = tf.stop_gradient(coordinates.to_tensor(default_value=0))
 
-        return tf.stop_gradient(nodes), tf.stop_gradient(edges)
+        return (nodes, edges, coordinates) \
+            if return_coordinates else (nodes, edges)
 
-    def compute_output_shape(self, input_shape):
+    def compute_output_shape(self, input_shape, return_coordinates=False):
         """
         Computes the output shape of the layer.
 
@@ -1479,11 +1495,13 @@ class GraphExtraction(tf.keras.layers.Layer):
         ----------
         input_shape : tuple
             Shape of the input tensors.
+        return_coordinates : bool, optional
+            Whether to also include coordinates.
 
         Returns
         -------
         tuple of tf.TensorShape
-            Output shapes for nodes and edges.
+            Output shape.
         """
 
         if not self.built:
@@ -1491,8 +1509,10 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         nodes_shape = tf.TensorShape([input_shape[0], None, 4])
         edges_shape = tf.TensorShape([input_shape[0], 2, None])
+        coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
 
-        return nodes_shape, edges_shape
+        return (nodes_shape, edges_shape, coordinates_shape) \
+            if return_coordinates else (nodes_shape, edges_shape)
 
 
 class GraphNormalization(tf.keras.layers.Layer):
