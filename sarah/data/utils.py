@@ -136,22 +136,11 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
 
                 angle = np.random.uniform(-np.pi / 18, np.pi / 18)
                 cos, sin = np.cos(angle), np.sin(angle)
-                rot = np.array([[cos, -sin], [sin, cos]], dtype=np.float32)
-                xy = (xy @ rot.T).astype(np.float32)
 
+                xy = (xy @ np.array([[cos, -sin], [sin, cos]]).T).astype(np.float32)
                 xy = (xy * np.random.uniform(0.9, 1.1)).astype(np.float32)
-                sref = 0.0
+                xy = (xy + np.random.normal(0, 0.01, xy.shape)).astype(np.float32)
 
-                if graph_edges.shape[1] > 0:
-                    src, dst = graph_edges[0], graph_edges[1]
-                    lens = np.linalg.norm(xy[src] - xy[dst], axis=1)
-                    sref = lens.mean() if lens.size else 0.0
-
-                if sref == 0.0:
-                    bbox = xy.max(axis=0) - xy.min(axis=0)
-                    sref = np.linalg.norm(bbox)
-
-                xy = (xy + np.random.normal(0, 0.1 * sref, xy.shape)).astype(np.float32)
                 graph_nodes[:, :2] = xy
 
             n = min(graph_nodes.shape[0], max_nodes)
