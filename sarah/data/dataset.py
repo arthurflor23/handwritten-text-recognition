@@ -140,8 +140,8 @@ class Dataset():
         info += f"\n{'test_ratio':<{pad}}: {self.test_ratio or '-'}"
         info += f"\n{'illumination':<{pad}}: {self.illumination or '-'}"
         info += f"\n{'binarization':<{pad}}: {self.binarization or '-'}"
-        info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode}"
-        info += f"\n{'seed':<{pad}}: {self.seed}"
+        info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode or '-'}"
+        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
         info += "\n" + "-" * width
         info += f"\n{'training_data':<{pad}}: {len(self.samples['source']['training']):,}"
         info += f"\n{'validation_data':<{pad}}: {len(self.samples['source']['validation']):,}"

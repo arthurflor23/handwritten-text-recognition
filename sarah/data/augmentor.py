@@ -107,7 +107,7 @@ class Augmentor():
         info += f"\n{'salt_and_pepper':<{pad}}: {_format(self.salt_and_pepper_params)}"
         info += f"\n{'gaussian_noise':<{pad}}: {_format(self.gaussian_noise_params)}"
         info += f"\n{'gaussian_blur':<{pad}}: {_format(self.gaussian_blur_params)}"
-        info += f"\n{'seed':<{pad}}: {self.seed}"
+        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
 
         return info
 
