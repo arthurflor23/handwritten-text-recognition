@@ -4,8 +4,8 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import AdaptiveInstanceNormalization
 from sarah.models.components.layers import ContentAlignment
-from sarah.models.components.layers import GatedConv2D
 from sarah.models.components.layers import Reparameterization
+from sarah.models.components.layers import ResidualGatedConv2D
 
 from sarah.models.recognition.flor import RecognitionModel
 from sarah.models.writer_identification.flor import WriterIdentificationModel
@@ -29,6 +29,9 @@ class SynthesisModel(BaseSynthesisModel):
 
     HiGAN+: Handwriting Imitation GAN with Disentangled Representations
         https://dl.acm.org/doi/10.1145/3550070
+
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
 
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
@@ -589,7 +592,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             if i == self.num_blocks - 1:
-                block = GatedConv2D(use_residual=True)(block)
+                block = ResidualGatedConv2D()(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
@@ -727,7 +730,7 @@ class DiscriminatorModel(BaseModel):
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
             if i == 1:
-                block = GatedConv2D(use_residual=True)(block)
+                block = ResidualGatedConv2D()(block)
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
