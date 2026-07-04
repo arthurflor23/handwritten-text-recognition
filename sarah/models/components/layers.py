@@ -1901,8 +1901,6 @@ class ResidualGatedConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -1919,10 +1917,6 @@ class ResidualGatedConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -1937,8 +1931,6 @@ class ResidualGatedConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -1959,8 +1951,6 @@ class ResidualGatedConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -1989,12 +1979,12 @@ class ResidualGatedConv2D(tf.keras.layers.Layer):
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
-                                    initializer=self.beta_initializer,
+                                    initializer='zeros',
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                      shape=(1,),
-                                     initializer=self.gamma_initializer,
+                                     initializer='ones',
                                      trainable=True)
 
     def call(self, inputs, training=False):
@@ -2037,8 +2027,6 @@ class ResidualGatedDense(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -2053,10 +2041,6 @@ class ResidualGatedDense(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -2070,8 +2054,6 @@ class ResidualGatedDense(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -2091,8 +2073,6 @@ class ResidualGatedDense(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -2119,12 +2099,12 @@ class ResidualGatedDense(tf.keras.layers.Layer):
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
-                                    initializer=self.beta_initializer,
+                                    initializer='ones',
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                      shape=(input_shape[-1],),
-                                     initializer=self.gamma_initializer,
+                                     initializer='ones',
                                      trainable=True)
 
     def call(self, inputs, training=False):
@@ -2172,7 +2152,6 @@ class SpatialSelfAttention(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='zeros',
                  dropout=0.0,
                  use_pooling=True,
                  use_bias=True,
@@ -2192,8 +2171,6 @@ class SpatialSelfAttention(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
         dropout : float, optional
             Dropout rate for attention weights.
         use_pooling : bool, optional
@@ -2211,7 +2188,6 @@ class SpatialSelfAttention(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
         self.dropout = dropout
         self.use_pooling = use_pooling
         self.use_bias = use_bias
@@ -2234,7 +2210,6 @@ class SpatialSelfAttention(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
             'dropout': self.dropout,
             'use_pooling': self.use_pooling,
             'use_bias': self.use_bias,
@@ -2321,7 +2296,7 @@ class SpatialSelfAttention(tf.keras.layers.Layer):
 
         self.beta = self.add_weight(name=f"{self.name}_beta",
                                     shape=(1,),
-                                    initializer=self.beta_initializer,
+                                    initializer='zeros',
                                     trainable=True)
 
     def call(self, query, value=None, key=None, training=False):
