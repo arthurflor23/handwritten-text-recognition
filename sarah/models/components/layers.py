@@ -2123,7 +2123,7 @@ class ResidualGatedDense(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
+                                     shape=(input_shape[-1],),
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
