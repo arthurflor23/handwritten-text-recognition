@@ -2099,7 +2099,7 @@ class ResidualGatedDense(tf.keras.layers.Layer):
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
-                                    initializer='ones',
+                                    initializer='zeros',
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
