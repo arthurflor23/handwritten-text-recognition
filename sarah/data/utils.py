@@ -138,7 +138,7 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
                 cos, sin = np.cos(angle), np.sin(angle)
 
                 xy = xy @ np.array([[cos, -sin], [sin, cos]]).T
-                xy = xy * np.random.uniform(0.9, 1.1)
+                xy = xy * np.random.uniform(0.90, 1.10)
                 xy = xy + np.random.normal(0, 0.01, xy.shape)
 
                 graph_nodes[:, :2] = xy.astype(np.float32)
