@@ -83,20 +83,20 @@ def batch_binarization(batch_data, method, invert=False):
     return outputs
 
 
-def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False):
+def batch_font_graph(batch_size, num_chars, font_graphs, font_graph_shape):
     """
     Builds a batch of graph data from character font graphs.
 
     Parameters
     ----------
+    batch_size : int
+        Number of samples in the batch.
+    num_chars : int
+        Number of characters per sample.
     font_graphs : list
         List of graph representations from each character font.
     font_graph_shape : tuple or list
         The shape of the input font graphs.
-    batch_size : int
-        Number of samples in the batch.
-    augmentor : bool, optional
-        Whether to randomly apply variations per character font.
 
     Returns
     -------
@@ -110,7 +110,6 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
         return []
 
     nodes_shape, edges_shape = font_graph_shape
-    num_chars = len(font_graphs[0])
 
     max_nodes = nodes_shape[0] // num_chars
     max_edges = edges_shape[1] // num_chars
@@ -130,19 +129,6 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
             if len(graph_nodes) == 0:
                 continue
 
-            if augmentor:
-                graph_nodes = graph_nodes.copy()
-                xy = graph_nodes[:, :2]
-
-                angle = np.random.uniform(-np.radians(10), np.radians(10))
-                cos, sin = np.cos(angle), np.sin(angle)
-
-                xy = xy @ np.array([[cos, -sin], [sin, cos]]).T
-                xy = xy * np.random.uniform(0.90, 1.10)
-                xy = xy + np.random.normal(0, 0.01, xy.shape)
-
-                graph_nodes[:, :2] = xy.astype(np.float32)
-
             n = min(graph_nodes.shape[0], max_nodes)
             e = min(graph_edges.shape[1], max_edges)
 
@@ -150,7 +136,7 @@ def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False)
             edges[i, j, :, :e] = graph_edges[:, :e] + j * max_nodes
 
     nodes = nodes.reshape(batch_size, max_nodes * num_chars, 4)
-    edges = edges.reshape(batch_size, 2, max_edges * num_chars)
+    edges = edges.transpose(0, 2, 1, 3).reshape(batch_size, 2, max_edges * num_chars)
 
     return nodes, edges
 
