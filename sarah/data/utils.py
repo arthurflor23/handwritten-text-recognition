@@ -438,6 +438,76 @@ def format_text(text):
     return text
 
 
+def plot_font_graph(nodes, edges, chars, cell_size=80, cols=None):
+    """
+    Plot a character grid from font graph nodes and edges.
+
+    Parameters
+    ----------
+    nodes : ndarray
+        Node coordinates and flags for all characters.
+    edges : ndarray
+        Edge index pairs for all characters.
+    chars : list
+        Character labels for each graph.
+    cell_size : int, optional
+        Pixel size of each character cell.
+    cols : int, optional
+        Number of grid columns.
+
+    Returns
+    -------
+    ndarray
+        Rendered grid image.
+    """
+
+    num_chars = len(chars)
+    cols = cols or int(np.ceil(np.sqrt(num_chars)))
+    rows = int(np.ceil(num_chars / cols))
+
+    max_nodes = nodes.shape[0] // num_chars
+    max_edges = edges.shape[1] // num_chars
+
+    width = cols * cell_size
+    height = rows * cell_size
+
+    canvas = np.ones((height, width), dtype=np.uint8) * 255
+    pad = 10
+    inner = cell_size - 2 * pad
+
+    for j, char in enumerate(chars):
+        node_start = j * max_nodes
+        char_nodes = nodes[node_start:node_start + max_nodes]
+        char_edges = edges[:, j * max_edges:(j + 1) * max_edges]
+
+        valid = np.any(char_nodes != 0, axis=1)
+        if not valid.any():
+            continue
+
+        row, col = divmod(j, cols)
+        x0 = col * cell_size
+        y0 = row * cell_size
+
+        px = x0 + pad + char_nodes[:, 0] * inner
+        py = y0 + pad + (1 - char_nodes[:, 1]) * inner
+        pts = np.stack([px, py], axis=1).astype(np.int32)
+
+        for s, d in char_edges.T:
+            s, d = int(s) - node_start, int(d) - node_start
+
+            if s == d or not (0 <= s < max_nodes and 0 <= d < max_nodes):
+                continue
+            if not (valid[s] and valid[d]):
+                continue
+
+            cv2.line(canvas, tuple(pts[s]), tuple(pts[d]), 0, 2, cv2.LINE_AA)
+
+        cv2.putText(canvas, char, (x0 + 2, y0 + cell_size - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, 0, 1, cv2.LINE_AA)
+
+    return canvas
+
+
 def read_image(image_path, bbox=None):
     """
     Read an image from the given file path and perform optional bbox.
