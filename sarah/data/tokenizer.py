@@ -49,7 +49,7 @@ class Tokenizer():
         info += "\n" + "-" * width
         info += f"\n{'writers_shape':<{pad}}: {self.writers_shape}"
         info += f"\n{'lexical_shape':<{pad}}: {self.lexical_shape}"
-        info += f"\n{'font_graph_shape':<{pad}}: {self.font_graph_shape or '-'}"
+        info += f"\n{'graph_shape':<{pad}}: {self.graph_shape or '-'}"
         info += "\n" + "-" * width
 
         chars = ''.join(self.chars)
@@ -97,7 +97,7 @@ class Tokenizer():
                                'count_word': 0,
                                'count_char': 0})
 
-        self.font_graph_shape = None
+        self.graph_shape = None
 
     def _update_text_stats(self, text):
         """
@@ -189,13 +189,13 @@ class Tokenizer():
             def next_power_of_two(n):
                 return 1 if n == 0 else 2 ** (n - 1).bit_length()
 
-            self.font_graph_shape = None
-
             self.lexical_shape = (
                 next_power_of_two(self.metadata['max_lines_per_page']),
                 next_power_of_two(self.metadata['max_chars_per_line'] + self.special_marks_length),
                 len(self.chars) + 1,
             )
+
+            self.graph_shape = None
 
         char_to_index = {char: idx for idx, char in enumerate(self.chars)}
 
@@ -290,34 +290,34 @@ class Tokenizer():
 
         return writer
 
-    def set_font_graph_shape(self, font_graphs):
+    def set_graph_shape(self, graph_data):
         """
         Sets the maximum font graph shape.
 
         Parameters
         ----------
-        font_graphs : list
+        graph_data : list
             Font graph data.
         """
 
-        if not font_graphs:
+        if not graph_data:
             return
 
         max_nodes = max(
             graph['nodes'].shape[0]
-            for font in font_graphs
+            for font in graph_data
             for graph in font
             if len(graph['nodes']) > 0
         )
 
         max_edges = max(
             graph['edges'].shape[1]
-            for font in font_graphs
+            for font in graph_data
             for graph in font
             if len(graph['edges']) > 0
         )
 
-        nodes_shape = (max_nodes * len(font_graphs[0]), 4)
-        edges_shape = (2, max_edges * len(font_graphs[0]))
+        nodes_shape = (max_nodes * len(graph_data[0]), 4)
+        edges_shape = (2, max_edges * len(graph_data[0]))
 
-        self.font_graph_shape = nodes_shape, edges_shape
+        self.graph_shape = nodes_shape, edges_shape
