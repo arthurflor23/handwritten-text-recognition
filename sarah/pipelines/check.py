@@ -1,6 +1,6 @@
 import cv2
 
-from data import Augmentor, Dataset
+from data import Augmentor, Dataset, utils
 
 
 def check(args):
@@ -79,8 +79,12 @@ def check(args):
         _, y_enc = next(enc_gen)
         img_enc, txt_enc, wri_enc = y_enc[:3]
 
-        x_aug, _ = next(aug_gen)
+        x_aug, y_aug = next(aug_gen)
         img_aug, seg_aug = x_aug[0], x_aug[4]
+
+        if dataset.font_graphs:
+            nodes_src, edges_src = y_aug[5], y_aug[6]
+            nodes_aug, edges_aug = x_aug[5], x_aug[6]
 
         for i in range(len(img_src)):
             print('\nPath image')
@@ -100,6 +104,13 @@ def check(args):
             cv2.imshow('Image (enc)', img_enc[i])
             cv2.imshow('Image (aug)', img_aug[i])
             cv2.imshow('Segmentation (aug)', seg_aug[i])
+
+            if dataset.font_graphs:
+                src_canvas = utils.plot_font_graph(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
+                cv2.imshow('Font Graph (src)', src_canvas)
+
+                aug_canvas = utils.plot_font_graph(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
+                cv2.imshow('Font Graph (aug)', aug_canvas)
 
             print('Press Enter to continue or Esc to stop...\n')
             key = cv2.waitKey(0)
