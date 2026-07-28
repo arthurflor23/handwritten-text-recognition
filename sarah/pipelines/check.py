@@ -106,10 +106,10 @@ def check(args):
             cv2.imshow('Segmentation (aug)', seg_aug[i])
 
             if dataset.font_graphs:
-                src_canvas = utils.plot_font_graph(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
+                src_canvas = utils.plot_graph(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
                 cv2.imshow('Font Graph (src)', src_canvas)
 
-                aug_canvas = utils.plot_font_graph(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
+                aug_canvas = utils.plot_graph(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
                 cv2.imshow('Font Graph (aug)', aug_canvas)
 
             print('Press Enter to continue or Esc to stop...\n')
