@@ -352,10 +352,26 @@ class Dataset():
         def count(graphs):
             return sum(len(graph['nodes']) for graph in graphs)
 
-        def glyph_to_nodes(glyph):
-            coords = np.array(glyph.coordinates)
-            flags = np.uint8(glyph.flags)
-            end_pts = set(glyph.endPtsOfContours)
+        def glyph_to_graph(font, cmap, char, eps):
+            glyph_name = cmap.get(ord(char))
+
+            if glyph_name is None:
+                return {'nodes': [], 'edges': []}
+
+            glyf_table = font['glyf']
+            glyph = glyf_table[glyph_name]
+
+            if glyph.numberOfContours == 0:
+                return {'nodes': [], 'edges': []}
+
+            coords, end_pts, flags = glyph.getCoordinates(glyf_table)
+
+            if len(coords) == 0:
+                return {'nodes': [], 'edges': []}
+
+            coords = np.array(coords)
+            flags = np.uint8(flags)
+            end_pts = set(end_pts)
 
             x_min, y_min = coords.min(axis=0)
             x_max, y_max = coords.max(axis=0)
@@ -365,55 +381,31 @@ class Dataset():
             on_curve = (flags & 1).astype(np.float32)
             end_of_contour = np.array([i in end_pts for i in range(len(coords))])
 
-            return np.stack([xy[:, 0], xy[:, 1], on_curve, end_of_contour], axis=1)
+            nodes = np.stack([xy[:, 0], xy[:, 1], on_curve, end_of_contour], axis=1)
 
-        def glyph_to_graph(font, cmap, char, eps):
-            glyph_name = cmap.get(ord(char))
-
-            if glyph_name is None:
-                return {'nodes': [], 'edges': []}
-
-            glyph = font['glyf'][glyph_name]
-
-            if glyph.numberOfContours == 0:
-                return {'nodes': [], 'edges': []}
-
-            if glyph.numberOfContours < 0:
-                components = [font['glyf'][x.glyphName] for x in glyph.components
-                              if font['glyf'][x.glyphName].numberOfContours > 0]
-
-                if not components:
-                    return {'nodes': [], 'edges': []}
-
-                glyphs = components
-            else:
-                glyphs = [glyph]
+            bounds = [0] + [e + 1 for e in sorted(end_pts)]
+            contours = [np.arange(bounds[i], bounds[i + 1]) for i in range(len(bounds) - 1)]
 
             pts, src, dst = [], [], []
             offset = 0
 
-            for g in glyphs:
-                nodes = glyph_to_nodes(g)
-                bounds = [0] + [e + 1 for e in g.endPtsOfContours]
-                contours = [np.arange(bounds[i], bounds[i + 1]) for i in range(len(bounds) - 1)]
+            for idx in contours:
+                mask = compress_contour(nodes[idx, :2], eps)
+                kept = idx[mask]
 
-                for idx in contours:
-                    mask = compress_contour(nodes[idx, :2], eps)
-                    kept = idx[mask]
+                if len(kept) < 2:
+                    continue
 
-                    if len(kept) < 2:
-                        continue
+                pts.append(nodes[kept])
 
-                    pts.append(nodes[kept])
+                k = len(kept)
+                s = np.arange(k, dtype=np.int32) + offset
+                t = np.arange(1, k + 1, dtype=np.int32) % k + offset
 
-                    k = len(kept)
-                    s = np.arange(k, dtype=np.int32) + offset
-                    t = np.arange(1, k + 1, dtype=np.int32) % k + offset
+                src.append(np.concatenate([s, t]))
+                dst.append(np.concatenate([t, s]))
 
-                    src.append(np.concatenate([s, t]))
-                    dst.append(np.concatenate([t, s]))
-
-                    offset += k
+                offset += k
 
             if not pts:
                 return {'nodes': [], 'edges': []}
