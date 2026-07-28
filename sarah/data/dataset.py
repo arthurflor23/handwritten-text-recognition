@@ -648,6 +648,7 @@ class Dataset():
 
         def batch_generator(data, multigrams):
             data_length = len(data)
+            charset_length = len(self.tokenizer.chars)
             multigram_length = len(multigrams)
 
             indices = np.arange(data_length)
@@ -696,10 +697,10 @@ class Dataset():
                                                 max_shape=self.image_shape,
                                                 from_text=self.mask_by_text)
 
-                font_graph_data = utils.batch_font_graph(font_graphs=self.font_graphs,
-                                                         font_graph_shape=self.tokenizer.font_graph_shape,
-                                                         batch_size=batch_length,
-                                                         augmentor=False)
+                font_graph_data = utils.batch_font_graph(batch_size=batch_length,
+                                                         num_chars=charset_length,
+                                                         font_graphs=self.font_graphs,
+                                                         font_graph_shape=self.tokenizer.font_graph_shape)
 
                 aug_text_data = text_data.copy()
                 aug_mask_data = mask_data.copy()
@@ -719,10 +720,8 @@ class Dataset():
                                                                          method='sauvola',
                                                                          invert=True)
 
-                        aug_font_graph_data = utils.batch_font_graph(font_graphs=self.font_graphs,
-                                                                     font_graph_shape=self.tokenizer.font_graph_shape,
-                                                                     batch_size=batch_length,
-                                                                     augmentor=True)
+                        aug_font_graph_data = augmentor.graph_augmentation(num_chars=charset_length,
+                                                                           font_graph_data=font_graph_data)
 
                     if multigram_length:
                         index = np.random.randint(0, multigram_length - batch_length)
