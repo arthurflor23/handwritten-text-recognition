@@ -840,6 +840,9 @@ class Augmentor():
 
         for item in aug_nodes:
             for char_nodes in item:
+                if char_nodes.shape[0] < 3:
+                    continue
+
                 xy = char_nodes[:, :2]
 
                 angle = np.radians(np.random.uniform(-10, 10))
