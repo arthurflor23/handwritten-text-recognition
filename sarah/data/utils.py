@@ -107,7 +107,7 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
     num_fonts = len(graph_data)
 
     if not num_fonts:
-        return [], []
+        return [[], []]
 
     nodes_shape, edges_shape = graph_shape
     max_nodes = nodes_shape[0] // num_chars
@@ -382,7 +382,7 @@ def batch_processing(batch_mode,
         nodes, edges = batch_data
 
         if not nodes:
-            return nodes, edges
+            return [nodes, edges]
 
         batch_size = len(nodes)
         num_chars = len(nodes[0])
@@ -515,7 +515,8 @@ def plot_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
 
     indices = [
         i for i in range(skip, num_chars)
-        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes] != 0) if padded else len(nodes[i]) > 0)
+        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes] != 0)
+            if padded else len(nodes[i]) > 0)
     ]
 
     num_plot = len(indices)
