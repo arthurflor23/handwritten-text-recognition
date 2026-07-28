@@ -114,7 +114,7 @@ class Dataset():
         fonts = self._load_fonts(self.fonts_path)
         self.font_graphs = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
 
-        self.tokenizer.set_font_graph_shape(self.font_graphs)
+        self.tokenizer.set_graph_shape(self.font_graphs)
 
     def __repr__(self):
         """
@@ -689,16 +689,16 @@ class Dataset():
                                                 max_shape=self.image_shape,
                                                 from_text=self.mask_by_text)
 
-                font_graph_data = utils.batch_font_graph(batch_size=batch_length,
-                                                         num_chars=charset_length,
-                                                         font_graphs=self.font_graphs,
-                                                         font_graph_shape=self.tokenizer.font_graph_shape)
+                graph_data = utils.batch_graph(batch_size=batch_length,
+                                               num_chars=charset_length,
+                                               graph_data=self.font_graphs,
+                                               graph_shape=self.tokenizer.graph_shape)
 
                 aug_text_data = text_data.copy()
                 aug_mask_data = mask_data.copy()
                 aug_image_data = image_data.copy()
                 aug_segmentation_data = segmentation_data.copy()
-                aug_font_graph_data = [x.copy() for x in font_graph_data]
+                aug_graph_data = graph_data.copy()
 
                 if batch_encoded:
                     if augmentor:
@@ -712,8 +712,7 @@ class Dataset():
                                                                          method='sauvola',
                                                                          invert=True)
 
-                        aug_font_graph_data = augmentor.graph_augmentation(num_chars=charset_length,
-                                                                           font_graph_data=font_graph_data)
+                        aug_graph_data = augmentor.graph_augmentation(graph_data=aug_graph_data)
 
                     if multigram_length:
                         index = np.random.randint(0, multigram_length - batch_length)
@@ -754,12 +753,17 @@ class Dataset():
                                                                                          batch_scale=batch_scale,
                                                                                          padding_shape=self.image_shape)
 
+                        graph_data, aug_graph_data = batch_processing_sync(data=graph_data,
+                                                                           aug_data=aug_graph_data,
+                                                                           batch_mode='graph',
+                                                                           padding_shape=self.tokenizer.graph_shape)
+
                 x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
                 y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
-                if font_graph_data:
-                    x_data.extend(aug_font_graph_data)
-                    y_data.extend(font_graph_data)
+                if self.font_graphs:
+                    x_data.extend(aug_graph_data)
+                    y_data.extend(graph_data)
 
                 yield tuple(x_data), tuple(y_data)
 

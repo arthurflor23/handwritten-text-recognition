@@ -816,98 +816,39 @@ class Augmentor():
 
         return image
 
-    def graph_augmentation(self, num_chars, font_graph_data):
+    def graph_augmentation(self, graph_data):
         """
-        Applies augmentations to a batch of font graph data.
+        Applies augmentations to a batch of graph data.
 
         Parameters
         ----------
-        num_chars : int
-            Number of characters per sample.
-        font_graph_data : tuple
+        graph_data : tuple
             Nodes and edges batch.
 
         Returns
         -------
         tuple
-            Augmented nodes and edges.
+            Augmented graph data.
         """
 
-        if not font_graph_data:
-            return font_graph_data
+        nodes, edges = graph_data
 
-        nodes, edges = font_graph_data
-        nodes = nodes.copy()
+        if not nodes:
+            return nodes, edges
 
-        batch_size, total_nodes, _ = nodes.shape
-        max_nodes = total_nodes // num_chars
+        aug_nodes = [[char_nodes.copy() for char_nodes in item] for item in nodes]
 
-        for i in range(batch_size):
-            for j in range(num_chars):
-                start = j * max_nodes
-                graph_nodes = nodes[i, start:start + max_nodes]
+        for item in aug_nodes:
+            for char_nodes in item:
+                xy = char_nodes[:, :2]
 
-                valid = np.any(graph_nodes != 0, axis=1)
-                idx = np.where(valid)[0]
+                angle = np.radians(np.random.uniform(-10, 10))
+                cos, sin = np.cos(angle), np.sin(angle)
 
-                if len(idx) < 3:
-                    continue
+                xy = xy @ np.array([[cos, -sin], [sin, cos]]).T
+                xy = xy * np.random.uniform(0.90, 1.10)
+                xy = xy + np.random.normal(0, 0.01, xy.shape)
 
-                xy = graph_nodes[idx, :2]
+                char_nodes[:, :2] = xy.astype(np.float32)
 
-                min_xy = xy.min(axis=0)
-                max_xy = xy.max(axis=0)
-
-                bw = max(max_xy[0] - min_xy[0], 1e-7)
-                bh = max(max_xy[1] - min_xy[1], 1e-7)
-
-                center = (min_xy + max_xy) / 2.0
-
-                if np.random.rand() <= 0.66:
-                    xy = xy + np.random.normal(0, 0.01, xy.shape)
-
-                if np.random.rand() <= 0.66:
-                    max_factor = 1 - min(bw, bh) / (bw + bh)
-                    dxy = 0.15 * max_factor * min(bw, bh)
-
-                    src_corners = np.array([
-                        min_xy,
-                        [max_xy[0], min_xy[1]],
-                        max_xy,
-                        [min_xy[0], max_xy[1]],
-                    ], dtype=np.float32)
-
-                    corner_signs = np.array([
-                        [1, 1],
-                        [-1, 1],
-                        [-1, -1],
-                        [1, -1],
-                    ], dtype=np.float32)
-
-                    jitter = np.random.uniform(0, dxy, src_corners.shape)
-                    dst_corners = (src_corners + jitter * corner_signs).astype(np.float32)
-
-                    M = cv2.getPerspectiveTransform(src=src_corners, dst=dst_corners)
-
-                    homog = np.concatenate([xy, np.ones((xy.shape[0], 1))], axis=1)
-                    warped = homog @ M.T
-                    xy = warped[:, :2] / warped[:, 2:3]
-
-                if np.random.rand() <= 0.66:
-                    slope = np.tan(np.radians(np.random.uniform(-15, 15)))
-                    xy = xy - center
-                    xy[:, 0] = xy[:, 0] + slope * xy[:, 1]
-                    xy = xy + center
-
-                if np.random.rand() <= 0.66:
-                    angle = np.radians(np.random.uniform(-10, 10))
-                    cos, sin = np.cos(angle), np.sin(angle)
-                    xy = (xy - center) @ np.array([[cos, -sin], [sin, cos]]).T + center
-
-                if np.random.rand() <= 0.66:
-                    ratio = np.random.uniform(0.90, 1.10)
-                    xy = (xy - center) * ratio + center
-
-                graph_nodes[idx, :2] = xy.astype(np.float32)
-
-        return nodes, edges
+        return [aug_nodes, edges]

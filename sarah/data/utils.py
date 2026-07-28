@@ -83,7 +83,7 @@ def batch_binarization(batch_data, method, invert=False):
     return outputs
 
 
-def batch_font_graph(batch_size, num_chars, font_graphs, font_graph_shape):
+def batch_graph(batch_size, num_chars, graph_data, graph_shape):
     """
     Builds a batch of graph data from character font graphs.
 
@@ -93,52 +93,54 @@ def batch_font_graph(batch_size, num_chars, font_graphs, font_graph_shape):
         Number of samples in the batch.
     num_chars : int
         Number of characters per sample.
-    font_graphs : list
+    graph_data : list
         List of graph representations from each character font.
-    font_graph_shape : tuple or list
-        The shape of the input font graphs.
+    graph_shape : tuple or list
+        The shape of the input graphs.
 
     Returns
     -------
     tuple
-        Nodes and Edges as padded numpy arrays.
+        Nodes and Edges as lists.
     """
 
-    num_fonts = len(font_graphs)
+    num_fonts = len(graph_data)
 
     if not num_fonts:
-        return []
+        return [], []
 
-    nodes_shape, edges_shape = font_graph_shape
-
+    nodes_shape, edges_shape = graph_shape
     max_nodes = nodes_shape[0] // num_chars
     max_edges = edges_shape[1] // num_chars
 
-    nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
-    edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
+    nodes = []
+    edges = []
 
-    for i in range(batch_size):
+    for _ in range(batch_size):
         font_index = np.random.randint(num_fonts)
+        sample_nodes = []
+        sample_edges = []
 
         for j in range(num_chars):
-            graph = font_graphs[font_index][j]
-
+            graph = graph_data[font_index][j]
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
 
             if len(graph_nodes) == 0:
+                sample_nodes.append(np.zeros((0, 4), dtype=np.float32))
+                sample_edges.append(np.zeros((2, 0), dtype=np.float32))
                 continue
 
             n = min(graph_nodes.shape[0], max_nodes)
             e = min(graph_edges.shape[1], max_edges)
 
-            nodes[i, j, :n] = graph_nodes[:n]
-            edges[i, j, :, :e] = graph_edges[:, :e] + j * max_nodes
+            sample_nodes.append(graph_nodes[:n].astype(np.float32))
+            sample_edges.append(graph_edges[:, :e].astype(np.float32))
 
-    nodes = nodes.reshape(batch_size, max_nodes * num_chars, 4)
-    edges = edges.transpose(0, 2, 1, 3).reshape(batch_size, 2, max_edges * num_chars)
+        nodes.append(sample_nodes)
+        edges.append(sample_edges)
 
-    return nodes, edges
+    return [nodes, edges]
 
 
 def batch_illumination(batch_data):
@@ -353,27 +355,68 @@ def batch_processing(batch_mode,
         Processed data.
     """
 
-    if batch_mode in ['image', 'binary']:
-        if batch_mode == 'image':
-            if illumination:
-                batch_data = batch_illumination(batch_data)
+    if not batch_data:
+        return batch_data
 
-            if binarization:
-                batch_data = batch_binarization(batch_data, method=binarization)
+    if batch_mode == 'binary':
+        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
+        batch_data = np.expand_dims(batch_data, axis=-1)
+
+        if batch_scale:
+            batch_data = (batch_data.astype(np.float32) / 255.)
+
+    elif batch_mode == 'image':
+        if illumination:
+            batch_data = batch_illumination(batch_data)
+
+        if binarization:
+            batch_data = batch_binarization(batch_data, method=binarization)
 
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
 
         if batch_scale:
-            if batch_mode == 'image':
-                batch_data = (batch_data.astype(np.float32) / 127.5) - 1
-            else:
-                batch_data = (batch_data.astype(np.float32) / 255.)
+            batch_data = (batch_data.astype(np.float32) / 127.5) - 1
+
+    elif batch_mode == 'graph':
+        nodes, edges = batch_data
+
+        if not nodes:
+            return nodes, edges
+
+        batch_size = len(nodes)
+        num_chars = len(nodes[0])
+        nodes_shape, edges_shape = padding_shape
+
+        max_nodes = nodes_shape[0] // num_chars
+        max_edges = edges_shape[1] // num_chars
+
+        pad_nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
+        pad_edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
+
+        for i in range(batch_size):
+            for j in range(num_chars):
+                char_nodes = nodes[i][j]
+                char_edges = edges[i][j]
+
+                n = min(char_nodes.shape[0], max_nodes)
+                e = min(char_edges.shape[1], max_edges)
+
+                if n == 0:
+                    continue
+
+                pad_nodes[i, j, :n] = char_nodes[:n]
+                pad_edges[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
+
+        pad_nodes = pad_nodes.reshape(batch_size, max_nodes * num_chars, 4)
+        pad_edges = pad_edges.transpose(0, 2, 1, 3).reshape(batch_size, 2, max_edges * num_chars)
+
+        batch_data = [pad_nodes, pad_edges]
 
     elif batch_mode == 'text':
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.int64)
 
-    return np.array(batch_data)
+    return batch_data
 
 
 def format_text(text):
@@ -438,16 +481,16 @@ def format_text(text):
     return text
 
 
-def plot_font_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
+def plot_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     """
     Plot a character grid from font graph nodes and edges.
 
     Parameters
     ----------
-    nodes : ndarray
-        Node coordinates and flags for all characters.
-    edges : ndarray
-        Edge index pairs for all characters.
+    nodes : ndarray or list
+        Node coordinates for characters.
+    edges : ndarray or list
+        Edge index pairs for characters.
     chars : list
         Character labels for each graph.
     cols : int, optional
@@ -464,11 +507,16 @@ def plot_font_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     """
 
     num_chars = len(chars)
-    max_nodes = nodes.shape[0] // num_chars
-    max_edges = edges.shape[1] // num_chars
+    padded = isinstance(nodes, np.ndarray)
 
-    indices = [j for j in range(skip, num_chars)
-               if np.any(nodes[j * max_nodes:(j + 1) * max_nodes] != 0)]
+    if padded:
+        max_nodes = nodes.shape[0] // num_chars
+        max_edges = edges.shape[1] // num_chars
+
+    indices = [
+        i for i in range(skip, num_chars)
+        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes] != 0) if padded else len(nodes[i]) > 0)
+    ]
 
     num_plot = len(indices)
     cols = cols or int(np.ceil(np.sqrt(num_plot)))
@@ -481,15 +529,23 @@ def plot_font_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     pad = 10
     inner = cell_size - 2 * pad
 
-    for k, j in enumerate(indices):
+    for i, j in enumerate(indices):
         char = chars[j]
-        node_start = j * max_nodes
-        char_nodes = nodes[node_start:node_start + max_nodes]
-        char_edges = edges[:, j * max_edges:(j + 1) * max_edges]
 
-        valid = np.any(char_nodes != 0, axis=1)
+        if padded:
+            node_start = j * max_nodes
+            char_nodes = nodes[node_start:node_start + max_nodes]
+            char_edges = edges[:, j * max_edges:(j + 1) * max_edges]
+            valid = np.any(char_nodes != 0, axis=1)
+        else:
+            node_start = 0
+            char_nodes = nodes[j]
+            char_edges = edges[j]
+            valid = np.ones(len(char_nodes), dtype=bool)
 
-        row, col = divmod(k, cols)
+        max_local_nodes = len(char_nodes)
+
+        row, col = divmod(i, cols)
         x0 = col * cell_size
         y0 = row * cell_size
 
@@ -500,7 +556,7 @@ def plot_font_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         for s, d in char_edges.T:
             s, d = int(s) - node_start, int(d) - node_start
 
-            if s == d or not (0 <= s < max_nodes and 0 <= d < max_nodes):
+            if s == d or not (0 <= s < max_local_nodes and 0 <= d < max_local_nodes):
                 continue
             if not (valid[s] and valid[d]):
                 continue
