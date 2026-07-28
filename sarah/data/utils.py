@@ -438,7 +438,7 @@ def format_text(text):
     return text
 
 
-def plot_font_graph(nodes, edges, chars, cell_size=80, cols=None):
+def plot_font_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     """
     Plot a character grid from font graph nodes and edges.
 
@@ -450,10 +450,12 @@ def plot_font_graph(nodes, edges, chars, cell_size=80, cols=None):
         Edge index pairs for all characters.
     chars : list
         Character labels for each graph.
-    cell_size : int, optional
-        Pixel size of each character cell.
     cols : int, optional
         Number of grid columns.
+    cell_size : int, optional
+        Pixel size of each character cell.
+    skip : int, optional
+        Number of leading characters to skip.
 
     Returns
     -------
@@ -462,11 +464,15 @@ def plot_font_graph(nodes, edges, chars, cell_size=80, cols=None):
     """
 
     num_chars = len(chars)
-    cols = cols or int(np.ceil(np.sqrt(num_chars)))
-    rows = int(np.ceil(num_chars / cols))
-
     max_nodes = nodes.shape[0] // num_chars
     max_edges = edges.shape[1] // num_chars
+
+    indices = [j for j in range(skip, num_chars)
+               if np.any(nodes[j * max_nodes:(j + 1) * max_nodes] != 0)]
+
+    num_plot = len(indices)
+    cols = cols or int(np.ceil(np.sqrt(num_plot)))
+    rows = int(np.ceil(num_plot / cols))
 
     width = cols * cell_size
     height = rows * cell_size
@@ -475,16 +481,15 @@ def plot_font_graph(nodes, edges, chars, cell_size=80, cols=None):
     pad = 10
     inner = cell_size - 2 * pad
 
-    for j, char in enumerate(chars):
+    for k, j in enumerate(indices):
+        char = chars[j]
         node_start = j * max_nodes
         char_nodes = nodes[node_start:node_start + max_nodes]
         char_edges = edges[:, j * max_edges:(j + 1) * max_edges]
 
         valid = np.any(char_nodes != 0, axis=1)
-        if not valid.any():
-            continue
 
-        row, col = divmod(j, cols)
+        row, col = divmod(k, cols)
         x0 = col * cell_size
         y0 = row * cell_size
 
