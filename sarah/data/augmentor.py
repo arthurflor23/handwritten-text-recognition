@@ -893,18 +893,18 @@ class Augmentor():
                     warped = homog @ M.T
                     xy = warped[:, :2] / warped[:, 2:3]
 
-                if np.random.rand() <= 0.33:
+                if np.random.rand() <= 0.66:
                     slope = np.tan(np.radians(np.random.uniform(-15, 15)))
                     xy = xy - center
                     xy[:, 0] = xy[:, 0] + slope * xy[:, 1]
                     xy = xy + center
 
-                if np.random.rand() <= 0.33:
+                if np.random.rand() <= 0.66:
                     angle = np.radians(np.random.uniform(-10, 10))
                     cos, sin = np.cos(angle), np.sin(angle)
                     xy = (xy - center) @ np.array([[cos, -sin], [sin, cos]]).T + center
 
-                if np.random.rand() <= 0.33:
+                if np.random.rand() <= 0.66:
                     ratio = np.random.uniform(0.90, 1.10)
                     xy = (xy - center) * ratio + center
 
