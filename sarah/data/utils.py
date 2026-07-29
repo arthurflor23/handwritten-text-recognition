@@ -409,7 +409,7 @@ def batch_processing(batch_mode,
                 pad_edges[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
 
         pad_nodes = pad_nodes.reshape(batch_size, max_nodes * num_chars, 4)
-        pad_edges = pad_edges.transpose(0, 2, 1, 3).reshape(batch_size, 2, max_edges * num_chars)
+        pad_edges = pad_edges.reshape(batch_size, 2, max_edges * num_chars)
 
         batch_data = [pad_nodes, pad_edges]
 
@@ -512,6 +512,7 @@ def plot_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     if padded:
         max_nodes = nodes.shape[0] // num_chars
         max_edges = edges.shape[1] // num_chars
+        pad_edges = edges.reshape(num_chars, 2, max_edges)
 
     indices = [
         i for i in range(skip, num_chars)
@@ -536,7 +537,7 @@ def plot_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         if padded:
             node_start = j * max_nodes
             char_nodes = nodes[node_start:node_start + max_nodes]
-            char_edges = edges[:, j * max_edges:(j + 1) * max_edges]
+            char_edges = pad_edges[j]
             valid = np.any(char_nodes != 0, axis=1)
         else:
             node_start = 0
