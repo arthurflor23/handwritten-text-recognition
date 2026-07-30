@@ -173,7 +173,7 @@ class FrechetInceptionDistance(tf.keras.metrics.Metric):
 
         self.tracker.update_state(fid)
 
-    @tf.function
+    @tf.function()
     def matrix_sqrt_trace(self, centered_a, centered_b, denom):
         """
         Compute trace of the matrix square root using eigendecomposition.
@@ -311,7 +311,7 @@ class KernelInceptionDistance(tf.keras.metrics.Metric):
 
         self.tracker.update_state(kid)
 
-    @tf.function
+    @tf.function()
     def polynomial_kernel(self, features_1, features_2):
         """
         Compute the polynomial kernel between two feature sets.
