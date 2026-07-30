@@ -971,7 +971,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return tf.shape(unique_labels)[0] + 1, compact
 
-    def _build_endpoints(self, skeleton, height, width):
+    def _build_endpoints(self, skeleton, image_shape):
         """
         Detects stroke endpoints and junction candidates in a skeleton.
 
@@ -979,10 +979,8 @@ class GraphEncoder(tf.keras.layers.Layer):
         ----------
         skeleton : tf.Tensor
             Flattened skeleton image.
-        height : int
-            Height image dimension.
-        width : int
-            Width image dimension.
+        image_shape : tf.TensorShape
+            Height and width of the image.
 
         Returns
         -------
@@ -992,7 +990,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             Raw junction candidates.
         """
 
-        mask = 1.0 - tf.reshape(skeleton, [height, width])
+        mask = 1.0 - tf.reshape(skeleton, image_shape[:2])
         kernel = tf.constant([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=tf.float32)
 
         neighbor_sum = tf.nn.conv2d(input=mask[tf.newaxis, :, :, tf.newaxis],
@@ -1007,7 +1005,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return endpoints, possible_junctions
 
-    def _build_paths(self, skeleton, start_row, start_col, height, width):
+    def _build_paths(self, skeleton, start_row, start_col, image_shape):
         """
         Extracts evenly spaced keypoints along the skeleton.
 
@@ -1017,8 +1015,8 @@ class GraphEncoder(tf.keras.layers.Layer):
             Flattened skeleton image.
         start_row, start_col : tf.Tensor
             Starting pixel position.
-        height, width : int
-            Image dimensions.
+        image_shape : tf.TensorShape
+            Height and width of the image.
 
         Returns
         -------
@@ -1071,6 +1069,8 @@ class GraphEncoder(tf.keras.layers.Layer):
 
             return tf.cond(pred=tf.reduce_any(free), true_fn=step_forward, false_fn=stop)
 
+        height, width = image_shape[:2]
+
         skeleton = tf.tensor_scatter_nd_update(tensor=skeleton,
                                                indices=[[start_row * width + start_col]],
                                                updates=[1.0])
@@ -1105,7 +1105,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return keypoints.stack(), skeleton
 
-    def _convert_skeleton_to_paths(self, skeleton, height, width):
+    def _convert_skeleton_to_paths(self, skeleton, image_shape):
         """
         Converts a skeleton to ordered paths, handling complex topologies.
 
@@ -1113,8 +1113,8 @@ class GraphEncoder(tf.keras.layers.Layer):
         ----------
         skeleton : tf.Tensor
             Flattened skeleton image.
-        height, width : int
-            Image dimensions.
+        image_shape : tf.TensorShape
+            Height and width of the image.
 
         Returns
         -------
@@ -1141,8 +1141,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             keypoints, skel = self._build_paths(skeleton=skel,
                                                 start_row=start_rows[i],
                                                 start_col=start_cols[i],
-                                                height=height,
-                                                width=width)
+                                                image_shape=image_shape)
 
             kp_row, kp_col = keypoints[:, 0], keypoints[:, 1]
 
@@ -1198,8 +1197,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             keypoints, skel = self._build_paths(skeleton=skel,
                                                 start_row=loop_start_row[i],
                                                 start_col=loop_start_col[i],
-                                                height=height,
-                                                width=width)
+                                                image_shape=image_shape)
 
             n_kp = tf.shape(keypoints)[0]
             closed_row = tf.concat([keypoints[:n_kp - 1, 0], keypoints[0:1, 0]], axis=0)
@@ -1217,9 +1215,10 @@ class GraphEncoder(tf.keras.layers.Layer):
                 path_id + 1,
             )
 
+        height, width = image_shape[:2]
         size = height * width
 
-        _, junctions = self._build_endpoints(skeleton=skeleton, height=height, width=width)
+        _, junctions = self._build_endpoints(skeleton=skeleton, image_shape=image_shape)
         ones = tf.ones_like(junctions, dtype=tf.float32)
 
         skeleton_no_junctions = tf.tensor_scatter_nd_update(tensor=skeleton,
@@ -1247,7 +1246,7 @@ class GraphEncoder(tf.keras.layers.Layer):
         centroid_col = tf.cast(tf.round(tf.math.unsorted_segment_mean(
             tf.cast(tf.boolean_mask(col_grid, in_junction), tf.float32), segment, n_junctions)), tf.int32)
 
-        endpoints, _ = self._build_endpoints(skeleton=skeleton_no_junctions, height=height, width=width)
+        endpoints, _ = self._build_endpoints(skeleton=skeleton_no_junctions, image_shape=image_shape)
         e_row, e_col = endpoints // width, endpoints % width
 
         near_row = e_row[:, None] + self._offset_dy[None, :]
@@ -1430,14 +1429,14 @@ class GraphEncoder(tf.keras.layers.Layer):
 
             return coordinates, nodes, edges
 
-        height, width = binary_image_tensor.shape[0], binary_image_tensor.shape[1]
+        image_shape = binary_image_tensor.shape[:2]
+        height, width = image_shape[:2]
 
         ink_mask = tf.cast(binary_image_tensor > 0, tf.float32)
         skeleton = tf.reshape(1.0 - self._thinning(ink_mask=ink_mask), [-1])
 
         all_rows, all_cols, path_id_of_point = self._convert_skeleton_to_paths(skeleton=skeleton,
-                                                                               height=height,
-                                                                               width=width)
+                                                                               image_shape=image_shape)
 
         coordinates, nodes, edges = tf.cond(pred=tf.shape(all_rows)[0] > 0,
                                             true_fn=nonempty,
@@ -1460,6 +1459,8 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         Returns
         -------
+        coordinates : tf.Tensor
+            Zero-padded pixel coordinates.
         nodes : tf.Tensor
             Zero-padded node features.
         edges : tf.Tensor
@@ -1514,10 +1515,11 @@ class GraphEncoder(tf.keras.layers.Layer):
         if not self.built:
             self.build(input_shape)
 
+        coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
         nodes_shape = tf.TensorShape([input_shape[0], None, 4])
         edges_shape = tf.TensorShape([input_shape[0], 2, None])
 
-        return nodes_shape, edges_shape
+        return coordinates_shape, nodes_shape, edges_shape
 
 
 class GraphNormalization(tf.keras.layers.Layer):
