@@ -438,6 +438,8 @@ class GraphConv(tf.keras.layers.Layer):
     def __init__(self,
                  units,
                  kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
                  use_bias=True,
                  **kwargs):
         """
@@ -447,8 +449,12 @@ class GraphConv(tf.keras.layers.Layer):
         ----------
         units : int
             Number of output features per node.
-        kernel_initializer : str or initializer, optional
-            Initializer for the kernel weights.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -459,6 +465,8 @@ class GraphConv(tf.keras.layers.Layer):
 
         self.units = units
         self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
         self.use_bias = use_bias
 
     def get_config(self):
@@ -476,6 +484,8 @@ class GraphConv(tf.keras.layers.Layer):
         config.update({
             'units': self.units,
             'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
             'use_bias': self.use_bias,
         })
 
@@ -495,10 +505,11 @@ class GraphConv(tf.keras.layers.Layer):
 
         self.num_nodes = input_shape[0][1]
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[0][2], self.units),
-                                      initializer=self.kernel_initializer,
-                                      trainable=True)
+        self.dense_layer = tf.keras.layers.Dense(units=self.units,
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint,
+                                                 use_bias=self.use_bias)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -526,19 +537,20 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
-        self_idx = tf.expand_dims(tf.range(self.num_nodes, dtype=tf.int32), axis=0)
+        self_idx = tf.range(self.num_nodes, dtype=tf.int32)[tf.newaxis, :]
         self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
 
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = tf.linalg.matmul(nodes, self.kernel)
+        transformed = self.dense_layer(nodes)
         ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
 
         degrees = tf.map_fn(
             fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
             elems=(ones, dst),
-            fn_output_signature=tf.float32)
+            fn_output_signature=tf.float32,
+        )
 
         deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
 
@@ -546,13 +558,13 @@ class GraphConv(tf.keras.layers.Layer):
         dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
         norm = src_norm * dst_norm
 
-        messages = tf.gather(transformed, src, batch_dims=1)
-        messages = messages * tf.expand_dims(norm, axis=-1)
+        messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
 
         outputs = tf.map_fn(
             fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
             elems=(messages, dst),
-            fn_output_signature=tf.float32)
+            fn_output_signature=tf.float32,
+        )
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -595,6 +607,8 @@ class GraphConv2D(tf.keras.layers.Layer):
                  k_neighbors=1,
                  num_pos_scales=1,
                  kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
                  use_bias=True,
                  **kwargs):
         """
@@ -608,8 +622,12 @@ class GraphConv2D(tf.keras.layers.Layer):
             Number of neighbors used to build the graph.
         num_pos_scales : int, optional
             Number of sine-cosine positional scales used in the spatial offsets.
-        kernel_initializer : str or initializer, optional
-            Initializer for the kernel weights.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
         use_bias : bool, optional
             Whether to add bias terms.
         **kwargs : dict
@@ -622,6 +640,8 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.k_neighbors = k_neighbors
         self.num_pos_scales = num_pos_scales
         self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
         self.use_bias = use_bias
 
     def get_config(self):
@@ -641,6 +661,8 @@ class GraphConv2D(tf.keras.layers.Layer):
             'k_neighbors': self.k_neighbors,
             'num_pos_scales': self.num_pos_scales,
             'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
             'use_bias': self.use_bias,
         })
 
@@ -660,12 +682,15 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         self.height = input_shape[1]
         self.width = input_shape[2]
-        self.num_nodes = self.height * self.width
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[3], self.units),
-                                      initializer=self.kernel_initializer,
-                                      trainable=True)
+        self.num_nodes = self.height * self.width
+        self.channels = input_shape[3]
+
+        self.dense_layer = tf.keras.layers.Dense(units=self.units,
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint,
+                                                 use_bias=self.use_bias)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -760,15 +785,13 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output feature map.
         """
 
-        batch_size = tf.shape(inputs)[0]
-
-        nodes = tf.reshape(inputs, [batch_size, self.num_nodes, -1])
+        nodes = tf.reshape(inputs, [-1, self.num_nodes, self.channels])
         edge_index = self._build_edge_index()
 
         dst = edge_index[:, 0]
         src = edge_index[:, 1]
 
-        neighbor_features = tf.linalg.matmul(tf.gather(nodes, src, axis=1), self.kernel)
+        neighbor_features = self.dense_layer(tf.gather(nodes, src, axis=1))
 
         outputs = tf.map_fn(
             fn=lambda x: tf.math.unsorted_segment_sum(x, dst, self.num_nodes),
@@ -778,7 +801,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         if self.use_bias:
             outputs = outputs + self.bias
 
-        return tf.reshape(outputs, [batch_size, self.height, self.width, self.units])
+        return tf.reshape(outputs, [-1, self.height, self.width, self.units])
 
     def compute_output_shape(self, input_shape):
         """
@@ -817,17 +840,71 @@ class GraphEncoder(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 filters=None,
+                 units=None,
+                 dropout=0.0,
+                 activation=None,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 beta_initializer='zeros',
+                 gamma_initializer='ones',
+                 use_residual=False,
+                 use_pooling=False,
+                 use_gate=False,
+                 use_bias=True,
+                 **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
+        filters : int or list, optional
+            Output units for each graph convolution layer.
+        units : int or list, optional
+            Output units for each dense projection layer.
+        dropout : float, optional
+            Dropout rate applied during training.
+        activation : str, optional
+            Activation applied after each layer.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
+        use_residual : bool, optional
+            Enables residual connections.
+        use_pooling : bool, optional
+            Enables downsampling in projection stage.
+        use_gate : bool, optional
+            Enables gated residual connections.
+        use_bias : bool, optional
+            Enables bias terms in the layers.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
+
+        self.filters = [filters] if isinstance(filters, int) else (filters or [])
+        self.units = [units] if isinstance(units, int) else (units or [])
+        self.dropout = dropout
+        self.activation = activation
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.beta_initializer = beta_initializer
+        self.gamma_initializer = gamma_initializer
+        self.use_residual = use_residual
+        self.use_pooling = use_pooling
+        self.use_gate = use_gate
+        self.use_bias = use_bias
 
         self._offset_dy = tf.constant([-1, -1, -1, 0, 1, 1, 1, 0], dtype=tf.int32)
         self._offset_dx = tf.constant([-1, 0, 1, 1, 1, 0, -1, -1], dtype=tf.int32)
@@ -835,6 +912,112 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.float32)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.float32)
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'filters': self.filters,
+            'units': self.units,
+            'dropout': self.dropout,
+            'activation': tf.keras.activations.serialize(self.activation),
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'beta_initializer': self.beta_initializer,
+            'gamma_initializer': self.gamma_initializer,
+            'use_residual': self.use_residual,
+            'use_pooling': self.use_pooling,
+            'use_gate': self.use_gate,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        if not self.filters:
+            return
+
+        self.activation = tf.keras.activations.get(self.activation)
+
+        self.dense_layers = [
+            tf.keras.layers.Dense(units=units,
+                                  kernel_initializer=self.kernel_initializer,
+                                  kernel_regularizer=self.kernel_regularizer,
+                                  kernel_constraint=self.kernel_constraint,
+                                  use_bias=self.use_bias)
+            for units in self.filters
+        ]
+
+        if self.use_residual:
+            self.residual_dense_layers = [
+                tf.keras.layers.Dense(units=units,
+                                      kernel_initializer=self.kernel_initializer,
+                                      kernel_regularizer=self.kernel_regularizer,
+                                      kernel_constraint=self.kernel_constraint,
+                                      use_bias=self.use_bias)
+                for units in self.filters
+            ]
+
+        self.projection_layers = [
+            tf.keras.layers.Dense(units=units,
+                                  kernel_initializer=self.kernel_initializer,
+                                  kernel_regularizer=self.kernel_regularizer,
+                                  kernel_constraint=self.kernel_constraint,
+                                  use_bias=self.use_bias)
+            for units in self.units
+        ]
+
+        if self.use_gate:
+            self.gate_projection_layers = [
+                tf.keras.layers.Dense(units=units,
+                                      kernel_initializer=self.kernel_initializer,
+                                      kernel_regularizer=self.kernel_regularizer,
+                                      kernel_constraint=self.kernel_constraint,
+                                      use_bias=self.use_bias)
+                for units in self.units
+            ]
+
+            self.gate_betas = [
+                self.add_weight(name=f'{self.name}_gate_beta_{i}',
+                                shape=(1,),
+                                initializer=self.beta_initializer,
+                                trainable=True)
+                for i in range(len(self.units))
+            ]
+
+            self.gate_gammas = [
+                self.add_weight(name=f'{self.name}_gate_gamma_{i}',
+                                shape=(units,),
+                                initializer=self.gamma_initializer,
+                                trainable=True)
+                for i, units in enumerate(self.units)
+            ]
+
+        if self.use_pooling:
+            self.pooling = tf.keras.layers.AveragePooling1D(pool_size=2, strides=2)
+
+        self.global_pooling = tf.keras.layers.GlobalAveragePooling1D()
 
     def _zhang_suen_lut(self, iteration):
         """
@@ -1448,7 +1631,65 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return coordinates, nodes, edges
 
-    def call(self, inputs):
+    def _graph_conv(self, nodes, edges, dense_layer):
+        """
+        Applies graph convolution step with symmetric degree normalization.
+
+        Parameters
+        ----------
+        nodes : tf.Tensor
+            Node features.
+        edges : tf.Tensor
+            Edge index pairs.
+        dense_layer : tf.keras.layers.Dense
+            Linear projection applied before message passing.
+
+        Returns
+        -------
+        tf.Tensor
+            Updated node features.
+        """
+
+        num_nodes = tf.shape(nodes)[1]
+
+        src = tf.cast(edges[:, 0, :], tf.int32)
+        dst = tf.cast(edges[:, 1, :], tf.int32)
+
+        self_idx = tf.range(num_nodes, dtype=tf.int32)[tf.newaxis, :]
+        self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
+
+        src = tf.concat([src, self_idx], axis=1)
+        dst = tf.concat([dst, self_idx], axis=1)
+
+        transformed = dense_layer(nodes)
+        ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
+
+        degrees = tf.map_fn(
+            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
+            elems=(ones, dst),
+            fn_output_signature=tf.float32,
+        )
+
+        deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
+
+        src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
+        dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
+        norm = src_norm * dst_norm
+
+        messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
+
+        outputs = tf.map_fn(
+            fn=lambda x: tf.math.unsorted_segment_sum(x, dst, num_nodes),
+            elems=(messages, dst),
+            fn_output_signature=tf.float32,
+        )
+
+        if self.use_bias:
+            outputs = outputs + self.bias
+
+        return outputs
+
+    def call(self, inputs, training=False):
         """
         Forward pass of the layer.
 
@@ -1456,15 +1697,21 @@ class GraphEncoder(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Batch of grayscale images.
+        training : bool, optional
+            Whether the call is for training or inference.
 
         Returns
         -------
-        coordinates : tf.Tensor
-            Zero-padded pixel coordinates.
-        nodes : tf.Tensor
-            Zero-padded node features.
-        edges : tf.Tensor
-            Zero-padded edge indices.
+        if filters is set
+            tf.Tensor
+                Latent space representation.
+        else
+            coordinates : tf.Tensor
+                Zero-padded pixel coordinates.
+            nodes : tf.Tensor
+                Zero-padded node features.
+            edges : tf.Tensor
+                Zero-padded edge indices.
         """
 
         images = (inputs + 1.0) * 127.5
@@ -1486,16 +1733,49 @@ class GraphEncoder(tf.keras.layers.Layer):
             edges_list.append(edges)
 
         coordinates = tf.ragged.stack(coordinates_list).to_tensor(default_value=0)
+        coordinates = tf.reshape(coordinates, [tf.shape(coordinates)[0], tf.shape(coordinates)[1], 2])
+        coordinates = tf.stop_gradient(coordinates)
+
         nodes = tf.ragged.stack(nodes_list).to_tensor(default_value=0.0)
+        nodes = tf.reshape(nodes, [tf.shape(nodes)[0], tf.shape(nodes)[1], 4])
+        nodes = tf.stop_gradient(nodes)
 
         edges = tf.ragged.stack(edges_list).to_tensor(default_value=0)
         edges = tf.transpose(edges, perm=[0, 2, 1])
-
-        coordinates = tf.stop_gradient(coordinates)
-        nodes = tf.stop_gradient(nodes)
+        edges = tf.reshape(edges, [tf.shape(edges)[0], 2, tf.shape(edges)[2]])
         edges = tf.stop_gradient(edges)
 
-        return coordinates, nodes, edges
+        if not self.filters:
+            return coordinates, nodes, edges
+
+        latent = tf.identity(nodes)
+
+        for i, dense_layer in enumerate(self.dense_layers):
+            conv_out = self._graph_conv(nodes=latent, edges=edges, dense_layer=dense_layer)
+            conv_out = self.activation(conv_out)
+
+            if self.use_residual:
+                skip_source = nodes if i == 0 else latent
+                latent = conv_out + self.residual_dense_layers[i](skip_source)
+            else:
+                latent = tf.identity(conv_out)
+
+        if training and self.dropout:
+            latent = tf.nn.dropout(latent, rate=self.dropout)
+
+        for i, projection_layer in enumerate(self.projection_layers):
+            latent = projection_layer(latent)
+            latent = self.activation(latent)
+
+            if self.use_pooling:
+                latent = self.pooling(latent)
+
+            if self.use_gate:
+                s_dense = self.gate_projection_layers[i](latent)
+                gated = s_dense * tf.nn.sigmoid(s_dense * self.gate_gammas[i])
+                latent = latent + gated * self.gate_betas[i]
+
+        return self.global_pooling(latent)
 
     def compute_output_shape(self, input_shape):
         """
@@ -1508,18 +1788,23 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         Returns
         -------
-        tuple of tf.TensorShape
+        tf.TensorShape or tuple of tf.TensorShape
             Output shape.
         """
 
         if not self.built:
             self.build(input_shape)
 
-        coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
-        nodes_shape = tf.TensorShape([input_shape[0], None, 4])
-        edges_shape = tf.TensorShape([input_shape[0], 2, None])
+        if not self.filters:
+            coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
+            nodes_shape = tf.TensorShape([input_shape[0], None, 4])
+            edges_shape = tf.TensorShape([input_shape[0], 2, None])
 
-        return coordinates_shape, nodes_shape, edges_shape
+            return coordinates_shape, nodes_shape, edges_shape
+
+        output_units = self.units[-1] if self.units else self.filters[-1]
+
+        return tf.TensorShape([input_shape[0], output_units])
 
 
 class GraphNormalization(tf.keras.layers.Layer):
@@ -1927,7 +2212,6 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
     """
     1D Positional Embedding layer.
     Adds learnable positional embeddings to 1D input tensors.
-    Typically used for sequence-like inputs: (batch_size, sequence_length, embedding_dim).
 
     References
     ----------
@@ -2009,7 +2293,7 @@ class PositionEmbedding1D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Tensor of shape (batch_size, sequence_length, embedding_dim)
+            Tensor of features.
 
         Returns
         -------
@@ -2030,7 +2314,6 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
     """
     2D Positional Embedding layer.
     Adds learnable row and column embeddings to 2D input tensors.
-    Typically used for image-like inputs (batch_size, height, width, features).
 
     References
     ----------
@@ -2125,7 +2408,7 @@ class PositionEmbedding2D(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Tensor of shape (batch_size, height, width, features)
+            Tensor of features.
 
         Returns
         -------
