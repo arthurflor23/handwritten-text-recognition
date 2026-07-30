@@ -532,24 +532,26 @@ class GraphConv(tf.keras.layers.Layer):
         """
 
         nodes, edges = inputs
+        batch_size = tf.shape(nodes)[0]
 
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
         self_idx = tf.range(self.num_nodes, dtype=tf.int32)[tf.newaxis, :]
-        self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
+        self_idx = tf.tile(self_idx, [batch_size, 1])
 
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
         transformed = self.dense_layer(nodes)
-        ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
 
-        degrees = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
-            elems=(ones, dst),
-            fn_output_signature=tf.float32,
-        )
+        batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * self.num_nodes
+        dst_flat = tf.reshape(dst + batch_offset, [-1])
+        total_segments = batch_size * self.num_nodes
+
+        ones_flat = tf.ones(tf.shape(dst_flat), dtype=transformed.dtype)
+        degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
+        degrees = tf.reshape(degrees_flat, [batch_size, self.num_nodes])
 
         deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
 
@@ -558,12 +560,10 @@ class GraphConv(tf.keras.layers.Layer):
         norm = src_norm * dst_norm
 
         messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
+        messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
 
-        outputs = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], self.num_nodes),
-            elems=(messages, dst),
-            fn_output_signature=tf.float32,
-        )
+        outputs_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
+        outputs = tf.reshape(outputs_flat, [batch_size, self.num_nodes, -1])
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -784,6 +784,8 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output feature map.
         """
 
+        batch_size = tf.shape(inputs)[0]
+
         nodes = tf.reshape(inputs, [-1, self.num_nodes, self.channels])
         edge_index = self._build_edge_index()
 
@@ -792,10 +794,13 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         neighbor_features = self.dense_layer(tf.gather(nodes, src, axis=1))
 
-        outputs = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x, dst, self.num_nodes),
-            elems=neighbor_features,
-            fn_output_signature=tf.float32)
+        batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * self.num_nodes
+        dst_flat = tf.reshape(dst[tf.newaxis, :] + batch_offset, [-1])
+        total_segments = batch_size * self.num_nodes
+
+        neighbor_features_flat = tf.reshape(neighbor_features, [-1, tf.shape(neighbor_features)[-1]])
+        outputs_flat = tf.math.unsorted_segment_sum(neighbor_features_flat, dst_flat, total_segments)
+        outputs = tf.reshape(outputs_flat, [batch_size, self.num_nodes, -1])
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -1661,24 +1666,26 @@ class GraphEncoder(tf.keras.layers.Layer):
         """
 
         num_nodes = tf.shape(nodes)[1]
+        batch_size = tf.shape(nodes)[0]
 
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
         self_idx = tf.range(num_nodes, dtype=tf.int32)[tf.newaxis, :]
-        self_idx = tf.tile(self_idx, [tf.shape(nodes)[0], 1])
+        self_idx = tf.tile(self_idx, [batch_size, 1])
 
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
         transformed = dense_layer(nodes)
-        ones = tf.ones(tf.shape(src), dtype=transformed.dtype)
 
-        degrees = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
-            elems=(ones, dst),
-            fn_output_signature=tf.float32,
-        )
+        batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
+        dst_flat = tf.reshape(dst + batch_offset, [-1])
+        total_segments = batch_size * num_nodes
+
+        ones_flat = tf.ones(tf.shape(dst_flat), dtype=transformed.dtype)
+        degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
+        degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
 
         deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
 
@@ -1687,12 +1694,10 @@ class GraphEncoder(tf.keras.layers.Layer):
         norm = src_norm * dst_norm
 
         messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
+        messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
 
-        outputs = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
-            elems=(messages, dst),
-            fn_output_signature=tf.float32,
-        )
+        outputs_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
+        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, -1])
 
         if self.use_bias:
             outputs = outputs + bias
