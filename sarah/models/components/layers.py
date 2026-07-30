@@ -277,7 +277,6 @@ class ContentAlignment(tf.keras.layers.Layer):
         self.input_shape = input_shape[0]
         self.target_shape = input_shape[-1]
 
-    @tf.function()
     def call(self, inputs):
         """
         Applies content alignment to the input image.
@@ -517,7 +516,6 @@ class GraphConv(tf.keras.layers.Layer):
                                         initializer='zeros',
                                         trainable=True)
 
-    @tf.function()
     def call(self, inputs):
         """
         Forward pass of the layer.
@@ -699,7 +697,6 @@ class GraphConv2D(tf.keras.layers.Layer):
                                         initializer='zeros',
                                         trainable=True)
 
-    @tf.function()
     def _build_base_coordinates(self):
         """
         Builds the base spatial coordinates.
@@ -717,7 +714,6 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.stack([row_grid, col_grid], axis=-1)
 
-    @tf.function()
     def _build_positional_offsets(self):
         """
         Builds fixed sine-cosine positional offsets.
@@ -745,7 +741,6 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.stack([offset_x, offset_y], axis=-1)
 
-    @tf.function()
     def _build_edge_index(self):
         """
         Builds the graph edges using k-neighbors.
@@ -774,7 +769,6 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.concat([edges, self_loops], axis=0)
 
-    @tf.function()
     def call(self, inputs):
         """
         Forward pass of the layer.
@@ -1063,7 +1057,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return lut
 
-    @tf.function()
     def _thinning(self, ink_mask):
         """
         Thins a binary ink mask to a 1-pixel skeleton via Zhang-Suen.
@@ -1116,7 +1109,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return image[0, :, :, 0]
 
-    @tf.function()
     def _connected_components(self, mask, connectivity=8):
         """
         Labels 8- or 4-connected components of a binary mask.
@@ -1170,7 +1162,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return tf.shape(unique_labels)[0] + 1, compact
 
-    @tf.function()
     def _build_endpoints(self, skeleton, image_shape):
         """
         Detects stroke endpoints and junction candidates in a skeleton.
@@ -1205,7 +1196,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return endpoints, possible_junctions
 
-    @tf.function()
     def _build_paths(self, skeleton, start_row, start_col, image_shape):
         """
         Extracts evenly spaced keypoints along the skeleton.
@@ -1306,7 +1296,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return keypoints.stack(), skeleton
 
-    @tf.function()
     def _convert_skeleton_to_paths(self, skeleton, image_shape):
         """
         Converts a skeleton to ordered paths, handling complex topologies.
@@ -1564,7 +1553,6 @@ class GraphEncoder(tf.keras.layers.Layer):
             tf.boolean_mask(path_id_of_point.stack(), keep),
         )
 
-    @tf.function()
     def _convert_images_to_graphs(self, binary_image_tensor):
         """
         Extracts a graph for a single image via skeletonization.
@@ -1651,7 +1639,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return coordinates, nodes, edges
 
-    @tf.function()
     def _graph_conv(self, nodes, edges, dense_layer, bias):
         """
         Applies graph convolution step with symmetric degree normalization.
@@ -1712,7 +1699,6 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return outputs
 
-    @tf.function()
     def call(self, inputs, training=False):
         """
         Forward pass of the layer.
