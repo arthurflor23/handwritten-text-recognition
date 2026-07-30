@@ -509,7 +509,7 @@ class GraphConv(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -517,6 +517,7 @@ class GraphConv(tf.keras.layers.Layer):
                                         initializer='zeros',
                                         trainable=True)
 
+    @tf.function()
     def call(self, inputs):
         """
         Forward pass of the layer.
@@ -690,7 +691,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                                                  kernel_initializer=self.kernel_initializer,
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+                                                 use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -698,6 +699,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                                         initializer='zeros',
                                         trainable=True)
 
+    @tf.function()
     def _build_base_coordinates(self):
         """
         Builds the base spatial coordinates.
@@ -715,6 +717,7 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.stack([row_grid, col_grid], axis=-1)
 
+    @tf.function()
     def _build_positional_offsets(self):
         """
         Builds fixed sine-cosine positional offsets.
@@ -742,6 +745,7 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.stack([offset_x, offset_y], axis=-1)
 
+    @tf.function()
     def _build_edge_index(self):
         """
         Builds the graph edges using k-neighbors.
@@ -770,6 +774,7 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         return tf.concat([edges, self_loops], axis=0)
 
+    @tf.function()
     def call(self, inputs):
         """
         Forward pass of the layer.
@@ -965,7 +970,7 @@ class GraphEncoder(tf.keras.layers.Layer):
                                   kernel_initializer=self.kernel_initializer,
                                   kernel_regularizer=self.kernel_regularizer,
                                   kernel_constraint=self.kernel_constraint,
-                                  use_bias=self.use_bias)
+                                  use_bias=False)
             for units in self.filters
         ]
 
@@ -1014,6 +1019,15 @@ class GraphEncoder(tf.keras.layers.Layer):
                 for i, units in enumerate(self.units)
             ]
 
+        if self.use_bias:
+            self.biases = [
+                self.add_weight(name=f'{self.name}_bias_{i}',
+                                shape=(units,),
+                                initializer='zeros',
+                                trainable=True)
+                for i, units in enumerate(self.filters)
+            ]
+
         if self.use_pooling:
             self.pooling = tf.keras.layers.AveragePooling1D(pool_size=2, strides=2)
 
@@ -1049,6 +1063,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return lut
 
+    @tf.function()
     def _thinning(self, ink_mask):
         """
         Thins a binary ink mask to a 1-pixel skeleton via Zhang-Suen.
@@ -1101,6 +1116,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return image[0, :, :, 0]
 
+    @tf.function()
     def _connected_components(self, mask, connectivity=8):
         """
         Labels 8- or 4-connected components of a binary mask.
@@ -1154,6 +1170,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return tf.shape(unique_labels)[0] + 1, compact
 
+    @tf.function()
     def _build_endpoints(self, skeleton, image_shape):
         """
         Detects stroke endpoints and junction candidates in a skeleton.
@@ -1188,6 +1205,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return endpoints, possible_junctions
 
+    @tf.function()
     def _build_paths(self, skeleton, start_row, start_col, image_shape):
         """
         Extracts evenly spaced keypoints along the skeleton.
@@ -1288,6 +1306,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return keypoints.stack(), skeleton
 
+    @tf.function()
     def _convert_skeleton_to_paths(self, skeleton, image_shape):
         """
         Converts a skeleton to ordered paths, handling complex topologies.
@@ -1545,6 +1564,7 @@ class GraphEncoder(tf.keras.layers.Layer):
             tf.boolean_mask(path_id_of_point.stack(), keep),
         )
 
+    @tf.function()
     def _convert_images_to_graphs(self, binary_image_tensor):
         """
         Extracts a graph for a single image via skeletonization.
@@ -1631,7 +1651,8 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return coordinates, nodes, edges
 
-    def _graph_conv(self, nodes, edges, dense_layer):
+    @tf.function()
+    def _graph_conv(self, nodes, edges, dense_layer, bias):
         """
         Applies graph convolution step with symmetric degree normalization.
 
@@ -1643,6 +1664,8 @@ class GraphEncoder(tf.keras.layers.Layer):
             Edge index pairs.
         dense_layer : tf.keras.layers.Dense
             Linear projection applied before message passing.
+        bias : tf.Variable, optional
+            Bias added once after aggregation.
 
         Returns
         -------
@@ -1679,16 +1702,17 @@ class GraphEncoder(tf.keras.layers.Layer):
         messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
 
         outputs = tf.map_fn(
-            fn=lambda x: tf.math.unsorted_segment_sum(x, dst, num_nodes),
+            fn=lambda x: tf.math.unsorted_segment_sum(x[0], x[1], num_nodes),
             elems=(messages, dst),
             fn_output_signature=tf.float32,
         )
 
         if self.use_bias:
-            outputs = outputs + self.bias
+            outputs = outputs + bias
 
         return outputs
 
+    @tf.function()
     def call(self, inputs, training=False):
         """
         Forward pass of the layer.
@@ -1714,6 +1738,35 @@ class GraphEncoder(tf.keras.layers.Layer):
                 Zero-padded edge indices.
         """
 
+        def cond(i, all_coordinates, all_nodes, all_edges, node_row_ids, edge_row_ids, node_pos, edge_pos):
+            return i < batch_size
+
+        def body(i, all_coordinates, all_nodes, all_edges, node_row_ids, edge_row_ids, node_pos, edge_pos):
+            coords, nodes, edges = self._convert_images_to_graphs(binary_image_tensor=binary_images[i])
+
+            n_nodes = tf.shape(nodes)[0]
+            n_edges = tf.shape(edges)[0]
+
+            node_span = node_pos + tf.range(n_nodes)
+            edge_span = edge_pos + tf.range(n_edges)
+
+            all_coordinates = all_coordinates.scatter(node_span, coords)
+            all_nodes = all_nodes.scatter(node_span, nodes)
+            all_edges = all_edges.scatter(edge_span, edges)
+            node_row_ids = node_row_ids.scatter(node_span, tf.fill([n_nodes], i))
+            edge_row_ids = edge_row_ids.scatter(edge_span, tf.fill([n_edges], i))
+
+            return (
+                i + 1,
+                all_coordinates,
+                all_nodes,
+                all_edges,
+                node_row_ids,
+                edge_row_ids,
+                node_pos + n_nodes,
+                edge_pos + n_edges,
+            )
+
         images = (inputs + 1.0) * 127.5
 
         mean = tf.nn.avg_pool2d(images, ksize=32, strides=1, padding='SAME')
@@ -1723,26 +1776,56 @@ class GraphEncoder(tf.keras.layers.Layer):
         threshold = mean * (1.0 + 0.1 * (stddev / 128.0 - 1.0))
 
         binary_images = tf.cast(tf.squeeze(images <= threshold, axis=-1), tf.uint8) * 255
-        coordinates_list, nodes_list, edges_list = [], [], []
+        batch_size = tf.shape(binary_images)[0]
 
-        for image in tf.unstack(binary_images, axis=0):
-            coords, nodes, edges = self._convert_images_to_graphs(binary_image_tensor=image)
+        all_coordinates = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True, element_shape=[2])
+        all_nodes = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True, element_shape=[4])
+        all_edges = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True, element_shape=[2])
+        node_row_ids = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+        edge_row_ids = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
 
-            coordinates_list.append(coords)
-            nodes_list.append(nodes)
-            edges_list.append(edges)
+        _, all_coordinates, all_nodes, all_edges, node_row_ids, edge_row_ids, _, _ = tf.while_loop(
+            cond=cond,
+            body=body,
+            loop_vars=[
+                tf.constant(0),
+                all_coordinates,
+                all_nodes,
+                all_edges,
+                node_row_ids,
+                edge_row_ids,
+                tf.constant(0),
+                tf.constant(0),
+            ],
+            shape_invariants=[
+                tf.TensorShape([]),
+                tf.TensorShape(None),
+                tf.TensorShape(None),
+                tf.TensorShape(None),
+                tf.TensorShape(None),
+                tf.TensorShape(None),
+                tf.TensorShape([]),
+                tf.TensorShape([]),
+            ],
+        )
 
-        coordinates = tf.ragged.stack(coordinates_list).to_tensor(default_value=0)
-        coordinates = tf.reshape(coordinates, [tf.shape(coordinates)[0], tf.shape(coordinates)[1], 2])
+        node_row_ids = node_row_ids.stack()
+        edge_row_ids = edge_row_ids.stack()
+
+        coordinates = tf.RaggedTensor.from_value_rowids(all_coordinates.stack(), node_row_ids, nrows=batch_size)
+        nodes = tf.RaggedTensor.from_value_rowids(all_nodes.stack(), node_row_ids, nrows=batch_size)
+        edges = tf.RaggedTensor.from_value_rowids(all_edges.stack(), edge_row_ids, nrows=batch_size)
+
+        coordinates = coordinates.to_tensor(default_value=0)
+        nodes = nodes.to_tensor(default_value=0.0)
+        edges = tf.transpose(edges.to_tensor(default_value=0), perm=[0, 2, 1])
+
+        coordinates = tf.reshape(coordinates, [batch_size, tf.shape(coordinates)[1], 2])
+        nodes = tf.reshape(nodes, [batch_size, tf.shape(nodes)[1], 4])
+        edges = tf.reshape(edges, [batch_size, 2, tf.shape(edges)[2]])
+
         coordinates = tf.stop_gradient(coordinates)
-
-        nodes = tf.ragged.stack(nodes_list).to_tensor(default_value=0.0)
-        nodes = tf.reshape(nodes, [tf.shape(nodes)[0], tf.shape(nodes)[1], 4])
         nodes = tf.stop_gradient(nodes)
-
-        edges = tf.ragged.stack(edges_list).to_tensor(default_value=0)
-        edges = tf.transpose(edges, perm=[0, 2, 1])
-        edges = tf.reshape(edges, [tf.shape(edges)[0], 2, tf.shape(edges)[2]])
         edges = tf.stop_gradient(edges)
 
         if not self.filters:
@@ -1751,7 +1834,8 @@ class GraphEncoder(tf.keras.layers.Layer):
         latent = tf.identity(nodes)
 
         for i, dense_layer in enumerate(self.dense_layers):
-            conv_out = self._graph_conv(nodes=latent, edges=edges, dense_layer=dense_layer)
+            bias = self.biases[i] if self.use_bias else None
+            conv_out = self._graph_conv(nodes=latent, edges=edges, dense_layer=dense_layer, bias=bias)
             conv_out = self.activation(conv_out)
 
             if self.use_residual:
