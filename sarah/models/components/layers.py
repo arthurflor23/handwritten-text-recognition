@@ -1,5 +1,3 @@
-import cv2
-import numpy as np
 import tensorflow as tf
 
 
@@ -803,9 +801,9 @@ class GraphConv2D(tf.keras.layers.Layer):
         return tf.TensorShape([input_shape[0], self.height, self.width, self.units])
 
 
-class GraphExtraction(tf.keras.layers.Layer):
+class GraphEncoder(tf.keras.layers.Layer):
     """
-    Extracts graph representations from handwriting images via skeletonization.
+    Encodes graph representations from handwriting images via skeletonization.
 
     References
     ----------
@@ -819,345 +817,635 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, step_length=5, **kwargs):
+    def __init__(self, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        step_length : int, optional
-            Arc-length distance between keypoint pixels.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.step_length = step_length
+        self._offset_dy = tf.constant([-1, -1, -1, 0, 1, 1, 1, 0], dtype=tf.int32)
+        self._offset_dx = tf.constant([-1, 0, 1, 1, 1, 0, -1, -1], dtype=tf.int32)
+        self._offset_dist = tf.constant([2 ** 0.5, 1.0] * 4, dtype=tf.float32)
 
-    def get_config(self):
+        self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.float32)
+        self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.float32)
+
+    def _zhang_suen_lut(self, iteration):
         """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'step_length': self.step_length,
-        })
-
-        return config
-
-    def _build_endpoints(self, skeleton):
-        """
-        Detects stroke endpoints and junction points in a skeleton image.
+        Builds one Zhang-Suen thinning deletion lookup table.
 
         Parameters
         ----------
-        skeleton : np.ndarray
-            Binary skeleton image.
+        iteration : int
+            Sub-iteration selector.
 
         Returns
         -------
-        endpoints : list
-            Stroke endpoint positions.
-        junctions : list
-            Deduplicated junction positions.
-        possible_junctions : list
-            Raw junction candidates before deduplication.
+        list
+            Deletion lookup table.
         """
 
-        mask = (1 - skeleton).astype(np.float32)
-        kernel = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.float32)
+        lut = []
 
-        weighted_count = mask * cv2.filter2D(src=mask,
-                                             ddepth=-1,
-                                             kernel=kernel,
-                                             borderType=cv2.BORDER_CONSTANT)
+        for code in range(256):
+            p9, p2, p3, p4, p5, p6, p7, p8 = [(code >> k) & 1 for k in range(8)]
+            seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2]
 
-        rows_j, cols_j = np.nonzero(weighted_count > 2)
-        possible_junctions = list(zip(rows_j.tolist(), cols_j.tolist()))
+            b = sum(seq[:8])
+            a = sum(seq[i] == 0 and seq[i + 1] == 1 for i in range(8))
+            m1, m2 = (p2 * p4 * p6, p4 * p6 * p8) if iteration == 0 else (p2 * p4 * p8, p2 * p6 * p8)
 
-        rows_e, cols_e = np.nonzero(weighted_count == 1)
-        endpoints = list(zip(rows_e.tolist(), cols_e.tolist()))
+            delete = 2 <= b <= 6 and a == 1 and m1 == 0 and m2 == 0
+            lut.append(0 if delete else 1)
 
-        junctions = []
+        return lut
 
-        for point in possible_junctions:
-            has_stronger_neighbor = False
+    def _thinning(self, ink_mask):
+        """
+        Thins a binary ink mask to a 1-pixel skeleton via Zhang-Suen.
 
-            for dy in (-1, 0, 1):
-                for dx in (-1, 0, 1):
-                    if not (dy or dx):
-                        continue
+        Parameters
+        ----------
+        ink_mask : tf.Tensor
+            Binary ink mask.
 
-                    neighbor = (point[0] + dy, point[1] + dx)
+        Returns
+        -------
+        tf.Tensor
+            Binary skeleton mask.
+        """
 
-                    if neighbor in junctions:
-                        if weighted_count[neighbor] <= weighted_count[point]:
-                            junctions.remove(neighbor)
-                        else:
-                            has_stronger_neighbor = True
+        def sub_iteration(img, lut):
+            patches = tf.image.extract_patches(images=img,
+                                               sizes=[1, 3, 3, 1],
+                                               strides=[1, 1, 1, 1],
+                                               rates=[1, 1, 1, 1],
+                                               padding='SAME')
 
-            if not has_stronger_neighbor:
-                junctions.append(point)
+            nw, n, ne, w, center, e, sw, s, se = tf.unstack(patches, axis=-1)
+            p = [n, ne, e, se, s, sw, w, nw]
 
-        return endpoints, junctions, possible_junctions
+            index = tf.add_n([p[k] * weights[k] for k in range(8)])
+            index = tf.cast(index, tf.int32)
+            delete = (1.0 - tf.gather(lut, index)) * center
 
-    def _build_paths(self, skeleton, start_point, step_length):
+            return img * (1.0 - delete[..., tf.newaxis] * interior)
+
+        def cond(img, changed, i):
+            return tf.logical_and(changed, i < 200)
+
+        def body(img, changed, i):
+            next_img = sub_iteration(img=sub_iteration(img=img, lut=self._lut0), lut=self._lut1)
+            return next_img, tf.reduce_any(tf.not_equal(next_img, img)), i + 1
+
+        weights = tf.constant([2, 4, 8, 16, 32, 64, 128, 1], dtype=tf.float32)
+        height, width = ink_mask.shape[0], ink_mask.shape[1]
+
+        interior = tf.ones([height - 2, width - 2], dtype=tf.float32)
+        interior = tf.pad(interior, paddings=[[1, 1], [1, 1]], )[tf.newaxis, :, :, tf.newaxis]
+
+        image = tf.cast(ink_mask, tf.float32)[tf.newaxis, :, :, tf.newaxis]
+
+        image, _, _ = tf.while_loop(cond=cond,
+                                    body=body,
+                                    loop_vars=[image, tf.constant(True), tf.constant(0)])
+
+        return image[0, :, :, 0]
+
+    def _connected_components(self, mask, connectivity=8):
+        """
+        Labels 8- or 4-connected components of a binary mask.
+
+        Parameters
+        ----------
+        mask : tf.Tensor
+            Binary mask.
+        connectivity : int, optional
+            Pixel connectivity.
+
+        Returns
+        -------
+        num_labels : tf.Tensor
+            Number of labels, including background.
+        labels : tf.Tensor
+            Labeled image.
+        """
+
+        def cond(label, changed, i):
+            return tf.logical_and(changed, i < (height * width))
+
+        def body(label, changed, i):
+            padded = tf.pad(tensor=label, paddings=[[1, 1], [1, 1]], constant_values=sentinel)
+            cands = [label] + [padded[1 + dy:1 + dy + height, 1 + dx:1 + dx + width] for dy, dx in offsets]
+            next_label = tf.where(mask_bool, tf.reduce_min(tf.stack(cands), axis=0), sentinel)
+            return next_label, tf.reduce_any(tf.not_equal(next_label, label)), i + 1
+
+        height, width = mask.shape[0], mask.shape[1]
+        mask_bool = tf.cast(mask, tf.bool)
+        sentinel = tf.constant(height * width, dtype=tf.int32)
+
+        rows = tf.range(height, dtype=tf.int32)[:, tf.newaxis]
+        cols = tf.range(width, dtype=tf.int32)[tf.newaxis, :]
+        label = tf.where(mask_bool, rows * width + cols, sentinel)
+
+        if connectivity == 8:
+            offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        else:
+            offsets = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+
+        label, _, _ = tf.while_loop(cond=cond,
+                                    body=body,
+                                    loop_vars=[label, tf.constant(True), tf.constant(0)])
+
+        unique_labels, fg_inverse = tf.unique(tf.boolean_mask(label, mask_bool))
+
+        compact = tf.tensor_scatter_nd_update(tensor=tf.zeros([height, width], dtype=tf.int32),
+                                              indices=tf.where(mask_bool),
+                                              updates=tf.cast(fg_inverse + 1, tf.int32))
+
+        return tf.shape(unique_labels)[0] + 1, compact
+
+    def _build_endpoints(self, skeleton, height, width):
+        """
+        Detects stroke endpoints and junction candidates in a skeleton.
+
+        Parameters
+        ----------
+        skeleton : tf.Tensor
+            Flattened skeleton image.
+        height : int
+            Height image dimension.
+        width : int
+            Width image dimension.
+
+        Returns
+        -------
+        endpoints : tf.Tensor
+            Stroke endpoint positions.
+        possible_junctions : tf.Tensor
+            Raw junction candidates.
+        """
+
+        mask = 1.0 - tf.reshape(skeleton, [height, width])
+        kernel = tf.constant([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=tf.float32)
+
+        neighbor_sum = tf.nn.conv2d(input=mask[tf.newaxis, :, :, tf.newaxis],
+                                    filters=kernel[:, :, tf.newaxis, tf.newaxis],
+                                    strides=1,
+                                    padding='SAME')[0, :, :, 0]
+
+        weighted_count = tf.reshape(mask * neighbor_sum, [-1])
+
+        endpoints = tf.cast(tf.reshape(tf.where(tf.equal(weighted_count, 1.0)), [-1]), tf.int32)
+        possible_junctions = tf.cast(tf.reshape(tf.where(weighted_count > 2.0), [-1]), tf.int32)
+
+        return endpoints, possible_junctions
+
+    def _build_paths(self, skeleton, start_row, start_col, height, width):
         """
         Extracts evenly spaced keypoints along the skeleton.
 
         Parameters
         ----------
-        skeleton : np.ndarray
-            Binary skeleton image.
-        start_point : tuple
+        skeleton : tf.Tensor
+            Flattened skeleton image.
+        start_row, start_col : tf.Tensor
             Starting pixel position.
-        step_length : float
-            Arc-length distance between keypoints.
+        height, width : int
+            Image dimensions.
 
         Returns
         -------
-        keypoints : list
+        keypoints : tf.Tensor
             Sampled positions along the path.
-        skeleton : np.ndarray
+        skeleton : tf.Tensor
             Updated skeleton with visited pixels consumed.
         """
 
-        keypoints = [start_point]
-        accumulated_distance = 0.0
-        current_point = start_point
-        skeleton[current_point] = 1
+        def cond(skel, row, col, last_row, last_col, dist, kp, kp_n, step, active):
+            return tf.logical_and(active, step < (height * width))
 
-        neighbor_offsets = [
-            ((-1, -1), np.sqrt(2)), ((-1, 0), 1.0), ((-1, 1), np.sqrt(2)),
-            ((0,   1), 1.0),        ((1,  1), np.sqrt(2)), ((1,  0), 1.0),
-            ((1,  -1), np.sqrt(2)), ((0, -1), 1.0),
+        def body(skel, row, col, last_row, last_col, dist, kp, kp_n, step, active):
+            next_row, next_col = row + self._offset_dy, col + self._offset_dx
+
+            valid = (next_row >= -height) & (next_row < height) & (next_col >= -width) & (next_col < width)
+            wrapped = tf.math.floormod(next_row, height) * width + tf.math.floormod(next_col, width)
+
+            free = valid & tf.equal(tf.gather(skel, wrapped), 0.0)
+            pick = tf.argmax(tf.cast(free, tf.int32), output_type=tf.int32)
+
+            picked_row, picked_col = next_row[pick], next_col[pick]
+
+            def step_forward():
+                new_skel = tf.tensor_scatter_nd_update(tensor=skel, indices=[[wrapped[pick]]], updates=[1.0])
+                new_dist = dist + self._offset_dist[pick]
+                record = new_dist >= 5
+
+                new_kp = tf.cond(
+                    pred=record,
+                    true_fn=lambda: kp.write(kp_n, tf.stack([picked_row, picked_col])),
+                    false_fn=lambda: kp,
+                )
+
+                return (
+                    new_skel,
+                    picked_row,
+                    picked_col,
+                    tf.where(record, picked_row, last_row),
+                    tf.where(record, picked_col, last_col),
+                    tf.where(record, 0.0, new_dist),
+                    new_kp,
+                    kp_n + tf.cast(record, tf.int32),
+                    step + 1,
+                    True,
+                )
+
+            def stop():
+                return skel, row, col, last_row, last_col, dist, kp, kp_n, step + 1, False
+
+            return tf.cond(pred=tf.reduce_any(free), true_fn=step_forward, false_fn=stop)
+
+        skeleton = tf.tensor_scatter_nd_update(tensor=skeleton,
+                                               indices=[[start_row * width + start_col]],
+                                               updates=[1.0])
+
+        keypoints = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True, element_shape=[2])
+        keypoints = keypoints.write(0, tf.stack([start_row, start_col]))
+
+        skeleton, row, col, last_row, last_col, _, keypoints, kp_n, _, _ = tf.while_loop(
+            cond=cond,
+            body=body,
+            loop_vars=[
+                skeleton, start_row, start_col, start_row, start_col, tf.constant(0.0),
+                keypoints, tf.constant(1), tf.constant(0), tf.constant(True),
+            ],
+            shape_invariants=[
+                tf.TensorShape([height * width]),
+                tf.TensorShape([]), tf.TensorShape([]),
+                tf.TensorShape([]), tf.TensorShape([]),
+                tf.TensorShape([]),
+                tf.TensorShape(None),
+                tf.TensorShape([]),
+                tf.TensorShape([]),
+                tf.TensorShape([]),
+            ],
+        )
+
+        keypoints = tf.cond(
+            pred=tf.logical_or(tf.not_equal(last_row, row), tf.not_equal(last_col, col)),
+            true_fn=lambda: keypoints.write(kp_n, tf.stack([row, col])),
+            false_fn=lambda: keypoints,
+        )
+
+        return keypoints.stack(), skeleton
+
+    def _convert_skeleton_to_paths(self, skeleton, height, width):
+        """
+        Converts a skeleton to ordered paths, handling complex topologies.
+
+        Parameters
+        ----------
+        skeleton : tf.Tensor
+            Flattened skeleton image.
+        height, width : int
+            Image dimensions.
+
+        Returns
+        -------
+        all_rows, all_cols : tf.Tensor
+            Positions of every path point.
+        path_id_of_point : tf.Tensor
+            Path membership of every point.
+        """
+
+        def by_col_then_row(idx):
+            r, c = idx // width, idx % width
+            order = tf.argsort(c * height + r)
+            return tf.gather(r, order), tf.gather(c, order)
+
+        def gather_safe(flat, rows, cols, default):
+            in_range = (rows >= 0) & (rows < height) & (cols >= 0) & (cols < width)
+            idx = tf.clip_by_value(rows, 0, height - 1) * width + tf.clip_by_value(cols, 0, width - 1)
+            return tf.where(in_range, tf.gather(flat, idx), default)
+
+        def walk_cond(i, skel, rows, cols, pids, pos, path_id):
+            return i < tf.shape(start_rows)[0]
+
+        def walk_body(i, skel, rows, cols, pids, pos, path_id):
+            keypoints, skel = self._build_paths(skeleton=skel,
+                                                start_row=start_rows[i],
+                                                start_col=start_cols[i],
+                                                height=height,
+                                                width=width)
+
+            kp_row, kp_col = keypoints[:, 0], keypoints[:, 1]
+
+            head_anchored = gather_safe(flat=anchor_mask, rows=kp_row[:1], cols=kp_col[:1], default=False)
+            tail_anchored = gather_safe(flat=anchor_mask, rows=kp_row[-1:], cols=kp_col[-1:], default=False)
+
+            zero = tf.zeros([0], tf.int32)
+
+            prefix_row = tf.cond(
+                pred=head_anchored[0],
+                true_fn=lambda: gather_safe(flat=anchor_row, rows=kp_row[:1], cols=kp_col[:1], default=0),
+                false_fn=lambda: zero,
+            )
+
+            prefix_col = tf.cond(
+                pred=head_anchored[0],
+                true_fn=lambda: gather_safe(flat=anchor_col, rows=kp_row[:1], cols=kp_col[:1], default=0),
+                false_fn=lambda: zero,
+            )
+
+            suffix_row = tf.cond(
+                pred=tail_anchored[0],
+                true_fn=lambda: gather_safe(flat=anchor_row, rows=kp_row[-1:], cols=kp_col[-1:], default=0),
+                false_fn=lambda: zero,
+            )
+
+            suffix_col = tf.cond(
+                pred=tail_anchored[0],
+                true_fn=lambda: gather_safe(flat=anchor_col, rows=kp_row[-1:], cols=kp_col[-1:], default=0),
+                false_fn=lambda: zero,
+            )
+
+            full_row = tf.concat([prefix_row, kp_row, suffix_row], axis=0)
+            full_col = tf.concat([prefix_col, kp_col, suffix_col], axis=0)
+
+            n = tf.shape(full_row)[0]
+            span = pos + tf.range(n)
+
+            return (
+                i + 1,
+                skel,
+                rows.scatter(span, full_row),
+                cols.scatter(span, full_col),
+                pids.scatter(span, tf.fill([n], path_id)),
+                pos + n,
+                path_id + 1,
+            )
+
+        def loop_cond(i, skel, rows, cols, pids, pos, path_id):
+            return i < n_loops
+
+        def loop_body(i, skel, rows, cols, pids, pos, path_id):
+            keypoints, skel = self._build_paths(skeleton=skel,
+                                                start_row=loop_start_row[i],
+                                                start_col=loop_start_col[i],
+                                                height=height,
+                                                width=width)
+
+            n_kp = tf.shape(keypoints)[0]
+            closed_row = tf.concat([keypoints[:n_kp - 1, 0], keypoints[0:1, 0]], axis=0)
+            closed_col = tf.concat([keypoints[:n_kp - 1, 1], keypoints[0:1, 1]], axis=0)
+            n = tf.shape(closed_row)[0]
+            span = pos + tf.range(n)
+
+            return (
+                i + 1,
+                skel,
+                rows.scatter(span, closed_row),
+                cols.scatter(span, closed_col),
+                pids.scatter(span, tf.fill([n], path_id)),
+                pos + n,
+                path_id + 1,
+            )
+
+        size = height * width
+
+        _, junctions = self._build_endpoints(skeleton=skeleton, height=height, width=width)
+        ones = tf.ones_like(junctions, dtype=tf.float32)
+
+        skeleton_no_junctions = tf.tensor_scatter_nd_update(tensor=skeleton,
+                                                            indices=junctions[:, None],
+                                                            updates=ones)
+
+        junction_map = tf.tensor_scatter_nd_update(tensor=tf.zeros([size], dtype=tf.float32),
+                                                   indices=junctions[:, None],
+                                                   updates=ones)
+
+        num_labels, junction_2d = self._connected_components(tf.reshape(junction_map, [height, width]))
+
+        junction = tf.reshape(junction_2d, [-1])
+        n_junctions = tf.maximum(num_labels - 1, 1)
+
+        row_grid = tf.repeat(tf.range(height, dtype=tf.int32), width)
+        col_grid = tf.tile(tf.range(width, dtype=tf.int32), [height])
+
+        in_junction = junction > 0
+        segment = tf.boolean_mask(junction, in_junction) - 1
+
+        centroid_row = tf.cast(tf.round(tf.math.unsorted_segment_mean(
+            tf.cast(tf.boolean_mask(row_grid, in_junction), tf.float32), segment, n_junctions)), tf.int32)
+
+        centroid_col = tf.cast(tf.round(tf.math.unsorted_segment_mean(
+            tf.cast(tf.boolean_mask(col_grid, in_junction), tf.float32), segment, n_junctions)), tf.int32)
+
+        endpoints, _ = self._build_endpoints(skeleton=skeleton_no_junctions, height=height, width=width)
+        e_row, e_col = endpoints // width, endpoints % width
+
+        near_row = e_row[:, None] + self._offset_dy[None, :]
+        near_col = e_col[:, None] + self._offset_dx[None, :]
+
+        in_range = (near_row >= -1) & (near_row < height) & (near_col >= -1) & (near_col < width)
+        near_idx = tf.math.floormod(near_row, height) * width + tf.math.floormod(near_col, width)
+
+        neighbor_labels = tf.where(in_range, tf.gather(junction, near_idx), tf.zeros_like(near_row))
+        present = tf.not_equal(neighbor_labels, 0)
+        rank = tf.cumsum(tf.cast(present, tf.int32), axis=1)
+
+        zeros = tf.zeros_like(neighbor_labels)
+        count = tf.reduce_sum(tf.cast(present, tf.int32), axis=1)
+
+        label_a = tf.reduce_sum(tf.where(present & tf.equal(rank, 1), neighbor_labels, zeros), axis=1)
+        label_b = tf.reduce_sum(tf.where(present & tf.equal(rank, 2), neighbor_labels, zeros), axis=1)
+
+        is_anchor, is_bridge = tf.equal(count, 1), tf.equal(count, 2)
+
+        idx_a = tf.clip_by_value(label_a - 1, 0, n_junctions - 1)
+        idx_b = tf.clip_by_value(label_b - 1, 0, n_junctions - 1)
+
+        centroid_a_row, centroid_a_col = tf.gather(centroid_row, idx_a), tf.gather(centroid_col, idx_a)
+        centroid_b_row, centroid_b_col = tf.gather(centroid_row, idx_b), tf.gather(centroid_col, idx_b)
+
+        anchors = tf.boolean_mask(endpoints, is_anchor)
+
+        anchor_mask = tf.tensor_scatter_nd_update(tensor=tf.zeros([size], dtype=tf.bool),
+                                                  indices=anchors[:, None],
+                                                  updates=tf.ones([tf.shape(anchors)[0]], dtype=tf.bool))
+
+        anchor_row = tf.tensor_scatter_nd_update(tensor=tf.zeros([size], dtype=tf.int32),
+                                                 indices=anchors[:, None],
+                                                 updates=tf.boolean_mask(centroid_a_row, is_anchor))
+
+        anchor_col = tf.tensor_scatter_nd_update(tensor=tf.zeros([size], dtype=tf.int32),
+                                                 indices=anchors[:, None],
+                                                 updates=tf.boolean_mask(centroid_a_col, is_anchor))
+
+        anchor_row_sorted, anchor_col_sorted = by_col_then_row(idx=anchors)
+        isolated = tf.boolean_mask(endpoints, ~(is_anchor | is_bridge))
+        isolated_row_sorted, isolated_col_sorted = by_col_then_row(idx=isolated)
+
+        start_rows = tf.concat([anchor_row_sorted, isolated_row_sorted], axis=0)
+        start_cols = tf.concat([anchor_col_sorted, isolated_col_sorted], axis=0)
+
+        all_rows = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+        all_cols = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+        path_id_of_point = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+
+        i0, pos0, path_id0 = tf.constant(0), tf.constant(0), tf.constant(0)
+
+        loop_shapes = [
+            tf.TensorShape([]), tf.TensorShape([size]), tf.TensorShape(None),
+            tf.TensorShape(None), tf.TensorShape(None), tf.TensorShape([]), tf.TensorShape([]),
         ]
 
-        while True:
-            next_point = None
-            step_distance = 0.0
+        _, working_skeleton, all_rows, all_cols, path_id_of_point, pos, path_id = tf.while_loop(
+            cond=walk_cond,
+            body=walk_body,
+            loop_vars=[i0, skeleton_no_junctions, all_rows, all_cols, path_id_of_point, pos0, path_id0],
+            shape_invariants=loop_shapes,
+        )
 
-            for (dy, dx), dist in neighbor_offsets:
-                neighbor = (current_point[0] + dy, current_point[1] + dx)
+        n_bridges = tf.reduce_sum(tf.cast(is_bridge, tf.int32))
 
-                try:
-                    if skeleton[neighbor] == 0:
-                        next_point = neighbor
-                        step_distance = dist
-                        break
-                except IndexError:
-                    pass
+        bridge_rows = tf.reshape(tf.stack(
+            [tf.boolean_mask(centroid_a_row, is_bridge), tf.boolean_mask(centroid_b_row, is_bridge)], axis=1), [-1])
 
-            if next_point is None:
-                break
+        bridge_cols = tf.reshape(tf.stack(
+            [tf.boolean_mask(centroid_a_col, is_bridge), tf.boolean_mask(centroid_b_col, is_bridge)], axis=1), [-1])
 
-            accumulated_distance += step_distance
-            skeleton[next_point] = 1
-            current_point = next_point
+        bridge_ids = tf.repeat(tf.range(n_bridges) + path_id, 2)
+        span = pos + tf.range(2 * n_bridges)
 
-            if accumulated_distance >= step_length:
-                keypoints.append(current_point)
-                accumulated_distance = 0.0
+        all_rows = all_rows.scatter(span, bridge_rows)
+        all_cols = all_cols.scatter(span, bridge_cols)
 
-        if current_point not in keypoints:
-            keypoints.append(current_point)
+        path_id_of_point = path_id_of_point.scatter(span, bridge_ids)
+        pos, path_id = pos + 2 * n_bridges, path_id + n_bridges
 
-        return keypoints, skeleton
+        mask = tf.reshape(tf.cast((1.0 - working_skeleton) > 0.0, tf.float32), [height, width])
+        num_loops, loop_labels_2d = self._connected_components(mask=mask)
 
-    def _convert_skeleton_to_paths(self, skeleton, step_length):
+        loop_labels = tf.reshape(loop_labels_2d, [-1])
+
+        n_loops = num_loops - 1
+        n_loops_safe = tf.maximum(n_loops, 1)
+
+        in_loop = loop_labels > 0
+        loop_segment = tf.boolean_mask(loop_labels, in_loop) - 1
+
+        loop_key = tf.boolean_mask(col_grid * height + row_grid, in_loop)
+        min_key = tf.math.unsorted_segment_min(loop_key, loop_segment, n_loops_safe)
+
+        loop_start_row = (min_key % height)[:n_loops]
+        loop_start_col = (min_key // height)[:n_loops]
+
+        _, _, all_rows, all_cols, path_id_of_point, _, _ = tf.while_loop(
+            cond=loop_cond,
+            body=loop_body,
+            loop_vars=[tf.constant(0), working_skeleton, all_rows, all_cols, path_id_of_point, pos, path_id],
+            shape_invariants=loop_shapes,
+        )
+
+        all_rows, all_cols = all_rows.stack(), all_cols.stack()
+        keep = ~gather_safe(flat=anchor_mask, rows=all_rows, cols=all_cols, default=False)
+
+        return (
+            tf.boolean_mask(all_rows, keep),
+            tf.boolean_mask(all_cols, keep),
+            tf.boolean_mask(path_id_of_point.stack(), keep),
+        )
+
+    def _convert_images_to_graphs(self, binary_image_tensor):
         """
-        Converts skeletons to ordered paths, handling complex topologies.
+        Extracts a graph for a single image via skeletonization.
 
         Parameters
         ----------
-        skeleton : np.ndarray
-            Binary skeleton image.
-        step_length : float
-            Arc-length distance between keypoints.
+        binary_image_tensor : tf.Tensor
+            Single binary image.
 
         Returns
         -------
-        list of list of tuple
-            Keypoint sequences, one per stroke segment.
+        coordinates : tf.Tensor
+            Pixel coordinates for the image.
+        nodes : tf.Tensor
+            Node features for the image.
+        edges : tf.Tensor
+            Edge pairs for the image.
         """
 
-        _, _, possible_junctions = self._build_endpoints(skeleton)
+        def empty():
+            return tf.zeros([0, 2], tf.int32), tf.zeros([0, 4], tf.float32), tf.zeros([0, 2], tf.int32)
 
-        skeleton_no_junctions = np.copy(skeleton)
-        junction_pixel_map = np.zeros(skeleton.shape, dtype=np.uint8)
+        def nonempty():
+            span = 2 * width
+            key = (all_rows + height) * span + (all_cols + width)
 
-        for junction in possible_junctions:
-            skeleton_no_junctions[junction] = 1
-            junction_pixel_map[junction] = 1
+            unique_key, point_id = tf.unique(key)
+            row = unique_key // span - height
+            col = unique_key % span - width
 
-        num_labels, junction_labels = cv2.connectedComponents(junction_pixel_map, connectivity=8)
+            order = tf.argsort(col * (2 * height) + (row + height))
+            rank = tf.argsort(order)
 
-        junction_groups = [[] for _ in range(num_labels - 1)]
-        rows_lbl, cols_lbl = np.nonzero(junction_labels)
+            node_id = tf.gather(rank, point_id)
+            num_nodes = tf.shape(unique_key)[0]
 
-        for row, col in zip(rows_lbl.tolist(), cols_lbl.tolist()):
-            junction_groups[junction_labels[row, col] - 1].append((row, col))
+            x = tf.cast(tf.gather(col, order), tf.float32)
+            y = tf.cast(tf.gather(row, order), tf.float32)
 
-        centroids = [tuple(int(round(sum(y) / len(y))) for y in zip(*x)) for x in junction_groups]
-        endpoints_on_arc, _, _ = self._build_endpoints(skeleton_no_junctions)
+            x_min, y_min = tf.reduce_min(x), tf.reduce_min(y)
+            scale = tf.maximum(tf.reduce_max(x) - x_min, tf.reduce_max(y) - y_min)
+            scale = tf.where(tf.equal(scale, 0.0), 1.0, scale)
 
-        nearest_junction = {}
-        ignore_endpoints = []
-        junction_bridge_paths = []
-        endpoints_isolated = []
+            coordinates = tf.cast(tf.stack([x, y], axis=1), tf.int32)
 
-        offset = [(-1, -1), (-1, 0), (-1, 1), (0, 1),
-                  (1,   1),  (1, 0), (1,  -1), (0, -1)]
-
-        for point in endpoints_on_arc:
-            neighbor_labels = []
-
-            for dy, dx in offset:
-                neighbor = (point[0] + dy, point[1] + dx)
-
-                try:
-                    lv = junction_labels[neighbor]
-                    if lv:
-                        neighbor_labels.append(lv)
-                except IndexError:
-                    pass
-
-            if len(neighbor_labels) == 1:
-                nearest_junction[point] = centroids[neighbor_labels[0] - 1]
-
-            elif len(neighbor_labels) == 2:
-                ignore_endpoints.append(point)
-                junction_bridge_paths.append([centroids[neighbor_labels[0] - 1],
-                                              centroids[neighbor_labels[1] - 1]])
-            else:
-                endpoints_isolated.append(point)
-
-        endpoints_near_junction = sorted(nearest_junction.keys(), key=lambda x: (x[1], x[0]))
-
-        endpoints_isolated = sorted(endpoints_isolated, key=lambda x: (x[1], x[0]))
-        ignore_endpoints_set = set(ignore_endpoints)
-        endpoints_near_junction_set = set(endpoints_near_junction)
-
-        working_skeleton = np.copy(skeleton_no_junctions)
-        paths = []
-
-        for endpoint in endpoints_near_junction + endpoints_isolated:
-            if endpoint in ignore_endpoints_set:
-                working_skeleton[endpoint] = 1
-            else:
-                path, working_skeleton = self._build_paths(working_skeleton, endpoint, step_length)
-
-                if path[0] in nearest_junction:
-                    path.insert(0, nearest_junction[path[0]])
-
-                if path[-1] in nearest_junction:
-                    path.append(nearest_junction[path[-1]])
-
-                paths.append(path)
-
-        paths.extend(junction_bridge_paths)
-
-        pixel_map = np.uint8((1 - working_skeleton) > 0)
-        num_labels, loop_labels = cv2.connectedComponents(pixel_map, connectivity=8)
-
-        circle_start_points = [None] * (num_labels - 1)
-        rows_loop, cols_loop = np.nonzero(loop_labels)
-
-        for row, col in zip(rows_loop.tolist(), cols_loop.tolist()):
-            lv = loop_labels[row, col]
-            cur = circle_start_points[lv - 1]
-
-            if cur is None or col < cur[1] or (col == cur[1] and row < cur[0]):
-                circle_start_points[lv - 1] = (row, col)
-
-        for circle_start in circle_start_points:
-            path, working_skeleton = self._build_paths(working_skeleton, circle_start, step_length)
-            paths.append(path[:-1] + path[0:1])
-
-        return [[x for x in path if x not in endpoints_near_junction_set] for path in paths]
-
-    def _convert_images_to_graphs(self, binary_images_tensor):
-        """
-        Extracts graphs for a full batch and returns zero-padded arrays.
-
-        Parameters
-        ----------
-        binary_images_tensor : tf.Tensor
-            Batch of binary images.
-
-        Returns
-        -------
-        coordinates : tf.RaggedTensor
-            Pixel coordinates per image.
-        nodes : tf.RaggedTensor
-            Node features per image.
-        edges : tf.RaggedTensor
-            Edge pairs per image.
-        """
-
-        def fn(image):
-            thinned = cv2.ximgproc.thinning(image.numpy())
-            skeleton = np.where(thinned == 255, 0.0, 1.0).astype(np.float32)
-            paths = self._convert_skeleton_to_paths(skeleton.copy(), self.step_length)
-
-            if not any(paths):
-                return np.zeros((0, 4), dtype=np.float32), np.zeros((0, 2), dtype=np.int32)
-
-            unique_points = sorted({point for p in paths for point in p}, key=lambda x: (x[1], x[0]))
-            node_id_of = {x: idx for idx, x in enumerate(unique_points)}
-            num_nodes = len(unique_points)
-
-            coords = np.array(unique_points, dtype=np.float32)
-            y_pixels, x_pixels = coords[:, 0], coords[:, 1]
-            scale = max(x_pixels.max() - x_pixels.min(), y_pixels.max() - y_pixels.min()) or 1.0
-
-            nodes = np.stack([
-                (x_pixels - x_pixels.min()) / scale,
-                (y_pixels - y_pixels.min()) / scale,
-                np.zeros(num_nodes, dtype=np.float32),
-                np.zeros(num_nodes, dtype=np.float32),
+            nodes = tf.stack([
+                (x - x_min) / scale, (y - y_min) / scale,
+                tf.zeros(num_nodes),
+                tf.zeros(num_nodes)
             ], axis=1)
 
-            coordinates = np.stack([x_pixels, y_pixels], axis=1).astype(np.int32)
-            edge_pairs = set()
+            a, b = node_id[:-1], node_id[1:]
+            linked = tf.equal(path_id_of_point[:-1], path_id_of_point[1:]) & tf.not_equal(a, b)
 
-            for path in paths:
-                for pa, pb in zip(path, path[1:]):
-                    a, b = node_id_of[pa], node_id_of[pb]
+            lo = tf.minimum(tf.boolean_mask(a, linked), tf.boolean_mask(b, linked))
+            hi = tf.maximum(tf.boolean_mask(a, linked), tf.boolean_mask(b, linked))
 
-                    if a != b:
-                        edge_pairs.add((min(a, b), max(a, b)))
+            adjacency = tf.tensor_scatter_nd_update(tensor=tf.zeros([num_nodes, num_nodes], dtype=tf.bool),
+                                                    indices=tf.stack([lo, hi], axis=1),
+                                                    updates=tf.ones_like(lo, dtype=tf.bool))
 
-            if edge_pairs:
-                edge_src = np.array([e[0] for e in edge_pairs], dtype=np.int32)
-                edge_dst = np.array([e[1] for e in edge_pairs], dtype=np.int32)
-
-                edges = np.stack([np.concatenate([edge_src, edge_dst]),
-                                  np.concatenate([edge_dst, edge_src])], axis=0).T
-            else:
-                edges = np.zeros((0, 2), dtype=np.int32)
+            pairs = tf.where(adjacency)
+            lo, hi = tf.cast(pairs[:, 0], tf.int32), tf.cast(pairs[:, 1], tf.int32)
+            edges = tf.stack([tf.concat([lo, hi], 0), tf.concat([hi, lo], 0)], axis=1)
 
             return coordinates, nodes, edges
 
-        coordinates, nodes, edges = tf.py_function(func=fn,
-                                                   inp=[binary_images_tensor],
-                                                   Tout=[tf.int32, tf.float32, tf.int32])
+        height, width = binary_image_tensor.shape[0], binary_image_tensor.shape[1]
+
+        ink_mask = tf.cast(binary_image_tensor > 0, tf.float32)
+        skeleton = tf.reshape(1.0 - self._thinning(ink_mask=ink_mask), [-1])
+
+        all_rows, all_cols, path_id_of_point = self._convert_skeleton_to_paths(skeleton=skeleton,
+                                                                               height=height,
+                                                                               width=width)
+
+        coordinates, nodes, edges = tf.cond(pred=tf.shape(all_rows)[0] > 0,
+                                            true_fn=nonempty,
+                                            false_fn=empty)
 
         coordinates.set_shape([None, 2])
         nodes.set_shape([None, 4])
         edges.set_shape([None, 2])
-
-        coordinates = tf.RaggedTensor.from_uniform_row_length(tf.reshape(coordinates, [-1]), 2)
-        nodes = tf.RaggedTensor.from_uniform_row_length(tf.reshape(nodes, [-1]), 4)
-        edges = tf.RaggedTensor.from_uniform_row_length(tf.reshape(edges, [-1]), 2)
 
         return coordinates, nodes, edges
 
@@ -1187,22 +1475,26 @@ class GraphExtraction(tf.keras.layers.Layer):
         threshold = mean * (1.0 + 0.1 * (stddev / 128.0 - 1.0))
 
         binary_images = tf.cast(tf.squeeze(images <= threshold, axis=-1), tf.uint8) * 255
+        coordinates_list, nodes_list, edges_list = [], [], []
 
-        coordinates, nodes, edges = tf.map_fn(
-            fn=self._convert_images_to_graphs,
-            elems=binary_images,
-            fn_output_signature=(
-                tf.RaggedTensorSpec(shape=[None, 2], dtype=tf.int32, ragged_rank=1),
-                tf.RaggedTensorSpec(shape=[None, 4], dtype=tf.float32, ragged_rank=1),
-                tf.RaggedTensorSpec(shape=[None, 2], dtype=tf.int32, ragged_rank=1),
-            )
-        )
+        for image in tf.unstack(binary_images, axis=0):
+            coords, nodes, edges = self._convert_images_to_graphs(binary_image_tensor=image)
 
-        self.coordinates = tf.stop_gradient(coordinates.to_tensor(default_value=0))
-        nodes = tf.stop_gradient(nodes.to_tensor(default_value=0.0))
-        edges = tf.stop_gradient(tf.transpose(edges.to_tensor(default_value=0), perm=[0, 2, 1]))
+            coordinates_list.append(coords)
+            nodes_list.append(nodes)
+            edges_list.append(edges)
 
-        return nodes, edges
+        coordinates = tf.ragged.stack(coordinates_list).to_tensor(default_value=0)
+        nodes = tf.ragged.stack(nodes_list).to_tensor(default_value=0.0)
+
+        edges = tf.ragged.stack(edges_list).to_tensor(default_value=0)
+        edges = tf.transpose(edges, perm=[0, 2, 1])
+
+        coordinates = tf.stop_gradient(coordinates)
+        nodes = tf.stop_gradient(nodes)
+        edges = tf.stop_gradient(edges)
+
+        return coordinates, nodes, edges
 
     def compute_output_shape(self, input_shape):
         """
