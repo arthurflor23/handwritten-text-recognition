@@ -846,11 +846,17 @@ class Augmentor():
                 xy = char_nodes[:, :2]
 
                 angle = np.radians(np.random.uniform(-10, 10))
-                cos, sin = np.cos(angle), np.sin(angle)
+                scale = np.random.uniform(0.90, 1.10)
+                noise = np.random.normal(0, 0.01, xy.shape)
 
-                xy = xy @ np.array([[cos, -sin], [sin, cos]]).T
-                xy = xy * np.random.uniform(0.90, 1.10)
-                xy = xy + np.random.normal(0, 0.01, xy.shape)
+                rotation_matrix = np.array([
+                    [np.cos(angle), -np.sin(angle)],
+                    [np.sin(angle),  np.cos(angle)],
+                ])
+
+                xy = xy @ rotation_matrix.T
+                xy = xy * scale
+                xy = xy + noise
 
                 char_nodes[:, :2] = xy.astype(np.float32)
 
