@@ -509,6 +509,7 @@ class GraphConv(tf.keras.layers.Layer):
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=False)
+        self.dense_layer.build(input_shape[0])
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -690,6 +691,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                                                  kernel_regularizer=self.kernel_regularizer,
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=False)
+        self.dense_layer.build(input_shape[:3] + (self.channels,))
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -964,68 +966,73 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         self.activation = tf.keras.activations.get(self.activation)
 
-        self.dense_layers = [
-            tf.keras.layers.Dense(units=units,
-                                  kernel_initializer=self.kernel_initializer,
-                                  kernel_regularizer=self.kernel_regularizer,
-                                  kernel_constraint=self.kernel_constraint,
-                                  use_bias=False)
-            for units in self.filters
-        ]
+        self.dense_layers = []
+        self.projection_layers = []
+        self.residual_dense_layers = [] if self.use_residual else None
 
-        if self.use_residual:
-            self.residual_dense_layers = [
-                tf.keras.layers.Dense(units=units,
-                                      kernel_initializer=self.kernel_initializer,
-                                      kernel_regularizer=self.kernel_regularizer,
-                                      kernel_constraint=self.kernel_constraint,
-                                      use_bias=self.use_bias)
-                for units in self.filters
-            ]
+        self.gate_projection_layers = [] if self.use_gate else None
+        self.gate_betas = [] if self.use_gate else None
+        self.gate_gammas = [] if self.use_gate else None
 
-        self.projection_layers = [
-            tf.keras.layers.Dense(units=units,
-                                  kernel_initializer=self.kernel_initializer,
-                                  kernel_regularizer=self.kernel_regularizer,
-                                  kernel_constraint=self.kernel_constraint,
-                                  use_bias=self.use_bias)
-            for units in self.units
-        ]
+        self.biases = [] if self.use_bias else None
+        feat_dim = 4
 
-        if self.use_gate:
-            self.gate_projection_layers = [
-                tf.keras.layers.Dense(units=units,
-                                      kernel_initializer=self.kernel_initializer,
-                                      kernel_regularizer=self.kernel_regularizer,
-                                      kernel_constraint=self.kernel_constraint,
-                                      use_bias=self.use_bias)
-                for units in self.units
-            ]
+        for i, units in enumerate(self.filters):
+            dense = tf.keras.layers.Dense(units=units,
+                                          kernel_initializer=self.kernel_initializer,
+                                          kernel_regularizer=self.kernel_regularizer,
+                                          kernel_constraint=self.kernel_constraint,
+                                          use_bias=False)
+            dense.build((None, feat_dim))
+            self.dense_layers.append(dense)
 
-            self.gate_betas = [
-                self.add_weight(name=f'{self.name}_gate_beta_{i}',
-                                shape=(1,),
-                                initializer=self.beta_initializer,
-                                trainable=True)
-                for i in range(len(self.units))
-            ]
+            if self.use_residual:
+                res_dense = tf.keras.layers.Dense(units=units,
+                                                  kernel_initializer=self.kernel_initializer,
+                                                  kernel_regularizer=self.kernel_regularizer,
+                                                  kernel_constraint=self.kernel_constraint,
+                                                  use_bias=self.use_bias)
+                res_dense.build((None, feat_dim))
+                self.residual_dense_layers.append(res_dense)
 
-            self.gate_gammas = [
-                self.add_weight(name=f'{self.name}_gate_gamma_{i}',
-                                shape=(units,),
-                                initializer=self.gamma_initializer,
-                                trainable=True)
-                for i, units in enumerate(self.units)
-            ]
+            if self.use_bias:
+                self.biases.append(
+                    self.add_weight(name=f'{self.name}_bias_{i}',
+                                    shape=(units,),
+                                    initializer='zeros',
+                                    trainable=True))
+            feat_dim = units
 
-        if self.use_bias:
-            self.biases = [
-                self.add_weight(name=f'{self.name}_bias_{i}',
-                                shape=(units,),
-                                initializer='zeros',
-                                trainable=True)
-                for i, units in enumerate(self.filters)
-            ]
+        for i, units in enumerate(self.units):
+            proj = tf.keras.layers.Dense(units=units,
+                                         kernel_initializer=self.kernel_initializer,
+                                         kernel_regularizer=self.kernel_regularizer,
+                                         kernel_constraint=self.kernel_constraint,
+                                         use_bias=self.use_bias)
+            proj.build((None, feat_dim))
+            self.projection_layers.append(proj)
+
+            if self.use_gate:
+                gate_proj = tf.keras.layers.Dense(units=units,
+                                                  kernel_initializer=self.kernel_initializer,
+                                                  kernel_regularizer=self.kernel_regularizer,
+                                                  kernel_constraint=self.kernel_constraint,
+                                                  use_bias=self.use_bias)
+                gate_proj.build((None, units))
+                self.gate_projection_layers.append(gate_proj)
+
+                self.gate_betas.append(
+                    self.add_weight(name=f'{self.name}_gate_beta_{i}',
+                                    shape=(1,),
+                                    initializer=self.beta_initializer,
+                                    trainable=True))
+
+                self.gate_gammas.append(
+                    self.add_weight(name=f'{self.name}_gate_gamma_{i}',
+                                    shape=(1,),
+                                    initializer=self.gamma_initializer,
+                                    trainable=True))
+            feat_dim = units
 
         if self.use_pooling:
             self.pooling = tf.keras.layers.AveragePooling1D(pool_size=2, strides=2)
@@ -2778,7 +2785,7 @@ class ResidualGatedDense(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=list(input_shape[1:-1]) + [1],
+                                     shape=(1,),
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
