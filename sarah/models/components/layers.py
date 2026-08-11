@@ -504,12 +504,11 @@ class GraphConv(tf.keras.layers.Layer):
 
         self.num_nodes = input_shape[0][1]
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[0][-1], self.units),
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint,
-                                      trainable=True)
+        self.dense_layer = tf.keras.layers.Dense(units=self.units,
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint,
+                                                 use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -544,7 +543,7 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = tf.linalg.matmul(nodes, self.kernel)
+        transformed = self.dense_layer(nodes)
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * self.num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
@@ -686,12 +685,11 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.num_nodes = self.height * self.width
         self.channels = input_shape[3]
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[-1], self.units),
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint,
-                                      trainable=True)
+        self.dense_layer = tf.keras.layers.Dense(units=self.units,
+                                                 kernel_initializer=self.kernel_initializer,
+                                                 kernel_regularizer=self.kernel_regularizer,
+                                                 kernel_constraint=self.kernel_constraint,
+                                                 use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -794,7 +792,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         dst = edge_index[:, 0]
         src = edge_index[:, 1]
 
-        transformed = tf.linalg.matmul(tf.gather(nodes, src, axis=1), self.kernel)
+        transformed = self.dense_layer(tf.gather(nodes, src, axis=1))
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * self.num_nodes
         dst_flat = tf.reshape(dst[tf.newaxis, :] + batch_offset, [-1])
@@ -966,14 +964,13 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         self.activation = tf.keras.activations.get(self.activation)
 
-        self.kernels = [
-            self.add_weight(name=f'{self.name}_kernel_{i}',
-                            shape=(4 if i == 0 else self.filters[i - 1], units),
-                            initializer=self.kernel_initializer,
-                            regularizer=self.kernel_regularizer,
-                            constraint=self.kernel_constraint,
-                            trainable=True)
-            for i, units in enumerate(self.filters)
+        self.dense_layers = [
+            tf.keras.layers.Dense(units=units,
+                                  kernel_initializer=self.kernel_initializer,
+                                  kernel_regularizer=self.kernel_regularizer,
+                                  kernel_constraint=self.kernel_constraint,
+                                  use_bias=False)
+            for units in self.filters
         ]
 
         if self.use_residual:
@@ -1647,7 +1644,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         return coordinates, nodes, edges
 
-    def _graph_conv(self, nodes, edges, kernel, bias):
+    def _graph_conv(self, nodes, edges, dense_layer, bias):
         """
         Applies graph convolution step with symmetric degree normalization.
 
@@ -1657,8 +1654,8 @@ class GraphEncoder(tf.keras.layers.Layer):
             Node features.
         edges : tf.Tensor
             Edge index pairs.
-        kernel : tf.Tensor
-            Kernel applied before message passing.
+        dense_layer : tf.keras.layers.Dense
+            Dense layer applied before message passing.
         bias : tf.Variable, optional
             Bias added once after aggregation.
 
@@ -1680,7 +1677,7 @@ class GraphEncoder(tf.keras.layers.Layer):
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = tf.linalg.matmul(nodes, kernel)
+        transformed = dense_layer(nodes)
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
@@ -1827,9 +1824,9 @@ class GraphEncoder(tf.keras.layers.Layer):
 
         latent = tf.identity(nodes)
 
-        for i, kernel in enumerate(self.kernels):
+        for i, dense_layer in enumerate(self.dense_layers):
             bias = self.biases[i] if self.use_bias else None
-            conv_out = self._graph_conv(nodes=latent, edges=edges, kernel=kernel, bias=bias)
+            conv_out = self._graph_conv(nodes=latent, edges=edges, dense_layer=dense_layer, bias=bias)
             conv_out = self.activation(conv_out)
 
             if self.use_residual:
@@ -2781,7 +2778,7 @@ class ResidualGatedDense(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(input_shape[-1],),
+                                     shape=list(input_shape[1:-1]) + [1],
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
