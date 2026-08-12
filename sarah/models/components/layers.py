@@ -381,11 +381,13 @@ class ContentAlignment(tf.keras.layers.Layer):
 
         if axis not in [1, 2]:
             raise ValueError('Unsupported axis. Only axis=1 and axis=2 are supported.')
+
         elif input_rank <= 1 or input_rank >= 5:
             raise ValueError('Unsupported rank. Only rank<5 and rank>1 are supported.')
 
         if input_rank == 2:
             input_data = tf.expand_dims(input_data, axis=1)
+
         elif input_rank == 4:
             input_data = tf.squeeze(input_data, axis=-1)
 
@@ -425,6 +427,273 @@ class ContentAlignment(tf.keras.layers.Layer):
         output_shape = tf.TensorShape(input_shape[-1:] + mask_shape[:3])
 
         return output_shape
+
+
+class GatedResidualConv2D(tf.keras.layers.Layer):
+    """
+    Implements a Gated Residual Convolutional layer.
+
+    References
+    ----------
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
+    """
+
+    def __init__(self,
+                 kernel_size=(3, 3),
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 beta_initializer='zeros',
+                 gamma_initializer='ones',
+                 dropout=0.0,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        kernel_size : int or tuple, optional
+            Convolution window size.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
+        dropout : float, optional
+            Dropout rate applied during training.
+        use_bias : bool, optional
+            Enables bias terms in the projection layers.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.kernel_size = kernel_size
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.beta_initializer = beta_initializer
+        self.gamma_initializer = gamma_initializer
+        self.dropout = dropout
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'kernel_size': self.kernel_size,
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'beta_initializer': self.beta_initializer,
+            'gamma_initializer': self.gamma_initializer,
+            'dropout': self.dropout,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
+                                             kernel_size=self.kernel_size,
+                                             padding='same',
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
+                                             use_bias=self.use_bias)
+
+        self.beta = self.add_weight(name=f'{self.name}_beta',
+                                    shape=(1,),
+                                    initializer=self.beta_initializer,
+                                    trainable=True)
+
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                     shape=(1,),
+                                     initializer=self.gamma_initializer,
+                                     trainable=True)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Output tensor.
+        """
+
+        s_conv = self.s_conv(inputs)
+        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
+
+        if training and self.dropout:
+            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+
+        return inputs + g_conv * self.beta
+
+
+class GatedResidualDense(tf.keras.layers.Layer):
+    """
+    Implements a Gated Residual Dense layer.
+
+    References
+    ----------
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
+    """
+
+    def __init__(self,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 beta_initializer='zeros',
+                 gamma_initializer='ones',
+                 dropout=0.0,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
+        dropout : float, optional
+            Dropout rate applied during training.
+        use_bias : bool, optional
+            Enables bias terms in the projection layers.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.beta_initializer = beta_initializer
+        self.gamma_initializer = gamma_initializer
+        self.dropout = dropout
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'beta_initializer': self.beta_initializer,
+            'gamma_initializer': self.gamma_initializer,
+            'dropout': self.dropout,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.s_dense = tf.keras.layers.Dense(units=input_shape[-1],
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
+                                             use_bias=self.use_bias)
+
+        self.beta = self.add_weight(name=f'{self.name}_beta',
+                                    shape=(1,),
+                                    initializer=self.beta_initializer,
+                                    trainable=True)
+
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                     shape=(input_shape[-1], 1),
+                                     initializer=self.gamma_initializer,
+                                     trainable=True)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Output tensor.
+        """
+
+        s_dense = self.s_dense(inputs)
+        g_dense = s_dense * tf.nn.sigmoid(tf.linalg.matmul(s_dense, self.gamma))
+
+        if training and self.dropout:
+            g_dense = tf.nn.dropout(g_dense, rate=self.dropout)
+
+        return inputs + g_dense * self.beta
 
 
 class GraphConv(tf.keras.layers.Layer):
@@ -505,12 +774,11 @@ class GraphConv(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[0][-1], self.units),
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint,
-                                      trainable=True)
+        self.kernel = tf.keras.layers.Dense(units=self.units,
+                                            kernel_initializer=self.kernel_initializer,
+                                            kernel_regularizer=self.kernel_regularizer,
+                                            kernel_constraint=self.kernel_constraint,
+                                            use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -547,7 +815,7 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = tf.linalg.matmul(nodes, self.kernel)
+        transformed = self.kernel(nodes)
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
@@ -573,29 +841,6 @@ class GraphConv(tf.keras.layers.Layer):
             outputs = outputs + self.bias
 
         return outputs
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the layer.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-
-        Returns
-        -------
-        tf.TensorShape
-            Output shape.
-        """
-
-        if not self.built:
-            self.build(input_shape)
-
-        nodes_shape = input_shape[0]
-        output_shape = tf.TensorShape(nodes_shape[:-1] + (self.units,))
-
-        return output_shape
 
 
 class GraphConv2D(tf.keras.layers.Layer):
@@ -690,12 +935,11 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.width = input_shape[2]
         self.channels = input_shape[3]
 
-        self.kernel = self.add_weight(name=f'{self.name}_kernel',
-                                      shape=(input_shape[-1], self.units),
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint,
-                                      trainable=True)
+        self.kernel = tf.keras.layers.Dense(units=self.units,
+                                            kernel_initializer=self.kernel_initializer,
+                                            kernel_regularizer=self.kernel_regularizer,
+                                            kernel_constraint=self.kernel_constraint,
+                                            use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -788,7 +1032,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         dst = edge_index[:, 0]
         src = edge_index[:, 1]
 
-        transformed = tf.linalg.matmul(tf.gather(nodes, src, axis=1), self.kernel)
+        transformed = self.kernel(tf.gather(nodes, src, axis=1))
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst[tf.newaxis, :] + batch_offset, [-1])
@@ -802,29 +1046,6 @@ class GraphConv2D(tf.keras.layers.Layer):
             outputs = outputs + self.bias
 
         return tf.reshape(outputs, [-1, self.height, self.width, self.units])
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the layer.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-
-        Returns
-        -------
-        tf.TensorShape
-            Output shape.
-        """
-
-        if not self.built:
-            self.build(input_shape)
-
-        output_shape = [input_shape[0], self.height, self.width, self.units]
-        output_shape = tf.TensorShape(output_shape)
-
-        return output_shape
 
 
 class GraphExtraction(tf.keras.layers.Layer):
@@ -2069,270 +2290,3 @@ class Reparameterization(tf.keras.layers.Layer):
         eps = tf.random.normal(shape=tf.shape(mu))
 
         return eps * std + mu
-
-
-class ResidualGatedConv2D(tf.keras.layers.Layer):
-    """
-    Implements a Residual Gated Convolutional layer.
-
-    References
-    ----------
-    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
-        https://ieeexplore.ieee.org/document/11475723
-    """
-
-    def __init__(self,
-                 kernel_size=(3, 3),
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
-                 dropout=0.0,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        kernel_size : int or tuple, optional
-            Convolution window size.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
-        dropout : float, optional
-            Dropout rate applied during training.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.kernel_size = kernel_size
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
-        self.dropout = dropout
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'kernel_size': self.kernel_size,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
-            'dropout': self.dropout,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
-                                             kernel_size=self.kernel_size,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.beta = self.add_weight(name=f'{self.name}_beta',
-                                    shape=(1,),
-                                    initializer=self.beta_initializer,
-                                    trainable=True)
-
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
-
-    def call(self, inputs, training=False):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Input tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Output tensor.
-        """
-
-        s_conv = self.s_conv(inputs)
-        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
-
-        if training and self.dropout:
-            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
-
-        return inputs + g_conv * self.beta
-
-
-class ResidualGatedDense(tf.keras.layers.Layer):
-    """
-    Implements a Residual Gated Dense layer.
-
-    References
-    ----------
-    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
-        https://ieeexplore.ieee.org/document/11475723
-    """
-
-    def __init__(self,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
-                 dropout=0.0,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        kernel_initializer : initializer, optional
-            Kernel weights initializer.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
-        dropout : float, optional
-            Dropout rate applied during training.
-        use_bias : bool, optional
-            Enables bias terms in the projection layers.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
-        self.dropout = dropout
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Returns the config of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
-            'dropout': self.dropout,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.s_dense = tf.keras.layers.Dense(units=input_shape[-1],
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
-
-        self.beta = self.add_weight(name=f'{self.name}_beta',
-                                    shape=(1,),
-                                    initializer=self.beta_initializer,
-                                    trainable=True)
-
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(input_shape[-1], 1),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
-
-    def call(self, inputs, training=False):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Input tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Output tensor.
-        """
-
-        s_dense = self.s_dense(inputs)
-        g_dense = s_dense * tf.nn.sigmoid(tf.linalg.matmul(s_dense, self.gamma))
-
-        if training and self.dropout:
-            g_dense = tf.nn.dropout(g_dense, rate=self.dropout)
-
-        return inputs + g_dense * self.beta
