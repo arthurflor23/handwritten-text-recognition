@@ -969,14 +969,12 @@ class GraphEncoder(tf.keras.layers.Layer):
         self.dense_layers = []
         self.projection_layers = []
         self.residual_dense_layers = [] if self.use_residual else None
-
         self.gate_projection_layers = [] if self.use_gate else None
         self.gate_betas = [] if self.use_gate else None
         self.gate_gammas = [] if self.use_gate else None
-
         self.biases = [] if self.use_bias else None
-        feat_dim = 4
 
+        feat_dim = 4
         for i, units in enumerate(self.filters):
             dense = tf.keras.layers.Dense(units=units,
                                           kernel_initializer=self.kernel_initializer,
@@ -1029,7 +1027,7 @@ class GraphEncoder(tf.keras.layers.Layer):
 
                 self.gate_gammas.append(
                     self.add_weight(name=f'{self.name}_gate_gamma_{i}',
-                                    shape=(1,),
+                                    shape=(units,),
                                     initializer=self.gamma_initializer,
                                     trainable=True))
             feat_dim = units
@@ -2785,7 +2783,7 @@ class ResidualGatedDense(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
+                                     shape=(input_shape[-1],),
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
