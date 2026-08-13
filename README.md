@@ -133,6 +133,9 @@ The project has several command-line parameters that can be used to customize it
 - `--salt-and-pepper`: Salt and Pepper noise (probability, alpha).
 - `--gaussian-noise`: Gaussian noise (probability, alpha).
 - `--gaussian-blur`: Gaussian blur filter (probability, kernel size).
+- `--graph-rotate`: Graph rotate transformation (probability, max angle).
+- `--graph-scale`: Graph scale transformation (probability, max variation percentage).
+- `--graph-noise`: Graph noise transformation (probability, standard deviation).
 - `--skip-augmentation`: Skip data augmentation.
 
 #### Synthesis
