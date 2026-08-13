@@ -58,6 +58,9 @@ def run(args):
                               salt_and_pepper=args.salt_and_pepper,
                               gaussian_noise=args.gaussian_noise,
                               gaussian_blur=args.gaussian_blur,
+                              graph_rotate=dataset.font_graphs and args.graph_rotate,
+                              graph_scale=dataset.font_graphs and args.graph_scale,
+                              graph_noise=dataset.font_graphs and args.graph_noise,
                               seed=args.seed)
         print(augmentor)
 

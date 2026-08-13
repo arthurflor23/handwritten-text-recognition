@@ -30,21 +30,26 @@ def check(args):
                       seed=args.seed)
     print(dataset)
 
-    augmentor = Augmentor(mixup=args.mixup,
-                          erode=args.erode,
-                          dilate=args.dilate,
-                          elastic=args.elastic,
-                          perspective=args.perspective,
-                          shear=args.shear,
-                          rotate=args.rotate,
-                          scale=args.scale,
-                          shift_y=args.shift_y,
-                          shift_x=args.shift_x,
-                          salt_and_pepper=args.salt_and_pepper,
-                          gaussian_noise=args.gaussian_noise,
-                          gaussian_blur=args.gaussian_blur,
-                          seed=args.seed)
-    print(augmentor)
+    augmentor = None
+    if not args.skip_augmentation:
+        augmentor = Augmentor(mixup=args.mixup,
+                              erode=args.erode,
+                              dilate=args.dilate,
+                              elastic=args.elastic,
+                              perspective=args.perspective,
+                              shear=args.shear,
+                              rotate=args.rotate,
+                              scale=args.scale,
+                              shift_y=args.shift_y,
+                              shift_x=args.shift_x,
+                              salt_and_pepper=args.salt_and_pepper,
+                              gaussian_noise=args.gaussian_noise,
+                              gaussian_blur=args.gaussian_blur,
+                              graph_rotate=dataset.font_graphs and args.graph_rotate,
+                              graph_scale=dataset.font_graphs and args.graph_scale,
+                              graph_noise=dataset.font_graphs and args.graph_noise,
+                              seed=args.seed)
+        print(augmentor)
 
     src_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
