@@ -1064,17 +1064,21 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, k_length=3, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
+        k_length : float
+            Distance between sampled keypoints along the skeleton.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
+
+        self.k_length = k_length
 
         self._offset_dy = tf.constant([-1, -1, -1, 0, 1, 1, 1, 0], dtype=tf.int32)
         self._offset_dx = tf.constant([-1, 0, 1, 1, 1, 0, -1, -1], dtype=tf.int32)
@@ -1082,6 +1086,24 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.float32)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.float32)
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'k_length': self.k_length,
+        })
+
+        return config
 
     def _zhang_suen_lut(self, iteration):
         """
@@ -1290,7 +1312,7 @@ class GraphExtraction(tf.keras.layers.Layer):
             def step_forward():
                 new_skel = tf.tensor_scatter_nd_update(tensor=skel, indices=[[wrapped[pick]]], updates=[1.0])
                 new_dist = dist + self._offset_dist[pick]
-                record = new_dist >= 5
+                record = new_dist >= self.k_length
 
                 new_kp = tf.cond(
                     pred=record,
