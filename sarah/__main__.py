@@ -60,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian-blur', default=None, nargs='+', type=float, help='Gaussian blur settings')
     parser.add_argument('--graph-rotate', default=(0.99, 10), nargs='+', type=float, help='Graph rotation settings')
     parser.add_argument('--graph-scale', default=(0.99, 10), nargs='+', type=float, help='Graph scaling settings')
-    parser.add_argument('--graph-noise', default=(0.99, 0.01), nargs='+', type=float, help='Graph noise settings')
+    parser.add_argument('--graph-noise', default=(0.33, 0.01), nargs='+', type=float, help='Graph noise settings')
     parser.add_argument('--skip-augmentation', default=False, action='store_true', help='Skip data augmentation')
 
     # synthesis
