@@ -1083,6 +1083,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         self.k_length = k_length
         self.max_thinning_iterations = max_thinning_iterations
 
+        self._offsets = tf.range(self.k_length, dtype=tf.int32)
+
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.bool)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.bool)
 
@@ -1158,20 +1160,21 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         def sub_iteration(img, lut):
             padded = tf.pad(img, [[0, 0], [1, 1], [1, 1]], constant_values=False)
+            padded = tf.cast(padded, dtype=tf.int32)
 
-            p9 = tf.cast(padded[:, :-2, :-2], tf.int32)
-            p2 = tf.cast(padded[:, :-2, 1:-1], tf.int32)
-            p3 = tf.cast(padded[:, :-2, 2:], tf.int32)
-            p4 = tf.cast(padded[:, 1:-1, 2:], tf.int32)
-            p5 = tf.cast(padded[:, 2:, 2:], tf.int32)
-            p6 = tf.cast(padded[:, 2:, 1:-1], tf.int32)
-            p7 = tf.cast(padded[:, 2:, :-2], tf.int32)
-            p8 = tf.cast(padded[:, 1:-1, :-2], tf.int32)
+            p9 = padded[:, :-2, :-2]
+            p2 = padded[:, :-2, 1:-1]
+            p3 = padded[:, :-2, 2:]
+            p4 = padded[:, 1:-1, 2:]
+            p5 = padded[:, 2:, 2:]
+            p6 = padded[:, 2:, 1:-1]
+            p7 = padded[:, 2:, :-2]
+            p8 = padded[:, 1:-1, :-2]
 
             code = p9 + 2 * p2 + 4 * p3 + 8 * p4 + 16 * p5 + 32 * p6 + 64 * p7 + 128 * p8
             keep = tf.gather(lut, code)
 
-            return img & (keep | ~interior)
+            return img & (keep | border)
 
         def cond(img, changed):
             del img
@@ -1192,11 +1195,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         rows = tf.range(height, dtype=tf.int32)[:, tf.newaxis]
         cols = tf.range(width, dtype=tf.int32)[tf.newaxis, :]
 
-        interior = (
-            (rows > 0)
-            & (rows < height - 1)
-            & (cols > 0)
-            & (cols < width - 1)
+        border = (
+            (rows == 0)
+            | (rows == height - 1)
+            | (cols == 0)
+            | (cols == width - 1)
         )[tf.newaxis, :, :]
 
         image, _ = tf.while_loop(cond=cond,
@@ -1236,13 +1239,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         height = tf.shape(skeleton)[1]
         width = tf.shape(skeleton)[2]
 
-        cell = self.k_length
+        grid_h = tf.math.floordiv(height + self.k_length - 1, self.k_length)
+        grid_w = tf.math.floordiv(width + self.k_length - 1, self.k_length)
 
-        grid_h = tf.math.floordiv(height + cell - 1, cell)
-        grid_w = tf.math.floordiv(width + cell - 1, cell)
-
-        pad_h = grid_h * cell - height
-        pad_w = grid_w * cell - width
+        pad_h = grid_h * self.k_length - height
+        pad_w = grid_w * self.k_length - width
 
         paddings = tf.stack([
             tf.constant([0, 0], dtype=tf.int32),
@@ -1252,23 +1253,21 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         padded = tf.pad(skeleton, paddings, constant_values=False)
 
-        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, cell, grid_w, cell]))
+        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.k_length, grid_w, self.k_length]))
         blocks_int = tf.cast(blocks, tf.int32)
 
         col_counts = tf.reduce_sum(blocks_int, axis=2)
         row_counts = tf.reduce_sum(blocks_int, axis=4)
         counts = tf.reduce_sum(col_counts, axis=3)
 
-        offsets = tf.range(cell, dtype=tf.int32)
-
-        local_x_sum = tf.reduce_sum(col_counts * offsets[tf.newaxis, tf.newaxis, tf.newaxis, :], axis=3)
-        local_y_sum = tf.reduce_sum(row_counts * offsets[tf.newaxis, tf.newaxis, :, tf.newaxis], axis=2)
+        local_x_sum = tf.reduce_sum(col_counts * self._offsets[tf.newaxis, tf.newaxis, tf.newaxis, :], axis=3)
+        local_y_sum = tf.reduce_sum(row_counts * self._offsets[tf.newaxis, tf.newaxis, :, tf.newaxis], axis=2)
 
         grid_x = tf.range(grid_w, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
         grid_y = tf.range(grid_h, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
 
-        sum_x = local_x_sum + counts * (grid_x * cell)
-        sum_y = local_y_sum + counts * (grid_y * cell)
+        sum_x = local_x_sum + counts * (grid_x * self.k_length)
+        sum_y = local_y_sum + counts * (grid_y * self.k_length)
 
         return blocks, counts, sum_x, sum_y, grid_h, grid_w
 
@@ -1342,7 +1341,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         occupied = counts > 0
         occupied_int = tf.cast(occupied, tf.int32)
 
-        cell_node_plus_one = tf.cumsum(occupied_int, axis=1) * occupied_int
+        cell_node = tf.cumsum(occupied_int, axis=1, exclusive=True)
 
         node_counts = tf.reduce_sum(occupied_int, axis=1)
         max_nodes = tf.reduce_max(node_counts)
@@ -1350,7 +1349,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         occupied_indices = tf.cast(tf.where(occupied), tf.int32)
 
         node_batch = occupied_indices[:, 0]
-        node_local = tf.gather_nd(cell_node_plus_one, occupied_indices) - 1
+        node_local = tf.gather_nd(cell_node, occupied_indices)
 
         occupied_count = tf.cast(tf.gather_nd(counts, occupied_indices), tf.float32)
 
@@ -1374,7 +1373,7 @@ class GraphExtraction(tf.keras.layers.Layer):
                                     shape=tf.stack([batch_size, max_nodes, 2]))
 
         normalized_xy = (xy - graph_min) / scale[:, tf.newaxis]
-        node_values = tf.concat([normalized_xy, tf.zeros_like(normalized_xy)], axis=1)
+        node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
 
         nodes = tf.scatter_nd(indices=node_indices,
                               updates=node_values,
@@ -1393,10 +1392,10 @@ class GraphExtraction(tf.keras.layers.Layer):
         target_delta = tf.gather(tf.stack([grid_h, 1, grid_h + 1, 1 - grid_h]), direction)
         target_cell = source_cell + target_delta
 
-        cell_node_plus_one_flat = tf.reshape(cell_node_plus_one, [-1])
+        cell_node_flat = tf.reshape(cell_node, [-1])
 
-        source_local = tf.gather(cell_node_plus_one_flat, source_cell) - 1
-        target_local = tf.gather(cell_node_plus_one_flat, target_cell) - 1
+        source_local = tf.gather(cell_node_flat, source_cell)
+        target_local = tf.gather(cell_node_flat, target_cell)
 
         forward = tf.stack([source_local, target_local], axis=1)
         reverse = tf.stack([target_local, source_local], axis=1)
