@@ -1455,8 +1455,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         image = tf.where(valid, image, maximum)
         image = image[..., tf.newaxis]
 
-        mean = tf.nn.avg_pool2d(image, ksize=32, strides=1, padding='SAME')
-        mean_sq = tf.nn.avg_pool2d(tf.square(image), ksize=32, strides=1, padding='SAME')
+        mean = tf.nn.avg_pool2d(image, ksize=31, strides=1, padding='SAME')
+        mean_sq = tf.nn.avg_pool2d(tf.square(image), ksize=31, strides=1, padding='SAME')
 
         variance = tf.maximum(mean_sq - tf.square(mean), 0.0)
         stddev = tf.sqrt(variance)
