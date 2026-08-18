@@ -1064,7 +1064,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, k_length=3, max_thinning_iterations=100, **kwargs):
+    def __init__(self, k_length=3, maximum_iterations=100, **kwargs):
         """
         Initializes the layer.
 
@@ -1072,8 +1072,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         ----------
         k_length : int, optional
             Distance between sampled keypoints along the skeleton.
-        max_thinning_iterations : int, optional
-            Maximum number of Zhang-Suen thinning iterations.
+        maximum_iterations : int, optional
+            Maximum number of thinning iterations.
         **kwargs : dict
             Additional keyword arguments.
         """
@@ -1081,7 +1081,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.k_length = k_length
-        self.max_thinning_iterations = max_thinning_iterations
+        self.maximum_iterations = maximum_iterations
 
         self._offsets = tf.range(self.k_length, dtype=tf.int32)
 
@@ -1102,7 +1102,7 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         config.update({
             'k_length': self.k_length,
-            'max_thinning_iterations': self.max_thinning_iterations,
+            'maximum_iterations': self.maximum_iterations,
         })
 
         return config
@@ -1205,8 +1205,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         image, _ = tf.while_loop(cond=cond,
                                  body=body,
                                  loop_vars=(image, tf.constant(True)),
-                                 maximum_iterations=self.max_thinning_iterations,
-                                 parallel_iterations=10)
+                                 maximum_iterations=self.maximum_iterations)
 
         return image
 
