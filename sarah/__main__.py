@@ -1,5 +1,6 @@
 import os
 import sys
+import secrets
 import argparse
 
 sys.path.append(os.getcwd())
@@ -97,10 +98,11 @@ if __name__ == '__main__':
     parser.add_argument('--fonts-path', default='fonts', help='Path to fonts data')
     parser.add_argument('--output-path', default='outputs', help='Path to output data')
     parser.add_argument('--gpu', default=0, nargs='+', help='GPU index or sequence of indices')
-    parser.add_argument('--seed', default=1, type=int, help='Seed value')
+    parser.add_argument('--seed', default=None, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
+    args.seed = secrets.randbelow(2**16) if args.seed is None else args.seed
 
     # required
     if args.check or args.training or args.test:
