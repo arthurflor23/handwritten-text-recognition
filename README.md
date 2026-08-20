@@ -136,7 +136,7 @@ The project has several command-line parameters that can be used to customize it
 - `--graph-rotate`: Graph rotate transformation (probability, max angle).
 - `--graph-scale`: Graph scale transformation (probability, max variation percentage).
 - `--graph-noise`: Graph noise transformation (probability, standard deviation).
-- `--skip-augmentation`: Skip data augmentation.
+- `--disable-augmentation`: Disable data augmentation.
 
 #### Synthesis
 
