@@ -31,7 +31,7 @@ def check(args):
     print(dataset)
 
     augmentor = None
-    if not args.skip_augmentation:
+    if not args.disable_augmentation:
         augmentor = Augmentor(mixup=args.mixup,
                               erode=args.erode,
                               dilate=args.dilate,

@@ -44,7 +44,7 @@ def run(args):
     print(dataset)
 
     augmentor = None
-    if args.training and not args.skip_augmentation:
+    if args.training and not args.disable_augmentation:
         augmentor = Augmentor(mixup=args.mixup,
                               erode=args.erode,
                               dilate=args.dilate,
