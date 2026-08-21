@@ -118,7 +118,7 @@ class Dataset():
 
         fonts = self._load_fonts(self.fonts_path) if self.enable_graph else []
 
-        self.graph_fonts = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+        self.graph_fonts = self._prepare_graphs(fonts, self.tokenizer.chars)
         self.tokenizer.set_graph_shape(self.graph_fonts)
 
     def __repr__(self):
@@ -310,7 +310,7 @@ class Dataset():
 
         return data
 
-    def _prepare_graphs(self, fonts, charset, epsilon=0.0):
+    def _prepare_graphs(self, fonts, charset, epsilon=0.01):
         """
         Builds graph representations from each character font.
 
