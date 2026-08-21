@@ -38,6 +38,7 @@ def run(args):
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
+                      enable_graph=args.enable_graph,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
                       seed=args.seed)
@@ -58,9 +59,9 @@ def run(args):
                               salt_and_pepper=args.salt_and_pepper,
                               gaussian_noise=args.gaussian_noise,
                               gaussian_blur=args.gaussian_blur,
-                              graph_rotate=dataset.font_graphs and args.graph_rotate,
-                              graph_scale=dataset.font_graphs and args.graph_scale,
-                              graph_noise=dataset.font_graphs and args.graph_noise,
+                              graph_rotate=dataset.graph_fonts and args.graph_rotate,
+                              graph_scale=dataset.graph_fonts and args.graph_scale,
+                              graph_noise=dataset.graph_fonts and args.graph_noise,
                               seed=args.seed)
         print(augmentor)
 
