@@ -399,11 +399,17 @@ def batch_processing(batch_mode,
                 char_nodes = nodes[i][j]
                 char_edges = edges[i][j]
 
+                if char_nodes.shape[0] == 0:
+                    continue
+
+                mean = np.mean(char_nodes, axis=0, keepdims=True)
+                std = np.std(char_nodes, axis=0, keepdims=True)
+
+                std = np.where(std > 0, std, 1.0)
+                char_nodes = (char_nodes - mean) / std
+
                 n = min(char_nodes.shape[0], max_nodes)
                 e = min(char_edges.shape[1], max_edges)
-
-                if n == 0:
-                    continue
 
                 pad_nodes[i, j, :n] = char_nodes[:n]
                 pad_edges[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
@@ -622,12 +628,8 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         x0 = col * cell_size
         y0 = row * cell_size
 
-        x = char_nodes[:, 0] - 1.0
-        y = char_nodes[:, 1] - 1.0
-
-        px = x0 + pad + x * inner
-        py = y0 + pad + (1.0 - y) * inner
-
+        px = x0 + pad + char_nodes[:, 0] * inner
+        py = y0 + pad + (1 - char_nodes[:, 1]) * inner
         pts = np.stack([px, py], axis=1).astype(np.int32)
 
         for s, d in char_edges.T:
