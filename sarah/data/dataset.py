@@ -31,6 +31,7 @@ class Dataset():
                  data=None,
                  tokenizer=None,
                  multigrams=False,
+                 enable_graph=False,
                  input_path='datasets',
                  fonts_path='fonts',
                  seed=None):
@@ -69,6 +70,8 @@ class Dataset():
             Tokenizer instance for input data.
         multigrams : bool, optional
             Enable multigrams process.
+        enable_graph : bool, optional
+            Enable graph loading data.
         input_path : str, optional
             Path to input data.
         fonts_path : str, optional
@@ -94,6 +97,7 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
+        self.enable_graph = enable_graph
         self.input_path = input_path
         self.fonts_path = fonts_path
         self.seed = seed
@@ -108,13 +112,14 @@ class Dataset():
             data = self._source.fetch_data(self.text_level)
 
         data = self._load_partitions(data)
+
         self.samples = self._prepare_samples(data)
         self.multigrams = self._prepare_multigrams(data)
 
-        fonts = self._load_fonts(self.fonts_path)
-        self.font_graphs = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+        fonts = self._load_fonts(self.fonts_path) if self.enable_graph else []
 
-        self.tokenizer.set_graph_shape(self.font_graphs)
+        self.graph_fonts = self._prepare_graphs(fonts, self.tokenizer.chars, epsilon=0.01)
+        self.tokenizer.set_graph_shape(self.graph_fonts)
 
     def __repr__(self):
         """
@@ -150,7 +155,7 @@ class Dataset():
         info += "\n" + "-" * width
         info += f"\n{'multigrams':<{pad}}: {len(self.multigrams['source']):,}"
         info += "\n" + "-" * width
-        info += f"\n{'fonts':<{pad}}: {len(self.font_graphs):,}"
+        info += f"\n{'fonts':<{pad}}: {len(self.graph_fonts):,}"
         info += f"\n{self.tokenizer}"
 
         return info
@@ -415,17 +420,17 @@ class Dataset():
                 'edges': np.stack([np.concatenate(src), np.concatenate(dst)], axis=0),
             }
 
-        font_graphs = [build(charset, font, eps=0.0) for font in fonts]
+        graph_fonts = [build(charset, font, eps=0.0) for font in fonts]
 
-        if font_graphs and epsilon > 0:
-            counts = np.array([count(graphs) for graphs in font_graphs])
+        if graph_fonts and epsilon > 0:
+            counts = np.array([count(graphs) for graphs in graph_fonts])
             median = np.median(counts)
 
             q1, q3 = np.percentile(counts, [25, 75])
             threshold = q3 + 1.5 * (q3 - q1)
 
             for i in np.where(counts > threshold)[0]:
-                best_graphs = font_graphs[i]
+                best_graphs = graph_fonts[i]
                 best_count = counts[i]
                 low, high = 0.0, epsilon
 
@@ -443,9 +448,9 @@ class Dataset():
                     else:
                         high = mid
 
-                font_graphs[i] = best_graphs
+                graph_fonts[i] = best_graphs
 
-        return font_graphs
+        return graph_fonts
 
     def _prepare_multigrams(self, data):
         """
@@ -691,7 +696,7 @@ class Dataset():
 
                 graph_data = utils.batch_graph(batch_size=batch_length,
                                                num_chars=charset_length,
-                                               graph_data=self.font_graphs,
+                                               graph_data=self.graph_fonts,
                                                graph_shape=self.tokenizer.graph_shape)
 
                 aug_text_data = text_data.copy()
@@ -761,7 +766,7 @@ class Dataset():
                 x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
                 y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
-                if self.font_graphs:
+                if self.graph_fonts:
                     x_data.extend(aug_graph_data)
                     y_data.extend(graph_data)
 
