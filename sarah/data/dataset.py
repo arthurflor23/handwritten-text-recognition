@@ -382,7 +382,8 @@ class Dataset():
             x_max, y_max = coords.max(axis=0)
             scale = max(x_max - x_min, y_max - y_min) or 1.0
 
-            xy = (coords - [x_min, y_min]) / scale
+            xy = 1.0 + (coords - [x_min, y_min]) / scale
+
             on_curve = (flags & 1).astype(np.float32)
             end_of_contour = np.array([i in end_pts for i in range(len(coords))])
 
