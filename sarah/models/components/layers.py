@@ -1357,22 +1357,18 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         xy = tf.stack([x, y], axis=1)
 
-        xy_min = tf.math.unsorted_segment_min(xy, node_batch, batch_size)
-        xy_max = tf.math.unsorted_segment_max(xy, node_batch, batch_size)
+        centered_xy = xy - tf.gather(tf.math.unsorted_segment_mean(xy, node_batch, batch_size), node_batch)
+        graph_std = tf.sqrt(tf.math.unsorted_segment_mean(tf.square(centered_xy), node_batch, batch_size))
+        graph_std = tf.where(graph_std > 0.0, graph_std, tf.ones_like(graph_std))
 
-        graph_scale = tf.maximum(tf.reduce_max(xy_max - xy_min, axis=1), 1.0)
-
-        graph_min = tf.gather(xy_min, node_batch)
-        scale = tf.gather(graph_scale, node_batch)
+        normalized_xy = centered_xy / tf.gather(graph_std, node_batch)
+        node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
 
         node_indices = tf.stack([node_batch, node_local], axis=1)
 
         coordinates = tf.scatter_nd(indices=node_indices,
                                     updates=tf.cast(tf.round(xy), tf.int32),
                                     shape=tf.stack([batch_size, max_nodes, 2]))
-
-        normalized_xy = 1.0 + (xy - graph_min) / scale[:, tf.newaxis]
-        node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
 
         nodes = tf.scatter_nd(indices=node_indices,
                               updates=node_values,
