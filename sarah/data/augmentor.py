@@ -858,7 +858,7 @@ class Augmentor():
                 if char_nodes.shape[0] < 3:
                     continue
 
-                xy = char_nodes[:, :2] - 1.0
+                xy = char_nodes[:, :2]
 
                 if (self.graph_rotate_params and self.graph_rotate_params[0] > 0
                         and np.random.random() <= self.graph_rotate_params[0]):
@@ -887,6 +887,6 @@ class Augmentor():
 
                     xy = xy + noise
 
-                char_nodes[:, :2] = (xy + 1.0).astype(np.float32)
+                char_nodes[:, :2] = xy.astype(np.float32)
 
         return [aug_nodes, edges]
