@@ -292,12 +292,12 @@ class Tokenizer():
 
     def set_graph_shape(self, graph_data):
         """
-        Sets the maximum font graph shape.
+        Sets the maximum graph font shape.
 
         Parameters
         ----------
         graph_data : list
-            Font graph data.
+            Graph font data.
         """
 
         if not graph_data:
