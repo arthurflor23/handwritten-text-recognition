@@ -402,12 +402,6 @@ def batch_processing(batch_mode,
                 if char_nodes.shape[0] == 0:
                     continue
 
-                mean = np.mean(char_nodes, axis=0, keepdims=True)
-                std = np.std(char_nodes, axis=0, keepdims=True)
-
-                std = np.where(std > 0, std, 1.0)
-                char_nodes = (char_nodes - mean) / std
-
                 n = min(char_nodes.shape[0], max_nodes)
                 e = min(char_edges.shape[1], max_edges)
 
