@@ -101,7 +101,7 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
     Returns
     -------
     tuple
-        Nodes and Edges as lists.
+        Nodes and edges as lists.
     """
 
     num_fonts = len(graph_data)
@@ -128,14 +128,14 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
 
             if len(graph_nodes) == 0:
                 sample_nodes.append(np.zeros((0, 4), dtype=np.float32))
-                sample_edges.append(np.zeros((2, 0), dtype=np.float32))
+                sample_edges.append(np.zeros((2, 0), dtype=np.int32))
                 continue
 
             n = min(graph_nodes.shape[0], max_nodes)
             e = min(graph_edges.shape[1], max_edges)
 
             sample_nodes.append(graph_nodes[:n].astype(np.float32))
-            sample_edges.append(graph_edges[:, :e].astype(np.float32))
+            sample_edges.append(graph_edges[:, :e].astype(np.int32))
 
         nodes.append(sample_nodes)
         edges.append(sample_edges)
@@ -392,7 +392,7 @@ def batch_processing(batch_mode,
         max_edges = edges_shape[1] // num_chars
 
         pad_nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
-        pad_edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
+        pad_edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.int32)
 
         for i in range(batch_size):
             for j in range(num_chars):
@@ -515,12 +515,8 @@ def plot_graph(coordinates, nodes, edges, target_shape=None):
     nodes = np.asarray(nodes)
     edges = np.asarray(edges)
 
-    valid = np.any(nodes != 0, axis=1)
-
-    if len(valid) > 0:
-        valid[0] = True
-
-    num_nodes = np.where(valid)[0][-1] + 1 if np.any(valid) else 0
+    valid = nodes[:, 0] != 0
+    num_nodes = np.count_nonzero(valid)
     coordinates = coordinates[:num_nodes]
 
     valid_edges = (
@@ -528,6 +524,7 @@ def plot_graph(coordinates, nodes, edges, target_shape=None):
         & (edges[1] < num_nodes)
         & (edges[0] != edges[1])
     )
+
     edges = edges[:, valid_edges]
 
     if target_shape is not None:
@@ -590,7 +587,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
 
     indices = [
         i for i in range(skip, num_chars)
-        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes] != 0)
+        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes, 0] != 0)
             if padded else len(nodes[i]) > 0)
     ]
 
@@ -612,7 +609,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
             node_start = j * max_nodes
             char_nodes = nodes[node_start:node_start + max_nodes]
             char_edges = pad_edges[j]
-            valid = np.any(char_nodes != 0, axis=1)
+            valid = char_nodes[:, 0] != 0
         else:
             node_start = 0
             char_nodes = nodes[j]
@@ -625,8 +622,12 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         x0 = col * cell_size
         y0 = row * cell_size
 
-        px = x0 + pad + char_nodes[:, 0] * inner
-        py = y0 + pad + (1 - char_nodes[:, 1]) * inner
+        x = char_nodes[:, 0] - 1.0
+        y = char_nodes[:, 1] - 1.0
+
+        px = x0 + pad + x * inner
+        py = y0 + pad + (1.0 - y) * inner
+
         pts = np.stack([px, py], axis=1).astype(np.int32)
 
         for s, d in char_edges.T:
