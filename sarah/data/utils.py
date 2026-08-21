@@ -85,7 +85,7 @@ def batch_binarization(batch_data, method, invert=False):
 
 def batch_graph(batch_size, num_chars, graph_data, graph_shape):
     """
-    Builds a batch of graph data from character font graphs.
+    Builds a batch of graph data from character graph fonts.
 
     Parameters
     ----------
@@ -481,9 +481,83 @@ def format_text(text):
     return text
 
 
-def plot_graph(nodes, edges, chars, cols=None, cell_size=80, skip=3):
+def plot_graph(coordinates, nodes, edges, target_shape=None):
     """
-    Plot a character grid from font graph nodes and edges.
+    Plot graph nodes and edges.
+
+    Parameters
+    ----------
+    coordinates : ndarray or tf.Tensor
+        Node coordinates.
+    nodes : ndarray or tf.Tensor
+        Node features.
+    edges : ndarray or tf.Tensor
+        Edge index pairs.
+    target_shape : tuple, optional
+        Target image shape.
+
+    Returns
+    -------
+    ndarray
+        Rendered graph image.
+    """
+
+    if hasattr(coordinates, 'numpy'):
+        coordinates = coordinates.numpy()
+
+    if hasattr(nodes, 'numpy'):
+        nodes = nodes.numpy()
+
+    if hasattr(edges, 'numpy'):
+        edges = edges.numpy()
+
+    coordinates = np.asarray(coordinates)
+    nodes = np.asarray(nodes)
+    edges = np.asarray(edges)
+
+    valid = np.any(nodes != 0, axis=1)
+
+    if len(valid) > 0:
+        valid[0] = True
+
+    num_nodes = np.where(valid)[0][-1] + 1 if np.any(valid) else 0
+    coordinates = coordinates[:num_nodes]
+
+    valid_edges = (
+        (edges[0] < num_nodes)
+        & (edges[1] < num_nodes)
+        & (edges[0] != edges[1])
+    )
+    edges = edges[:, valid_edges]
+
+    if target_shape is not None:
+        height, width = target_shape[:2]
+
+    elif num_nodes > 0:
+        width = int(np.max(coordinates[:, 0])) + 1
+        height = int(np.max(coordinates[:, 1])) + 1
+
+    else:
+        height, width = 1, 1
+
+    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
+
+    for u, v in edges.T:
+        p1 = tuple(coordinates[u].astype(int))
+        p2 = tuple(coordinates[v].astype(int))
+
+        cv2.line(canvas, p1, p2, (40, 40, 200), 1)
+
+    for x, y in coordinates:
+        x, y = int(x), int(y)
+        cv2.rectangle(canvas, (x - 1, y - 1), (x + 1, y + 1), (0, 0, 220), -1)
+
+    return canvas
+
+
+def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
+    """
+    Plot a character grid from graph font nodes and edges.
 
     Parameters
     ----------
