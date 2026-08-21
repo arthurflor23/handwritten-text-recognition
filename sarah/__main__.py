@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--illumination', default=False, action='store_true', help='Apply illumination compensation')
     parser.add_argument('--binarization', default=None, help='Apply binarization method')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading')
+    parser.add_argument('--enable-graph', default=False, action='store_true', help='Enable graph inputs')
 
     # augmentor
     parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
