@@ -1371,7 +1371,7 @@ class GraphExtraction(tf.keras.layers.Layer):
                                     updates=tf.cast(tf.round(xy), tf.int32),
                                     shape=tf.stack([batch_size, max_nodes, 2]))
 
-        normalized_xy = (xy - graph_min) / scale[:, tf.newaxis]
+        normalized_xy = 1.0 + (xy - graph_min) / scale[:, tf.newaxis]
         node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
 
         nodes = tf.scatter_nd(indices=node_indices,
