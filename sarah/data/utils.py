@@ -396,8 +396,8 @@ def batch_processing(batch_mode,
 
         for i in range(batch_size):
             for j in range(num_chars):
-                char_nodes = nodes[i][j]
-                char_edges = edges[i][j]
+                char_nodes = nodes[i][j].copy()
+                char_edges = edges[i][j].copy()
 
                 if char_nodes.shape[0] == 0:
                     continue
