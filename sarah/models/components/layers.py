@@ -835,7 +835,7 @@ class GraphConv(tf.keras.layers.Layer):
         messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
 
         outputs_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, -1])
+        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, self.units])
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -1039,13 +1039,14 @@ class GraphConv2D(tf.keras.layers.Layer):
         total_segments = batch_size * num_nodes
 
         neighbor_features_flat = tf.reshape(transformed, [-1, tf.shape(transformed)[-1]])
+
         outputs_flat = tf.math.unsorted_segment_sum(neighbor_features_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, -1])
+        outputs = tf.reshape(outputs_flat, [batch_size, self.height, self.width, self.units])
 
         if self.use_bias:
             outputs = outputs + self.bias
 
-        return tf.reshape(outputs, [-1, self.height, self.width, self.units])
+        return outputs
 
 
 class GraphExtraction(tf.keras.layers.Layer):
@@ -1064,7 +1065,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, k_length=3, maximum_iterations=100, **kwargs):
+    def __init__(self, k_length=2, maximum_iterations=100, **kwargs):
         """
         Initializes the layer.
 
