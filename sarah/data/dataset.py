@@ -71,7 +71,7 @@ class Dataset():
         multigrams : bool, optional
             Enable multigrams process.
         enable_graph : bool, optional
-            Enable graph loading data.
+            Enable prototype graph data.
         input_path : str, optional
             Path to input data.
         fonts_path : str, optional
