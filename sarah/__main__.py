@@ -103,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
-    args.seed = secrets.randbelow(2**16) if args.seed is None else args.seed
+    args.seed = secrets.randbelow(256) if args.seed is None else args.seed
 
     # required
     if args.check or args.training or args.test:
