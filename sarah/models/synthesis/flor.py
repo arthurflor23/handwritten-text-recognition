@@ -570,7 +570,8 @@ class GeneratorModel(BaseModel):
 
         latent_tile = tf.keras.layers.Reshape(target_shape=(1, -1))(latent)
 
-        latent_tile = tf.keras.layers.Lambda(function=lambda x: tf.tile(x, [1, embedding.shape[1], 1]),
+        latent_tile = tf.keras.layers.Lambda(function=lambda x, y: tf.tile(x, y),
+                                             arguments={'y': [1, embedding.shape[1], 1]},
                                              name='latent_tile')(latent_tile)
 
         embedding = tf.keras.layers.Concatenate(axis=-1)([latent_tile, embedding])
