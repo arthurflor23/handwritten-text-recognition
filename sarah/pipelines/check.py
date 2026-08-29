@@ -30,7 +30,7 @@ def check(args):
                       enable_graph=args.enable_graph,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
-                      seed=args.seed)
+                      seed=42)
     print(dataset)
 
     augmentor = None
@@ -51,7 +51,7 @@ def check(args):
                               graph_rotate=dataset.graph_fonts and args.graph_rotate,
                               graph_scale=dataset.graph_fonts and args.graph_scale,
                               graph_noise=dataset.graph_fonts and args.graph_noise,
-                              seed=args.seed)
+                              seed=42)
         print(augmentor)
 
     src_gen, _ = dataset.get_generator(data_partition='test',
