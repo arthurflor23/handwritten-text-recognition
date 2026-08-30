@@ -1617,7 +1617,125 @@ class GraphNormalization(tf.keras.layers.Layer):
 
 class GraphPooling(tf.keras.layers.Layer):
     """
-    Graph pooling layer for aggregating node features into embeddings.
+    Graph pooling layer for reducing the number of graph nodes.
+
+    References
+    ----------
+    Graph U-Nets
+        https://arxiv.org/abs/1905.05178
+
+    Self-Attention Graph Pooling
+        https://arxiv.org/abs/1904.08082
+    """
+
+    def __init__(self,
+                 strides=1,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        strides : int, optional
+            Graph reduction factor.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer for the score projection.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer for the score projection.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint for the score projection.
+        use_bias : bool, optional
+            Enables bias term in the score projection layer.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.strides = strides
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'strides': self.strides,
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : TensorShape
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        self.gate_dense = tf.keras.layers.Dense(units=1,
+                                                kernel_initializer=self.kernel_initializer,
+                                                kernel_regularizer=self.kernel_regularizer,
+                                                kernel_constraint=self.kernel_constraint,
+                                                use_bias=self.use_bias)
+
+    def call(self, inputs):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Node feature tensor.
+
+        Returns
+        -------
+        tf.Tensor
+            Reduced node feature tensor.
+        """
+
+        scores = self.gate_dense(inputs)
+        scores = tf.squeeze(scores, axis=-1)
+
+        nodes = tf.math.ceil(tf.cast(tf.shape(inputs)[1], tf.float32) / self.strides)
+        _, indices = tf.math.top_k(scores, k=tf.cast(nodes, tf.int32), sorted=False)
+
+        indices = tf.sort(indices, axis=1)
+
+        outputs = tf.gather(inputs, indices, axis=1, batch_dims=1)
+        scores = tf.gather(scores, indices, axis=1, batch_dims=1)
+
+        outputs = outputs * tf.nn.sigmoid(scores)[..., tf.newaxis]
+
+        return outputs
+
+
+class GlobalGraphPooling(tf.keras.layers.Layer):
+    """
+    Global Graph pooling layer for aggregating node features into embeddings.
 
     References
     ----------
