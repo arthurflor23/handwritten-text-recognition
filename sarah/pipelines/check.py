@@ -127,20 +127,20 @@ def check(args):
             print(txt_enc[i])
             print('-' * 68, '\n')
 
-            cv2.imshow('Image (enc)', img_enc[i])
-            cv2.imshow('Image (aug)', img_aug[i])
-            cv2.imshow('Segmentation (aug)', seg_aug[i])
-
-            if args.enable_graph:
-                graph_canvas = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
-                cv2.imshow('Graph Extraction (aug)', graph_canvas)
-
             if dataset.graph_fonts:
                 src_canvas = utils.plot_graph_font(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
                 cv2.imshow('Graph Font (src)', src_canvas)
 
                 aug_canvas = utils.plot_graph_font(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
                 cv2.imshow('Graph Font (aug)', aug_canvas)
+
+            if args.enable_graph:
+                graph_canvas = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
+                cv2.imshow('Graph Extraction (aug)', graph_canvas)
+
+            cv2.imshow('Segmentation (aug)', seg_aug[i])
+            cv2.imshow('Image (aug)', img_aug[i])
+            cv2.imshow('Image (enc)', img_enc[i])
 
             print('Press Enter to continue or Esc to stop...\n')
             key = cv2.waitKey(0)
