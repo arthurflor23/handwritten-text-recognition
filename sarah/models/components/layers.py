@@ -1607,9 +1607,11 @@ class GraphNormalization(tf.keras.layers.Layer):
         """
 
         mean = tf.reduce_mean(inputs, axis=1, keepdims=True)
-        variance = tf.math.reduce_variance(inputs, axis=1, keepdims=True)
 
-        normed = (inputs - self.alpha * mean) / tf.sqrt(variance + self.epsilon)
+        centered = inputs - self.alpha * mean
+        variance = tf.reduce_mean(tf.square(centered), axis=1, keepdims=True)
+
+        normed = centered / tf.sqrt(variance + self.epsilon)
         outputs = normed * self.gamma + self.beta
 
         return outputs
