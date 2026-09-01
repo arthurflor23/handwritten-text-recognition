@@ -691,7 +691,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
         g_dense = s_dense * tf.nn.sigmoid(tf.linalg.matmul(s_dense, self.gamma))
 
         if training and self.dropout:
-            g_dense = tf.nn.dropout(g_dense, rate=self.dropout)
+            stddev = tf.sqrt(self.dropout / (1.0 - self.dropout))
+            g_dense *= tf.random.normal(tf.shape(g_dense), 1.0, stddev, g_dense.dtype)
 
         return inputs + g_dense * self.beta
 
