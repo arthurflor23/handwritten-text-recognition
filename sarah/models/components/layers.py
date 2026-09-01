@@ -1066,7 +1066,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, k_length=2, maximum_iterations=100, **kwargs):
+    def __init__(self, k_length=1, maximum_iterations=100, **kwargs):
         """
         Initializes the layer.
 
