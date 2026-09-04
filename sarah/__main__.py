@@ -1,5 +1,6 @@
 import os
 import sys
+import secrets
 import argparse
 
 sys.path.append(os.getcwd())
@@ -43,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--illumination', default=False, action='store_true', help='Apply illumination compensation')
     parser.add_argument('--binarization', default=None, help='Apply binarization method')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading')
+    parser.add_argument('--enable-graph', default=False, action='store_true', help='Enable prototype graph inputs')
 
     # augmentor
     parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
@@ -58,7 +60,10 @@ if __name__ == '__main__':
     parser.add_argument('--salt-and-pepper', default=None, nargs='+', type=float, help='Salt and pepper noise settings')
     parser.add_argument('--gaussian-noise', default=None, nargs='+', type=float, help='Gaussian noise settings')
     parser.add_argument('--gaussian-blur', default=None, nargs='+', type=float, help='Gaussian blur settings')
-    parser.add_argument('--skip-augmentation', default=False, action='store_true', help='Skip data augmentation')
+    parser.add_argument('--graph-rotate', default=(0.99, 10), nargs='+', type=float, help='Graph rotation settings')
+    parser.add_argument('--graph-scale', default=(0.99, 10), nargs='+', type=float, help='Graph scaling settings')
+    parser.add_argument('--graph-noise', default=(0.33, 0.01), nargs='+', type=float, help='Graph noise settings')
+    parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable data augmentation')
 
     # synthesis
     parser.add_argument('--discriminator-steps', default=1, type=int, help='Discriminator step repetitions in training')
@@ -94,10 +99,11 @@ if __name__ == '__main__':
     parser.add_argument('--fonts-path', default='fonts', help='Path to fonts data')
     parser.add_argument('--output-path', default='outputs', help='Path to output data')
     parser.add_argument('--gpu', default=0, nargs='+', help='GPU index or sequence of indices')
-    parser.add_argument('--seed', default=42, type=int, help='Seed value')
+    parser.add_argument('--seed', default=None, type=int, help='Seed value')
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
+    args.seed = secrets.randbelow(32) if args.seed is None else args.seed
 
     # required
     if args.check or args.training or args.test:

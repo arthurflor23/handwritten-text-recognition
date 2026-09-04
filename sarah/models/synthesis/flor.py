@@ -4,8 +4,7 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import AdaptiveInstanceNormalization
 from sarah.models.components.layers import ContentAlignment
-from sarah.models.components.layers import ExtractPatches
-from sarah.models.components.layers import GatedConv2D
+from sarah.models.components.layers import GatedResidualConv2D
 from sarah.models.components.layers import Reparameterization
 
 from sarah.models.recognition.flor import RecognitionModel
@@ -30,6 +29,9 @@ class SynthesisModel(BaseSynthesisModel):
 
     HiGAN+: Handwriting Imitation GAN with Disentangled Representations
         https://dl.acm.org/doi/10.1145/3550070
+
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
 
     Large Scale GAN Training for High Fidelity Natural Image Synthesis
         https://arxiv.org/abs/1809.11096v2
@@ -78,8 +80,7 @@ class SynthesisModel(BaseSynthesisModel):
 
         self.discriminator = DiscriminatorModel(name='discriminator',
                                                 image_shape=self.image_shape,
-                                                blocks=discriminator_blocks,
-                                                patch_shape=None)
+                                                blocks=discriminator_blocks)
 
         self.generator = GeneratorModel(name='generator',
                                         image_shape=self.image_shape,
@@ -573,7 +574,7 @@ class GeneratorModel(BaseModel):
                                              arguments={'y': [1, embedding.shape[1], 1]},
                                              name='latent_tile')(latent_tile)
 
-        embedding = tf.keras.layers.Concatenate(axis=-1)([embedding, latent_tile])
+        embedding = tf.keras.layers.Concatenate(axis=-1)([latent_tile, embedding])
 
         block = tf.keras.layers.Dense(units=self.base_patch[0] * self.base_patch[1] * self.blocks[0] * 2)(embedding)
 
@@ -591,7 +592,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             if i == self.num_blocks - 1:
-                block = GatedConv2D(use_residual=True)(block)
+                block = GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
@@ -620,7 +621,6 @@ class DiscriminatorModel(BaseModel):
                  blocks,
                  strides=None,
                  lexical_shape=None,
-                 patch_shape=None,
                  name='discriminator',
                  **kwargs):
         """
@@ -636,8 +636,6 @@ class DiscriminatorModel(BaseModel):
             List of downsampling strides (WxH).
         lexical_shape : list or tuple
             Shape of text sequences and vocabulary.
-        patch_shape : list, tuple or None
-            Patch shape, if applicable.
         name : str, optional
             Model instance name.
         **kwargs : dict
@@ -650,7 +648,6 @@ class DiscriminatorModel(BaseModel):
         self.blocks = blocks
         self.strides = strides
         self.lexical_shape = lexical_shape
-        self.patch_shape = patch_shape
 
         self.num_blocks = len(self.blocks)
         self.base_patch = (4, 4)
@@ -695,7 +692,6 @@ class DiscriminatorModel(BaseModel):
             'blocks': self.blocks,
             'strides': self.strides,
             'lexical_shape': self.lexical_shape,
-            'patch_shape': self.patch_shape,
         })
 
     def build_model(self):
@@ -727,21 +723,18 @@ class DiscriminatorModel(BaseModel):
             return tf.keras.layers.Add()([h, x])
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
-
-        block = ExtractPatches(patch_shape=self.patch_shape, strides=(2, 2), padding='valid')(image_input)
+        block = tf.keras.layers.Identity()(image_input)
 
         for i, (filters, down) in enumerate(zip(self.blocks, self.strides)):
             down = (down[0] if block.shape[1] > self.base_patch[0] else 1,
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
             if i == 1:
-                block = GatedConv2D(use_residual=True)(block)
+                block = GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
-        if not self.patch_shape:
-            block = residual_block(filters=self.blocks[-1], x=block, preactive=True)
-
+        block = residual_block(filters=self.blocks[-1], x=block, preactive=True)
         block = tf.keras.layers.Activation(activation='swish')(block)
         block = tf.keras.layers.GlobalAveragePooling2D()(block)
 

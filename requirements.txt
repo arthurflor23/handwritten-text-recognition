@@ -1,6 +1,6 @@
-levenshtein==0.27.3
-mlflow==3.14.0
-openai==2.43.0
-opencv-python-headless==4.13.0.92
-tensorflow[and-cuda]==2.19.0;       platform_system != 'Darwin'
-tensorflow==2.19.0;                 platform_system == 'Darwin'
+levenshtein==0.27.4
+mlflow==3.16.0
+openai==3.8.0
+opencv-python-headless==5.0.0.93
+tensorflow[and-cuda]==2.19.0;               platform_system != 'Darwin'
+tensorflow==2.19.0;                         platform_system == 'Darwin'

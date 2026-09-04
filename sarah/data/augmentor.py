@@ -22,6 +22,9 @@ class Augmentor():
                  salt_and_pepper=None,
                  gaussian_noise=None,
                  gaussian_blur=None,
+                 graph_rotate=None,
+                 graph_scale=None,
+                 graph_noise=None,
                  seed=None):
         """
         Initializes a new instance of the Augmentor class.
@@ -54,6 +57,12 @@ class Augmentor():
             Parameters for gaussian noise.
         gaussian_blur : list or None, optional
             Parameters for Gaussian blur transformation.
+        graph_rotate : list or None, optional
+            Parameters for graph rotate transformation.
+        graph_scale : list or None, optional
+            Parameters for graph scale transformation.
+        graph_noise : list or None, optional
+            Parameters for graph noise.
         seed : int or None, optional
             Seed for random values from numpy.
         """
@@ -74,6 +83,9 @@ class Augmentor():
         self.salt_and_pepper_params = salt_and_pepper
         self.gaussian_noise_params = gaussian_noise
         self.gaussian_blur_params = gaussian_blur
+        self.graph_rotate_params = graph_rotate
+        self.graph_scale_params = graph_scale
+        self.graph_noise_params = graph_noise
         self.seed = seed
 
     def __repr__(self):
@@ -107,7 +119,10 @@ class Augmentor():
         info += f"\n{'salt_and_pepper':<{pad}}: {_format(self.salt_and_pepper_params)}"
         info += f"\n{'gaussian_noise':<{pad}}: {_format(self.gaussian_noise_params)}"
         info += f"\n{'gaussian_blur':<{pad}}: {_format(self.gaussian_blur_params)}"
-        info += f"\n{'seed':<{pad}}: {self.seed}"
+        info += f"\n{'graph_rotate':<{pad}}: {_format(self.graph_rotate_params)}"
+        info += f"\n{'graph_scale':<{pad}}: {_format(self.graph_scale_params)}"
+        info += f"\n{'graph_noise':<{pad}}: {_format(self.graph_noise_params)}"
+        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
 
         return info
 
@@ -815,3 +830,63 @@ class Augmentor():
             image = cv2.GaussianBlur(src=image, ksize=(kernel_size, kernel_size), sigmaX=0)
 
         return image
+
+    def graph_augmentation(self, graph_data):
+        """
+        Applies augmentations to a batch of graph data.
+
+        Parameters
+        ----------
+        graph_data : tuple
+            Nodes and edges batch.
+
+        Returns
+        -------
+        tuple
+            Augmented graph data.
+        """
+
+        nodes, edges = graph_data
+
+        if not nodes:
+            return nodes, edges
+
+        aug_nodes = [[char_nodes.copy() for char_nodes in item] for item in nodes]
+
+        for item in aug_nodes:
+            for char_nodes in item:
+                if char_nodes.shape[0] < 3:
+                    continue
+
+                xy = char_nodes[:, :2]
+
+                if (self.graph_rotate_params and self.graph_rotate_params[0] > 0
+                        and np.random.random() <= self.graph_rotate_params[0]):
+
+                    angle = np.radians(np.random.uniform(-self.graph_rotate_params[1],
+                                                         self.graph_rotate_params[1]))
+
+                    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)],
+                                                [np.sin(angle),  np.cos(angle)]])
+
+                    xy = xy @ rotation_matrix.T
+
+                if (self.graph_scale_params and self.graph_scale_params[0] > 0
+                        and np.random.random() <= self.graph_scale_params[0]):
+
+                    scale_variation = self.graph_scale_params[1] / 100.0
+                    scale = np.random.uniform(1.0 - scale_variation, 1.0 + scale_variation)
+
+                    xy = xy * scale
+
+                if (self.graph_noise_params and self.graph_noise_params[0] > 0
+                        and np.random.random() <= self.graph_noise_params[0]):
+
+                    std = self.graph_noise_params[1]
+                    noise = np.random.normal(0.0, std, xy.shape)
+
+                    xy = xy + noise
+
+                char_nodes[:, :2] = xy.astype(np.float32)
+
+        return [aug_nodes, edges]

@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 from sarah.models.components.base import BaseRecognitionModel
-from sarah.models.components.layers import GatedConv2D
 
 
 class RecognitionModel(BaseRecognitionModel):
@@ -43,41 +42,32 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Reshape(target_shape=(512, 64, -1))(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=8,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         activation='tanh')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
+        encoder = tf.keras.layers.Activation(activation='tanh')(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=16,
-                                         kernel_size=(2, 4),
-                                         strides=(2, 4),
-                                         padding='same',
-                                         activation='tanh')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=(2, 4), strides=(2, 4), padding='same')(encoder)
+        encoder = tf.keras.layers.Activation(activation='tanh')(encoder)
 
-        encoder = GatedConv2D()(encoder)
+        f_gate = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
+        f_gate = tf.keras.layers.Activation(activation='sigmoid')(f_gate)
+        encoder = tf.keras.layers.Multiply()([encoder, f_gate])
 
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         activation='tanh')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
+        encoder = tf.keras.layers.Activation(activation='tanh')(encoder)
 
-        encoder = GatedConv2D()(encoder)
+        s_gate = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
+        s_gate = tf.keras.layers.Activation(activation='sigmoid')(s_gate)
+        encoder = tf.keras.layers.Multiply()([encoder, s_gate])
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=(2, 4),
-                                         strides=(1, 4),
-                                         padding='same',
-                                         activation='tanh')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(2, 4), strides=(1, 4), padding='same')(encoder)
+        encoder = tf.keras.layers.Activation(activation='tanh')(encoder)
 
-        encoder = GatedConv2D()(encoder)
+        t_gate = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
+        t_gate = tf.keras.layers.Activation(activation='sigmoid')(t_gate)
+        encoder = tf.keras.layers.Multiply()([encoder, t_gate])
 
-        encoder = tf.keras.layers.Conv2D(filters=128,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same',
-                                         activation='tanh')(encoder)
+        encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
+        encoder = tf.keras.layers.Activation(activation='tanh')(encoder)
 
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(encoder)
 

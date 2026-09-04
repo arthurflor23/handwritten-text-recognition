@@ -40,48 +40,28 @@ class RecognitionModel(BaseRecognitionModel):
         encoder_input = tf.keras.Input(shape=self.image_shape)
         encoder = tf.keras.layers.Lambda(lambda x: tf.transpose(x, perm=(0, 2, 1, 3)), name='perm1')(encoder_input)
 
-        encoder = tf.keras.layers.Conv2D(filters=16,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=48,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=64,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
-        encoder = tf.keras.layers.Conv2D(filters=80,
-                                         kernel_size=(3, 3),
-                                         strides=(1, 1),
-                                         padding='same')(encoder)
-
+        encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.LeakyReLU(negative_slope=0.01)(encoder)
 

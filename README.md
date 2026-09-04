@@ -117,6 +117,7 @@ The project has several command-line parameters that can be used to customize it
 - `--illumination` : Apply illumination compensation.
 - `--binarization` : Apply binarization method.
 - `--lazy-mode`: Activate lazy loading.
+- `--enable-graph`: Enable prototype graph inputs.
 
 #### Augmentor
 
@@ -133,7 +134,10 @@ The project has several command-line parameters that can be used to customize it
 - `--salt-and-pepper`: Salt and Pepper noise (probability, alpha).
 - `--gaussian-noise`: Gaussian noise (probability, alpha).
 - `--gaussian-blur`: Gaussian blur filter (probability, kernel size).
-- `--skip-augmentation`: Skip data augmentation.
+- `--graph-rotate`: Graph rotate transformation (probability, max angle).
+- `--graph-scale`: Graph scale transformation (probability, max variation percentage).
+- `--graph-noise`: Graph noise transformation (probability, standard deviation).
+- `--disable-augmentation`: Disable data augmentation.
 
 #### Synthesis
 
@@ -244,5 +248,3 @@ The following references provide additional insights and background information 
 - Neto, A. F. S., Bezerra, B. L. D., Araujo, S. S., Souza, W. M. A. S., Alves, K. F., Oliveira, M. F., Lins, S. V. S., Hazin, H. J. F., Rocha, P. H. V., Toselli, A. H.: [ICDAR 2024 Competition on Handwritten Text Recognition in Brazilian Essays – BRESSAY](https://doi.org/10.1007/978-3-031-70552-6_21). In: 18th International Conference on Document Analysis and Recognition (ICDAR). Springer, Athens, Greece (9 2024).
 
 - Neto, Arthur F. S. and Bezerra, Byron L. D. and Toselli, Alejandro H. [HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity](https://doi.org/10.1109/ACCESS.2026.3681630). IEEE Access, vol. 14, pp. 54395-54413, 2026.
-
-Additional support for the project's progress is available through [Ko-fi](https://ko-fi.com/arthurflor23), which helps dedicate more time and resources to enhance the project and implement new features.

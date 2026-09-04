@@ -1,6 +1,8 @@
 import cv2
+import numpy as np
 
-from data import Augmentor, Dataset
+from data import Augmentor, Dataset, utils
+from models.components.layers import GraphExtraction
 
 
 def check(args):
@@ -25,26 +27,32 @@ def check(args):
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
+                      enable_graph=args.enable_graph,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
-                      seed=args.seed)
+                      seed=42)
     print(dataset)
 
-    augmentor = Augmentor(mixup=args.mixup,
-                          erode=args.erode,
-                          dilate=args.dilate,
-                          elastic=args.elastic,
-                          perspective=args.perspective,
-                          shear=args.shear,
-                          rotate=args.rotate,
-                          scale=args.scale,
-                          shift_y=args.shift_y,
-                          shift_x=args.shift_x,
-                          salt_and_pepper=args.salt_and_pepper,
-                          gaussian_noise=args.gaussian_noise,
-                          gaussian_blur=args.gaussian_blur,
-                          seed=args.seed)
-    print(augmentor)
+    augmentor = None
+    if not args.disable_augmentation:
+        augmentor = Augmentor(mixup=args.mixup,
+                              erode=args.erode,
+                              dilate=args.dilate,
+                              elastic=args.elastic,
+                              perspective=args.perspective,
+                              shear=args.shear,
+                              rotate=args.rotate,
+                              scale=args.scale,
+                              shift_y=args.shift_y,
+                              shift_x=args.shift_x,
+                              salt_and_pepper=args.salt_and_pepper,
+                              gaussian_noise=args.gaussian_noise,
+                              gaussian_blur=args.gaussian_blur,
+                              graph_rotate=dataset.graph_fonts and args.graph_rotate,
+                              graph_scale=dataset.graph_fonts and args.graph_scale,
+                              graph_noise=dataset.graph_fonts and args.graph_noise,
+                              seed=42)
+        print(augmentor)
 
     src_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
@@ -79,8 +87,30 @@ def check(args):
         _, y_enc = next(enc_gen)
         img_enc, txt_enc, wri_enc = y_enc[:3]
 
-        x_aug, _ = next(aug_gen)
+        x_aug, y_aug = next(aug_gen)
         img_aug, seg_aug = x_aug[0], x_aug[4]
+
+        if args.enable_graph:
+            max_height = max(x.shape[0] for x in img_aug)
+            max_width = max(x.shape[1] for x in img_aug)
+
+            inputs = np.stack([
+                np.pad(
+                    np.asarray(x),
+                    pad_width=((0, max_height - x.shape[0]),
+                               (0, max_width - x.shape[1])),
+                    mode='constant',
+                    constant_values=np.min(x),
+                )[..., np.newaxis]
+                for x in img_aug
+            ])
+
+            graph_extraction = GraphExtraction(k_length=2)
+            coordinates, nodes, edges = graph_extraction(inputs)
+
+        if dataset.graph_fonts:
+            nodes_src, edges_src = y_aug[5], y_aug[6]
+            nodes_aug, edges_aug = x_aug[5], x_aug[6]
 
         for i in range(len(img_src)):
             print('\nPath image')
@@ -97,9 +127,20 @@ def check(args):
             print(txt_enc[i])
             print('-' * 68, '\n')
 
-            cv2.imshow('Image (enc)', img_enc[i])
-            cv2.imshow('Image (aug)', img_aug[i])
+            if dataset.graph_fonts:
+                src_canvas = utils.plot_graph_font(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
+                cv2.imshow('Graph Font (src)', src_canvas)
+
+                aug_canvas = utils.plot_graph_font(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
+                cv2.imshow('Graph Font (aug)', aug_canvas)
+
+            if args.enable_graph:
+                graph_canvas = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
+                cv2.imshow('Graph Extraction (aug)', graph_canvas)
+
             cv2.imshow('Segmentation (aug)', seg_aug[i])
+            cv2.imshow('Image (aug)', img_aug[i])
+            cv2.imshow('Image (enc)', img_enc[i])
 
             print('Press Enter to continue or Esc to stop...\n')
             key = cv2.waitKey(0)

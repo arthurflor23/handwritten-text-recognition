@@ -83,76 +83,64 @@ def batch_binarization(batch_data, method, invert=False):
     return outputs
 
 
-def batch_font_graph(font_graphs, font_graph_shape, batch_size, augmentor=False):
+def batch_graph(batch_size, num_chars, graph_data, graph_shape):
     """
-    Builds a batch of graph data from character font graphs.
+    Builds a batch of graph data from character graph fonts.
 
     Parameters
     ----------
-    font_graphs : list
-        List of graph representations from each character font.
-    font_graph_shape : tuple or list
-        The shape of the input font graphs.
     batch_size : int
         Number of samples in the batch.
-    augmentor : bool, optional
-        Whether to randomly apply variations per character font.
+    num_chars : int
+        Number of characters per sample.
+    graph_data : list
+        List of graph representations from each character font.
+    graph_shape : tuple or list
+        The shape of the input graphs.
 
     Returns
     -------
     tuple
-        Nodes and Edges as padded numpy arrays.
+        Nodes and edges as lists.
     """
 
-    num_fonts = len(font_graphs)
+    num_fonts = len(graph_data)
 
     if not num_fonts:
-        return []
+        return [[], []]
 
-    nodes_shape, edges_shape = font_graph_shape
-    num_chars = len(font_graphs[0])
-
+    nodes_shape, edges_shape = graph_shape
     max_nodes = nodes_shape[0] // num_chars
     max_edges = edges_shape[1] // num_chars
 
-    nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
-    edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.float32)
+    nodes = []
+    edges = []
 
-    for i in range(batch_size):
+    for _ in range(batch_size):
         font_index = np.random.randint(num_fonts)
+        sample_nodes = []
+        sample_edges = []
 
-        for j in range(num_chars):
-            graph = font_graphs[font_index][j]
-
+        for i in range(num_chars):
+            graph = graph_data[font_index][i]
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
 
             if len(graph_nodes) == 0:
+                sample_nodes.append(np.zeros((0, 4), dtype=np.float32))
+                sample_edges.append(np.zeros((2, 0), dtype=np.int32))
                 continue
-
-            if augmentor:
-                graph_nodes = graph_nodes.copy()
-                xy = graph_nodes[:, :2]
-
-                angle = np.random.uniform(-np.pi / 18, np.pi / 18)
-                cos, sin = np.cos(angle), np.sin(angle)
-
-                xy = xy @ np.array([[cos, -sin], [sin, cos]], dtype=np.float32).T
-                xy = xy * np.random.uniform(0.9, 1.1)
-                xy = xy + np.random.normal(0, 0.01, xy.shape).astype(np.float32)
-
-                graph_nodes[:, :2] = xy
 
             n = min(graph_nodes.shape[0], max_nodes)
             e = min(graph_edges.shape[1], max_edges)
 
-            nodes[i, j, :n] = graph_nodes[:n]
-            edges[i, j, :, :e] = graph_edges[:, :e] + j * max_nodes
+            sample_nodes.append(graph_nodes[:n].astype(np.float32))
+            sample_edges.append(graph_edges[:, :e].astype(np.int32))
 
-    nodes = nodes.reshape(batch_size, max_nodes * num_chars, 4)
-    edges = edges.reshape(batch_size, 2, max_edges * num_chars)
+        nodes.append(sample_nodes)
+        edges.append(sample_edges)
 
-    return nodes, edges
+    return [nodes, edges]
 
 
 def batch_illumination(batch_data):
@@ -367,27 +355,68 @@ def batch_processing(batch_mode,
         Processed data.
     """
 
-    if batch_mode in ['image', 'binary']:
-        if batch_mode == 'image':
-            if illumination:
-                batch_data = batch_illumination(batch_data)
+    if not batch_data:
+        return batch_data
 
-            if binarization:
-                batch_data = batch_binarization(batch_data, method=binarization)
+    if batch_mode == 'binary':
+        batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
+        batch_data = np.expand_dims(batch_data, axis=-1)
+
+        if batch_scale:
+            batch_data = (batch_data.astype(np.float32) / 255.)
+
+    elif batch_mode == 'image':
+        if illumination:
+            batch_data = batch_illumination(batch_data)
+
+        if binarization:
+            batch_data = batch_binarization(batch_data, method=binarization)
 
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.uint8)
         batch_data = np.expand_dims(batch_data, axis=-1)
 
         if batch_scale:
-            if batch_mode == 'image':
-                batch_data = (batch_data.astype(np.float32) / 127.5) - 1
-            else:
-                batch_data = (batch_data.astype(np.float32) / 255.)
+            batch_data = (batch_data.astype(np.float32) / 127.5) - 1
+
+    elif batch_mode == 'graph':
+        nodes, edges = batch_data
+
+        if not nodes:
+            return [nodes, edges]
+
+        batch_size = len(nodes)
+        num_chars = len(nodes[0])
+        nodes_shape, edges_shape = padding_shape
+
+        max_nodes = nodes_shape[0] // num_chars
+        max_edges = edges_shape[1] // num_chars
+
+        pad_nodes = np.zeros((batch_size, num_chars, max_nodes, 4), dtype=np.float32)
+        pad_edges = np.zeros((batch_size, num_chars, 2, max_edges), dtype=np.int32)
+
+        for i in range(batch_size):
+            for j in range(num_chars):
+                char_nodes = nodes[i][j].copy()
+                char_edges = edges[i][j].copy()
+
+                if char_nodes.shape[0] == 0:
+                    continue
+
+                n = min(char_nodes.shape[0], max_nodes)
+                e = min(char_edges.shape[1], max_edges)
+
+                pad_nodes[i, j, :n] = char_nodes[:n]
+                pad_edges[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
+
+        pad_nodes = pad_nodes.reshape(batch_size, max_nodes * num_chars, 4)
+        pad_edges = pad_edges.reshape(batch_size, 2, max_edges * num_chars)
+
+        batch_data = [pad_nodes, pad_edges]
 
     elif batch_mode == 'text':
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.int64)
 
-    return np.array(batch_data)
+    return batch_data
 
 
 def format_text(text):
@@ -450,6 +479,167 @@ def format_text(text):
     text = ' '.join(text.replace('\n', '﹗').split()).replace('﹗', '\n').strip()
 
     return text
+
+
+def plot_graph(coordinates, nodes, edges, target_shape=None):
+    """
+    Plot graph nodes and edges.
+
+    Parameters
+    ----------
+    coordinates : ndarray or tf.Tensor
+        Node coordinates.
+    nodes : ndarray or tf.Tensor
+        Node features.
+    edges : ndarray or tf.Tensor
+        Edge index pairs.
+    target_shape : tuple, optional
+        Target image shape.
+
+    Returns
+    -------
+    ndarray
+        Rendered graph image.
+    """
+
+    if hasattr(coordinates, 'numpy'):
+        coordinates = coordinates.numpy()
+
+    if hasattr(nodes, 'numpy'):
+        nodes = nodes.numpy()
+
+    if hasattr(edges, 'numpy'):
+        edges = edges.numpy()
+
+    coordinates = np.asarray(coordinates)
+    nodes = np.asarray(nodes)
+    edges = np.asarray(edges)
+
+    valid = nodes[:, 0] != 0
+    num_nodes = np.count_nonzero(valid)
+    coordinates = coordinates[:num_nodes]
+
+    valid_edges = (
+        (edges[0] < num_nodes)
+        & (edges[1] < num_nodes)
+        & (edges[0] != edges[1])
+    )
+
+    edges = edges[:, valid_edges]
+
+    if target_shape is not None:
+        height, width = target_shape[:2]
+
+    elif num_nodes > 0:
+        width = int(np.max(coordinates[:, 0])) + 1
+        height = int(np.max(coordinates[:, 1])) + 1
+
+    else:
+        height, width = 1, 1
+
+    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
+
+    for u, v in edges.T:
+        p1 = tuple(coordinates[u].astype(int))
+        p2 = tuple(coordinates[v].astype(int))
+
+        cv2.line(canvas, p1, p2, (40, 40, 200), 1)
+
+    for x, y in coordinates:
+        x, y = int(x), int(y)
+        cv2.rectangle(canvas, (x - 1, y - 1), (x + 1, y + 1), (0, 0, 220), -1)
+
+    return canvas
+
+
+def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
+    """
+    Plot a character grid from graph font nodes and edges.
+
+    Parameters
+    ----------
+    nodes : ndarray or list
+        Node coordinates for characters.
+    edges : ndarray or list
+        Edge index pairs for characters.
+    chars : list
+        Character labels for each graph.
+    cols : int, optional
+        Number of grid columns.
+    cell_size : int, optional
+        Pixel size of each character cell.
+    skip : int, optional
+        Number of leading characters to skip.
+
+    Returns
+    -------
+    ndarray
+        Rendered grid image.
+    """
+
+    num_chars = len(chars)
+    padded = isinstance(nodes, np.ndarray)
+
+    if padded:
+        max_nodes = nodes.shape[0] // num_chars
+        max_edges = edges.shape[1] // num_chars
+        pad_edges = edges.reshape(num_chars, 2, max_edges)
+
+    indices = [
+        i for i in range(skip, num_chars)
+        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes, 0] != 0)
+            if padded else len(nodes[i]) > 0)
+    ]
+
+    num_plot = len(indices)
+    cols = cols or int(np.ceil(np.sqrt(num_plot)))
+    rows = int(np.ceil(num_plot / cols))
+
+    width = cols * cell_size
+    height = rows * cell_size
+
+    canvas = np.ones((height, width), dtype=np.uint8) * 255
+    pad = 10
+    inner = cell_size - 2 * pad
+
+    for i, j in enumerate(indices):
+        char = chars[j]
+
+        if padded:
+            node_start = j * max_nodes
+            char_nodes = nodes[node_start:node_start + max_nodes]
+            char_edges = pad_edges[j]
+            valid = char_nodes[:, 0] != 0
+        else:
+            node_start = 0
+            char_nodes = nodes[j]
+            char_edges = edges[j]
+            valid = np.ones(len(char_nodes), dtype=bool)
+
+        max_local_nodes = len(char_nodes)
+
+        row, col = divmod(i, cols)
+        x0 = col * cell_size
+        y0 = row * cell_size
+
+        px = x0 + pad + char_nodes[:, 0] * inner
+        py = y0 + pad + (1 - char_nodes[:, 1]) * inner
+        pts = np.stack([px, py], axis=1).astype(np.int32)
+
+        for s, d in char_edges.T:
+            s, d = int(s) - node_start, int(d) - node_start
+
+            if s == d or not (0 <= s < max_local_nodes and 0 <= d < max_local_nodes):
+                continue
+            if not (valid[s] and valid[d]):
+                continue
+
+            cv2.line(canvas, tuple(pts[s]), tuple(pts[d]), 0, 2, cv2.LINE_AA)
+
+        cv2.putText(canvas, char, (x0 + 2, y0 + cell_size - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, 0, 1, cv2.LINE_AA)
+
+    return canvas
 
 
 def read_image(image_path, bbox=None):
