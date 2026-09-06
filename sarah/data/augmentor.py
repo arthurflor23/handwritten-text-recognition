@@ -122,7 +122,7 @@ class Augmentor():
         info += f"\n{'graph_rotate':<{pad}}: {_format(self.graph_rotate_params)}"
         info += f"\n{'graph_scale':<{pad}}: {_format(self.graph_scale_params)}"
         info += f"\n{'graph_noise':<{pad}}: {_format(self.graph_noise_params)}"
-        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
+        info += f"\n{'seed':<{pad}}: {'-' if self.seed is None else self.seed}"
 
         return info
 

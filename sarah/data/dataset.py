@@ -146,7 +146,7 @@ class Dataset():
         info += f"\n{'illumination':<{pad}}: {self.illumination or '-'}"
         info += f"\n{'binarization':<{pad}}: {self.binarization or '-'}"
         info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode or '-'}"
-        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
+        info += f"\n{'seed':<{pad}}: {'-' if self.seed is None else self.seed}"
         info += "\n" + "-" * width
         info += f"\n{'training_data':<{pad}}: {len(self.samples['source']['training']):,}"
         info += f"\n{'validation_data':<{pad}}: {len(self.samples['source']['validation']):,}"
