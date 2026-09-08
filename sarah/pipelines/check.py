@@ -1,4 +1,6 @@
+import os
 import cv2
+import time
 import numpy as np
 
 from data import Augmentor, Dataset, utils
@@ -79,6 +81,7 @@ def check(args):
                                        shuffle=False)
 
     print('\nChecking samples...')
+    timestamp = str(int(time.time()))
 
     while True:
         _, y_src = next(src_gen)
@@ -105,7 +108,7 @@ def check(args):
                 for x in img_aug
             ])
 
-            graph_extraction = GraphExtraction(k_length=2)
+            graph_extraction = GraphExtraction(k_length=9)
             coordinates, nodes, edges = graph_extraction(inputs)
 
         if dataset.graph_fonts:
@@ -127,23 +130,41 @@ def check(args):
             print(txt_enc[i])
             print('-' * 68, '\n')
 
+            windows = {}
             if dataset.graph_fonts:
-                src_canvas = utils.plot_graph_font(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
-                cv2.imshow('Graph Font (src)', src_canvas)
+                windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i],
+                                                                edges_src[i],
+                                                                dataset.tokenizer.chars)
 
-                aug_canvas = utils.plot_graph_font(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
-                cv2.imshow('Graph Font (aug)', aug_canvas)
+                windows['5_graph_font_aug'] = utils.plot_graph_font(nodes_aug[i],
+                                                                    edges_aug[i],
+                                                                    dataset.tokenizer.chars)
 
             if args.enable_graph:
-                graph_canvas = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
-                cv2.imshow('Graph Extraction (aug)', graph_canvas)
+                windows['4_target_graph'] = utils.plot_graph(coordinates[i],
+                                                             nodes[i],
+                                                             edges[i],
+                                                             img_aug[i].shape)
 
-            cv2.imshow('Segmentation (aug)', seg_aug[i])
-            cv2.imshow('Image (aug)', img_aug[i])
-            cv2.imshow('Image (enc)', img_enc[i])
+            windows['3_target_seg_aug'] = seg_aug[i]
+            windows['2_target_aug'] = img_aug[i]
+            windows['1_image'] = img_enc[i]
 
-            print('Press Enter to continue or Esc to stop...\n')
+            for name, canvas in windows.items():
+                cv2.imshow(name, canvas)
+
+            print('Press Enter to continue, `s` to save, or `Esc` to stop...\n')
             key = cv2.waitKey(0)
+
+            if key == 115:
+                out_dir = os.path.join(args.output_path, 'checks', timestamp)
+                os.makedirs(out_dir, exist_ok=True)
+
+                for name, canvas in windows.items():
+                    cv2.imwrite(os.path.join(out_dir, f'{i + 1}_{name}.png'), canvas)
+
+                print(f'Saved frames to {out_dir}/\n')
+                key = cv2.waitKey(0)
 
             if key == 27:
                 cv2.destroyAllWindows()
