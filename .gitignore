@@ -15,6 +15,7 @@ scripts/
 .Spotlight-V100
 .Trash-*
 .Trashes
+.vscode
 *~
 $RECYCLE.BIN/
 Desktop.ini
