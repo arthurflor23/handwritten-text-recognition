@@ -7,7 +7,19 @@ outputs/
 scripts/
 
 # Hidden artifacts
-.*
+._*
+.AppleDouble
+.directory
+.DS_Store
+.LSOverride
+.Spotlight-V100
+.Trash-*
+.Trashes
+*~
+$RECYCLE.BIN/
+Desktop.ini
+ehthumbs.db
+Thumbs.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
