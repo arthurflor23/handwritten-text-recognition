@@ -511,7 +511,7 @@ def plot_graph(coordinates, nodes, edges, target_shape=None):
     if hasattr(edges, 'numpy'):
         edges = edges.numpy()
 
-    coordinates = np.asarray(coordinates)
+    coordinates = np.asarray(coordinates).astype(int)
     nodes = np.asarray(nodes)
     edges = np.asarray(edges)
 
@@ -531,8 +531,8 @@ def plot_graph(coordinates, nodes, edges, target_shape=None):
         height, width = target_shape[:2]
 
     elif num_nodes > 0:
-        width = int(np.max(coordinates[:, 0])) + 1
-        height = int(np.max(coordinates[:, 1])) + 1
+        width = np.max(coordinates[:, 0]) + 1
+        height = np.max(coordinates[:, 1]) + 1
 
     else:
         height, width = 1, 1
@@ -540,14 +540,13 @@ def plot_graph(coordinates, nodes, edges, target_shape=None):
     canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
 
     for u, v in edges.T:
-        p1 = tuple(coordinates[u].astype(int))
-        p2 = tuple(coordinates[v].astype(int))
+        p1 = tuple(coordinates[u])
+        p2 = tuple(coordinates[v])
 
-        cv2.line(canvas, p1, p2, (40, 40, 200), 1)
+        cv2.line(img=canvas, pt1=p1, pt2=p2, color=(3, 151, 232), thickness=1)
 
     for x, y in coordinates:
-        x, y = int(x), int(y)
-        cv2.rectangle(canvas, (x - 1, y - 1), (x + 1, y + 1), (0, 0, 220), -1)
+        cv2.circle(img=canvas, center=(x, y), radius=2, color=(4, 237, 103), thickness=-1)
 
     return canvas
 
@@ -598,7 +597,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     width = cols * cell_size
     height = rows * cell_size
 
-    canvas = np.ones((height, width), dtype=np.uint8) * 255
+    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
     pad = 10
     inner = cell_size - 2 * pad
 
@@ -634,10 +633,35 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
             if not (valid[s] and valid[d]):
                 continue
 
-            cv2.line(canvas, tuple(pts[s]), tuple(pts[d]), 0, 2, cv2.LINE_AA)
+            cv2.line(img=canvas,
+                     pt1=tuple(pts[s]),
+                     pt2=tuple(pts[d]),
+                     color=(3, 151, 232),
+                     thickness=2,
+                     lineType=cv2.LINE_AA)
 
-        cv2.putText(canvas, char, (x0 + 2, y0 + cell_size - 2),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, 0, 1, cv2.LINE_AA)
+        for k in range(max_local_nodes):
+            if not valid[k]:
+                continue
+
+            cv2.circle(img=canvas, center=pts[k], radius=2, color=(4, 237, 103), thickness=-1)
+
+        cv2.putText(img=canvas,
+                    text=char,
+                    org=(x0 + 2, y0 + cell_size - 2),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.5,
+                    color=0,
+                    thickness=1,
+                    lineType=cv2.LINE_AA)
+
+    canvas = cv2.copyMakeBorder(src=canvas,
+                                top=20,
+                                bottom=20,
+                                left=20,
+                                right=20,
+                                borderType=cv2.BORDER_CONSTANT,
+                                value=(255, 255, 255))
 
     return canvas
 
