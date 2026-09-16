@@ -38,7 +38,7 @@ def run(args):
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
-                      enable_graph=args.enable_graph,
+                      enable_prototype=args.enable_prototype,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
                       seed=args.seed)

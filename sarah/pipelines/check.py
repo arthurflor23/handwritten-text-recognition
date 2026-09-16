@@ -29,7 +29,7 @@ def check(args):
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
-                      enable_graph=args.enable_graph,
+                      enable_prototype=args.enable_prototype,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
                       seed=42)
@@ -93,7 +93,7 @@ def check(args):
         x_aug, y_aug = next(aug_gen)
         img_aug, seg_aug = x_aug[0], x_aug[4]
 
-        if args.enable_graph:
+        if args.enable_prototype:
             max_height = max(x.shape[0] for x in img_aug)
             max_width = max(x.shape[1] for x in img_aug)
 
@@ -140,7 +140,7 @@ def check(args):
                                                                     edges_aug[i],
                                                                     dataset.tokenizer.chars)
 
-            if args.enable_graph:
+            if args.enable_prototype:
                 windows['4_target_graph'] = utils.plot_graph(coordinates[i],
                                                              nodes[i],
                                                              edges[i],
