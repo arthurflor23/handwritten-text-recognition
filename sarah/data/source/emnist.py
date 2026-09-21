@@ -20,7 +20,7 @@ class Source():
             writer's unique ID ('1' for unique writer).
     """
 
-    def __init__(self, artifact_path, split='byclass'):
+    def __init__(self, artifact_path, split='balanced'):
         """
         Initializes a new instance of the Source class.
 
