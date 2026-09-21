@@ -816,13 +816,11 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = self.kernel(nodes)
-
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
         total_segments = batch_size * num_nodes
 
-        ones_flat = tf.ones(tf.shape(dst_flat), dtype=transformed.dtype)
+        ones_flat = tf.ones(tf.shape(dst_flat), dtype=nodes.dtype)
         degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
         degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
 
@@ -832,11 +830,13 @@ class GraphConv(tf.keras.layers.Layer):
         dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
         norm = src_norm * dst_norm
 
-        messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
+        messages = tf.gather(nodes, src, batch_dims=1) * norm[..., tf.newaxis]
         messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
 
-        outputs_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, self.units])
+        aggregated_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
+        aggregated = tf.reshape(aggregated_flat, [batch_size, num_nodes, tf.shape(nodes)[-1]])
+
+        outputs = self.kernel(aggregated)
 
         if self.use_bias:
             outputs = outputs + self.bias
@@ -1022,27 +1022,12 @@ class GraphConv2D(tf.keras.layers.Layer):
         dist = dist + tf.eye(num_nodes, dtype=dist.dtype) * 1e12
 
         knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
-        dst = tf.repeat(tf.range(num_nodes), repeats=self.k_neighbors)
-        src = tf.reshape(knn, [-1])
 
-        edges = tf.stack([dst, src], axis=-1)
-        self_loops = tf.stack([tf.range(num_nodes), tf.range(num_nodes)], axis=-1)
+        transformed = self.kernel(nodes)
+        neighbor_features = tf.gather(transformed, knn, axis=1)
 
-        edge_index = tf.concat([edges, self_loops], axis=0)
-
-        dst = edge_index[:, 0]
-        src = edge_index[:, 1]
-
-        transformed = self.kernel(tf.gather(nodes, src, axis=1))
-
-        batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
-        dst_flat = tf.reshape(dst[tf.newaxis, :] + batch_offset, [-1])
-        total_segments = batch_size * num_nodes
-
-        neighbor_features_flat = tf.reshape(transformed, [-1, tf.shape(transformed)[-1]])
-
-        outputs_flat = tf.math.unsorted_segment_sum(neighbor_features_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, self.height, self.width, self.units])
+        outputs = tf.reduce_sum(neighbor_features, axis=2) + transformed
+        outputs = tf.reshape(outputs, [batch_size, self.height, self.width, self.units])
 
         if self.use_bias:
             outputs = outputs + self.bias
