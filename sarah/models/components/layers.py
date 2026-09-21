@@ -582,7 +582,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  gamma_initializer='ones',
-                 dropout=0.0,
+                 gaussian_dropout=0.0,
                  use_bias=True,
                  **kwargs):
         """
@@ -600,8 +600,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Beta weights initializer.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
-        dropout : float, optional
-            Dropout rate applied during training.
+        gaussian_dropout : float, optional
+            Gaussian Dropout rate applied during training.
         use_bias : bool, optional
             Enables bias terms in the projection layers.
         **kwargs : dict
@@ -615,7 +615,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.gamma_initializer = gamma_initializer
-        self.dropout = dropout
+        self.gaussian_dropout = gaussian_dropout
         self.use_bias = use_bias
 
     def get_config(self):
@@ -636,7 +636,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'gamma_initializer': self.gamma_initializer,
-            'dropout': self.dropout,
+            'gaussian_dropout': self.gaussian_dropout,
             'use_bias': self.use_bias,
         })
 
@@ -690,8 +690,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
         s_dense = self.s_dense(inputs)
         g_dense = s_dense * tf.nn.sigmoid(tf.linalg.matmul(s_dense, self.gamma))
 
-        if training and self.dropout:
-            stddev = tf.sqrt(self.dropout / (1.0 - self.dropout))
+        if training and self.gaussian_dropout:
+            stddev = tf.sqrt(self.gaussian_dropout / (1.0 - self.gaussian_dropout))
             g_dense *= tf.random.normal(tf.shape(g_dense), 1.0, stddev, g_dense.dtype)
 
         return inputs + g_dense * self.beta
