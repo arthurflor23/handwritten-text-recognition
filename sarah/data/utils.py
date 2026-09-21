@@ -83,7 +83,7 @@ def batch_binarization(batch_data, method, invert=False):
     return outputs
 
 
-def batch_graph(batch_size, num_chars, graph_data, graph_shape):
+def batch_graph(batch_size, num_chars, graph_data, graph_shape, skip=3):
     """
     Builds a batch of graph data from character graph fonts.
 
@@ -97,31 +97,35 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
         List of graph representations from each character font.
     graph_shape : tuple or list
         The shape of the input graphs.
+    skip : int, optional
+        Number of leading characters to skip.
 
     Returns
     -------
-    tuple
-        Nodes and edges as lists.
+    list
+        Nodes, edges, and character indices for each sample.
     """
 
     num_fonts = len(graph_data)
 
     if not num_fonts:
-        return [[], []]
+        return [[], []], []
 
     nodes_shape, edges_shape = graph_shape
     max_nodes = nodes_shape[0] // num_chars
     max_edges = edges_shape[1] // num_chars
 
-    nodes = []
-    edges = []
+    nodes, edges, char_indices = [], [], []
 
     for _ in range(batch_size):
         font_index = np.random.randint(num_fonts)
         sample_nodes = []
         sample_edges = []
 
-        for i in np.random.permutation(num_chars):
+        indices = np.arange(num_chars, dtype=np.int32)
+        indices[skip:] = np.random.permutation(indices[skip:])
+
+        for i in indices:
             graph = graph_data[font_index][i]
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
@@ -139,8 +143,9 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
 
         nodes.append(sample_nodes)
         edges.append(sample_edges)
+        char_indices.append(indices)
 
-    return [nodes, edges]
+    return [nodes, edges], np.expand_dims(char_indices, axis=1)
 
 
 def batch_illumination(batch_data):
@@ -576,7 +581,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         Rendered grid image.
     """
 
-    num_chars = len(chars)
+    num_chars = len(chars) + skip
     padded = isinstance(nodes, np.ndarray)
 
     if padded:
@@ -606,7 +611,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     inner = cell_size - 2 * pad
 
     for i, j in enumerate(indices):
-        char = chars[j]
+        char = chars[j - skip]
 
         if padded:
             node_start = j * max_nodes
