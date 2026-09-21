@@ -121,7 +121,7 @@ def batch_graph(batch_size, num_chars, graph_data, graph_shape):
         sample_nodes = []
         sample_edges = []
 
-        for i in range(num_chars):
+        for i in np.random.permutation(num_chars):
             graph = graph_data[font_index][i]
             graph_nodes = graph['nodes']
             graph_edges = graph['edges']
