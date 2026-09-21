@@ -112,8 +112,8 @@ def check(args):
             coordinates, nodes, edges = graph_extraction(inputs)
 
         if dataset.graph_fonts:
-            nodes_src, edges_src = y_aug[5], y_aug[6]
-            nodes_aug, edges_aug = x_aug[5], x_aug[6]
+            nodes_src, edges_src, graph_chars = y_aug[5:8]
+            nodes_aug, edges_aug = x_aug[5:7]
 
         for i in range(len(img_src)):
             print('\nPath image')
@@ -132,13 +132,10 @@ def check(args):
 
             windows = {}
             if dataset.graph_fonts:
-                windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i],
-                                                                edges_src[i],
-                                                                dataset.tokenizer.chars)
+                chars = dataset.tokenizer.decode_text(graph_chars[i])
 
-                windows['5_graph_font_aug'] = utils.plot_graph_font(nodes_aug[i],
-                                                                    edges_aug[i],
-                                                                    dataset.tokenizer.chars)
+                windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i], edges_src[i], chars)
+                windows['5_graph_font_aug'] = utils.plot_graph_font(nodes_aug[i], edges_aug[i], chars)
 
             if args.enable_prototype:
                 windows['4_target_graph'] = utils.plot_graph(coordinates[i],
