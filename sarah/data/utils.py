@@ -586,11 +586,15 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
 
     indices = [
         i for i in range(skip, num_chars)
-        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes, 0] != 0)
+        if (np.any(nodes[i * max_nodes:(i + 1) * max_nodes] != 0)
             if padded else len(nodes[i]) > 0)
     ]
 
     num_plot = len(indices)
+
+    if num_plot == 0:
+        return np.ones((cell_size + 40, cell_size + 40, 3), dtype=np.uint8) * 255
+
     cols = cols or int(np.ceil(np.sqrt(num_plot)))
     rows = int(np.ceil(num_plot / cols))
 
@@ -608,12 +612,22 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
             node_start = j * max_nodes
             char_nodes = nodes[node_start:node_start + max_nodes]
             char_edges = pad_edges[j]
-            valid = char_nodes[:, 0] != 0
+            valid = np.any(char_nodes != 0, axis=1)
+
+            for s, d in char_edges.T:
+                s, d = int(s) - node_start, int(d) - node_start
+
+                if s != d and 0 <= s < max_nodes and 0 <= d < max_nodes:
+                    valid[s] = True
+                    valid[d] = True
         else:
             node_start = 0
             char_nodes = nodes[j]
             char_edges = edges[j]
             valid = np.ones(len(char_nodes), dtype=bool)
+
+        if not np.any(valid):
+            continue
 
         max_local_nodes = len(char_nodes)
 
@@ -621,8 +635,16 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         x0 = col * cell_size
         y0 = row * cell_size
 
-        px = x0 + pad + char_nodes[:, 0] * inner
-        py = y0 + pad + (1 - char_nodes[:, 1]) * inner
+        valid_xy = char_nodes[valid, :2]
+        xy_min = np.min(valid_xy, axis=0)
+        xy_max = np.max(valid_xy, axis=0)
+        xy_center = (xy_min + xy_max) / 2.0
+
+        extent = np.max(xy_max - xy_min)
+        scale = inner / max(1.0, extent)
+
+        px = x0 + cell_size / 2 + (char_nodes[:, 0] - xy_center[0]) * scale
+        py = y0 + cell_size / 2 - (char_nodes[:, 1] - xy_center[1]) * scale
         pts = np.stack([px, py], axis=1).astype(np.int32)
 
         for s, d in char_edges.T:
