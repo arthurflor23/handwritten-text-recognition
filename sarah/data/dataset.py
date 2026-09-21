@@ -695,16 +695,17 @@ class Dataset():
                                                 max_shape=self.image_shape,
                                                 from_text=self.mask_by_text)
 
-                graph_data = utils.batch_graph(batch_size=batch_length,
-                                               num_chars=charset_length,
-                                               graph_data=self.graph_fonts,
-                                               graph_shape=self.tokenizer.graph_shape)
+                graph_data, graph_chars_data = utils.batch_graph(batch_size=batch_length,
+                                                                 num_chars=charset_length,
+                                                                 graph_data=self.graph_fonts,
+                                                                 graph_shape=self.tokenizer.graph_shape)
 
                 aug_text_data = text_data.copy()
                 aug_mask_data = mask_data.copy()
                 aug_image_data = image_data.copy()
                 aug_segmentation_data = segmentation_data.copy()
                 aug_graph_data = graph_data.copy()
+                aug_graph_chars_data = graph_chars_data.copy()
 
                 if batch_encoded:
                     if augmentor:
@@ -763,13 +764,15 @@ class Dataset():
                                                                            aug_data=aug_graph_data,
                                                                            batch_mode='graph',
                                                                            padding_shape=self.tokenizer.graph_shape)
+                else:
+                    graph_chars_data = [self.tokenizer.decode_text(x) for x in graph_chars_data]
 
                 x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
                 y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
                 if self.graph_fonts:
-                    x_data.extend(aug_graph_data)
-                    y_data.extend(graph_data)
+                    x_data.extend([*aug_graph_data, aug_graph_chars_data])
+                    y_data.extend([*graph_data, graph_chars_data])
 
                 yield tuple(x_data), tuple(y_data)
 
