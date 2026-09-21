@@ -79,7 +79,7 @@ class SegmentationModel(BaseSegmentationModel):
         feats.append(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        bottleneck = GraphConv2D(units=256, k_neighbors=4, num_pos_scales=1)(encoder)
+        bottleneck = GraphConv2D(units=256, k_neighbors=2, num_pos_scales=1)(encoder)
         bottleneck = tf.keras.layers.Activation(activation='swish')(bottleneck)
 
         nodes_skip = tf.keras.layers.Dense(units=256)(encoder)
