@@ -27,7 +27,7 @@ class SpellingModel():
         self.env_file = env_file
         self.env_key = env_key
 
-        self.model = 'gpt-5.6-luna'
+        self.model = 'gpt-6-luna'
         self.max_tokens = 8192
 
         self.instruction = ('Correct only obvious spelling mistakes in words within tags. '
