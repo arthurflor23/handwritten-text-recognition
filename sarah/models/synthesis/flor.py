@@ -4,7 +4,7 @@ from sarah.models.components.base import BaseModel
 from sarah.models.components.base import BaseSynthesisModel
 from sarah.models.components.layers import AdaptiveInstanceNormalization
 from sarah.models.components.layers import ContentAlignment
-from sarah.models.components.layers import GatedResidualConv2D
+from sarah.models.components.layers import GatedResidual
 from sarah.models.components.layers import Reparameterization
 
 from sarah.models.recognition.flor import RecognitionModel
@@ -592,7 +592,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             if i == self.num_blocks - 1:
-                block = GatedResidualConv2D()(block)
+                block = GatedResidual(layer='conv2d')(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
@@ -730,7 +730,7 @@ class DiscriminatorModel(BaseModel):
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
             if i == 1:
-                block = GatedResidualConv2D()(block)
+                block = GatedResidual(layer='conv2d')(block)
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
