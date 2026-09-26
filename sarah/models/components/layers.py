@@ -1,108 +1,10 @@
 import tensorflow as tf
 
 
-class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
+class AdaptiveBatchNormalization(tf.keras.layers.Layer):
     """
-    Adaptive Instance Normalization Layer.
-    Adjusts the mean and variance of the input tensor based on a conditional tensor.
-
-    References
-    ----------
-    Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization
-        https://arxiv.org/abs/1703.06868v2
-    """
-
-    def __init__(self, epsilon=1e-3, **kwargs):
-        """
-        Initializes the adaptive instance normalization layer.
-
-        Parameters
-        ----------
-        epsilon : float, optional
-            Small float added to variance to avoid dividing by zero.
-        **kwargs : dict
-            Additional arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.epsilon = epsilon
-
-    def get_config(self):
-        """
-        Return the configuration of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'epsilon': self.epsilon,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.features = input_shape[0][-1]
-
-        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-
-        self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
-                                                             scale=False,
-                                                             center=False,
-                                                             epsilon=self.epsilon)
-
-    def call(self, inputs, training=False):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            A tuple containing the input tensor and the conditional tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor after applying AdaIN.
-        """
-
-        x, conditional = inputs
-
-        beta = self.beta_dense(conditional)
-        gamma = self.gamma_dense(conditional)
-
-        beta = tf.reshape(beta, [-1, 1, 1, self.features])
-        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
-
-        normed = self.norm_layer(x, training=training)
-        outputs = normed * gamma + beta
-
-        return outputs
-
-
-class ConditionalBatchNormalization(tf.keras.layers.Layer):
-    """
-    Conditional Batch Normalization layer.
-    Applies batch normalization conditioned on external data.
+    Adaptive Batch Normalization layer.
+    Adjusts the normalized input features based on a conditional tensor.
 
     References
     ----------
@@ -162,8 +64,13 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                bias_initializer='zeros')
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 bias_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -176,15 +83,15 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        inputs : tf.Tensor
-            A tuple containing the input tensor and the conditional tensor.
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
         training : bool, optional
             Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            Tensor after applying CBN.
+            Adaptively normalized input tensor.
         """
 
         x, conditional = inputs
@@ -197,6 +104,213 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
+
+        return outputs
+
+
+class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
+    """
+    Adaptive Instance Normalization Layer.
+    Adjusts the normalized input features based on a conditional tensor.
+
+    References
+    ----------
+    Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization
+        https://arxiv.org/abs/1703.06868v2
+    """
+
+    def __init__(self, epsilon=1e-3, **kwargs):
+        """
+        Initializes the adaptive instance normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.features = input_shape[0][-1]
+
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                bias_initializer='zeros')
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 bias_initializer='zeros')
+
+        self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Adaptively normalized input tensor.
+        """
+
+        x, conditional = inputs
+
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
+
+        beta = tf.reshape(beta, [-1, 1, 1, self.features])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
+
+        normed = self.norm_layer(x, training=training)
+        outputs = normed * gamma + beta
+
+        return outputs
+
+
+class AdaptiveLayerNormalization(tf.keras.layers.Layer):
+    """
+    Adaptive Layer Normalization layer.
+    Adjusts the normalized input features based on a conditional tensor.
+
+    References
+    ----------
+    Scalable Diffusion Models with Transformers
+        https://arxiv.org/abs/2212.09748
+    """
+
+    def __init__(self, epsilon=1e-3, **kwargs):
+        """
+        Initializes the adaptive layer normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.features = input_shape[0][-1]
+        self.broadcast_shape = [-1] + [1] * (len(input_shape[0]) - 2) + [self.features]
+
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                bias_initializer='zeros')
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 bias_initializer='zeros')
+
+        self.norm_layer = tf.keras.layers.LayerNormalization(axis=-1,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Adaptively normalized input tensor.
+        """
+
+        x, conditional = inputs
+
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
+
+        beta = tf.reshape(beta, self.broadcast_shape)
+        gamma = tf.reshape(gamma, self.broadcast_shape)
+
+        normed = self.norm_layer(x, training=training)
+        outputs = normed * (1.0 + gamma) + beta
 
         return outputs
 
@@ -929,8 +1043,7 @@ class GraphConv(tf.keras.layers.Layer):
         self.kernel = tf.keras.layers.Dense(units=self.units,
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
+                                            kernel_constraint=self.kernel_constraint)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -1090,8 +1203,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.kernel = tf.keras.layers.Dense(units=self.units,
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
+                                            kernel_constraint=self.kernel_constraint)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
