@@ -65,12 +65,10 @@ class AdaptiveBatchNormalization(tf.keras.layers.Layer):
         self.features = input_shape[0][-1]
 
         self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros',
-                                                bias_initializer='zeros')
+                                                kernel_initializer='zeros')
 
         self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros',
-                                                 bias_initializer='zeros')
+                                                 kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -168,12 +166,10 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
         self.features = input_shape[0][-1]
 
         self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros',
-                                                bias_initializer='zeros')
+                                                kernel_initializer='zeros')
 
         self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros',
-                                                 bias_initializer='zeros')
+                                                 kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
                                                              scale=False,
@@ -272,12 +268,10 @@ class AdaptiveLayerNormalization(tf.keras.layers.Layer):
         self.broadcast_shape = [-1] + [1] * (len(input_shape[0]) - 2) + [self.features]
 
         self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros',
-                                                bias_initializer='zeros')
+                                                kernel_initializer='zeros')
 
         self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros',
-                                                 bias_initializer='zeros')
+                                                 kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.LayerNormalization(axis=-1,
                                                              scale=False,
@@ -1044,13 +1038,7 @@ class GraphConv(tf.keras.layers.Layer):
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
                                             kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
-
-        if self.use_bias:
-            self.bias = self.add_weight(name=f'{self.name}_bias',
-                                        shape=(self.units,),
-                                        initializer='zeros',
-                                        trainable=True)
+                                            use_bias=self.use_bias)
 
     def call(self, inputs):
         """
@@ -1102,9 +1090,6 @@ class GraphConv(tf.keras.layers.Layer):
         aggregated = tf.reshape(aggregated_flat, [batch_size, num_nodes, tf.shape(nodes)[-1]])
 
         outputs = self.kernel(aggregated)
-
-        if self.use_bias:
-            outputs = outputs + self.bias
 
         return outputs
 
@@ -1205,13 +1190,7 @@ class GraphConv2D(tf.keras.layers.Layer):
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
                                             kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
-
-        if self.use_bias:
-            self.bias = self.add_weight(name=f'{self.name}_bias',
-                                        shape=(self.units,),
-                                        initializer='zeros',
-                                        trainable=True)
+                                            use_bias=self.use_bias)
 
     def _build_base_coordinates(self):
         """
@@ -1293,9 +1272,6 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         outputs = tf.reduce_sum(neighbor_features, axis=2) + transformed
         outputs = tf.reshape(outputs, [batch_size, self.height, self.width, self.units])
-
-        if self.use_bias:
-            outputs = outputs + self.bias
 
         return outputs
 
