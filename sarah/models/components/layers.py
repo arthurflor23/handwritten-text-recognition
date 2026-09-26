@@ -1043,7 +1043,8 @@ class GraphConv(tf.keras.layers.Layer):
         self.kernel = tf.keras.layers.Dense(units=self.units,
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint)
+                                            kernel_constraint=self.kernel_constraint,
+                                            use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
@@ -1203,7 +1204,8 @@ class GraphConv2D(tf.keras.layers.Layer):
         self.kernel = tf.keras.layers.Dense(units=self.units,
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint)
+                                            kernel_constraint=self.kernel_constraint,
+                                            use_bias=False)
 
         if self.use_bias:
             self.bias = self.add_weight(name=f'{self.name}_bias',
