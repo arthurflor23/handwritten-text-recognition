@@ -48,38 +48,33 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=40, kernel_size=(2, 4), strides=(2, 4), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=56, kernel_size=(2, 4), strides=(1, 2), padding='same')(encoder)
         encoder = tf.keras.layers.PReLU(shared_axes=[1, 2])(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.2)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(encoder)

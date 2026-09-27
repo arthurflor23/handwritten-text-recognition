@@ -45,16 +45,14 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
-        residual_features = GatedResidualConv2D()(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        residual_features = GatedResidualConv2D(dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
@@ -62,8 +60,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        residual_features = GatedResidualConv2D(dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
@@ -71,8 +68,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        residual_features = GatedResidualConv2D(dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=3, padding='same')(encoder)
@@ -80,8 +76,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        residual_features = GatedResidualConv2D(dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
@@ -89,8 +84,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        residual_features = GatedResidualConv2D(dropout=0.1)(encoder)
-        encoder = tf.keras.layers.Add()([encoder, residual_features])
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
