@@ -539,7 +539,7 @@ class ContentAlignment(tf.keras.layers.Layer):
 
 class GatedResidualConv1D(tf.keras.layers.Layer):
     """
-    Implements a gated residual Conv1D mechanism.
+    Implements a gated Conv1D residual branch.
 
     References
     ----------
@@ -668,7 +668,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor.
+            Gated residual features.
         """
 
         projected = self.projection(inputs)
@@ -677,12 +677,12 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
 
-        return inputs + gated * self.beta
+        return gated * self.beta
 
 
 class GatedResidualConv2D(tf.keras.layers.Layer):
     """
-    Implements a gated residual Conv2D mechanism.
+    Implements a gated Conv2D residual branch.
 
     References
     ----------
@@ -811,7 +811,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor.
+            Gated residual features.
         """
 
         projected = self.projection(inputs)
@@ -820,12 +820,12 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
 
-        return inputs + gated * self.beta
+        return gated * self.beta
 
 
 class GatedResidualDense(tf.keras.layers.Layer):
     """
-    Implements a gated residual Dense mechanism.
+    Implements a gated Dense residual branch.
 
     References
     ----------
@@ -944,7 +944,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor.
+            Gated residual features.
         """
 
         projected = self.projection(inputs)
@@ -953,7 +953,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
 
-        return inputs + gated * self.beta
+        return gated * self.beta
 
 
 class GraphConv(tf.keras.layers.Layer):
