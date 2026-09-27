@@ -592,8 +592,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             if i == self.num_blocks - 1:
-                residual_features = GatedResidualConv2D()(block)
-                block = tf.keras.layers.Add()([block, residual_features])
+                block += GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
@@ -731,8 +730,7 @@ class DiscriminatorModel(BaseModel):
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
             if i == 1:
-                residual_features = GatedResidualConv2D()(block)
-                block = tf.keras.layers.Add()([block, residual_features])
+                block += GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 
