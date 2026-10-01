@@ -93,25 +93,21 @@ def check(args):
         x_aug, y_aug = next(aug_gen)
         img_aug, seg_aug = x_aug[0], x_aug[4]
 
-        if args.enable_prototype:
-            max_height = max(x.shape[0] for x in img_aug)
-            max_width = max(x.shape[1] for x in img_aug)
+        inputs = np.stack([
+            np.pad(
+                np.asarray(x),
+                pad_width=((0, max(x.shape[0] for x in img_aug) - x.shape[0]),
+                           (0, max(x.shape[1] for x in img_aug) - x.shape[1])),
+                mode='constant',
+                constant_values=np.min(x),
+            )[..., np.newaxis]
+            for x in img_aug
+        ])
 
-            inputs = np.stack([
-                np.pad(
-                    np.asarray(x),
-                    pad_width=((0, max_height - x.shape[0]),
-                               (0, max_width - x.shape[1])),
-                    mode='constant',
-                    constant_values=np.min(x),
-                )[..., np.newaxis]
-                for x in img_aug
-            ])
+        graph_extraction = GraphExtraction(k_length=1)
+        coordinates, nodes, edges = graph_extraction(inputs)
 
-            graph_extraction = GraphExtraction()
-            coordinates, nodes, edges = graph_extraction(inputs)
-
-        if dataset.graph_fonts:
+        if args.enable_prototype and dataset.graph_fonts:
             nodes_src, edges_src, graph_chars = y_aug[5:8]
             nodes_aug, edges_aug = x_aug[5:7]
 
@@ -131,18 +127,13 @@ def check(args):
             print('-' * 68, '\n')
 
             windows = {}
-            if dataset.graph_fonts:
+            if args.enable_prototype and dataset.graph_fonts:
                 chars = dataset.tokenizer.decode_text(graph_chars[i])
 
                 windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i], edges_src[i], chars)
                 windows['5_graph_font_aug'] = utils.plot_graph_font(nodes_aug[i], edges_aug[i], chars)
 
-            if args.enable_prototype:
-                windows['4_target_graph'] = utils.plot_graph(coordinates[i],
-                                                             nodes[i],
-                                                             edges[i],
-                                                             img_aug[i].shape)
-
+            windows['4_target_graph'] = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
             windows['3_target_seg_aug'] = seg_aug[i]
             windows['2_target_aug'] = img_aug[i]
             windows['1_image'] = img_enc[i]
