@@ -554,7 +554,7 @@ class GeneratorModel(BaseModel):
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
             x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid')(x)
 
-            return tf.keras.layers.Add()([h, x])
+            return tf.keras.layers.Add()([x, h])
 
         mask_input = tf.keras.layers.Input(shape=self.image_shape)
         mask = tf.keras.layers.Identity()(mask_input)
@@ -720,7 +720,7 @@ class DiscriminatorModel(BaseModel):
             if not preactive:
                 x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
-            return tf.keras.layers.Add()([h, x])
+            return tf.keras.layers.Add()([x, h])
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
         block = tf.keras.layers.Identity()(image_input)
