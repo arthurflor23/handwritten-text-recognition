@@ -64,11 +64,8 @@ class AdaptiveBatchNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros')
-
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -165,11 +162,8 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros')
-
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
                                                              scale=False,
@@ -267,11 +261,8 @@ class AdaptiveLayerNormalization(tf.keras.layers.Layer):
         self.features = input_shape[0][-1]
         self.broadcast_shape = [-1] + [1] * (len(input_shape[0]) - 2) + [self.features]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features,
-                                                kernel_initializer='zeros')
-
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
-                                                 kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
 
         self.norm_layer = tf.keras.layers.LayerNormalization(axis=-1,
                                                              scale=False,
@@ -1057,11 +1048,22 @@ class GraphConv(tf.keras.layers.Layer):
 
         nodes, edges = inputs
 
+        nodes_valid = tf.reduce_any(tf.not_equal(nodes, -1), axis=-1)
+        nodes = tf.where(nodes_valid[..., tf.newaxis], nodes, tf.zeros_like(nodes))
+
         batch_size = tf.shape(nodes)[0]
         num_nodes = tf.shape(nodes)[1]
 
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
+
+        edges_valid = (src >= 0) & (dst >= 0)
+
+        src = tf.where(edges_valid, src, 0)
+        dst = tf.where(edges_valid, dst, 0)
+
+        edges_valid &= tf.gather(nodes_valid, src, batch_dims=1)
+        edges_valid &= tf.gather(nodes_valid, dst, batch_dims=1)
 
         self_idx = tf.range(num_nodes, dtype=tf.int32)[tf.newaxis, :]
         self_idx = tf.tile(self_idx, [batch_size, 1])
@@ -1069,11 +1071,13 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
+        edges_valid = tf.concat([edges_valid, nodes_valid], axis=1)
+
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
         total_segments = batch_size * num_nodes
 
-        ones_flat = tf.ones(tf.shape(dst_flat), dtype=nodes.dtype)
+        ones_flat = tf.reshape(tf.cast(edges_valid, nodes.dtype), [-1])
         degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
         degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
 
@@ -1081,7 +1085,7 @@ class GraphConv(tf.keras.layers.Layer):
 
         src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
         dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
-        norm = src_norm * dst_norm
+        norm = src_norm * dst_norm * tf.cast(edges_valid, nodes.dtype)
 
         messages = tf.gather(nodes, src, batch_dims=1) * norm[..., tf.newaxis]
         messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
@@ -1090,6 +1094,7 @@ class GraphConv(tf.keras.layers.Layer):
         aggregated = tf.reshape(aggregated_flat, [batch_size, num_nodes, tf.shape(nodes)[-1]])
 
         outputs = self.kernel(aggregated)
+        outputs = tf.where(nodes_valid[..., tf.newaxis], outputs, tf.zeros_like(outputs))
 
         return outputs
 
@@ -1551,9 +1556,9 @@ class GraphExtraction(tf.keras.layers.Layer):
         coordinates : tf.Tensor
             Zero-padded pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features padded.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices padded.
         """
 
         batch_size = tf.shape(skeleton)[0]
@@ -1602,8 +1607,8 @@ class GraphExtraction(tf.keras.layers.Layer):
                                     shape=tf.stack([batch_size, max_nodes, 2]))
 
         nodes = tf.scatter_nd(indices=node_indices,
-                              updates=node_values,
-                              shape=tf.stack([batch_size, max_nodes, 4]))
+                              updates=node_values + 1.0,
+                              shape=tf.stack([batch_size, max_nodes, 4])) - 1.0
 
         edge_slots = self._edge_slots(blocks=blocks)
         edge_slots = tf.transpose(edge_slots, [0, 2, 1, 3])
@@ -1637,8 +1642,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         max_edges = 2 * tf.reduce_max(forward_counts)
 
         edges = tf.scatter_nd(indices=tf.stack([edge_batch, edge_local], axis=1),
-                              updates=edge_values,
-                              shape=tf.stack([batch_size, max_edges, 2]))
+                              updates=edge_values + 1,
+                              shape=tf.stack([batch_size, max_edges, 2])) - 1
 
         return coordinates, nodes, tf.transpose(edges, [0, 2, 1])
 
@@ -1705,9 +1710,9 @@ class GraphExtraction(tf.keras.layers.Layer):
         coordinates : tf.Tensor
             Zero-padded pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features padded.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices padded.
         """
 
         ink = self._build_inputs(inputs=inputs)
