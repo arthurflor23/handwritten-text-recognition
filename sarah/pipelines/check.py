@@ -104,7 +104,7 @@ def check(args):
             for x in img_aug
         ])
 
-        graph_extraction = GraphExtraction(k_length=1)
+        graph_extraction = GraphExtraction()
         coordinates, nodes, edges = graph_extraction(inputs)
 
         if args.enable_prototype and dataset.graph_fonts:
