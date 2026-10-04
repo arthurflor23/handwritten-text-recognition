@@ -387,7 +387,9 @@ def batch_processing(batch_mode,
         nodes, edges = batch_data
 
         if not nodes:
-            return [nodes, edges]
+            nodes_mask = np.zeros((0, 0), dtype=bool)
+            edges_mask = np.zeros((0, 0), dtype=bool)
+            return [nodes, edges, nodes_mask, edges_mask]
 
         batch_size = len(nodes)
         num_chars = len(nodes[0])
@@ -396,8 +398,11 @@ def batch_processing(batch_mode,
         max_nodes = nodes_shape[0] // num_chars
         max_edges = edges_shape[1] // num_chars
 
-        pad_nodes = np.full((batch_size, num_chars, max_nodes, 4), 0, dtype=np.float32)
-        pad_edges = np.full((batch_size, num_chars, 2, max_edges), 0, dtype=np.int32)
+        nodes_pad = np.full((batch_size, num_chars, max_nodes, 4), 0, dtype=np.float32)
+        nodes_mask = np.zeros((batch_size, num_chars, max_nodes), dtype=bool)
+
+        edges_pad = np.full((batch_size, num_chars, 2, max_edges), 0, dtype=np.int32)
+        edges_mask = np.zeros((batch_size, num_chars, 2, max_edges), dtype=bool)
 
         for i in range(batch_size):
             for j in range(num_chars):
@@ -410,13 +415,19 @@ def batch_processing(batch_mode,
                 n = min(char_nodes.shape[0], max_nodes)
                 e = min(char_edges.shape[1], max_edges)
 
-                pad_nodes[i, j, :n] = char_nodes[:n]
-                pad_edges[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
+                nodes_pad[i, j, :n] = char_nodes[:n]
+                nodes_mask[i, j, :n] = True
 
-        pad_nodes = pad_nodes.reshape(batch_size, max_nodes * num_chars, 4)
-        pad_edges = pad_edges.reshape(batch_size, 2, max_edges * num_chars)
+                edges_pad[i, j, :, :e] = char_edges[:, :e] + j * max_nodes
+                edges_mask[i, j, :, :e] = True
 
-        batch_data = [pad_nodes, pad_edges]
+        nodes_pad = nodes_pad.reshape(batch_size, max_nodes * num_chars, 4)
+        nodes_mask = nodes_mask.reshape(batch_size, max_nodes * num_chars)
+
+        edges_pad = edges_pad.reshape(batch_size, 2, max_edges * num_chars)
+        edges_mask = edges_mask.reshape(batch_size, 2, max_edges * num_chars).all(axis=1)
+
+        batch_data = [nodes_pad, edges_pad, nodes_mask, edges_mask]
 
     elif batch_mode == 'text':
         batch_data = batch_padding(batch_data, target_shape=padding_shape, dtype=np.int64)
@@ -589,7 +600,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
     if padded:
         max_nodes = nodes.shape[0] // num_chars
         max_edges = edges.shape[1] // num_chars
-        pad_edges = edges.reshape(num_chars, 2, max_edges)
+        edges_pad = edges.reshape(num_chars, 2, max_edges)
 
     indices = [
         i for i in range(skip, num_chars)
@@ -618,7 +629,7 @@ def plot_graph_font(nodes, edges, chars, cols=None, cell_size=80, skip=3):
         if padded:
             node_start = j * max_nodes
             char_nodes = nodes[node_start:node_start + max_nodes]
-            char_edges = pad_edges[j]
+            char_edges = edges_pad[j]
             valid = np.any(char_nodes != 0, axis=1)
 
             for s, d in char_edges.T:
