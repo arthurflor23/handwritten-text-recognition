@@ -106,7 +106,7 @@ def check(args):
         coordinates, nodes, edges, _, _ = GraphExtraction()(inputs)
 
         if dataset.graph_fonts:
-            nodes_src, edges_src, graph_chars = y_aug[5:7], y_aug[-1]
+            nodes_src, edges_src, graph_chars = y_aug[5:8]
             nodes_aug, edges_aug = x_aug[5:7]
 
         for i in range(len(img_src)):
