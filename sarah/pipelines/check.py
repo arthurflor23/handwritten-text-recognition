@@ -104,11 +104,10 @@ def check(args):
             for x in img_aug
         ])
 
-        graph_extraction = GraphExtraction()
-        coordinates, nodes, edges = graph_extraction(inputs)
+        coordinates, nodes, edges, _, _ = GraphExtraction()(inputs)
 
         if args.enable_prototype and dataset.graph_fonts:
-            nodes_src, edges_src, graph_chars = y_aug[5:8]
+            nodes_src, edges_src, graph_chars = y_aug[5:7], y_aug[-1]
             nodes_aug, edges_aug = x_aug[5:7]
 
         for i in range(len(img_src)):
