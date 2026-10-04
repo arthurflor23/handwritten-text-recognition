@@ -1031,14 +1031,16 @@ class GraphConv(tf.keras.layers.Layer):
                                             kernel_constraint=self.kernel_constraint,
                                             use_bias=self.use_bias)
 
-    def call(self, inputs):
+    def call(self, inputs, masks=None):
         """
         Forward pass of the layer.
 
         Parameters
         ----------
-        inputs : tuple of tf.Tensor
+        inputs : tuple or list of tf.Tensor
             Tuple of node features and edge indices.
+        masks : tuple or list of tf.Tensor, optional
+            Node and edge validity masks.
 
         Returns
         -------
@@ -1047,6 +1049,16 @@ class GraphConv(tf.keras.layers.Layer):
         """
 
         nodes, edges = inputs
+        nodes_mask, edges_mask = masks if masks is not None else (None, None)
+
+        if nodes_mask is None:
+            nodes_mask = tf.ones(tf.shape(nodes)[:2], dtype=tf.bool)
+
+        if edges_mask is None:
+            edges_mask = tf.ones(tf.shape(edges[:, 0, :]), dtype=tf.bool)
+
+        nodes = tf.where(
+            nodes_mask[..., tf.newaxis], nodes, tf.zeros_like(nodes))
 
         batch_size = tf.shape(nodes)[0]
         num_nodes = tf.shape(nodes)[1]
@@ -1054,33 +1066,42 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
+        src = tf.where(edges_mask, src, 0)
+        dst = tf.where(edges_mask, dst, 0)
+
+        edges_mask &= tf.gather(nodes_mask, src, batch_dims=1)
+        edges_mask &= tf.gather(nodes_mask, dst, batch_dims=1)
+
         self_idx = tf.range(num_nodes, dtype=tf.int32)[tf.newaxis, :]
         self_idx = tf.tile(self_idx, [batch_size, 1])
 
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
+        edges_mask = tf.concat([edges_mask, nodes_mask], axis=1)
+
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
         total_segments = batch_size * num_nodes
 
-        ones_flat = tf.ones(tf.shape(dst_flat), dtype=nodes.dtype)
+        ones_flat = tf.reshape(tf.cast(edges_mask, nodes.dtype), [-1])
         degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
-        degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
 
+        degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
         deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
 
         src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
         dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
-        norm = src_norm * dst_norm
 
+        norm = src_norm * dst_norm * tf.cast(edges_mask, nodes.dtype)
         messages = tf.gather(nodes, src, batch_dims=1) * norm[..., tf.newaxis]
-        messages_flat = tf.reshape(messages, [-1, tf.shape(nodes)[-1]])
 
+        messages_flat = tf.reshape(messages, [-1, tf.shape(nodes)[-1]])
         aggregated_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
         aggregated = tf.reshape(aggregated_flat, [batch_size, num_nodes, tf.shape(nodes)[-1]])
 
         outputs = self.kernel(aggregated)
+        outputs = tf.where(nodes_mask[..., tf.newaxis], outputs, tf.zeros_like(outputs))
 
         return outputs
 
@@ -1542,9 +1563,13 @@ class GraphExtraction(tf.keras.layers.Layer):
         coordinates : tf.Tensor
             Zero-padded pixel coordinates.
         nodes : tf.Tensor
-            Node features padded.
+            Zero-padded node features.
         edges : tf.Tensor
-            Edge indices padded.
+            Zero-padded edge indices.
+        nodes_mask : tf.Tensor
+            Boolean validity mask for nodes.
+        edges_mask : tf.Tensor
+            Boolean validity mask for edges.
         """
 
         batch_size = tf.shape(skeleton)[0]
@@ -1627,11 +1652,14 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         max_edges = 2 * tf.reduce_max(forward_counts)
 
-        edges = tf.scatter_nd(indices=tf.stack([edge_batch, edge_local], axis=1),
-                              updates=edge_values,
-                              shape=tf.stack([batch_size, max_edges, 2]))
+        edges = tf.transpose(tf.scatter_nd(indices=tf.stack([edge_batch, edge_local], axis=1),
+                                           updates=edge_values,
+                                           shape=tf.stack([batch_size, max_edges, 2])), [0, 2, 1])
 
-        return coordinates, nodes, tf.transpose(edges, [0, 2, 1])
+        nodes_mask = tf.sequence_mask(node_counts, maxlen=max_nodes)
+        edges_mask = tf.sequence_mask(2 * forward_counts, maxlen=max_edges)
+
+        return coordinates, nodes, edges, nodes_mask, edges_mask
 
     def _build_inputs(self, inputs):
         """
@@ -1696,44 +1724,22 @@ class GraphExtraction(tf.keras.layers.Layer):
         coordinates : tf.Tensor
             Zero-padded pixel coordinates.
         nodes : tf.Tensor
-            Node features padded.
+            Zero-padded node features.
         edges : tf.Tensor
-            Edge indices padded.
+            Zero-padded edge indices.
+        nodes_mask : tf.Tensor
+            Boolean validity mask for nodes.
+        edges_mask : tf.Tensor
+            Boolean validity mask for edges.
         """
 
         ink = self._build_inputs(inputs=inputs)
         skeleton = self._thinning(ink=ink)
-        coordinates, nodes, edges = self._skeleton_to_graphs(skeleton=skeleton)
 
-        coordinates = tf.stop_gradient(coordinates)
-        nodes = tf.stop_gradient(nodes)
-        edges = tf.stop_gradient(edges)
+        outputs = self._skeleton_to_graphs(skeleton=skeleton)
+        outputs = tf.nest.map_structure(tf.stop_gradient, outputs)
 
-        return coordinates, nodes, edges
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the layer.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-
-        Returns
-        -------
-        tuple of tf.TensorShape
-            Output shape.
-        """
-
-        if not self.built:
-            self.build(input_shape)
-
-        coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
-        nodes_shape = tf.TensorShape([input_shape[0], None, 4])
-        edges_shape = tf.TensorShape([input_shape[0], 2, None])
-
-        return coordinates_shape, nodes_shape, edges_shape
+        return outputs
 
 
 class GraphNormalization(tf.keras.layers.Layer):
