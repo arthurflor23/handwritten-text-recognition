@@ -117,7 +117,6 @@ The project has several command-line parameters that can be used to customize it
 - `--illumination` : Apply illumination compensation.
 - `--binarization` : Apply binarization method.
 - `--lazy-mode`: Activate lazy loading.
-- `--enable-prototype`: Enable prototype graph inputs.
 
 #### Augmentor
 
