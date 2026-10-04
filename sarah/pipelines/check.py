@@ -29,7 +29,6 @@ def check(args):
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
-                      enable_prototype=args.enable_prototype,
                       input_path=args.input_path,
                       fonts_path=args.fonts_path,
                       seed=42)
@@ -106,7 +105,7 @@ def check(args):
 
         coordinates, nodes, edges, _, _ = GraphExtraction()(inputs)
 
-        if args.enable_prototype and dataset.graph_fonts:
+        if dataset.graph_fonts:
             nodes_src, edges_src, graph_chars = y_aug[5:7], y_aug[-1]
             nodes_aug, edges_aug = x_aug[5:7]
 
@@ -126,7 +125,7 @@ def check(args):
             print('-' * 68, '\n')
 
             windows = {}
-            if args.enable_prototype and dataset.graph_fonts:
+            if dataset.graph_fonts:
                 chars = dataset.tokenizer.decode_text(graph_chars[i])
 
                 windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i], edges_src[i], chars)
