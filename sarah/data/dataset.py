@@ -31,7 +31,6 @@ class Dataset():
                  data=None,
                  tokenizer=None,
                  multigrams=False,
-                 enable_prototype=False,
                  input_path='datasets',
                  fonts_path='fonts',
                  seed=None):
@@ -70,8 +69,6 @@ class Dataset():
             Tokenizer instance for input data.
         multigrams : bool, optional
             Enable multigrams process.
-        enable_prototype : bool, optional
-            Enable prototype graph data.
         input_path : str, optional
             Path to input data.
         fonts_path : str, optional
@@ -97,7 +94,6 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
-        self.enable_prototype = enable_prototype
         self.input_path = input_path
         self.fonts_path = fonts_path
         self.seed = seed
@@ -116,7 +112,7 @@ class Dataset():
         self.samples = self._prepare_samples(data)
         self.multigrams = self._prepare_multigrams(data)
 
-        fonts = self._load_fonts(self.fonts_path) if self.enable_prototype else []
+        fonts = self._load_fonts(self.fonts_path)
 
         self.graph_fonts = self._prepare_graphs(fonts, self.tokenizer.chars)
         self.tokenizer.set_graph_shape(self.graph_fonts)
