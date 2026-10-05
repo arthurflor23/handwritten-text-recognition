@@ -306,7 +306,12 @@ class Dataset():
 
         return data
 
-    def _prepare_graphs(self, fonts, charset, epsilon=0.01):
+    def _prepare_graphs(self,
+                        fonts,
+                        charset,
+                        relative=True,
+                        normalize=True,
+                        epsilon=0.01):
         """
         Builds graph representations from each character font.
 
@@ -316,6 +321,10 @@ class Dataset():
             List of font entries with font and cmap.
         charset : list
             The tokenizer charset.
+        relative : bool, optional
+            Define node positions as relative or absolute.
+        normalize : bool, optional
+            Scale node positions.
         epsilon : float, optional
             Maximum simplification applied to high-node outlier fonts.
 
@@ -376,9 +385,14 @@ class Dataset():
 
             x_min, y_min = coords.min(axis=0)
             x_max, y_max = coords.max(axis=0)
-            scale = max(x_max - x_min, y_max - y_min) or 1.0
 
-            xy = (coords - [x_min, y_min]) / scale
+            xy = coords.astype(np.float32)
+
+            if relative:
+                xy = xy - [x_min, y_min]
+
+            if normalize:
+                xy /= max(x_max - x_min, y_max - y_min) or 1.0
 
             on_curve = (flags & 1).astype(np.float32)
             end_of_contour = np.array([i in end_pts for i in range(len(coords))])
