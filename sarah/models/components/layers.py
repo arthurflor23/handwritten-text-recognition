@@ -1304,26 +1304,29 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, k_length=2, maximum_iterations=100, **kwargs):
+    def __init__(self, kernel_size=3, relative=True, normalize=True, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        k_length : int, optional
-            Distance between sampled keypoints along the skeleton.
-        maximum_iterations : int, optional
-            Maximum number of thinning iterations.
+        kernel_size : int, optional
+            Spatial kernel size for sampling the skeleton.
+        relative : bool, optional
+            Define node positions as relative or absolute.
+        normalize : bool, optional
+            Scale node positions.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.k_length = k_length
-        self.maximum_iterations = maximum_iterations
+        self.kernel_size = kernel_size
+        self.relative = relative
+        self.normalize = normalize
 
-        self._offsets = tf.range(self.k_length, dtype=tf.int32)
+        self._offsets = tf.range(self.kernel_size, dtype=tf.int32)
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.bool)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.bool)
@@ -1341,8 +1344,9 @@ class GraphExtraction(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'k_length': self.k_length,
-            'maximum_iterations': self.maximum_iterations,
+            'kernel_size': self.kernel_size,
+            'relative': self.relative,
+            'normalized': self.normalized,
         })
 
         return config
@@ -1445,7 +1449,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         image, _ = tf.while_loop(cond=cond,
                                  body=body,
                                  loop_vars=(image, tf.constant(True)),
-                                 maximum_iterations=self.maximum_iterations)
+                                 maximum_iterations=100)
 
         return image
 
@@ -1478,11 +1482,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         height = tf.shape(skeleton)[1]
         width = tf.shape(skeleton)[2]
 
-        grid_h = tf.math.floordiv(height + self.k_length - 1, self.k_length)
-        grid_w = tf.math.floordiv(width + self.k_length - 1, self.k_length)
+        grid_h = tf.math.floordiv(height + self.kernel_size - 1, self.kernel_size)
+        grid_w = tf.math.floordiv(width + self.kernel_size - 1, self.kernel_size)
 
-        pad_h = grid_h * self.k_length - height
-        pad_w = grid_w * self.k_length - width
+        pad_h = grid_h * self.kernel_size - height
+        pad_w = grid_w * self.kernel_size - width
 
         paddings = tf.stack([
             tf.constant([0, 0], dtype=tf.int32),
@@ -1492,7 +1496,7 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         padded = tf.pad(skeleton, paddings, constant_values=False)
 
-        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.k_length, grid_w, self.k_length]))
+        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.kernel_size, grid_w, self.kernel_size]))
         blocks_int = tf.cast(blocks, tf.int32)
 
         col_counts = tf.reduce_sum(blocks_int, axis=2)
@@ -1505,8 +1509,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         grid_x = tf.range(grid_w, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
         grid_y = tf.range(grid_h, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
 
-        sum_x = local_x_sum + counts * (grid_x * self.k_length)
-        sum_y = local_y_sum + counts * (grid_y * self.k_length)
+        sum_x = local_x_sum + counts * (grid_x * self.kernel_size)
+        sum_y = local_y_sum + counts * (grid_y * self.kernel_size)
 
         return blocks, counts, sum_x, sum_y, grid_h, grid_w
 
@@ -1561,11 +1565,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         Returns
         -------
         coordinates : tf.Tensor
-            Zero-padded pixel coordinates.
+            Original pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features with configurable positions.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices.
         nodes_mask : tf.Tensor
             Boolean validity mask for nodes.
         edges_mask : tf.Tensor
@@ -1600,17 +1604,23 @@ class GraphExtraction(tf.keras.layers.Layer):
         y = tf.cast(tf.gather_nd(sum_y, occupied_indices), tf.float32) / occupied_count
 
         xy = tf.stack([x, y], axis=1)
+        node_xy = xy
 
-        xy_min = tf.math.unsorted_segment_min(xy, node_batch, batch_size)
-        xy_max = tf.math.unsorted_segment_max(xy, node_batch, batch_size)
+        if self.relative:
+            xy_min = tf.math.unsorted_segment_min(xy, node_batch, batch_size)
+            node_xy = node_xy - tf.gather(xy_min, node_batch)
 
-        graph_scale = tf.maximum(tf.reduce_max(xy_max - xy_min, axis=1), 1.0)
-        graph_min = tf.gather(xy_min, node_batch)
-        scale = tf.gather(graph_scale, node_batch)
+        if self.normalize:
+            if self.relative:
+                xy_max = tf.math.unsorted_segment_max(xy, node_batch, batch_size)
+                graph_scale = tf.maximum(tf.reduce_max(xy_max - xy_min, axis=1), 1.0)
+                scale = tf.gather(graph_scale, node_batch)
+                node_xy = node_xy / scale[:, tf.newaxis]
+            else:
+                image_scale = tf.cast(tf.reduce_max(tf.shape(skeleton)[1:3]), tf.float32)
+                node_xy = node_xy / tf.maximum(image_scale, 1.0)
 
-        normalized_xy = (xy - graph_min) / scale[:, tf.newaxis]
-        node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
-
+        node_values = tf.pad(node_xy, [[0, 0], [0, 2]])
         node_indices = tf.stack([node_batch, node_local], axis=1)
 
         coordinates = tf.scatter_nd(indices=node_indices,
@@ -1690,7 +1700,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         width = tf.shape(image)[2]
 
         rows = tf.range(height, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
-        cols = tf.range(width, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
+        cols = tf.range(width, dtype=tf.int32)[tf.newaxis, :]
 
         valid = (
             (rows < heights[:, tf.newaxis, tf.newaxis])
@@ -1722,11 +1732,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         Returns
         -------
         coordinates : tf.Tensor
-            Zero-padded pixel coordinates.
+            Original pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features with configurable positions.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices.
         nodes_mask : tf.Tensor
             Boolean validity mask for nodes.
         edges_mask : tf.Tensor
