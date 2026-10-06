@@ -638,7 +638,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
+                                     shape=(input_shape[-1], 1),
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
@@ -663,7 +663,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         """
 
         projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected * self.gamma)
+        gated = projected * tf.nn.sigmoid(tf.linalg.matmul(projected, self.gamma))
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
@@ -781,7 +781,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                     trainable=True)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
+                                     shape=(input_shape[-1], 1),
                                      initializer=self.gamma_initializer,
                                      trainable=True)
 
@@ -806,7 +806,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         """
 
         projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected * self.gamma)
+        gated = projected * tf.nn.sigmoid(tf.linalg.matmul(projected, self.gamma))
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
@@ -919,7 +919,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
                                      trainable=True)
 
         if self.dropout:
-            self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout)
+            self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
 
     def call(self, inputs, training=False):
         """
