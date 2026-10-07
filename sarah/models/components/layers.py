@@ -1810,7 +1810,7 @@ class GraphNormalization(tf.keras.layers.Layer):
                                     initializer='zeros',
                                     trainable=True)
 
-    def call(self, inputs):
+    def call(self, inputs, mask=None):
         """
         Forward pass of the layer.
 
@@ -1818,6 +1818,8 @@ class GraphNormalization(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Node feature tensor.
+        mask : tf.Tensor, optional
+            Node validity mask.
 
         Returns
         -------
@@ -1825,13 +1827,25 @@ class GraphNormalization(tf.keras.layers.Layer):
             Normalized node feature tensor.
         """
 
-        mean = tf.reduce_mean(inputs, axis=1, keepdims=True)
+        if mask is None:
+            mask = tf.ones(tf.shape(inputs)[:2], dtype=tf.bool)
+
+        mask = mask[..., tf.newaxis]
+        inputs = tf.where(mask, inputs, tf.zeros_like(inputs))
+
+        count = tf.reduce_sum(tf.cast(mask, inputs.dtype), axis=1, keepdims=True)
+        count = tf.maximum(count, 1.0)
+
+        mean = tf.reduce_sum(inputs, axis=1, keepdims=True) / count
 
         centered = inputs - self.alpha * mean
-        variance = tf.reduce_mean(tf.square(centered), axis=1, keepdims=True)
+        centered = tf.where(mask, centered, tf.zeros_like(centered))
+        variance = tf.reduce_sum(tf.square(centered), axis=1, keepdims=True) / count
 
         normed = centered / tf.sqrt(variance + self.epsilon)
+
         outputs = normed * self.gamma + self.beta
+        outputs = tf.where(mask, outputs, tf.zeros_like(outputs))
 
         return outputs
 
@@ -1923,7 +1937,7 @@ class GraphPooling(tf.keras.layers.Layer):
                                                 kernel_constraint=self.kernel_constraint,
                                                 use_bias=self.use_bias)
 
-    def call(self, inputs):
+    def call(self, inputs, mask=None):
         """
         Forward pass of the layer.
 
@@ -1931,6 +1945,8 @@ class GraphPooling(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Node feature tensor.
+        mask : tf.Tensor, optional
+            Node validity mask.
 
         Returns
         -------
@@ -1941,6 +1957,9 @@ class GraphPooling(tf.keras.layers.Layer):
         scores = self.gate_dense(inputs)
         scores = tf.squeeze(scores, axis=-1)
 
+        if mask is not None:
+            scores = tf.where(mask, scores, tf.cast(float('-inf'), scores.dtype))
+
         nodes = tf.math.ceil(tf.cast(tf.shape(inputs)[1], tf.float32) / self.strides)
         _, indices = tf.math.top_k(scores, k=tf.cast(nodes, tf.int32), sorted=False)
 
@@ -1950,6 +1969,10 @@ class GraphPooling(tf.keras.layers.Layer):
         scores = tf.gather(scores, indices, axis=1, batch_dims=1)
 
         outputs = outputs * tf.nn.sigmoid(scores)[..., tf.newaxis]
+
+        if mask is not None:
+            mask = tf.gather(mask, indices, axis=1, batch_dims=1)
+            outputs = tf.where(mask[..., tf.newaxis], outputs, tf.zeros_like(outputs))
 
         return outputs
 
@@ -2038,7 +2061,7 @@ class GlobalGraphPooling(tf.keras.layers.Layer):
 
         self.softmax = tf.keras.layers.Softmax(axis=1)
 
-    def call(self, inputs):
+    def call(self, inputs, mask=None):
         """
         Forward pass of the layer.
 
@@ -2046,6 +2069,8 @@ class GlobalGraphPooling(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Node feature tensor.
+        mask : tf.Tensor, optional
+            Node validity mask.
 
         Returns
         -------
@@ -2053,8 +2078,12 @@ class GlobalGraphPooling(tf.keras.layers.Layer):
             Graph-level feature vector.
         """
 
+        if mask is not None:
+            mask = mask[..., tf.newaxis]
+            inputs = tf.where(mask, inputs, tf.zeros_like(inputs))
+
         attn_scores = self.gate_dense(inputs)
-        attn_weights = self.softmax(attn_scores)
+        attn_weights = self.softmax(attn_scores, mask=mask)
 
         outputs = inputs * attn_weights
         outputs = tf.reduce_sum(outputs, axis=1)
