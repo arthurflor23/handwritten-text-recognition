@@ -544,7 +544,6 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
-                 gamma_initializer='ones',
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -563,8 +562,6 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -580,7 +577,6 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -602,7 +598,6 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -632,15 +627,15 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=self.use_bias)
 
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                     shape=(1,),
+                                     initializer='ones',
+                                     trainable=True)
+
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
-
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
 
         if self.dropout:
             self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
@@ -687,7 +682,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
-                 gamma_initializer='ones',
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -706,8 +700,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -723,7 +715,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -745,7 +736,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -775,15 +765,15 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                                  kernel_constraint=self.kernel_constraint,
                                                  use_bias=self.use_bias)
 
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                     shape=(1,),
+                                     initializer='ones',
+                                     trainable=True)
+
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
-
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
 
         if self.dropout:
             self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
@@ -829,7 +819,6 @@ class GatedResidualDense(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
-                 gamma_initializer='ones',
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -846,8 +835,6 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
-        gamma_initializer : initializer, optional
-            Gamma weights initializer.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -862,7 +849,6 @@ class GatedResidualDense(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
-        self.gamma_initializer = gamma_initializer
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -883,7 +869,6 @@ class GatedResidualDense(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
-            'gamma_initializer': self.gamma_initializer,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -908,15 +893,15 @@ class GatedResidualDense(tf.keras.layers.Layer):
                                                 kernel_constraint=self.kernel_constraint,
                                                 use_bias=self.use_bias)
 
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                     shape=(input_shape[-1], 1),
+                                     initializer='ones',
+                                     trainable=True)
+
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
-
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(input_shape[-1], 1),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
 
         if self.dropout:
             self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
@@ -939,7 +924,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         """
 
         projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(tf.linalg.matmul(projected, self.gamma))
+        gated = projected * tf.nn.sigmoid(projected @ self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
