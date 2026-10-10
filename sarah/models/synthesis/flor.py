@@ -539,7 +539,7 @@ class GeneratorModel(BaseModel):
         def residual_block(filters, x, y, up=None):
             h = tf.keras.layers.Identity()(x)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-6)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             if up and sum(up) > 2:
@@ -548,7 +548,7 @@ class GeneratorModel(BaseModel):
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
 
-            h = AdaptiveInstanceNormalization(epsilon=1e-6)([h, y])
+            h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
