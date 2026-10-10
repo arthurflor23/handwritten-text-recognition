@@ -90,7 +90,7 @@ class CTXLoss(tf.keras.losses.Loss):
     def __init__(self,
                  distance='cosine',
                  sigma=0.5,
-                 epsilon=1e-5,
+                 epsilon=1e-7,
                  name='ctx_loss',
                  **kwargs):
         """
