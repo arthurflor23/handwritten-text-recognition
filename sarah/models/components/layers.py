@@ -539,6 +539,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 filters=None,
                  kernel_size=3,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -552,6 +553,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        filters : int, optional
+            Number of filters in the layer.
         kernel_size : int or tuple, optional
             Convolution window size.
         kernel_initializer : initializer, optional
@@ -572,6 +575,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.filters = filters
         self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
@@ -593,6 +597,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'filters': self.filters,
             'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
@@ -619,7 +624,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         if len(input_shape) != 3:
             raise ValueError('GatedResidualConv1D requires a rank-3 input.')
 
-        self.projection = tf.keras.layers.Conv1D(filters=input_shape[-1],
+        self.projection = tf.keras.layers.Conv1D(filters=self.filters or input_shape[-1],
                                                  kernel_size=self.kernel_size,
                                                  padding='same',
                                                  kernel_initializer=self.kernel_initializer,
@@ -677,6 +682,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 filters=None,
                  kernel_size=(3, 3),
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
@@ -690,6 +696,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        filters : int, optional
+            Number of filters in the layer.
         kernel_size : int or tuple, optional
             Convolution window size.
         kernel_initializer : initializer, optional
@@ -710,6 +718,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.filters = filters
         self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
@@ -731,6 +740,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'filters': self.filters,
             'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
@@ -757,7 +767,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         if len(input_shape) != 4:
             raise ValueError('GatedResidualConv2D requires a rank-4 input.')
 
-        self.projection = tf.keras.layers.Conv2D(filters=input_shape[-1],
+        self.projection = tf.keras.layers.Conv2D(filters=self.filters or input_shape[-1],
                                                  kernel_size=self.kernel_size,
                                                  padding='same',
                                                  kernel_initializer=self.kernel_initializer,
@@ -815,6 +825,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 units=None,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -827,6 +838,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        units : int, optional
+            Number of units in the layer.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -845,6 +858,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
+        self.units = units
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -865,6 +879,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'units': self.units,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -887,14 +902,14 @@ class GatedResidualDense(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.projection = tf.keras.layers.Dense(units=input_shape[-1],
+        self.projection = tf.keras.layers.Dense(units=self.units or input_shape[-1],
                                                 kernel_initializer=self.kernel_initializer,
                                                 kernel_regularizer=self.kernel_regularizer,
                                                 kernel_constraint=self.kernel_constraint,
                                                 use_bias=self.use_bias)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(input_shape[-1], 1),
+                                     shape=(1,),
                                      initializer='ones',
                                      trainable=True)
 
@@ -924,7 +939,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         """
 
         projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected @ self.gamma)
+        gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
