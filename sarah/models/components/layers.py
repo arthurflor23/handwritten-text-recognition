@@ -909,7 +909,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
                                                 use_bias=self.use_bias)
 
         self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
+                                     shape=(self.units or input_shape[-1], 1),
                                      initializer='ones',
                                      trainable=True)
 
@@ -939,7 +939,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         """
 
         projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected * self.gamma)
+        gated = projected * tf.nn.sigmoid(projected @ self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
