@@ -545,6 +545,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 skip_projection=False,
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -565,6 +566,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        skip_projection : bool, optional
+            Skips the projection and uses the input directly.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -581,6 +584,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -603,6 +607,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -624,18 +629,19 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         if len(input_shape) != 3:
             raise ValueError('GatedResidualConv1D requires a rank-3 input.')
 
-        self.projection = tf.keras.layers.Conv1D(filters=self.filters or input_shape[-1],
-                                                 kernel_size=self.kernel_size,
-                                                 padding='same',
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Conv1D(filters=self.filters or input_shape[-1],
+                                                     kernel_size=self.kernel_size,
+                                                     padding='same',
+                                                     kernel_initializer=self.kernel_initializer,
+                                                     kernel_regularizer=self.kernel_regularizer,
+                                                     kernel_constraint=self.kernel_constraint,
+                                                     use_bias=self.use_bias)
 
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer='ones',
-                                     trainable=True)
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer='ones',
+                                         trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
@@ -662,8 +668,11 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             Gated residual features.
         """
 
-        projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected * self.gamma)
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
@@ -688,6 +697,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 skip_projection=False,
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -708,6 +718,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        skip_projection : bool, optional
+            Skips the projection and uses the input directly.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -724,6 +736,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -746,6 +759,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -767,18 +781,19 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         if len(input_shape) != 4:
             raise ValueError('GatedResidualConv2D requires a rank-4 input.')
 
-        self.projection = tf.keras.layers.Conv2D(filters=self.filters or input_shape[-1],
-                                                 kernel_size=self.kernel_size,
-                                                 padding='same',
-                                                 kernel_initializer=self.kernel_initializer,
-                                                 kernel_regularizer=self.kernel_regularizer,
-                                                 kernel_constraint=self.kernel_constraint,
-                                                 use_bias=self.use_bias)
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Conv2D(filters=self.filters or input_shape[-1],
+                                                     kernel_size=self.kernel_size,
+                                                     padding='same',
+                                                     kernel_initializer=self.kernel_initializer,
+                                                     kernel_regularizer=self.kernel_regularizer,
+                                                     kernel_constraint=self.kernel_constraint,
+                                                     use_bias=self.use_bias)
 
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer='ones',
-                                     trainable=True)
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer='ones',
+                                         trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
@@ -805,8 +820,11 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Gated residual features.
         """
 
-        projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected * self.gamma)
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
@@ -830,6 +848,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
                  kernel_regularizer=None,
                  kernel_constraint=None,
                  beta_initializer='zeros',
+                 skip_projection=False,
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -848,6 +867,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Kernel weights constraint.
         beta_initializer : initializer, optional
             Beta weights initializer.
+        skip_projection : bool, optional
+            Skips the projection and uses the input directly.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
@@ -863,6 +884,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -884,6 +906,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -902,16 +925,17 @@ class GatedResidualDense(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.projection = tf.keras.layers.Dense(units=self.units or input_shape[-1],
-                                                kernel_initializer=self.kernel_initializer,
-                                                kernel_regularizer=self.kernel_regularizer,
-                                                kernel_constraint=self.kernel_constraint,
-                                                use_bias=self.use_bias)
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Dense(units=self.units or input_shape[-1],
+                                                    kernel_initializer=self.kernel_initializer,
+                                                    kernel_regularizer=self.kernel_regularizer,
+                                                    kernel_constraint=self.kernel_constraint,
+                                                    use_bias=self.use_bias)
 
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(self.units or input_shape[-1], 1),
-                                     initializer='ones',
-                                     trainable=True)
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(self.units or input_shape[-1], 1),
+                                         initializer='ones',
+                                         trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
@@ -938,13 +962,132 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Gated residual features.
         """
 
-        projected = self.projection(inputs)
-        gated = projected * tf.nn.sigmoid(projected @ self.gamma)
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected @ self.gamma)
 
         if training and self.dropout:
             gated = self.dropout_layer(gated, training=training)
 
         return gated * self.beta
+
+
+class GlobalAttentionPooling(tf.keras.layers.Layer):
+    """
+    Global attention pooling over the features.
+
+    References
+    ----------
+    Attention-based Deep Multiple Instance Learning
+        https://arxiv.org/abs/1802.04712
+    """
+
+    def __init__(self,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
+        use_bias : bool, optional
+            Enables bias terms in the projection layer.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+        super().__init__(**kwargs)
+
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.use_bias = use_bias
+        self.supports_masking = True
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        self.kernel = tf.keras.layers.Dense(units=1,
+                                            kernel_initializer=self.kernel_initializer,
+                                            kernel_regularizer=self.kernel_regularizer,
+                                            kernel_constraint=self.kernel_constraint,
+                                            use_bias=self.use_bias)
+
+    def call(self, inputs, mask=None):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Features tensor.
+        mask : tf.Tensor, optional
+            Validity mask.
+
+        Returns
+        -------
+        tf.Tensor
+            Pooled features.
+        """
+
+        if mask is None:
+            mask = tf.ones(tf.shape(inputs)[:2], dtype=tf.bool)
+
+        mask = mask[..., tf.newaxis]
+        inputs = tf.where(mask, inputs, tf.zeros_like(inputs))
+
+        scores = self.kernel(inputs)
+        scores = tf.where(mask, scores, tf.cast(-float('inf'), scores.dtype))
+
+        has_features = tf.reduce_any(mask, axis=1, keepdims=True)
+        scores = tf.where(has_features, scores, tf.zeros_like(scores))
+
+        attention = tf.nn.softmax(scores, axis=1)
+        attention = tf.where(mask, attention, tf.zeros_like(attention))
+
+        outputs = tf.reduce_sum(inputs * attention, axis=1)
+
+        return outputs
 
 
 class GraphConv(tf.keras.layers.Layer):
@@ -1833,14 +1976,14 @@ class GraphNormalization(tf.keras.layers.Layer):
         Parameters
         ----------
         inputs : tf.Tensor
-            Node feature tensor.
+            Features tensor.
         mask : tf.Tensor, optional
-            Node validity mask.
+            Validity mask.
 
         Returns
         -------
         tf.Tensor
-            Normalized node feature tensor.
+            Normalized feature tensor.
         """
 
         if mask is None:
