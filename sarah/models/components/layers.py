@@ -1012,7 +1012,6 @@ class GlobalAttentionPooling(tf.keras.layers.Layer):
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
         self.use_bias = use_bias
-        self.supports_masking = True
 
     def get_config(self):
         """
@@ -1053,7 +1052,7 @@ class GlobalAttentionPooling(tf.keras.layers.Layer):
                                             kernel_constraint=self.kernel_constraint,
                                             use_bias=self.use_bias)
 
-    def call(self, inputs, mask=None):
+    def call(self, inputs):
         """
         Forward pass of the layer.
 
@@ -1061,8 +1060,6 @@ class GlobalAttentionPooling(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Features tensor.
-        mask : tf.Tensor, optional
-            Validity mask.
 
         Returns
         -------
@@ -1070,21 +1067,8 @@ class GlobalAttentionPooling(tf.keras.layers.Layer):
             Pooled features.
         """
 
-        if mask is None:
-            mask = tf.ones(tf.shape(inputs)[:2], dtype=tf.bool)
-
-        mask = mask[..., tf.newaxis]
-        inputs = tf.where(mask, inputs, tf.zeros_like(inputs))
-
         scores = self.kernel(inputs)
-        scores = tf.where(mask, scores, tf.cast(-float('inf'), scores.dtype))
-
-        has_features = tf.reduce_any(mask, axis=1, keepdims=True)
-        scores = tf.where(has_features, scores, tf.zeros_like(scores))
-
         attention = tf.nn.softmax(scores, axis=1)
-        attention = tf.where(mask, attention, tf.zeros_like(attention))
-
         outputs = tf.reduce_sum(inputs * attention, axis=1)
 
         return outputs
