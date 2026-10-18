@@ -546,12 +546,12 @@ class GeneratorModel(BaseModel):
                 h = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(h)
                 x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
-            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same', use_bias=False)(h)
+            h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
             h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
-            x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid', use_bias=False)(x)
+            x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid')(x)
 
             return tf.keras.layers.Add()([x, h])
 
@@ -709,14 +709,14 @@ class DiscriminatorModel(BaseModel):
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same')(h)
 
             if preactive:
-                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid', use_bias=False)(x)
+                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
             if down and sum(down) > 2:
                 h = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(h)
                 x = tf.keras.layers.AveragePooling2D(pool_size=2, strides=down, padding='same')(x)
 
             if not preactive:
-                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid', use_bias=False)(x)
+                x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
             return tf.keras.layers.Add()([x, h])
 
