@@ -523,7 +523,7 @@ class ContentAlignment(tf.keras.layers.Layer):
             self.build(input_shape)
 
         input_shape, mask_shape = input_shape[0], input_shape[-1]
-        output_shape = tf.TensorShape(input_shape[-1:] + mask_shape[:3])
+        output_shape = tf.TensorShape(mask_shape[:3] + input_shape[-1:])
 
         return output_shape
 
@@ -546,8 +546,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  skip_projection=False,
-                 gaussian_dropout=False,
-                 dropout=0.0,
+                 dropout='standard',
+                 dropout_rate=0.0,
                  use_bias=True,
                  **kwargs):
         """
@@ -569,9 +569,9 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             Beta weights initializer.
         skip_projection : bool, optional
             Whether to skip the projection.
-        gaussian_dropout : bool, optional
-            Whether to use Gaussian dropout.
-        dropout : float, optional
+        dropout : str, optional
+            Dropout method applied during training.
+        dropout_rate : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
             Enables bias terms in the projection layer.
@@ -588,8 +588,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
-        self.gaussian_dropout = gaussian_dropout
         self.dropout = dropout
+        self.dropout_rate = dropout_rate
         self.use_bias = use_bias
 
     def get_config(self):
@@ -612,8 +612,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
-            'gaussian_dropout': self.gaussian_dropout,
             'dropout': self.dropout,
+            'dropout_rate': self.dropout_rate,
             'use_bias': self.use_bias,
         })
 
@@ -630,9 +630,6 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         """
 
         super().build(input_shape)
-
-        if len(input_shape) != 3:
-            raise ValueError('GatedResidualConv1D requires a rank-3 input.')
 
         if not self.skip_projection:
             self.projection = tf.keras.layers.Conv1D(filters=self.filters or input_shape[-1],
@@ -653,9 +650,13 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        if self.dropout:
-            self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout) \
-                if self.gaussian_dropout else tf.keras.layers.Dropout(rate=self.dropout)
+        if self.dropout_rate:
+            if self.dropout == 'gaussian':
+                self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout_rate)
+            elif self.dropout == 'spatial':
+                self.dropout_layer = tf.keras.layers.SpatialDropout1D(rate=self.dropout_rate)
+            else:
+                self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     def call(self, inputs, training=False):
         """
@@ -680,7 +681,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             projected = self.projection(inputs)
             gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
-        if training and self.dropout:
+        if self.dropout_rate:
             gated = self.dropout_layer(gated, training=training)
 
         return gated * self.beta
@@ -704,8 +705,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  skip_projection=False,
-                 gaussian_dropout=False,
-                 dropout=0.0,
+                 dropout='standard',
+                 dropout_rate=0.0,
                  use_bias=True,
                  **kwargs):
         """
@@ -727,9 +728,9 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Beta weights initializer.
         skip_projection : bool, optional
             Whether to skip the projection.
-        gaussian_dropout : bool, optional
-            Whether to use Gaussian dropout.
-        dropout : float, optional
+        dropout : str, optional
+            Dropout method applied during training.
+        dropout_rate : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
             Enables bias terms in the projection layer.
@@ -746,8 +747,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
-        self.gaussian_dropout = gaussian_dropout
         self.dropout = dropout
+        self.dropout_rate = dropout_rate
         self.use_bias = use_bias
 
     def get_config(self):
@@ -770,8 +771,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
-            'gaussian_dropout': self.gaussian_dropout,
             'dropout': self.dropout,
+            'dropout_rate': self.dropout_rate,
             'use_bias': self.use_bias,
         })
 
@@ -788,9 +789,6 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         """
 
         super().build(input_shape)
-
-        if len(input_shape) != 4:
-            raise ValueError('GatedResidualConv2D requires a rank-4 input.')
 
         if not self.skip_projection:
             self.projection = tf.keras.layers.Conv2D(filters=self.filters or input_shape[-1],
@@ -811,9 +809,13 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        if self.dropout:
-            self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout) \
-                if self.gaussian_dropout else tf.keras.layers.Dropout(rate=self.dropout)
+        if self.dropout_rate:
+            if self.dropout == 'gaussian':
+                self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout_rate)
+            elif self.dropout == 'spatial':
+                self.dropout_layer = tf.keras.layers.SpatialDropout2D(rate=self.dropout_rate)
+            else:
+                self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     def call(self, inputs, training=False):
         """
@@ -838,7 +840,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             projected = self.projection(inputs)
             gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
-        if training and self.dropout:
+        if self.dropout_rate:
             gated = self.dropout_layer(gated, training=training)
 
         return gated * self.beta
@@ -861,8 +863,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
                  kernel_constraint=None,
                  beta_initializer='zeros',
                  skip_projection=False,
-                 gaussian_dropout=False,
-                 dropout=0.0,
+                 dropout='standard',
+                 dropout_rate=0.0,
                  use_bias=True,
                  **kwargs):
         """
@@ -882,9 +884,9 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Beta weights initializer.
         skip_projection : bool, optional
             Whether to skip the projection.
-        gaussian_dropout : bool, optional
-            Whether to use Gaussian dropout.
-        dropout : float, optional
+        dropout : str, optional
+            Dropout method applied during training.
+        dropout_rate : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
             Enables bias terms in the projection layer.
@@ -900,8 +902,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
         self.kernel_constraint = kernel_constraint
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
-        self.gaussian_dropout = gaussian_dropout
         self.dropout = dropout
+        self.dropout_rate = dropout_rate
         self.use_bias = use_bias
 
     def get_config(self):
@@ -923,8 +925,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
             'kernel_constraint': self.kernel_constraint,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
-            'gaussian_dropout': self.gaussian_dropout,
             'dropout': self.dropout,
+            'dropout_rate': self.dropout_rate,
             'use_bias': self.use_bias,
         })
 
@@ -959,9 +961,13 @@ class GatedResidualDense(tf.keras.layers.Layer):
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        if self.dropout:
-            self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout) \
-                if self.gaussian_dropout else tf.keras.layers.Dropout(rate=self.dropout)
+        if self.dropout_rate:
+            if self.dropout == 'gaussian':
+                self.dropout_layer = tf.keras.layers.GaussianDropout(rate=self.dropout_rate)
+            elif self.dropout == 'spatial':
+                self.dropout_layer = tf.keras.layers.SpatialDropout1D(rate=self.dropout_rate)
+            else:
+                self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     def call(self, inputs, training=False):
         """
@@ -986,7 +992,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
             projected = self.projection(inputs)
             gated = projected * tf.nn.sigmoid(projected @ self.gamma)
 
-        if training and self.dropout:
+        if self.dropout_rate:
             gated = self.dropout_layer(gated, training=training)
 
         return gated * self.beta
