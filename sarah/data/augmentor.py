@@ -2,6 +2,8 @@ import cv2
 import inspect
 import numpy as np
 
+from sarah.models.compose import Compose
+
 
 class Augmentor():
     """
@@ -31,44 +33,44 @@ class Augmentor():
 
         Parameters
         ----------
-        mixup : list or None, optional
+        mixup : list, optional
             Parameters for mixup transformation.
-        erode : list or None, optional
+        erode : list, optional
             Parameters for erode transformation.
-        dilate : list or None, optional
+        dilate : list, optional
             Parameters for dilate transformation.
-        elastic : list or None, optional
+        elastic : list, optional
             Parameters for elastic transformation.
-        perspective : list or None, optional
+        perspective : list, optional
             Parameters for perspective transform transformation.
-        shear : list or None, optional
+        shear : list, optional
             Parameters for shear transformation.
-        rotate : list or None, optional
+        rotate : list, optional
             Parameters for rotate transformation.
-        scale : list or None, optional
+        scale : list, optional
             Parameters for scale transformation.
-        shift_y : list or None, optional
+        shift_y : list, optional
             Parameters for vertical translation transformation.
-        shift_x : list or None, optional
+        shift_x : list, optional
             Parameters for horizontal translation transformation.
-        salt_and_pepper : list or None, optional
+        salt_and_pepper : list, optional
             Parameters for salt and pepper noise.
-        gaussian_noise : list or None, optional
+        gaussian_noise : list, optional
             Parameters for gaussian noise.
-        gaussian_blur : list or None, optional
+        gaussian_blur : list, optional
             Parameters for Gaussian blur transformation.
-        graph_rotate : list or None, optional
+        graph_rotate : list, optional
             Parameters for graph rotate transformation.
-        graph_scale : list or None, optional
+        graph_scale : list, optional
             Parameters for graph scale transformation.
-        graph_noise : list or None, optional
+        graph_noise : list, optional
             Parameters for graph noise.
-        seed : int or None, optional
-            Seed for random values from numpy.
+        seed : int optional
+            Seed for random generators.
         """
 
         if seed is not None:
-            np.random.seed(seed)
+            Compose.setup_session(seed=seed)
 
         self.mixup_params = mixup
         self.erode_params = erode
@@ -86,7 +88,7 @@ class Augmentor():
         self.graph_rotate_params = graph_rotate
         self.graph_scale_params = graph_scale
         self.graph_noise_params = graph_noise
-        self.seed = seed
+        self.seed = Compose.get_random_seed() if seed is None else seed
 
     def __repr__(self):
         """
