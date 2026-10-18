@@ -6,8 +6,10 @@ import numpy as np
 import concurrent.futures
 
 from fontTools.ttLib import TTFont
+
 from sarah.data import utils
 from sarah.data.tokenizer import Tokenizer
+from sarah.models.compose import Compose
 
 
 class Dataset():
@@ -74,11 +76,11 @@ class Dataset():
         fonts_path : str, optional
             Path to fonts data.
         seed : int, optional
-            Seed for random shuffle.
+            Seed for random generators.
         """
 
         if seed is not None:
-            np.random.seed(seed)
+            Compose.setup_session(seed=seed)
 
         self.source = source
         self.text_level = text_level
@@ -96,7 +98,7 @@ class Dataset():
         self.multigrams = multigrams
         self.input_path = input_path
         self.fonts_path = fonts_path
-        self.seed = seed
+        self.seed = Compose.get_random_seed() if seed is None else seed
 
         if data is None:
             self._source = self._import_source_module(self.source)
