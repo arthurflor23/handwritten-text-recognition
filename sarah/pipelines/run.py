@@ -12,6 +12,8 @@ def run(args):
         A namespace object containing all the arguments required.
     """
 
+    Compose.setup_session(seed=args.seed)
+
     tokenizer, run_context = Compose.get_tokenizer(synthesis=args.synthesis,
                                                    synthesis_run_id=args.synthesis_run_id,
                                                    recognition=args.recognition,
@@ -39,8 +41,7 @@ def run(args):
                       tokenizer=tokenizer,
                       multigrams=bool(args.synthesis),
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
-                      seed=args.seed)
+                      fonts_path=args.fonts_path)
     print(dataset)
 
     augmentor = None
@@ -60,8 +61,7 @@ def run(args):
                               gaussian_blur=args.gaussian_blur,
                               graph_rotate=dataset.graph_fonts and args.graph_rotate,
                               graph_scale=dataset.graph_fonts and args.graph_scale,
-                              graph_noise=dataset.graph_fonts and args.graph_noise,
-                              seed=args.seed)
+                              graph_noise=dataset.graph_fonts and args.graph_noise)
         print(augmentor)
 
     compose = Compose(synthesis=args.synthesis,
@@ -76,8 +76,7 @@ def run(args):
                       synthesis_probability=args.synthesis_probability,
                       experiment_name=args.experiment_name,
                       output_path=args.output_path,
-                      gpu=args.gpu,
-                      seed=args.seed)
+                      gpu=args.gpu)
     print(compose)
 
     compose.compile(learning_rate=args.learning_rate, run_context=run_context)

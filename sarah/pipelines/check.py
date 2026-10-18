@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 from data import Augmentor, Dataset, utils
+from models import Compose
 from models.components.layers import GraphExtraction
 
 
@@ -16,6 +17,8 @@ def check(args):
     args : argparse.Namespace
         A namespace object containing all the arguments required.
     """
+
+    Compose.setup_session(seed=args.seed)
 
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
@@ -30,8 +33,7 @@ def check(args):
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
-                      seed=42)
+                      fonts_path=args.fonts_path)
     print(dataset)
 
     augmentor = None
@@ -51,8 +53,7 @@ def check(args):
                               gaussian_blur=args.gaussian_blur,
                               graph_rotate=dataset.graph_fonts and args.graph_rotate,
                               graph_scale=dataset.graph_fonts and args.graph_scale,
-                              graph_noise=dataset.graph_fonts and args.graph_noise,
-                              seed=42)
+                              graph_noise=dataset.graph_fonts and args.graph_noise)
         print(augmentor)
 
     src_gen, _ = dataset.get_generator(data_partition='test',
