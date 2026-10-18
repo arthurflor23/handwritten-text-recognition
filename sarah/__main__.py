@@ -6,8 +6,6 @@ import argparse
 sys.path.append(os.getcwd())
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-import pipelines  # noqa: E402
-
 
 if __name__ == '__main__':
     """
@@ -122,6 +120,8 @@ if __name__ == '__main__':
         assert args.image, '--image must be defined'
 
     # pipelines
+    import pipelines  # noqa: E402
+
     if args.check:
         pipelines.check(args)
 
