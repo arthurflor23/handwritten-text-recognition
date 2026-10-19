@@ -1689,7 +1689,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         nodes_mask = tf.sequence_mask(node_counts, maxlen=max_nodes)
         edges_mask = tf.sequence_mask(2 * forward_counts, maxlen=max_edges)
 
-        return coordinates, nodes, edges, nodes_mask, edges_mask
+        return nodes, edges, nodes_mask, edges_mask, coordinates
 
     def _build_inputs(self, inputs):
         """
