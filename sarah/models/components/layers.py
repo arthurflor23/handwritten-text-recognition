@@ -64,8 +64,13 @@ class AdaptiveBatchNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -162,8 +167,13 @@ class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
 
         self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
                                                              scale=False,
@@ -261,8 +271,13 @@ class AdaptiveLayerNormalization(tf.keras.layers.Layer):
         self.features = input_shape[0][-1]
         self.broadcast_shape = [-1] + [1] * (len(input_shape[0]) - 2) + [self.features]
 
-        self.beta_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
-        self.gamma_dense = tf.keras.layers.Dense(units=self.features, kernel_initializer='zeros')
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
 
         self.norm_layer = tf.keras.layers.LayerNormalization(axis=-1,
                                                              scale=False,
