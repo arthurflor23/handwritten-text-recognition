@@ -1339,14 +1339,14 @@ class GraphExtraction(tf.keras.layers.Layer):
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, kernel_size=3, relative=True, normalize=True, **kwargs):
+    def __init__(self, patch_size=5, relative=True, normalize=True, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        kernel_size : int, optional
-            Spatial kernel size for sampling the skeleton.
+        patch_size : int, optional
+            Side length of each skeleton sampling patch in pixels.
         relative : bool, optional
             Define node positions as relative or absolute.
         normalize : bool, optional
@@ -1357,11 +1357,11 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.kernel_size = kernel_size
+        self.patch_size = patch_size
         self.relative = relative
         self.normalize = normalize
 
-        self._offsets = tf.range(self.kernel_size, dtype=tf.int32)
+        self._offsets = tf.range(self.patch_size, dtype=tf.int32)
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.bool)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.bool)
@@ -1379,7 +1379,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'kernel_size': self.kernel_size,
+            'patch_size': self.patch_size,
             'relative': self.relative,
             'normalized': self.normalized,
         })
@@ -1517,11 +1517,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         height = tf.shape(skeleton)[1]
         width = tf.shape(skeleton)[2]
 
-        grid_h = tf.math.floordiv(height + self.kernel_size - 1, self.kernel_size)
-        grid_w = tf.math.floordiv(width + self.kernel_size - 1, self.kernel_size)
+        grid_h = tf.math.floordiv(height + self.patch_size - 1, self.patch_size)
+        grid_w = tf.math.floordiv(width + self.patch_size - 1, self.patch_size)
 
-        pad_h = grid_h * self.kernel_size - height
-        pad_w = grid_w * self.kernel_size - width
+        pad_h = grid_h * self.patch_size - height
+        pad_w = grid_w * self.patch_size - width
 
         paddings = tf.stack([
             tf.constant([0, 0], dtype=tf.int32),
@@ -1531,7 +1531,7 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         padded = tf.pad(skeleton, paddings, constant_values=False)
 
-        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.kernel_size, grid_w, self.kernel_size]))
+        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.patch_size, grid_w, self.patch_size]))
         blocks_int = tf.cast(blocks, tf.int32)
 
         col_counts = tf.reduce_sum(blocks_int, axis=2)
@@ -1544,8 +1544,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         grid_x = tf.range(grid_w, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
         grid_y = tf.range(grid_h, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
 
-        sum_x = local_x_sum + counts * (grid_x * self.kernel_size)
-        sum_y = local_y_sum + counts * (grid_y * self.kernel_size)
+        sum_x = local_x_sum + counts * (grid_x * self.patch_size)
+        sum_y = local_y_sum + counts * (grid_y * self.patch_size)
 
         return blocks, counts, sum_x, sum_y, grid_h, grid_w
 
