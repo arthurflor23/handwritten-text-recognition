@@ -1154,6 +1154,7 @@ class GraphConv2D(tf.keras.layers.Layer):
     def __init__(self,
                  filters,
                  kernel_size,
+                 dilation=1,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -1168,6 +1169,8 @@ class GraphConv2D(tf.keras.layers.Layer):
             Number of output features per node.
         kernel_size : int
             Number of graph neighbors.
+        dilation : int, optional
+            Step between neighbors in distance order.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -1184,6 +1187,7 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         self.filters = filters
         self.kernel_size = kernel_size
+        self.dilation = dilation
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -1204,6 +1208,7 @@ class GraphConv2D(tf.keras.layers.Layer):
         config.update({
             'filters': self.filters,
             'kernel_size': self.kernel_size,
+            'dilation': self.dilation,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -1262,7 +1267,9 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         distances = coordinates[:, tf.newaxis, :] - coordinates[tf.newaxis, :, :]
         distances = tf.reduce_sum(tf.square(distances), axis=-1)
-        neighbors = tf.math.top_k(-distances, k=self.kernel_size).indices
+
+        neighbors = tf.math.top_k(-distances, k=self.kernel_size * self.dilation).indices
+        neighbors = neighbors[:, ::self.dilation]
 
         aggregated = tf.reduce_sum(tf.gather(nodes, neighbors, axis=1), axis=2)
         aggregated = tf.reshape(aggregated, [batch_size, height, width, channels])
