@@ -1336,7 +1336,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         config.update({
             'block_size': self.block_size,
             'relative': self.relative,
-            'normalized': self.normalized,
+            'normalize': self.normalize,
         })
 
         return config
