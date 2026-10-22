@@ -1143,7 +1143,7 @@ class GraphConv(tf.keras.layers.Layer):
 
 class GraphConv2D(tf.keras.layers.Layer):
     """
-    Graph convolution layer over spatial features for modeling non-local dependencies.
+    Graph convolution over spatial features.
 
     References
     ----------
@@ -1152,9 +1152,8 @@ class GraphConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 units,
-                 k_neighbors=1,
-                 num_pos_scales=1,
+                 filters,
+                 kernel_size,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -1165,12 +1164,10 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        units : int
+        filters : int
             Number of output features per node.
-        k_neighbors : int, optional
-            Number of neighbors used to build the graph.
-        num_pos_scales : int, optional
-            Number of sine-cosine positional scales used in the spatial offsets.
+        kernel_size : int
+            Number of graph neighbors.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -1185,9 +1182,8 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.units = units
-        self.k_neighbors = k_neighbors
-        self.num_pos_scales = num_pos_scales
+        self.filters = filters
+        self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -1206,9 +1202,8 @@ class GraphConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'units': self.units,
-            'k_neighbors': self.k_neighbors,
-            'num_pos_scales': self.num_pos_scales,
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -1229,65 +1224,12 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.height = input_shape[1]
-        self.width = input_shape[2]
-        self.channels = input_shape[3]
-
-        self.kernel = tf.keras.layers.Dense(units=self.units,
-                                            kernel_initializer=self.kernel_initializer,
-                                            kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
-
-        if self.use_bias:
-            self.bias = self.add_weight(name=f'{self.name}_bias',
-                                        shape=(self.units,),
-                                        initializer='zeros',
-                                        trainable=True)
-
-    def _build_base_coordinates(self):
-        """
-        Builds the base spatial coordinates.
-
-        Returns
-        -------
-        tf.Tensor
-            Coordinate tensor.
-        """
-
-        row_positions = tf.linspace(0.0, 1.0, self.height)
-        col_positions = tf.linspace(0.0, 1.0, self.width)
-
-        row_grid, col_grid = tf.meshgrid(row_positions, col_positions, indexing='ij')
-
-        return tf.stack([row_grid, col_grid], axis=-1)
-
-    def _build_positional_offsets(self):
-        """
-        Builds fixed sine-cosine positional offsets.
-
-        Returns
-        -------
-        tf.Tensor
-            Offset tensor.
-        """
-
-        coords = self._build_base_coordinates()
-        two_pi = tf.cast(2.0 * tf.experimental.numpy.pi, tf.float32)
-
-        offset_x = tf.zeros([self.height, self.width], dtype=tf.float32)
-        offset_y = tf.zeros([self.height, self.width], dtype=tf.float32)
-
-        for i in range(self.num_pos_scales):
-            freq = tf.cast(2 ** i, tf.float32)
-
-            offset_x += tf.sin(two_pi * freq * coords[..., 0])
-            offset_y += tf.cos(two_pi * freq * coords[..., 1])
-
-        offset_x = offset_x / tf.cast(self.num_pos_scales, tf.float32)
-        offset_y = offset_y / tf.cast(self.num_pos_scales, tf.float32)
-
-        return tf.stack([offset_x, offset_y], axis=-1)
+        self.kernel = tf.keras.layers.Conv2D(filters=self.filters,
+                                             kernel_size=1,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
+                                             use_bias=self.use_bias)
 
     def call(self, inputs):
         """
@@ -1304,31 +1246,29 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output feature map.
         """
 
-        batch_size = tf.shape(inputs)[0]
-        num_nodes = self.height * self.width
+        batch_size, height, width, channels = tf.unstack(tf.shape(inputs))
+        num_nodes = height * width
 
-        nodes = tf.reshape(inputs, [-1, num_nodes, self.channels])
+        nodes = tf.reshape(inputs, [batch_size, num_nodes, channels])
 
-        base_coords = self._build_base_coordinates()
-        offsets = self._build_positional_offsets()
+        rows = tf.range(height, dtype=tf.float32)
+        cols = tf.range(width, dtype=tf.float32)
+        row_grid, col_grid = tf.meshgrid(rows, cols, indexing='ij')
 
-        warped_coords = tf.reshape(base_coords + offsets, [num_nodes, 2])
+        coords = tf.stack([row_grid, col_grid], axis=-1)
+        offsets = tf.stack([tf.sin(row_grid), tf.cos(col_grid)], axis=-1)
 
-        diff = warped_coords[:, None, :] - warped_coords[None, :, :]
-        dist = tf.reduce_sum(tf.square(diff), axis=-1)
-        dist = dist + tf.eye(num_nodes, dtype=dist.dtype) * 1e12
+        coordinates = tf.reshape(coords + offsets, [-1, 2])
 
-        knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
+        distances = coordinates[:, tf.newaxis, :] - coordinates[tf.newaxis, :, :]
+        distances = tf.reduce_sum(tf.square(distances), axis=-1)
+        neighbors = tf.math.top_k(-distances, k=self.kernel_size).indices
 
-        outputs = self.kernel(nodes)
-        outputs = tf.reduce_sum(tf.gather(outputs, knn, axis=1), axis=2) + outputs
+        aggregated = tf.reduce_sum(tf.gather(nodes, neighbors, axis=1), axis=2)
+        aggregated = tf.reshape(aggregated, [batch_size, height, width, channels])
+        aggregated.set_shape(inputs.shape)
 
-        if self.use_bias:
-            outputs = outputs + self.bias
-
-        outputs = tf.reshape(outputs, [batch_size, self.height, self.width, self.units])
-
-        return outputs
+        return self.kernel(aggregated)
 
 
 class GraphExtraction(tf.keras.layers.Layer):
