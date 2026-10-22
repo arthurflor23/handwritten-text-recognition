@@ -1333,43 +1333,43 @@ class GraphConv2D(tf.keras.layers.Layer):
 
 class GraphExtraction(tf.keras.layers.Layer):
     """
-    Extracts graph representations from handwriting images via skeletonization.
+    Extracts graphs from skeletonized handwriting using spatial block sampling.
 
     References
     ----------
+    A fast parallel algorithm for thinning digital patterns
+        https://doi.org/10.1145/357994.358023
+
     Combining graph edit distance and triplet networks for offline signature verification
         https://www.sciencedirect.com/science/article/pii/S0167865519301850
-
-    Graph Embedding for Offline Handwritten Signature Verification
-        https://dl.acm.org/doi/10.1145/3345336.3345346
 
     Towards Visuo-Structural Handwriting Evaluation Based on Graph Matching
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, patch_size=5, relative=True, normalize=True, **kwargs):
+    def __init__(self, block_size=5, relative=True, normalize=True, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        patch_size : int, optional
-            Side length of each skeleton sampling patch in pixels.
+        block_size : int, optional
+            Skeleton sampling block size in pixels.
         relative : bool, optional
-            Define node positions as relative or absolute.
+            Use relative node coordinates.
         normalize : bool, optional
-            Scale node positions.
+            Normalize node coordinates.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.patch_size = patch_size
+        self.block_size = block_size
         self.relative = relative
         self.normalize = normalize
 
-        self._offsets = tf.range(self.patch_size, dtype=tf.int32)
+        self._offsets = tf.range(self.block_size, dtype=tf.int32)
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.bool)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.bool)
@@ -1387,7 +1387,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'patch_size': self.patch_size,
+            'block_size': self.block_size,
             'relative': self.relative,
             'normalized': self.normalized,
         })
@@ -1525,11 +1525,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         height = tf.shape(skeleton)[1]
         width = tf.shape(skeleton)[2]
 
-        grid_h = tf.math.floordiv(height + self.patch_size - 1, self.patch_size)
-        grid_w = tf.math.floordiv(width + self.patch_size - 1, self.patch_size)
+        grid_h = tf.math.floordiv(height + self.block_size - 1, self.block_size)
+        grid_w = tf.math.floordiv(width + self.block_size - 1, self.block_size)
 
-        pad_h = grid_h * self.patch_size - height
-        pad_w = grid_w * self.patch_size - width
+        pad_h = grid_h * self.block_size - height
+        pad_w = grid_w * self.block_size - width
 
         paddings = tf.stack([
             tf.constant([0, 0], dtype=tf.int32),
@@ -1539,7 +1539,7 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         padded = tf.pad(skeleton, paddings, constant_values=False)
 
-        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.patch_size, grid_w, self.patch_size]))
+        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.block_size, grid_w, self.block_size]))
         blocks_int = tf.cast(blocks, tf.int32)
 
         col_counts = tf.reduce_sum(blocks_int, axis=2)
@@ -1552,8 +1552,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         grid_x = tf.range(grid_w, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
         grid_y = tf.range(grid_h, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
 
-        sum_x = local_x_sum + counts * (grid_x * self.patch_size)
-        sum_y = local_y_sum + counts * (grid_y * self.patch_size)
+        sum_x = local_x_sum + counts * (grid_x * self.block_size)
+        sum_y = local_y_sum + counts * (grid_y * self.block_size)
 
         return blocks, counts, sum_x, sum_y, grid_h, grid_w
 
