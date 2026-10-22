@@ -1237,7 +1237,13 @@ class GraphConv2D(tf.keras.layers.Layer):
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
                                             kernel_constraint=self.kernel_constraint,
-                                            use_bias=self.use_bias)
+                                            use_bias=False)
+
+        if self.use_bias:
+            self.bias = self.add_weight(name=f'{self.name}_bias',
+                                        shape=(self.units,),
+                                        initializer='zeros',
+                                        trainable=True)
 
     def _build_base_coordinates(self):
         """
@@ -1314,10 +1320,12 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
 
-        transformed = self.kernel(nodes)
-        neighbor_features = tf.gather(transformed, knn, axis=1)
+        outputs = self.kernel(nodes)
+        outputs = tf.reduce_sum(tf.gather(outputs, knn, axis=1), axis=2) + outputs
 
-        outputs = tf.reduce_sum(neighbor_features, axis=2) + transformed
+        if self.use_bias:
+            outputs = outputs + self.bias
+
         outputs = tf.reshape(outputs, [batch_size, self.height, self.width, self.units])
 
         return outputs
@@ -1846,17 +1854,17 @@ class GraphNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[-1]
 
-        self.alpha = self.add_weight(name='alpha',
+        self.alpha = self.add_weight(name=f'{self.name}_alpha',
                                      shape=(self.features,),
                                      initializer='ones',
                                      trainable=True)
 
-        self.gamma = self.add_weight(name='gamma',
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                      shape=(self.features,),
                                      initializer='ones',
                                      trainable=True)
 
-        self.beta = self.add_weight(name='beta',
+        self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(self.features,),
                                     initializer='zeros',
                                     trainable=True)
