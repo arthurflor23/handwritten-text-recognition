@@ -71,7 +71,9 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(1, 4), strides=(1, 4), padding='valid')(encoder)
 
-        self.encoder = tf.keras.Model(name='recognition_encoder', inputs=encoder_input, outputs=encoder)
+        self.encoder = tf.keras.Model(name='recognition_encoder',
+                                      inputs=encoder_input,
+                                      outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
