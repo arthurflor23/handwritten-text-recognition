@@ -24,8 +24,8 @@ def check(args):
                       text_level=args.text_level,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      mask_by_text=args.mask_by_text,
-                      order_by_text=args.order_by_text,
+                      mask_by_length=args.mask_by_length,
+                      order_by_length=args.order_by_length,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
@@ -62,7 +62,8 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=None,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     enc_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
@@ -70,7 +71,8 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=None,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     aug_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
@@ -78,7 +80,8 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=augmentor,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     print('\nChecking samples...')
     timestamp = str(int(time.time()))

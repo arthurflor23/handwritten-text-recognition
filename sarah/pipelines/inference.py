@@ -46,7 +46,7 @@ def inference(args):
     dataset = Dataset(data=data,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      mask_by_text=args.mask_by_text,
+                      mask_by_length=args.mask_by_length,
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
