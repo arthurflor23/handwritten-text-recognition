@@ -260,7 +260,9 @@ class Dataset():
 
         for key in ['training', 'validation', 'test']:
             data.setdefault(key, [])
+
             data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
+            np.random.shuffle(data[key])
 
             ratio = getattr(self, f'{key}_ratio')
 
