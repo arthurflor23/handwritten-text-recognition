@@ -109,8 +109,8 @@ The project has several command-line parameters that can be used to customize it
 - `--text-level`: Text structure level (e.g., line).
 - `--image-shape`: Image dimensions (height, width, channels).
 - `--char-width`: Character width for image normalization.
-- `--mask-by-text`: Mask data by text length.
-- `--order-by-text`: Sort data by text length.
+- `--mask-by-length`: Mask data by text length.
+- `--order-by-length`: Sort data by text length.
 - `--training-ratio`: Training partition ratio.
 - `--validation-ratio`: Validation partition ratio.
 - `--test-ratio`: Test partition ratio.
