@@ -22,8 +22,8 @@ class Dataset():
                  text_level='line',
                  image_shape=(64, 1024, 1),
                  char_width=None,
-                 mask_by_text=False,
-                 order_by_text=False,
+                 mask_by_length=False,
+                 order_by_length=False,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -49,9 +49,9 @@ class Dataset():
             The image dimensions.
         char_width : int, optional
             The width per character.
-        mask_by_text : bool, optional
+        mask_by_length : bool, optional
             Whether to mask data by text length.
-        order_by_text : bool, optional
+        order_by_length : bool, optional
             Whether to sort data by text length.
         training_ratio : float or int, optional
             The training ratio for resample.
@@ -86,8 +86,8 @@ class Dataset():
         self.text_level = text_level
         self.image_shape = image_shape
         self.char_width = char_width or 0
-        self.mask_by_text = mask_by_text
-        self.order_by_text = order_by_text
+        self.mask_by_length = mask_by_length
+        self.order_by_length = order_by_length
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -260,9 +260,7 @@ class Dataset():
 
         for key in ['training', 'validation', 'test']:
             data.setdefault(key, [])
-
             data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
-            np.random.shuffle(data[key])
 
             ratio = getattr(self, f'{key}_ratio')
 
@@ -523,7 +521,7 @@ class Dataset():
 
             flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
 
-            if self.order_by_text:
+            if self.order_by_length:
                 flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
             source, encoded = zip(*flattened)
@@ -601,7 +599,7 @@ class Dataset():
                 samples['encoded'][partition] = np.array((), dtype=object)
                 continue
 
-            if self.order_by_text:
+            if self.order_by_length:
                 results.sort(key=lambda x: len(x[0]['text']), reverse=False)
 
             source, encoded = zip(*results)
@@ -623,7 +621,8 @@ class Dataset():
                       batch_scale=True,
                       augmentor=None,
                       samples=None,
-                      shuffle=False):
+                      shuffle=False,
+                      warmup=False):
         """
         Generates a batch of samples for the partition.
 
@@ -645,6 +644,8 @@ class Dataset():
             Fetch a specific number of samples.
         shuffle : bool, optional
             Specifies whether data is shuffled by epoch.
+        warmup : bool, optional
+            Skips shuffling and augmentation on the first pass.
 
         Returns
         -------
@@ -662,23 +663,22 @@ class Dataset():
             multigram_length = len(multigrams)
 
             indices = np.arange(data_length)
+            first_epoch_end = not warmup
             batch_index = 0
 
             while True:
-                if self.order_by_text:
-                    if shuffle:
-                        batch_index = np.random.randint(0, data_length - batch_size)
+                if batch_index >= data_length:
+                    batch_index = 0
+                    first_epoch_end = True
 
-                    elif batch_index >= data_length:
-                        batch_index = 0
+                if self.order_by_length:
+                    if first_epoch_end and shuffle:
+                        batch_index = np.random.randint(0, data_length - batch_size + 1)
 
                     batch_data = data[batch_index:batch_index + batch_size]
 
                 else:
-                    if batch_index >= data_length:
-                        batch_index = 0
-
-                    if shuffle and batch_index == 0:
+                    if first_epoch_end and shuffle and batch_index == 0:
                         np.random.shuffle(indices)
 
                     batch_data = data[indices[batch_index:batch_index + batch_size]]
@@ -703,9 +703,9 @@ class Dataset():
                                                              method='sauvola',
                                                              invert=True)
 
-                mask_data = utils.batch_masking(batch_data=text_data if self.mask_by_text else image_data,
+                mask_data = utils.batch_masking(batch_data=text_data if self.mask_by_length else image_data,
                                                 max_shape=self.image_shape,
-                                                from_text=self.mask_by_text)
+                                                from_text=self.mask_by_length)
 
                 graph_data, graph_chars_data = utils.batch_graph(batch_size=batch_length,
                                                                  num_chars=charset_length,
@@ -720,7 +720,7 @@ class Dataset():
                 aug_graph_chars_data = graph_chars_data.copy()
 
                 if batch_encoded:
-                    if augmentor:
+                    if first_epoch_end and augmentor:
                         aug_image_data = [
                             utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
                                                target_shape=self.image_shape)
@@ -733,18 +733,19 @@ class Dataset():
 
                         aug_graph_data = augmentor.graph_augmentation(graph_data=aug_graph_data)
 
-                    if multigram_length:
-                        index = np.random.randint(0, multigram_length - batch_length)
+                    if first_epoch_end and multigram_length >= batch_length:
+                        index = np.random.randint(0, multigram_length - batch_length + 1)
                         aug_text_data = [x['text'] for x in multigrams[index:index + batch_length]]
 
                         aug_mask_data = utils.batch_masking(batch_data=aug_text_data,
                                                             max_shape=self.image_shape,
                                                             from_text=True)
+
                     else:
-                        aug_mask_data = aug_text_data if self.mask_by_text else aug_image_data
+                        aug_mask_data = aug_text_data if self.mask_by_length else aug_image_data
                         aug_mask_data = utils.batch_masking(batch_data=aug_mask_data,
                                                             max_shape=self.image_shape,
-                                                            from_text=self.mask_by_text)
+                                                            from_text=self.mask_by_length)
 
                     if batch_processing:
                         text_data, aug_text_data = batch_processing_sync(data=text_data,
@@ -776,6 +777,7 @@ class Dataset():
                                                                            aug_data=aug_graph_data,
                                                                            batch_mode='graph',
                                                                            padding_shape=self.tokenizer.graph_shape)
+
                 else:
                     graph_chars_data = [self.tokenizer.decode_text(x) for x in graph_chars_data]
 
