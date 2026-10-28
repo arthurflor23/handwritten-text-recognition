@@ -91,7 +91,8 @@ def run(args):
         training_gen, training_steps = dataset.get_generator(data_partition='training',
                                                              batch_size=args.batch_size,
                                                              augmentor=augmentor,
-                                                             shuffle=True)
+                                                             shuffle=True,
+                                                             warmup=True)
 
         validation_gen, validation_steps = dataset.get_generator(data_partition='validation',
                                                                  batch_size=args.batch_size)
