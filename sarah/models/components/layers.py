@@ -1767,7 +1767,6 @@ class GraphNormalization(tf.keras.layers.Layer):
         super().__init__(**kwargs)
 
         self.epsilon = epsilon
-        self.supports_masking = True
 
     def get_config(self):
         """
@@ -1816,7 +1815,7 @@ class GraphNormalization(tf.keras.layers.Layer):
                                     initializer='zeros',
                                     trainable=True)
 
-    def call(self, inputs, mask=None):
+    def call(self, inputs, nodes_mask=None):
         """
         Forward pass of the layer.
 
@@ -1824,7 +1823,7 @@ class GraphNormalization(tf.keras.layers.Layer):
         ----------
         inputs : tf.Tensor
             Features tensor.
-        mask : tf.Tensor, optional
+        nodes_mask : tf.Tensor, optional
             Validity mask.
 
         Returns
@@ -1832,6 +1831,8 @@ class GraphNormalization(tf.keras.layers.Layer):
         tf.Tensor
             Normalized feature tensor.
         """
+
+        mask = tf.identity(nodes_mask)
 
         if mask is None:
             mask = tf.ones(tf.shape(inputs)[:2], dtype=tf.bool)
