@@ -260,10 +260,9 @@ class Dataset():
 
         for key in ['training', 'validation', 'test']:
             data.setdefault(key, [])
-
             data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
-            np.random.shuffle(data[key])
 
+            np.random.shuffle(data[key])
             ratio = getattr(self, f'{key}_ratio')
 
             if isinstance(ratio, str):
@@ -624,7 +623,7 @@ class Dataset():
                       augmentor=None,
                       samples=None,
                       shuffle=False,
-                      warmup=False):
+                      warmup=True):
         """
         Generates a batch of samples for the partition.
 
@@ -670,8 +669,8 @@ class Dataset():
 
             while True:
                 if batch_index >= data_length:
-                    batch_index = 0
                     first_epoch_end = True
+                    batch_index = 0
 
                 if self.order_by_length:
                     if first_epoch_end and shuffle:
