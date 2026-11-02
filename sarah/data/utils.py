@@ -758,8 +758,8 @@ def read_image(image_path, bbox=None):
         if isinstance(height, float):
             height = int(height * image.shape[0])
 
-        y = max(0, abs(y - 10))
-        x = max(0, abs(x - 10))
+        y = max(0, y - 10)
+        x = max(0, x - 10)
 
         height = min(image.shape[0], (height + 10))
         width = min(image.shape[1], (width + 10))
