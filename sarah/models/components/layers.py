@@ -559,6 +559,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 gamma_initializer='ones',
                  beta_initializer='zeros',
                  skip_projection=False,
                  dropout=0.0,
@@ -579,6 +580,8 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
         beta_initializer : initializer, optional
             Beta weights initializer.
         skip_projection : bool, optional
@@ -598,6 +601,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.gamma_initializer = gamma_initializer
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
         self.dropout = dropout
@@ -621,6 +625,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'gamma_initializer': self.gamma_initializer,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
             'dropout': self.dropout,
@@ -652,7 +657,7 @@ class GatedResidualConv1D(tf.keras.layers.Layer):
 
             self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                          shape=(1,),
-                                         initializer='ones',
+                                         initializer=self.gamma_initializer,
                                          trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
@@ -708,6 +713,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 gamma_initializer='ones',
                  beta_initializer='zeros',
                  skip_projection=False,
                  dropout=0.0,
@@ -728,6 +734,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
         beta_initializer : initializer, optional
             Beta weights initializer.
         skip_projection : bool, optional
@@ -747,6 +755,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.gamma_initializer = gamma_initializer
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
         self.dropout = dropout
@@ -770,6 +779,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'gamma_initializer': self.gamma_initializer,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
             'dropout': self.dropout,
@@ -801,7 +811,7 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
             self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                          shape=(1,),
-                                         initializer='ones',
+                                         initializer=self.gamma_initializer,
                                          trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
@@ -856,6 +866,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 gamma_initializer='ones',
                  beta_initializer='zeros',
                  skip_projection=False,
                  dropout=0.0,
@@ -874,6 +885,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
         beta_initializer : initializer, optional
             Beta weights initializer.
         skip_projection : bool, optional
@@ -892,6 +905,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
+        self.gamma_initializer = gamma_initializer
         self.beta_initializer = beta_initializer
         self.skip_projection = skip_projection
         self.dropout = dropout
@@ -914,6 +928,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'gamma_initializer': self.gamma_initializer,
             'beta_initializer': self.beta_initializer,
             'skip_projection': self.skip_projection,
             'dropout': self.dropout,
@@ -942,8 +957,8 @@ class GatedResidualDense(tf.keras.layers.Layer):
                                                     use_bias=self.use_bias)
 
             self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                         shape=(self.units or input_shape[-1], 1),
-                                         initializer='ones',
+                                         shape=(1,),
+                                         initializer=self.gamma_initializer,
                                          trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
@@ -975,7 +990,7 @@ class GatedResidualDense(tf.keras.layers.Layer):
             gated = tf.identity(inputs)
         else:
             projected = self.projection(inputs)
-            gated = projected * tf.nn.sigmoid(projected @ self.gamma)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
         if self.dropout:
             gated = self.dropout_layer(gated, training=training)
