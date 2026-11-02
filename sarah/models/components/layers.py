@@ -1,108 +1,10 @@
 import tensorflow as tf
 
 
-class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
+class AdaptiveBatchNormalization(tf.keras.layers.Layer):
     """
-    Adaptive Instance Normalization Layer.
-    Adjusts the mean and variance of the input tensor based on a conditional tensor.
-
-    References
-    ----------
-    Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization
-        https://arxiv.org/abs/1703.06868v2
-    """
-
-    def __init__(self, epsilon=1e-3, **kwargs):
-        """
-        Initializes the adaptive instance normalization layer.
-
-        Parameters
-        ----------
-        epsilon : float, optional
-            Small float added to variance to avoid dividing by zero.
-        **kwargs : dict
-            Additional arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.epsilon = epsilon
-
-    def get_config(self):
-        """
-        Return the configuration of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'epsilon': self.epsilon,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-        """
-
-        super().build(input_shape)
-
-        self.features = input_shape[0][-1]
-
-        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-
-        self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
-                                                             scale=False,
-                                                             center=False,
-                                                             epsilon=self.epsilon)
-
-    def call(self, inputs, training=False):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            A tuple containing the input tensor and the conditional tensor.
-        training : bool, optional
-            Whether the call is for training or inference.
-
-        Returns
-        -------
-        tf.Tensor
-            Tensor after applying AdaIN.
-        """
-
-        x, conditional = inputs
-
-        beta = self.beta_dense(conditional)
-        gamma = self.gamma_dense(conditional)
-
-        beta = tf.reshape(beta, [-1, 1, 1, self.features])
-        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
-
-        normed = self.norm_layer(x, training=training)
-        outputs = normed * gamma + beta
-
-        return outputs
-
-
-class ConditionalBatchNormalization(tf.keras.layers.Layer):
-    """
-    Conditional Batch Normalization layer.
-    Applies batch normalization conditioned on external data.
+    Adaptive Batch Normalization layer.
+    Adjusts the normalized input features based on a conditional tensor.
 
     References
     ----------
@@ -162,8 +64,13 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[0][-1]
 
-        self.beta_dense = tf.keras.layers.Dense(self.features, use_bias=False)
-        self.gamma_dense = tf.keras.layers.Dense(self.features, use_bias=False)
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
 
         self.norm_layer = tf.keras.layers.BatchNormalization(momentum=self.momentum,
                                                              scale=False,
@@ -176,15 +83,15 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        inputs : tf.Tensor
-            A tuple containing the input tensor and the conditional tensor.
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
         training : bool, optional
             Whether the call is for training or inference.
 
         Returns
         -------
         tf.Tensor
-            Tensor after applying CBN.
+            Adaptively normalized input tensor.
         """
 
         x, conditional = inputs
@@ -197,6 +104,213 @@ class ConditionalBatchNormalization(tf.keras.layers.Layer):
 
         normed = self.norm_layer(x, training=training)
         outputs = normed * gamma + beta
+
+        return outputs
+
+
+class AdaptiveInstanceNormalization(tf.keras.layers.Layer):
+    """
+    Adaptive Instance Normalization Layer.
+    Adjusts the normalized input features based on a conditional tensor.
+
+    References
+    ----------
+    Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization
+        https://arxiv.org/abs/1703.06868v2
+    """
+
+    def __init__(self, epsilon=1e-3, **kwargs):
+        """
+        Initializes the adaptive instance normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.features = input_shape[0][-1]
+
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
+
+        self.norm_layer = tf.keras.layers.GroupNormalization(groups=-1,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Adaptively normalized input tensor.
+        """
+
+        x, conditional = inputs
+
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
+
+        beta = tf.reshape(beta, [-1, 1, 1, self.features])
+        gamma = tf.reshape(gamma, [-1, 1, 1, self.features])
+
+        normed = self.norm_layer(x, training=training)
+        outputs = normed * gamma + beta
+
+        return outputs
+
+
+class AdaptiveLayerNormalization(tf.keras.layers.Layer):
+    """
+    Adaptive Layer Normalization layer.
+    Adjusts the normalized input features based on a conditional tensor.
+
+    References
+    ----------
+    Scalable Diffusion Models with Transformers
+        https://arxiv.org/abs/2212.09748
+    """
+
+    def __init__(self, epsilon=1e-3, **kwargs):
+        """
+        Initializes the adaptive layer normalization layer.
+
+        Parameters
+        ----------
+        epsilon : float, optional
+            Small float added to variance to avoid dividing by zero.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.epsilon = epsilon
+
+    def get_config(self):
+        """
+        Return the configuration of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'epsilon': self.epsilon,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensors.
+        """
+
+        super().build(input_shape)
+
+        self.features = input_shape[0][-1]
+        self.broadcast_shape = [-1] + [1] * (len(input_shape[0]) - 2) + [self.features]
+
+        self.beta_dense = tf.keras.layers.Dense(units=self.features,
+                                                kernel_initializer='zeros',
+                                                use_bias=True)
+
+        self.gamma_dense = tf.keras.layers.Dense(units=self.features,
+                                                 kernel_initializer='zeros',
+                                                 use_bias=True)
+
+        self.norm_layer = tf.keras.layers.LayerNormalization(axis=-1,
+                                                             scale=False,
+                                                             center=False,
+                                                             epsilon=self.epsilon)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tuple of tf.Tensor
+            Input features and conditional tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Adaptively normalized input tensor.
+        """
+
+        x, conditional = inputs
+
+        beta = self.beta_dense(conditional)
+        gamma = self.gamma_dense(conditional)
+
+        beta = tf.reshape(beta, self.broadcast_shape)
+        gamma = tf.reshape(gamma, self.broadcast_shape)
+
+        normed = self.norm_layer(x, training=training)
+        outputs = normed * (1.0 + gamma) + beta
 
         return outputs
 
@@ -424,14 +538,14 @@ class ContentAlignment(tf.keras.layers.Layer):
             self.build(input_shape)
 
         input_shape, mask_shape = input_shape[0], input_shape[-1]
-        output_shape = tf.TensorShape(input_shape[-1:] + mask_shape[:3])
+        output_shape = tf.TensorShape(mask_shape[:3] + input_shape[-1:])
 
         return output_shape
 
 
-class GatedResidualConv2D(tf.keras.layers.Layer):
+class GatedResidualConv1D(tf.keras.layers.Layer):
     """
-    Implements a Gated Residual Convolutional layer.
+    Implements a gated Conv1D residual branch.
 
     References
     ----------
@@ -440,12 +554,14 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 kernel_size=(3, 3),
+                 filters=None,
+                 kernel_size=3,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='zeros',
                  gamma_initializer='ones',
+                 beta_initializer='zeros',
+                 skip_projection=False,
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -454,6 +570,8 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        filters : int, optional
+            Number of filters in the layer.
         kernel_size : int or tuple, optional
             Convolution window size.
         kernel_initializer : initializer, optional
@@ -462,26 +580,30 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        skip_projection : bool, optional
+            Whether to skip the projection.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
-            Enables bias terms in the projection layers.
+            Enables bias terms in the projection layer.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
+        self.filters = filters
         self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
         self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -498,12 +620,14 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'filters': self.filters,
             'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
             'gamma_initializer': self.gamma_initializer,
+            'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -517,28 +641,32 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input tensors.
+            Shape of the input tensor.
         """
 
         super().build(input_shape)
 
-        self.s_conv = tf.keras.layers.Conv2D(filters=input_shape[-1],
-                                             kernel_size=self.kernel_size,
-                                             padding='same',
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Conv1D(filters=self.filters or input_shape[-1],
+                                                     kernel_size=self.kernel_size,
+                                                     padding='same',
+                                                     kernel_initializer=self.kernel_initializer,
+                                                     kernel_regularizer=self.kernel_regularizer,
+                                                     kernel_constraint=self.kernel_constraint,
+                                                     use_bias=self.use_bias)
+
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer=self.gamma_initializer,
+                                         trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(1,),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
+        if self.dropout:
+            self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
 
     def call(self, inputs, training=False):
         """
@@ -554,21 +682,24 @@ class GatedResidualConv2D(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor.
+            Gated residual features.
         """
 
-        s_conv = self.s_conv(inputs)
-        g_conv = s_conv * tf.nn.sigmoid(s_conv * self.gamma)
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
-        if training and self.dropout:
-            g_conv = tf.nn.dropout(g_conv, rate=self.dropout)
+        if self.dropout:
+            gated = self.dropout_layer(gated, training=training)
 
-        return inputs + g_conv * self.beta
+        return gated * self.beta
 
 
-class GatedResidualDense(tf.keras.layers.Layer):
+class GatedResidualConv2D(tf.keras.layers.Layer):
     """
-    Implements a Gated Residual Dense layer.
+    Implements a gated Conv2D residual branch.
 
     References
     ----------
@@ -577,11 +708,14 @@ class GatedResidualDense(tf.keras.layers.Layer):
     """
 
     def __init__(self,
+                 filters=None,
+                 kernel_size=(3, 3),
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 beta_initializer='zeros',
                  gamma_initializer='ones',
+                 beta_initializer='zeros',
+                 skip_projection=False,
                  dropout=0.0,
                  use_bias=True,
                  **kwargs):
@@ -590,31 +724,40 @@ class GatedResidualDense(tf.keras.layers.Layer):
 
         Parameters
         ----------
+        filters : int, optional
+            Number of filters in the layer.
+        kernel_size : int or tuple, optional
+            Convolution window size.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
             Kernel weights regularizer.
         kernel_constraint : constraint, optional
             Kernel weights constraint.
-        beta_initializer : initializer, optional
-            Beta weights initializer.
         gamma_initializer : initializer, optional
             Gamma weights initializer.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        skip_projection : bool, optional
+            Whether to skip the projection.
         dropout : float, optional
             Dropout rate applied during training.
         use_bias : bool, optional
-            Enables bias terms in the projection layers.
+            Enables bias terms in the projection layer.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
+        self.filters = filters
+        self.kernel_size = kernel_size
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
-        self.beta_initializer = beta_initializer
         self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
         self.dropout = dropout
         self.use_bias = use_bias
 
@@ -631,11 +774,14 @@ class GatedResidualDense(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'beta_initializer': self.beta_initializer,
             'gamma_initializer': self.gamma_initializer,
+            'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
             'dropout': self.dropout,
             'use_bias': self.use_bias,
         })
@@ -649,26 +795,32 @@ class GatedResidualDense(tf.keras.layers.Layer):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input tensors.
+            Shape of the input tensor.
         """
 
         super().build(input_shape)
 
-        self.s_dense = tf.keras.layers.Dense(units=input_shape[-1],
-                                             kernel_initializer=self.kernel_initializer,
-                                             kernel_regularizer=self.kernel_regularizer,
-                                             kernel_constraint=self.kernel_constraint,
-                                             use_bias=self.use_bias)
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Conv2D(filters=self.filters or input_shape[-1],
+                                                     kernel_size=self.kernel_size,
+                                                     padding='same',
+                                                     kernel_initializer=self.kernel_initializer,
+                                                     kernel_regularizer=self.kernel_regularizer,
+                                                     kernel_constraint=self.kernel_constraint,
+                                                     use_bias=self.use_bias)
+
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer=self.gamma_initializer,
+                                         trainable=True)
 
         self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(1,),
                                     initializer=self.beta_initializer,
                                     trainable=True)
 
-        self.gamma = self.add_weight(name=f'{self.name}_gamma',
-                                     shape=(input_shape[-1], 1),
-                                     initializer=self.gamma_initializer,
-                                     trainable=True)
+        if self.dropout:
+            self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
 
     def call(self, inputs, training=False):
         """
@@ -684,17 +836,166 @@ class GatedResidualDense(tf.keras.layers.Layer):
         Returns
         -------
         tf.Tensor
-            Output tensor.
+            Gated residual features.
         """
 
-        s_dense = self.s_dense(inputs)
-        g_dense = s_dense * tf.nn.sigmoid(tf.linalg.matmul(s_dense, self.gamma))
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
 
-        if training and self.dropout:
-            stddev = tf.sqrt(self.dropout / (1.0 - self.dropout))
-            g_dense *= tf.random.normal(tf.shape(g_dense), 1.0, stddev, g_dense.dtype)
+        if self.dropout:
+            gated = self.dropout_layer(gated, training=training)
 
-        return inputs + g_dense * self.beta
+        return gated * self.beta
+
+
+class GatedResidualDense(tf.keras.layers.Layer):
+    """
+    Implements a gated Dense residual branch.
+
+    References
+    ----------
+    HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
+        https://ieeexplore.ieee.org/document/11475723
+    """
+
+    def __init__(self,
+                 units=None,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
+                 gamma_initializer='ones',
+                 beta_initializer='zeros',
+                 skip_projection=False,
+                 dropout=0.0,
+                 use_bias=True,
+                 **kwargs):
+        """
+        Initializes the layer.
+
+        Parameters
+        ----------
+        units : int, optional
+            Number of units in the layer.
+        kernel_initializer : initializer, optional
+            Kernel weights initializer.
+        kernel_regularizer : regularizer, optional
+            Kernel weights regularizer.
+        kernel_constraint : constraint, optional
+            Kernel weights constraint.
+        gamma_initializer : initializer, optional
+            Gamma weights initializer.
+        beta_initializer : initializer, optional
+            Beta weights initializer.
+        skip_projection : bool, optional
+            Whether to skip the projection.
+        dropout : float, optional
+            Dropout rate applied during training.
+        use_bias : bool, optional
+            Enables bias terms in the projection layer.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+
+        super().__init__(**kwargs)
+
+        self.units = units
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
+        self.skip_projection = skip_projection
+        self.dropout = dropout
+        self.use_bias = use_bias
+
+    def get_config(self):
+        """
+        Returns the config of the layer.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+        """
+
+        config = super().get_config()
+
+        config.update({
+            'units': self.units,
+            'kernel_initializer': self.kernel_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'gamma_initializer': self.gamma_initializer,
+            'beta_initializer': self.beta_initializer,
+            'skip_projection': self.skip_projection,
+            'dropout': self.dropout,
+            'use_bias': self.use_bias,
+        })
+
+        return config
+
+    def build(self, input_shape):
+        """
+        Initializes layer weights.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
+        """
+
+        super().build(input_shape)
+
+        if not self.skip_projection:
+            self.projection = tf.keras.layers.Dense(units=self.units or input_shape[-1],
+                                                    kernel_initializer=self.kernel_initializer,
+                                                    kernel_regularizer=self.kernel_regularizer,
+                                                    kernel_constraint=self.kernel_constraint,
+                                                    use_bias=self.use_bias)
+
+            self.gamma = self.add_weight(name=f'{self.name}_gamma',
+                                         shape=(1,),
+                                         initializer=self.gamma_initializer,
+                                         trainable=True)
+
+        self.beta = self.add_weight(name=f'{self.name}_beta',
+                                    shape=(1,),
+                                    initializer=self.beta_initializer,
+                                    trainable=True)
+
+        if self.dropout:
+            self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+
+    def call(self, inputs, training=False):
+        """
+        Forward pass of the layer.
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            Input tensor.
+        training : bool, optional
+            Whether the call is for training or inference.
+
+        Returns
+        -------
+        tf.Tensor
+            Gated residual features.
+        """
+
+        if self.skip_projection:
+            gated = tf.identity(inputs)
+        else:
+            projected = self.projection(inputs)
+            gated = projected * tf.nn.sigmoid(projected * self.gamma)
+
+        if self.dropout:
+            gated = self.dropout_layer(gated, training=training)
+
+        return gated * self.beta
 
 
 class GraphConv(tf.keras.layers.Layer):
@@ -779,22 +1080,18 @@ class GraphConv(tf.keras.layers.Layer):
                                             kernel_initializer=self.kernel_initializer,
                                             kernel_regularizer=self.kernel_regularizer,
                                             kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
+                                            use_bias=self.use_bias)
 
-        if self.use_bias:
-            self.bias = self.add_weight(name=f'{self.name}_bias',
-                                        shape=(self.units,),
-                                        initializer='zeros',
-                                        trainable=True)
-
-    def call(self, inputs):
+    def call(self, inputs, masks=None):
         """
         Forward pass of the layer.
 
         Parameters
         ----------
-        inputs : tuple of tf.Tensor
+        inputs : tuple or list of tf.Tensor
             Tuple of node features and edge indices.
+        masks : tuple or list of tf.Tensor, optional
+            Node and edge validity masks.
 
         Returns
         -------
@@ -803,6 +1100,15 @@ class GraphConv(tf.keras.layers.Layer):
         """
 
         nodes, edges = inputs
+        nodes_mask, edges_mask = masks if masks is not None else (None, None)
+
+        if nodes_mask is None:
+            nodes_mask = tf.ones(tf.shape(nodes)[:2], dtype=tf.bool)
+
+        if edges_mask is None:
+            edges_mask = tf.ones(tf.shape(edges[:, 0, :]), dtype=tf.bool)
+
+        nodes = tf.where(nodes_mask[..., tf.newaxis], nodes, tf.zeros_like(nodes))
 
         batch_size = tf.shape(nodes)[0]
         num_nodes = tf.shape(nodes)[1]
@@ -810,43 +1116,49 @@ class GraphConv(tf.keras.layers.Layer):
         src = tf.cast(edges[:, 0, :], tf.int32)
         dst = tf.cast(edges[:, 1, :], tf.int32)
 
+        src = tf.where(edges_mask, src, 0)
+        dst = tf.where(edges_mask, dst, 0)
+
+        edges_mask &= tf.gather(nodes_mask, src, batch_dims=1)
+        edges_mask &= tf.gather(nodes_mask, dst, batch_dims=1)
+
         self_idx = tf.range(num_nodes, dtype=tf.int32)[tf.newaxis, :]
         self_idx = tf.tile(self_idx, [batch_size, 1])
 
         src = tf.concat([src, self_idx], axis=1)
         dst = tf.concat([dst, self_idx], axis=1)
 
-        transformed = self.kernel(nodes)
+        edges_mask = tf.concat([edges_mask, nodes_mask], axis=1)
 
         batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
         dst_flat = tf.reshape(dst + batch_offset, [-1])
         total_segments = batch_size * num_nodes
 
-        ones_flat = tf.ones(tf.shape(dst_flat), dtype=transformed.dtype)
+        ones_flat = tf.reshape(tf.cast(edges_mask, nodes.dtype), [-1])
         degrees_flat = tf.math.unsorted_segment_sum(ones_flat, dst_flat, total_segments)
-        degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
 
+        degrees = tf.reshape(degrees_flat, [batch_size, num_nodes])
         deg_inv_sqrt = tf.math.rsqrt(tf.maximum(degrees, 1.0))
 
         src_norm = tf.gather(deg_inv_sqrt, src, batch_dims=1)
         dst_norm = tf.gather(deg_inv_sqrt, dst, batch_dims=1)
-        norm = src_norm * dst_norm
 
-        messages = tf.gather(transformed, src, batch_dims=1) * norm[..., tf.newaxis]
-        messages_flat = tf.reshape(messages, [-1, tf.shape(messages)[-1]])
+        norm = src_norm * dst_norm * tf.cast(edges_mask, nodes.dtype)
+        messages = tf.gather(nodes, src, batch_dims=1) * norm[..., tf.newaxis]
 
-        outputs_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, num_nodes, self.units])
+        messages_flat = tf.reshape(messages, [-1, tf.shape(nodes)[-1]])
+        aggregated_flat = tf.math.unsorted_segment_sum(messages_flat, dst_flat, total_segments)
+        aggregated = tf.reshape(aggregated_flat, [batch_size, num_nodes, tf.shape(nodes)[-1]])
 
-        if self.use_bias:
-            outputs = outputs + self.bias
+        outputs = self.kernel(aggregated)
+        outputs = tf.where(nodes_mask[..., tf.newaxis], outputs, tf.zeros_like(outputs))
 
         return outputs
 
 
 class GraphConv2D(tf.keras.layers.Layer):
     """
-    Graph convolution layer over spatial features for modeling non-local dependencies.
+    Graph convolution over spatial features.
 
     References
     ----------
@@ -855,9 +1167,9 @@ class GraphConv2D(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 units,
-                 k_neighbors=1,
-                 num_pos_scales=1,
+                 filters,
+                 kernel_size,
+                 dilation=1,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=None,
                  kernel_constraint=None,
@@ -868,12 +1180,12 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         Parameters
         ----------
-        units : int
+        filters : int
             Number of output features per node.
-        k_neighbors : int, optional
-            Number of neighbors used to build the graph.
-        num_pos_scales : int, optional
-            Number of sine-cosine positional scales used in the spatial offsets.
+        kernel_size : int
+            Number of graph neighbors.
+        dilation : int, optional
+            Step between neighbors in distance order.
         kernel_initializer : initializer, optional
             Kernel weights initializer.
         kernel_regularizer : regularizer, optional
@@ -888,9 +1200,9 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         super().__init__(**kwargs)
 
-        self.units = units
-        self.k_neighbors = k_neighbors
-        self.num_pos_scales = num_pos_scales
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.dilation = dilation
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
         self.kernel_constraint = kernel_constraint
@@ -909,9 +1221,9 @@ class GraphConv2D(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'units': self.units,
-            'k_neighbors': self.k_neighbors,
-            'num_pos_scales': self.num_pos_scales,
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
+            'dilation': self.dilation,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
@@ -932,65 +1244,12 @@ class GraphConv2D(tf.keras.layers.Layer):
 
         super().build(input_shape)
 
-        self.height = input_shape[1]
-        self.width = input_shape[2]
-        self.channels = input_shape[3]
-
-        self.kernel = tf.keras.layers.Dense(units=self.units,
-                                            kernel_initializer=self.kernel_initializer,
-                                            kernel_regularizer=self.kernel_regularizer,
-                                            kernel_constraint=self.kernel_constraint,
-                                            use_bias=False)
-
-        if self.use_bias:
-            self.bias = self.add_weight(name=f'{self.name}_bias',
-                                        shape=(self.units,),
-                                        initializer='zeros',
-                                        trainable=True)
-
-    def _build_base_coordinates(self):
-        """
-        Builds the base spatial coordinates.
-
-        Returns
-        -------
-        tf.Tensor
-            Coordinate tensor.
-        """
-
-        row_positions = tf.linspace(0.0, 1.0, self.height)
-        col_positions = tf.linspace(0.0, 1.0, self.width)
-
-        row_grid, col_grid = tf.meshgrid(row_positions, col_positions, indexing='ij')
-
-        return tf.stack([row_grid, col_grid], axis=-1)
-
-    def _build_positional_offsets(self):
-        """
-        Builds fixed sine-cosine positional offsets.
-
-        Returns
-        -------
-        tf.Tensor
-            Offset tensor.
-        """
-
-        coords = self._build_base_coordinates()
-        two_pi = tf.cast(2.0 * tf.experimental.numpy.pi, tf.float32)
-
-        offset_x = tf.zeros([self.height, self.width], dtype=tf.float32)
-        offset_y = tf.zeros([self.height, self.width], dtype=tf.float32)
-
-        for i in range(self.num_pos_scales):
-            freq = tf.cast(2 ** i, tf.float32)
-
-            offset_x += tf.sin(two_pi * freq * coords[..., 0])
-            offset_y += tf.cos(two_pi * freq * coords[..., 1])
-
-        offset_x = offset_x / tf.cast(self.num_pos_scales, tf.float32)
-        offset_y = offset_y / tf.cast(self.num_pos_scales, tf.float32)
-
-        return tf.stack([offset_x, offset_y], axis=-1)
+        self.kernel = tf.keras.layers.Conv2D(filters=self.filters,
+                                             kernel_size=1,
+                                             kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.kernel_regularizer,
+                                             kernel_constraint=self.kernel_constraint,
+                                             use_bias=self.use_bias)
 
     def call(self, inputs):
         """
@@ -1007,85 +1266,72 @@ class GraphConv2D(tf.keras.layers.Layer):
             Output feature map.
         """
 
-        batch_size = tf.shape(inputs)[0]
-        num_nodes = self.height * self.width
+        batch_size, height, width, channels = tf.unstack(tf.shape(inputs))
+        num_nodes = height * width
 
-        nodes = tf.reshape(inputs, [-1, num_nodes, self.channels])
+        nodes = tf.reshape(inputs, [batch_size, num_nodes, channels])
 
-        base_coords = self._build_base_coordinates()
-        offsets = self._build_positional_offsets()
+        rows = tf.range(height, dtype=tf.float32)
+        cols = tf.range(width, dtype=tf.float32)
+        row_grid, col_grid = tf.meshgrid(rows, cols, indexing='ij')
 
-        warped_coords = tf.reshape(base_coords + offsets, [num_nodes, 2])
+        coords = tf.stack([row_grid, col_grid], axis=-1)
+        offsets = tf.stack([tf.sin(row_grid), tf.cos(col_grid)], axis=-1)
 
-        diff = warped_coords[:, None, :] - warped_coords[None, :, :]
-        dist = tf.reduce_sum(tf.square(diff), axis=-1)
-        dist = dist + tf.eye(num_nodes, dtype=dist.dtype) * 1e12
+        coordinates = tf.reshape(coords + offsets, [-1, 2])
 
-        knn = tf.math.top_k(-dist, k=self.k_neighbors).indices
-        dst = tf.repeat(tf.range(num_nodes), repeats=self.k_neighbors)
-        src = tf.reshape(knn, [-1])
+        distances = coordinates[:, tf.newaxis, :] - coordinates[tf.newaxis, :, :]
+        distances = tf.reduce_sum(tf.square(distances), axis=-1)
 
-        edges = tf.stack([dst, src], axis=-1)
-        self_loops = tf.stack([tf.range(num_nodes), tf.range(num_nodes)], axis=-1)
+        neighbors = tf.math.top_k(-distances, k=self.kernel_size * self.dilation).indices
+        neighbors = neighbors[:, ::self.dilation]
 
-        edge_index = tf.concat([edges, self_loops], axis=0)
+        aggregated = tf.reduce_sum(tf.gather(nodes, neighbors, axis=1), axis=2)
+        aggregated = tf.reshape(aggregated, [batch_size, height, width, channels])
+        aggregated.set_shape(inputs.shape)
 
-        dst = edge_index[:, 0]
-        src = edge_index[:, 1]
-
-        transformed = self.kernel(tf.gather(nodes, src, axis=1))
-
-        batch_offset = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis] * num_nodes
-        dst_flat = tf.reshape(dst[tf.newaxis, :] + batch_offset, [-1])
-        total_segments = batch_size * num_nodes
-
-        neighbor_features_flat = tf.reshape(transformed, [-1, tf.shape(transformed)[-1]])
-
-        outputs_flat = tf.math.unsorted_segment_sum(neighbor_features_flat, dst_flat, total_segments)
-        outputs = tf.reshape(outputs_flat, [batch_size, self.height, self.width, self.units])
-
-        if self.use_bias:
-            outputs = outputs + self.bias
-
-        return outputs
+        return self.kernel(aggregated)
 
 
 class GraphExtraction(tf.keras.layers.Layer):
     """
-    Extracts graph representations from handwriting images via skeletonization.
+    Extracts graphs from skeletonized handwriting using spatial block sampling.
 
     References
     ----------
+    A fast parallel algorithm for thinning digital patterns
+        https://doi.org/10.1145/357994.358023
+
     Combining graph edit distance and triplet networks for offline signature verification
         https://www.sciencedirect.com/science/article/pii/S0167865519301850
-
-    Graph Embedding for Offline Handwritten Signature Verification
-        https://dl.acm.org/doi/10.1145/3345336.3345346
 
     Towards Visuo-Structural Handwriting Evaluation Based on Graph Matching
         https://link.springer.com/chapter/10.1007/978-3-031-45461-5_6
     """
 
-    def __init__(self, k_length=1, maximum_iterations=100, **kwargs):
+    def __init__(self, block_size=1, relative=True, normalize=True, **kwargs):
         """
         Initializes the layer.
 
         Parameters
         ----------
-        k_length : int, optional
-            Distance between sampled keypoints along the skeleton.
-        maximum_iterations : int, optional
-            Maximum number of thinning iterations.
+        block_size : int, optional
+            Skeleton sampling block size in pixels.
+        relative : bool, optional
+            Use relative node coordinates.
+        normalize : bool, optional
+            Normalize node coordinates.
         **kwargs : dict
             Additional keyword arguments.
         """
 
         super().__init__(**kwargs)
 
-        self.k_length = k_length
-        self.maximum_iterations = maximum_iterations
+        self.block_size = block_size
+        self.relative = relative
+        self.normalize = normalize
 
-        self._offsets = tf.range(self.k_length, dtype=tf.int32)
+        self._offsets = tf.range(self.block_size, dtype=tf.int32)
 
         self._lut0 = tf.constant(self._zhang_suen_lut(iteration=0), dtype=tf.bool)
         self._lut1 = tf.constant(self._zhang_suen_lut(iteration=1), dtype=tf.bool)
@@ -1103,8 +1349,9 @@ class GraphExtraction(tf.keras.layers.Layer):
         config = super().get_config()
 
         config.update({
-            'k_length': self.k_length,
-            'maximum_iterations': self.maximum_iterations,
+            'block_size': self.block_size,
+            'relative': self.relative,
+            'normalize': self.normalize,
         })
 
         return config
@@ -1207,7 +1454,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         image, _ = tf.while_loop(cond=cond,
                                  body=body,
                                  loop_vars=(image, tf.constant(True)),
-                                 maximum_iterations=self.maximum_iterations)
+                                 maximum_iterations=100)
 
         return image
 
@@ -1240,11 +1487,11 @@ class GraphExtraction(tf.keras.layers.Layer):
         height = tf.shape(skeleton)[1]
         width = tf.shape(skeleton)[2]
 
-        grid_h = tf.math.floordiv(height + self.k_length - 1, self.k_length)
-        grid_w = tf.math.floordiv(width + self.k_length - 1, self.k_length)
+        grid_h = tf.math.floordiv(height + self.block_size - 1, self.block_size)
+        grid_w = tf.math.floordiv(width + self.block_size - 1, self.block_size)
 
-        pad_h = grid_h * self.k_length - height
-        pad_w = grid_w * self.k_length - width
+        pad_h = grid_h * self.block_size - height
+        pad_w = grid_w * self.block_size - width
 
         paddings = tf.stack([
             tf.constant([0, 0], dtype=tf.int32),
@@ -1254,7 +1501,7 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         padded = tf.pad(skeleton, paddings, constant_values=False)
 
-        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.k_length, grid_w, self.k_length]))
+        blocks = tf.reshape(padded, tf.stack([batch_size, grid_h, self.block_size, grid_w, self.block_size]))
         blocks_int = tf.cast(blocks, tf.int32)
 
         col_counts = tf.reduce_sum(blocks_int, axis=2)
@@ -1267,8 +1514,8 @@ class GraphExtraction(tf.keras.layers.Layer):
         grid_x = tf.range(grid_w, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
         grid_y = tf.range(grid_h, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
 
-        sum_x = local_x_sum + counts * (grid_x * self.k_length)
-        sum_y = local_y_sum + counts * (grid_y * self.k_length)
+        sum_x = local_x_sum + counts * (grid_x * self.block_size)
+        sum_y = local_y_sum + counts * (grid_y * self.block_size)
 
         return blocks, counts, sum_x, sum_y, grid_h, grid_w
 
@@ -1323,11 +1570,15 @@ class GraphExtraction(tf.keras.layers.Layer):
         Returns
         -------
         coordinates : tf.Tensor
-            Zero-padded pixel coordinates.
+            Original pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features with configurable positions.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices.
+        nodes_mask : tf.Tensor
+            Boolean validity mask for nodes.
+        edges_mask : tf.Tensor
+            Boolean validity mask for edges.
         """
 
         batch_size = tf.shape(skeleton)[0]
@@ -1358,17 +1609,23 @@ class GraphExtraction(tf.keras.layers.Layer):
         y = tf.cast(tf.gather_nd(sum_y, occupied_indices), tf.float32) / occupied_count
 
         xy = tf.stack([x, y], axis=1)
+        node_xy = xy
 
-        xy_min = tf.math.unsorted_segment_min(xy, node_batch, batch_size)
-        xy_max = tf.math.unsorted_segment_max(xy, node_batch, batch_size)
+        if self.relative:
+            xy_min = tf.math.unsorted_segment_min(xy, node_batch, batch_size)
+            node_xy = node_xy - tf.gather(xy_min, node_batch)
 
-        graph_scale = tf.maximum(tf.reduce_max(xy_max - xy_min, axis=1), 1.0)
-        graph_min = tf.gather(xy_min, node_batch)
-        scale = tf.gather(graph_scale, node_batch)
+        if self.normalize:
+            if self.relative:
+                xy_max = tf.math.unsorted_segment_max(xy, node_batch, batch_size)
+                graph_scale = tf.maximum(tf.reduce_max(xy_max - xy_min, axis=1), 1.0)
+                scale = tf.gather(graph_scale, node_batch)
+                node_xy = node_xy / scale[:, tf.newaxis]
+            else:
+                image_scale = tf.cast(tf.reduce_max(tf.shape(skeleton)[1:3]), tf.float32)
+                node_xy = node_xy / tf.maximum(image_scale, 1.0)
 
-        normalized_xy = (xy - graph_min) / scale[:, tf.newaxis]
-        node_values = tf.pad(normalized_xy, [[0, 0], [0, 2]])
-
+        node_values = tf.pad(node_xy, [[0, 0], [0, 2]])
         node_indices = tf.stack([node_batch, node_local], axis=1)
 
         coordinates = tf.scatter_nd(indices=node_indices,
@@ -1410,11 +1667,14 @@ class GraphExtraction(tf.keras.layers.Layer):
 
         max_edges = 2 * tf.reduce_max(forward_counts)
 
-        edges = tf.scatter_nd(indices=tf.stack([edge_batch, edge_local], axis=1),
-                              updates=edge_values,
-                              shape=tf.stack([batch_size, max_edges, 2]))
+        edges = tf.transpose(tf.scatter_nd(indices=tf.stack([edge_batch, edge_local], axis=1),
+                                           updates=edge_values,
+                                           shape=tf.stack([batch_size, max_edges, 2])), [0, 2, 1])
 
-        return coordinates, nodes, tf.transpose(edges, [0, 2, 1])
+        nodes_mask = tf.sequence_mask(node_counts, maxlen=max_nodes)
+        edges_mask = tf.sequence_mask(2 * forward_counts, maxlen=max_edges)
+
+        return nodes, edges, nodes_mask, edges_mask, coordinates
 
     def _build_inputs(self, inputs):
         """
@@ -1445,7 +1705,7 @@ class GraphExtraction(tf.keras.layers.Layer):
         width = tf.shape(image)[2]
 
         rows = tf.range(height, dtype=tf.int32)[tf.newaxis, :, tf.newaxis]
-        cols = tf.range(width, dtype=tf.int32)[tf.newaxis, tf.newaxis, :]
+        cols = tf.range(width, dtype=tf.int32)[tf.newaxis, :]
 
         valid = (
             (rows < heights[:, tf.newaxis, tf.newaxis])
@@ -1477,46 +1737,24 @@ class GraphExtraction(tf.keras.layers.Layer):
         Returns
         -------
         coordinates : tf.Tensor
-            Zero-padded pixel coordinates.
+            Original pixel coordinates.
         nodes : tf.Tensor
-            Zero-padded node features.
+            Node features with configurable positions.
         edges : tf.Tensor
-            Zero-padded edge indices.
+            Edge indices.
+        nodes_mask : tf.Tensor
+            Boolean validity mask for nodes.
+        edges_mask : tf.Tensor
+            Boolean validity mask for edges.
         """
 
         ink = self._build_inputs(inputs=inputs)
         skeleton = self._thinning(ink=ink)
-        coordinates, nodes, edges = self._skeleton_to_graphs(skeleton=skeleton)
 
-        coordinates = tf.stop_gradient(coordinates)
-        nodes = tf.stop_gradient(nodes)
-        edges = tf.stop_gradient(edges)
+        outputs = self._skeleton_to_graphs(skeleton=skeleton)
+        outputs = tf.nest.map_structure(tf.stop_gradient, outputs)
 
-        return coordinates, nodes, edges
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the layer.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensors.
-
-        Returns
-        -------
-        tuple of tf.TensorShape
-            Output shape.
-        """
-
-        if not self.built:
-            self.build(input_shape)
-
-        coordinates_shape = tf.TensorShape([input_shape[0], None, 2])
-        nodes_shape = tf.TensorShape([input_shape[0], None, 4])
-        edges_shape = tf.TensorShape([input_shape[0], 2, None])
-
-        return coordinates_shape, nodes_shape, edges_shape
+        return outputs
 
 
 class GraphNormalization(tf.keras.layers.Layer):
@@ -1577,269 +1815,59 @@ class GraphNormalization(tf.keras.layers.Layer):
 
         self.features = input_shape[-1]
 
-        self.alpha = self.add_weight(name='alpha',
+        self.alpha = self.add_weight(name=f'{self.name}_alpha',
                                      shape=(self.features,),
                                      initializer='ones',
                                      trainable=True)
 
-        self.gamma = self.add_weight(name='gamma',
+        self.gamma = self.add_weight(name=f'{self.name}_gamma',
                                      shape=(self.features,),
                                      initializer='ones',
                                      trainable=True)
 
-        self.beta = self.add_weight(name='beta',
+        self.beta = self.add_weight(name=f'{self.name}_beta',
                                     shape=(self.features,),
                                     initializer='zeros',
                                     trainable=True)
 
-    def call(self, inputs):
+    def call(self, inputs, nodes_mask=None):
         """
         Forward pass of the layer.
 
         Parameters
         ----------
         inputs : tf.Tensor
-            Node feature tensor.
+            Features tensor.
+        nodes_mask : tf.Tensor, optional
+            Validity mask.
 
         Returns
         -------
         tf.Tensor
-            Normalized node feature tensor.
+            Normalized feature tensor.
         """
 
-        mean = tf.reduce_mean(inputs, axis=1, keepdims=True)
+        mask = tf.identity(nodes_mask)
+
+        if mask is None:
+            mask = tf.ones(tf.shape(inputs)[:2], dtype=tf.bool)
+
+        mask = mask[..., tf.newaxis]
+        inputs = tf.where(mask, inputs, tf.zeros_like(inputs))
+
+        count = tf.reduce_sum(tf.cast(mask, inputs.dtype), axis=1, keepdims=True)
+        count = tf.maximum(count, 1.0)
+
+        mean = tf.reduce_sum(inputs, axis=1, keepdims=True) / count
 
         centered = inputs - self.alpha * mean
-        variance = tf.reduce_mean(tf.square(centered), axis=1, keepdims=True)
+        centered = tf.where(mask, centered, tf.zeros_like(centered))
+        variance = tf.reduce_sum(tf.square(centered), axis=1, keepdims=True) / count
 
         normed = centered / tf.sqrt(variance + self.epsilon)
+
         outputs = normed * self.gamma + self.beta
-
-        return outputs
-
-
-class GraphPooling(tf.keras.layers.Layer):
-    """
-    Graph pooling layer for reducing the number of graph nodes.
-
-    References
-    ----------
-    Graph U-Nets
-        https://arxiv.org/abs/1905.05178
-
-    Self-Attention Graph Pooling
-        https://arxiv.org/abs/1904.08082
-    """
-
-    def __init__(self,
-                 strides=1,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        strides : int, optional
-            Graph reduction factor.
-        kernel_initializer : initializer, optional
-            Kernel weights initializer for the score projection.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer for the score projection.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint for the score projection.
-        use_bias : bool, optional
-            Enables bias term in the score projection layer.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.strides = strides
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Return the configuration of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'strides': self.strides,
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : TensorShape
-            Shape of the input tensor.
-        """
-
-        super().build(input_shape)
-
-        self.gate_dense = tf.keras.layers.Dense(units=1,
-                                                kernel_initializer=self.kernel_initializer,
-                                                kernel_regularizer=self.kernel_regularizer,
-                                                kernel_constraint=self.kernel_constraint,
-                                                use_bias=self.use_bias)
-
-    def call(self, inputs):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Node feature tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Reduced node feature tensor.
-        """
-
-        scores = self.gate_dense(inputs)
-        scores = tf.squeeze(scores, axis=-1)
-
-        nodes = tf.math.ceil(tf.cast(tf.shape(inputs)[1], tf.float32) / self.strides)
-        _, indices = tf.math.top_k(scores, k=tf.cast(nodes, tf.int32), sorted=False)
-
-        indices = tf.sort(indices, axis=1)
-
-        outputs = tf.gather(inputs, indices, axis=1, batch_dims=1)
-        scores = tf.gather(scores, indices, axis=1, batch_dims=1)
-
-        outputs = outputs * tf.nn.sigmoid(scores)[..., tf.newaxis]
-
-        return outputs
-
-
-class GlobalGraphPooling(tf.keras.layers.Layer):
-    """
-    Global Graph pooling layer for aggregating node features into embeddings.
-
-    References
-    ----------
-    Gated Graph Sequence Neural Networks
-        https://arxiv.org/abs/1511.05493
-
-    Self-Attention Graph Pooling
-        https://arxiv.org/pdf/1904.08082
-    """
-
-    def __init__(self,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 kernel_constraint=None,
-                 use_bias=True,
-                 **kwargs):
-        """
-        Initializes the layer.
-
-        Parameters
-        ----------
-        kernel_initializer : initializer, optional
-            Kernel weights initializer for the gate projection.
-        kernel_regularizer : regularizer, optional
-            Kernel weights regularizer for the gate projection.
-        kernel_constraint : constraint, optional
-            Kernel weights constraint for the gate projection.
-        use_bias : bool, optional
-            Enables bias term in the gate projection layer.
-        **kwargs : dict
-            Additional keyword arguments.
-        """
-
-        super().__init__(**kwargs)
-
-        self.kernel_initializer = kernel_initializer
-        self.kernel_regularizer = kernel_regularizer
-        self.kernel_constraint = kernel_constraint
-        self.use_bias = use_bias
-
-    def get_config(self):
-        """
-        Return the configuration of the layer.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary.
-        """
-
-        config = super().get_config()
-
-        config.update({
-            'kernel_initializer': self.kernel_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'use_bias': self.use_bias,
-        })
-
-        return config
-
-    def build(self, input_shape):
-        """
-        Initializes layer weights.
-
-        Parameters
-        ----------
-        input_shape : TensorShape
-            Shape of the input tensor.
-        """
-
-        super().build(input_shape)
-
-        self.gate_dense = tf.keras.layers.Dense(units=1,
-                                                kernel_initializer=self.kernel_initializer,
-                                                kernel_regularizer=self.kernel_regularizer,
-                                                kernel_constraint=self.kernel_constraint,
-                                                use_bias=self.use_bias)
-
-        self.softmax = tf.keras.layers.Softmax(axis=1)
-
-    def call(self, inputs):
-        """
-        Forward pass of the layer.
-
-        Parameters
-        ----------
-        inputs : tf.Tensor
-            Node feature tensor.
-
-        Returns
-        -------
-        tf.Tensor
-            Graph-level feature vector.
-        """
-
-        attn_scores = self.gate_dense(inputs)
-        attn_weights = self.softmax(attn_scores)
-
-        outputs = inputs * attn_weights
-        outputs = tf.reduce_sum(outputs, axis=1)
+        outputs = tf.where(mask, outputs, tf.zeros_like(outputs))
 
         return outputs
 

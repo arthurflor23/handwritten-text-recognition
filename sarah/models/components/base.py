@@ -240,7 +240,6 @@ class BaseRecognitionModel(BaseModel):
                  generator=None,
                  synthesis_probability=1.0,
                  return_features=False,
-                 seed=None,
                  **kwargs):
         """
         Initializes the synthesis and recognition model.
@@ -263,25 +262,17 @@ class BaseRecognitionModel(BaseModel):
             Synthetic data probability.
         return_features : bool, optional
             Whether to return the intermediate features.
-        seed : int, optional
-            Seed for random shuffle.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(**kwargs)
 
-        if seed is not None:
-            tf.keras.utils.set_random_seed(seed)
-
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.graph_shape = graph_shape
-
         self.synthesis_probability = synthesis_probability
         self.return_features = return_features
-        self.seed = seed
-
         self.writer_encoder = writer_encoder
         self.style_encoder = style_encoder
         self.generator = generator
@@ -661,7 +652,6 @@ class BaseSegmentationModel(BaseModel):
                  image_shape,
                  graph_shape=None,
                  return_features=False,
-                 seed=None,
                  **kwargs):
         """
         Initializes the segmentation model.
@@ -674,22 +664,15 @@ class BaseSegmentationModel(BaseModel):
             The shape of the input graphs.
         return_features : bool, optional
             Whether to return intermediate features.
-        seed : int, optional
-            Seed for random shuffle.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(**kwargs)
 
-        if seed is not None:
-            tf.keras.utils.set_random_seed(seed)
-
         self.image_shape = image_shape
         self.graph_shape = graph_shape
-
         self.return_features = return_features
-        self.seed = seed
 
         self.segmentation = None
 
@@ -918,7 +901,6 @@ class BaseSynthesisModel(BaseModel):
                  discriminator_steps=1,
                  generator_steps=1,
                  return_features=False,
-                 seed=None,
                  **kwargs):
         """
         Initialize synthesis model.
@@ -939,24 +921,17 @@ class BaseSynthesisModel(BaseModel):
             The skipping steps for generator training.
         return_features : bool, optional
             Whether to return the intermediate features.
-        seed : int, optional
-            Seed for random shuffle.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(**kwargs)
 
-        if seed is not None:
-            tf.keras.utils.set_random_seed(seed)
-
         self.image_shape = image_shape
         self.lexical_shape = lexical_shape
         self.writers_shape = writers_shape
         self.graph_shape = graph_shape
-
         self.return_features = return_features
-        self.seed = seed
 
         self.recognition = None
         self.writer_encoder = None
@@ -1159,7 +1134,6 @@ class BaseWriterIdentificationModel(BaseModel):
                  generator=None,
                  synthesis_probability=1.0,
                  return_features=False,
-                 seed=None,
                  **kwargs):
         """
         Initializes the synthesis and writer identification model.
@@ -1182,24 +1156,17 @@ class BaseWriterIdentificationModel(BaseModel):
             Synthetic data probability.
         return_features : bool, optional
             Whether to return the intermediate features.
-        seed : int, optional
-            Seed for random shuffle.
         **kwargs : dict
             Additional arguments.
         """
 
         super().__init__(**kwargs)
 
-        if seed is not None:
-            tf.keras.utils.set_random_seed(seed)
-
         self.image_shape = image_shape
         self.writers_shape = writers_shape
         self.graph_shape = graph_shape
-
         self.synthesis_probability = synthesis_probability
         self.return_features = return_features
-        self.seed = seed
 
         self.writer_encoder = writer_encoder
         self.style_encoder = style_encoder

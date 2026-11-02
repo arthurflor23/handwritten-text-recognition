@@ -547,14 +547,13 @@ class GeneratorModel(BaseModel):
                 x = tf.keras.layers.UpSampling2D(size=up, interpolation='bilinear')(x)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
-
             h = AdaptiveInstanceNormalization(epsilon=1e-5)([h, y])
             h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, strides=1, padding='same')(h)
             x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, strides=1, padding='valid')(x)
 
-            return tf.keras.layers.Add()([h, x])
+            return tf.keras.layers.Add()([x, h])
 
         mask_input = tf.keras.layers.Input(shape=self.image_shape)
         mask = tf.keras.layers.Identity()(mask_input)
@@ -592,7 +591,7 @@ class GeneratorModel(BaseModel):
                   up[1] if block.shape[2] < self.image_shape[1] else 1)
 
             if i == self.num_blocks - 1:
-                block = GatedResidualConv2D()(block)
+                block += GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, y=latent_chunks[i], up=up)
 
@@ -706,7 +705,6 @@ class DiscriminatorModel(BaseModel):
                 h = tf.keras.layers.Activation(activation='swish')(h)
 
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same')(h)
-
             h = tf.keras.layers.Activation(activation='swish')(h)
             h = tf.keras.layers.Conv2D(filters=filters, kernel_size=3, padding='same')(h)
 
@@ -720,7 +718,7 @@ class DiscriminatorModel(BaseModel):
             if not preactive:
                 x = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding='valid')(x)
 
-            return tf.keras.layers.Add()([h, x])
+            return tf.keras.layers.Add()([x, h])
 
         image_input = tf.keras.layers.Input(shape=self.image_shape)
         block = tf.keras.layers.Identity()(image_input)
@@ -730,7 +728,7 @@ class DiscriminatorModel(BaseModel):
                     down[1] if block.shape[2] > self.base_patch[1] else 1)
 
             if i == 1:
-                block = GatedResidualConv2D()(block)
+                block += GatedResidualConv2D()(block)
 
             block = residual_block(filters=filters, x=block, preactive=(i > 0), down=down)
 

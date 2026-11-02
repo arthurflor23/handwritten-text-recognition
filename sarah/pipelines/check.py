@@ -1,7 +1,10 @@
+import os
 import cv2
+import time
 import numpy as np
 
 from data import Augmentor, Dataset, utils
+from models import Compose
 from models.components.layers import GraphExtraction
 
 
@@ -15,22 +18,22 @@ def check(args):
         A namespace object containing all the arguments required.
     """
 
+    Compose.setup_session(seed=args.seed)
+
     dataset = Dataset(source=args.source,
                       text_level=args.text_level,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      mask_by_text=args.mask_by_text,
-                      order_by_text=args.order_by_text,
+                      mask_by_length=args.mask_by_length,
+                      order_by_length=args.order_by_length,
                       training_ratio=args.training_ratio,
                       validation_ratio=args.validation_ratio,
                       test_ratio=args.test_ratio,
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
-                      enable_graph=args.enable_graph,
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
-                      seed=42)
+                      fonts_path=args.fonts_path)
     print(dataset)
 
     augmentor = None
@@ -50,8 +53,7 @@ def check(args):
                               gaussian_blur=args.gaussian_blur,
                               graph_rotate=dataset.graph_fonts and args.graph_rotate,
                               graph_scale=dataset.graph_fonts and args.graph_scale,
-                              graph_noise=dataset.graph_fonts and args.graph_noise,
-                              seed=42)
+                              graph_noise=dataset.graph_fonts and args.graph_noise)
         print(augmentor)
 
     src_gen, _ = dataset.get_generator(data_partition='test',
@@ -60,7 +62,8 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=None,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     enc_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
@@ -68,7 +71,8 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=None,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     aug_gen, _ = dataset.get_generator(data_partition='test',
                                        batch_size=args.batch_size,
@@ -76,9 +80,11 @@ def check(args):
                                        batch_processing=False,
                                        batch_scale=False,
                                        augmentor=augmentor,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       warmup=False)
 
     print('\nChecking samples...')
+    timestamp = str(int(time.time()))
 
     while True:
         _, y_src = next(src_gen)
@@ -90,27 +96,22 @@ def check(args):
         x_aug, y_aug = next(aug_gen)
         img_aug, seg_aug = x_aug[0], x_aug[4]
 
-        if args.enable_graph:
-            max_height = max(x.shape[0] for x in img_aug)
-            max_width = max(x.shape[1] for x in img_aug)
+        inputs = np.stack([
+            np.pad(
+                np.asarray(x),
+                pad_width=((0, max(x.shape[0] for x in img_aug) - x.shape[0]),
+                           (0, max(x.shape[1] for x in img_aug) - x.shape[1])),
+                mode='constant',
+                constant_values=np.min(x),
+            )[..., np.newaxis]
+            for x in img_aug
+        ])
 
-            inputs = np.stack([
-                np.pad(
-                    np.asarray(x),
-                    pad_width=((0, max_height - x.shape[0]),
-                               (0, max_width - x.shape[1])),
-                    mode='constant',
-                    constant_values=np.min(x),
-                )[..., np.newaxis]
-                for x in img_aug
-            ])
-
-            graph_extraction = GraphExtraction(k_length=2)
-            coordinates, nodes, edges = graph_extraction(inputs)
+        nodes, edges, _, _, coordinates = GraphExtraction()(inputs)
 
         if dataset.graph_fonts:
-            nodes_src, edges_src = y_aug[5], y_aug[6]
-            nodes_aug, edges_aug = x_aug[5], x_aug[6]
+            nodes_src, edges_src, graph_chars = y_aug[5:8]
+            nodes_aug, edges_aug = x_aug[5:7]
 
         for i in range(len(img_src)):
             print('\nPath image')
@@ -127,23 +128,33 @@ def check(args):
             print(txt_enc[i])
             print('-' * 68, '\n')
 
+            windows = {}
             if dataset.graph_fonts:
-                src_canvas = utils.plot_graph_font(nodes_src[i], edges_src[i], dataset.tokenizer.chars)
-                cv2.imshow('Graph Font (src)', src_canvas)
+                chars = dataset.tokenizer.decode_text(graph_chars[i])
 
-                aug_canvas = utils.plot_graph_font(nodes_aug[i], edges_aug[i], dataset.tokenizer.chars)
-                cv2.imshow('Graph Font (aug)', aug_canvas)
+                windows['6_graph_font'] = utils.plot_graph_font(nodes_src[i], edges_src[i], chars)
+                windows['5_graph_font_aug'] = utils.plot_graph_font(nodes_aug[i], edges_aug[i], chars)
 
-            if args.enable_graph:
-                graph_canvas = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
-                cv2.imshow('Graph Extraction (aug)', graph_canvas)
+            windows['4_target_graph'] = utils.plot_graph(coordinates[i], nodes[i], edges[i], img_aug[i].shape)
+            windows['3_target_seg_aug'] = seg_aug[i]
+            windows['2_target_aug'] = img_aug[i]
+            windows['1_image'] = img_enc[i]
 
-            cv2.imshow('Segmentation (aug)', seg_aug[i])
-            cv2.imshow('Image (aug)', img_aug[i])
-            cv2.imshow('Image (enc)', img_enc[i])
+            for name, canvas in windows.items():
+                cv2.imshow(name, canvas)
 
-            print('Press Enter to continue or Esc to stop...\n')
+            print('Press Enter to continue, `s` to save, or `Esc` to stop...\n')
             key = cv2.waitKey(0)
+
+            if key == 115:
+                out_dir = os.path.join(args.output_path, 'checks', timestamp)
+                os.makedirs(out_dir, exist_ok=True)
+
+                for name, canvas in windows.items():
+                    cv2.imwrite(os.path.join(out_dir, f'{i + 1}_{name}.png'), canvas)
+
+                print(f'Saved frames to {out_dir}/\n')
+                key = cv2.waitKey(0)
 
             if key == 27:
                 cv2.destroyAllWindows()

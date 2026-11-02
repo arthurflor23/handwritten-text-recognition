@@ -11,6 +11,12 @@ class RecognitionModel(BaseRecognitionModel):
 
     References
     ----------
+    A Robust Handwritten Recognition System for Learning on Different Data Restriction Scenarios
+        https://www.sciencedirect.com/science/article/abs/pii/S0167865522001052
+
+    HTR-Flor: A Deep Learning System for Offline Handwritten Text Recognition
+        https://ieeexplore.ieee.org/document/9266005
+
     HTSR-Pollen: Handwritten Text Synthesis and Recognition System to Overcome Data Scarcity
         https://ieeexplore.ieee.org/document/11475723
     """
@@ -45,14 +51,14 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
 
-        encoder = GatedResidualConv2D()(encoder)
+        encoder += GatedResidualConv2D()(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')(encoder)
         encoder = tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-3)(encoder)
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')(encoder)
@@ -60,7 +66,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same')(encoder)
@@ -68,7 +74,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=80, kernel_size=3, padding='same')(encoder)
@@ -76,7 +82,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(encoder)
 
-        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=112, kernel_size=3, padding='same')(encoder)
@@ -84,7 +90,7 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        encoder = GatedResidualConv2D(dropout=0.1)(encoder)
+        encoder += GatedResidualConv2D(dropout=0.1)(encoder)
         encoder = tf.keras.layers.Dropout(rate=0.1)(encoder)
 
         encoder = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding='same')(encoder)
@@ -92,14 +98,16 @@ class RecognitionModel(BaseRecognitionModel):
         encoder = tf.keras.layers.Activation(activation='swish')(encoder)
         encoder = tf.keras.layers.MaxPooling2D(pool_size=(2, 1), strides=(2, 1))(encoder)
 
-        self.encoder = tf.keras.Model(name='recognition_encoder', inputs=encoder_input, outputs=encoder)
+        self.encoder = tf.keras.Model(name='recognition_encoder',
+                                      inputs=encoder_input,
+                                      outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])
         decoder = tf.keras.layers.Identity()(decoder_input)
 
         decoder_score_att = tf.keras.layers.MultiHeadAttention(
-            num_heads=4, key_dim=32, value_dim=16, use_gate=True)(decoder, decoder, decoder)
+            num_heads=4, key_dim=32, value_dim=16, use_gate=True)(decoder, decoder)
 
         decoder_att = tf.keras.layers.Add()([decoder, decoder_score_att])
         decoder = tf.keras.layers.Reshape(target_shape=(-1, decoder_att.shape[-1]))(decoder_att)

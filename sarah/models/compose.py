@@ -11,6 +11,8 @@ import numpy as np
 import tensorflow as tf
 
 from datetime import datetime
+from keras.src.utils.rng_utils import get_random_seed
+
 from sarah.models.components.callbacks import GANMonitor
 from sarah.models.components.callbacks import TrainingLogger
 
@@ -68,8 +70,11 @@ class Compose():
         gpu : int, list, or tuple, optional
             GPU index or sequence of indices.
         seed : int, optional
-            Seed for random shuffle.
+            Seed for random generators.
         """
+
+        if seed is not None:
+            Compose.setup_session(seed=seed)
 
         self.synthesis = synthesis
         self.recognition = recognition
@@ -90,7 +95,7 @@ class Compose():
         self.output_path = output_path
 
         self.gpu = gpu
-        self.seed = seed
+        self.seed = Compose.get_random_seed() if seed is None else seed
 
         self.model = None
         self.spelling_model = None
@@ -184,8 +189,7 @@ class Compose():
                                            writers_shape=self.tokenizer.writers_shape,
                                            graph_shape=self.tokenizer.graph_shape,
                                            discriminator_steps=self.discriminator_steps,
-                                           generator_steps=self.generator_steps,
-                                           seed=self.seed)
+                                           generator_steps=self.generator_steps)
 
                 synthesis_params = {
                     'writer_encoder': synthesis.writer_encoder,
@@ -199,7 +203,6 @@ class Compose():
                                               image_shape=self.image_shape,
                                               lexical_shape=self.tokenizer.lexical_shape,
                                               graph_shape=self.tokenizer.graph_shape,
-                                              seed=self.seed,
                                               **synthesis_params)
 
                 if SpellingModel:
@@ -209,7 +212,6 @@ class Compose():
                 self.model = SegmentationModel(name='segmentation',
                                                image_shape=self.image_shape,
                                                graph_shape=self.tokenizer.graph_shape,
-                                               seed=self.seed,
                                                **synthesis_params)
 
             elif WriterIdentificationModel:
@@ -217,7 +219,6 @@ class Compose():
                                                        image_shape=self.image_shape,
                                                        writers_shape=self.tokenizer.writers_shape,
                                                        graph_shape=self.tokenizer.graph_shape,
-                                                       seed=self.seed,
                                                        **synthesis_params)
 
         else:
@@ -227,8 +228,7 @@ class Compose():
                                         writers_shape=self.tokenizer.writers_shape,
                                         graph_shape=self.tokenizer.graph_shape,
                                         discriminator_steps=self.discriminator_steps,
-                                        generator_steps=self.generator_steps,
-                                        seed=self.seed)
+                                        generator_steps=self.generator_steps)
 
     def compile(self, learning_rate=None, run_context=None):
         """
@@ -783,15 +783,15 @@ class Compose():
         ----------
         params : dict or argparse.Namespace, optional
             Parameters to be logged.
-        dataset : Dataset instance or None, optional
+        dataset : Dataset instance, optional
             Dataset object instance.
-        augmentor : Augmentor instance or None, optional
+        augmentor : Augmentor instance, optional
             Augmentor object instance.
-        model : Model instance or None, optional
+        model : Model instance, optional
             Model object instance.
-        metrics : dict or None, optional
+        metrics : dict, optional
             Model metrics.
-        evaluations : list or None, optional
+        evaluations : list, optional
             Model evaluation data.
         prefix : str, optional
             Prefix used in the metric logs.
@@ -876,6 +876,19 @@ class Compose():
             log_metrics(metric_label, metrics)
 
             mlflow.end_run()
+
+    @staticmethod
+    def get_random_seed():
+        """
+        Returns the random seed configured.
+
+        Returns
+        -------
+        int or None
+            Configured random seed, or None if not set.
+        """
+
+        return get_random_seed()
 
     @staticmethod
     def get_tokenizer(synthesis=None,
@@ -1009,14 +1022,12 @@ class Compose():
             GPU index or sequence of indices.
         """
 
+        gpu_indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
+        gpu_indices = [int(i) for i in gpu_indices if str(i).isdigit()]
+
         try:
-            tf.keras.backend.clear_session(free_memory=True)
-
-            indices = gpu if isinstance(gpu, (list, tuple)) else [gpu]
-            indices = [int(i) for i in indices if str(i).isdigit()]
-
             devices = tf.config.list_physical_devices('GPU')
-            devices = [devices[i] for i in indices]
+            devices = [devices[i] for i in gpu_indices]
 
             tf.config.set_visible_devices(devices=devices, device_type='GPU')
 
@@ -1183,3 +1194,19 @@ class Compose():
                     base_conn.commit()
 
             shutil.move(merge_file, os.path.join(merged_path, os.path.basename(merge_file)))
+
+    @staticmethod
+    def setup_session(seed=None):
+        """
+        Resets the session and configures random seeds.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Seed for random generators.
+        """
+
+        tf.keras.backend.clear_session(free_memory=True)
+
+        if seed is not None:
+            tf.keras.utils.set_random_seed(seed)

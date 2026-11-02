@@ -6,8 +6,10 @@ import numpy as np
 import concurrent.futures
 
 from fontTools.ttLib import TTFont
+
 from sarah.data import utils
 from sarah.data.tokenizer import Tokenizer
+from sarah.models.compose import Compose
 
 
 class Dataset():
@@ -20,8 +22,8 @@ class Dataset():
                  text_level='line',
                  image_shape=(64, 1024, 1),
                  char_width=None,
-                 mask_by_text=False,
-                 order_by_text=False,
+                 mask_by_length=False,
+                 order_by_length=False,
                  training_ratio=None,
                  validation_ratio=None,
                  test_ratio=None,
@@ -31,7 +33,6 @@ class Dataset():
                  data=None,
                  tokenizer=None,
                  multigrams=False,
-                 enable_graph=False,
                  input_path='datasets',
                  fonts_path='fonts',
                  seed=None):
@@ -48,9 +49,9 @@ class Dataset():
             The image dimensions.
         char_width : int, optional
             The width per character.
-        mask_by_text : bool, optional
+        mask_by_length : bool, optional
             Whether to mask data by text length.
-        order_by_text : bool, optional
+        order_by_length : bool, optional
             Whether to sort data by text length.
         training_ratio : float or int, optional
             The training ratio for resample.
@@ -70,25 +71,23 @@ class Dataset():
             Tokenizer instance for input data.
         multigrams : bool, optional
             Enable multigrams process.
-        enable_graph : bool, optional
-            Enable prototype graph data.
         input_path : str, optional
             Path to input data.
         fonts_path : str, optional
             Path to fonts data.
         seed : int, optional
-            Seed for random shuffle.
+            Seed for random generators.
         """
 
         if seed is not None:
-            np.random.seed(seed)
+            Compose.setup_session(seed=seed)
 
         self.source = source
         self.text_level = text_level
         self.image_shape = image_shape
         self.char_width = char_width or 0
-        self.mask_by_text = mask_by_text
-        self.order_by_text = order_by_text
+        self.mask_by_length = mask_by_length
+        self.order_by_length = order_by_length
         self.training_ratio = training_ratio
         self.validation_ratio = validation_ratio
         self.test_ratio = test_ratio
@@ -97,10 +96,9 @@ class Dataset():
         self.lazy_mode = lazy_mode
         self.tokenizer = tokenizer or Tokenizer()
         self.multigrams = multigrams
-        self.enable_graph = enable_graph
         self.input_path = input_path
         self.fonts_path = fonts_path
-        self.seed = seed
+        self.seed = Compose.get_random_seed() if seed is None else seed
 
         if data is None:
             self._source = self._import_source_module(self.source)
@@ -116,7 +114,7 @@ class Dataset():
         self.samples = self._prepare_samples(data)
         self.multigrams = self._prepare_multigrams(data)
 
-        fonts = self._load_fonts(self.fonts_path) if self.enable_graph else []
+        fonts = self._load_fonts(self.fonts_path)
 
         self.graph_fonts = self._prepare_graphs(fonts, self.tokenizer.chars)
         self.tokenizer.set_graph_shape(self.graph_fonts)
@@ -146,7 +144,7 @@ class Dataset():
         info += f"\n{'illumination':<{pad}}: {self.illumination or '-'}"
         info += f"\n{'binarization':<{pad}}: {self.binarization or '-'}"
         info += f"\n{'lazy_mode':<{pad}}: {self.lazy_mode or '-'}"
-        info += f"\n{'seed':<{pad}}: {self.seed or '-'}"
+        info += f"\n{'seed':<{pad}}: {'-' if self.seed is None else self.seed}"
         info += "\n" + "-" * width
         info += f"\n{'training_data':<{pad}}: {len(self.samples['source']['training']):,}"
         info += f"\n{'validation_data':<{pad}}: {len(self.samples['source']['validation']):,}"
@@ -262,8 +260,7 @@ class Dataset():
 
         for key in ['training', 'validation', 'test']:
             data.setdefault(key, [])
-
-            data[key].sort(key=lambda x: x.get('text', ''), reverse=False)
+            data[key].sort(key=lambda x: x.get('image', ''), reverse=False)
             np.random.shuffle(data[key])
 
             ratio = getattr(self, f'{key}_ratio')
@@ -310,7 +307,12 @@ class Dataset():
 
         return data
 
-    def _prepare_graphs(self, fonts, charset, epsilon=0.01):
+    def _prepare_graphs(self,
+                        fonts,
+                        charset,
+                        relative=True,
+                        normalize=True,
+                        epsilon=0.01):
         """
         Builds graph representations from each character font.
 
@@ -320,6 +322,10 @@ class Dataset():
             List of font entries with font and cmap.
         charset : list
             The tokenizer charset.
+        relative : bool, optional
+            Define node positions as relative or absolute.
+        normalize : bool, optional
+            Scale node positions.
         epsilon : float, optional
             Maximum simplification applied to high-node outlier fonts.
 
@@ -380,9 +386,14 @@ class Dataset():
 
             x_min, y_min = coords.min(axis=0)
             x_max, y_max = coords.max(axis=0)
-            scale = max(x_max - x_min, y_max - y_min) or 1.0
 
-            xy = (coords - [x_min, y_min]) / scale
+            xy = coords.astype(np.float32)
+
+            if relative:
+                xy = xy - [x_min, y_min]
+
+            if normalize:
+                xy /= max(x_max - x_min, y_max - y_min) or 1.0
 
             on_curve = (flags & 1).astype(np.float32)
             end_of_contour = np.array([i in end_pts for i in range(len(coords))])
@@ -511,7 +522,7 @@ class Dataset():
 
             flattened = [(s, e) for x in results for s, e in zip(x[0], x[1])]
 
-            if self.order_by_text:
+            if self.order_by_length:
                 flattened.sort(key=lambda x: len(x[0]), reverse=False)
 
             source, encoded = zip(*flattened)
@@ -589,7 +600,7 @@ class Dataset():
                 samples['encoded'][partition] = np.array((), dtype=object)
                 continue
 
-            if self.order_by_text:
+            if self.order_by_length:
                 results.sort(key=lambda x: len(x[0]['text']), reverse=False)
 
             source, encoded = zip(*results)
@@ -611,7 +622,8 @@ class Dataset():
                       batch_scale=True,
                       augmentor=None,
                       samples=None,
-                      shuffle=False):
+                      shuffle=False,
+                      warmup=True):
         """
         Generates a batch of samples for the partition.
 
@@ -633,6 +645,8 @@ class Dataset():
             Fetch a specific number of samples.
         shuffle : bool, optional
             Specifies whether data is shuffled by epoch.
+        warmup : bool, optional
+            Skips shuffling and augmentation on the first pass.
 
         Returns
         -------
@@ -650,23 +664,22 @@ class Dataset():
             multigram_length = len(multigrams)
 
             indices = np.arange(data_length)
+            first_epoch_end = not warmup
             batch_index = 0
 
             while True:
-                if self.order_by_text:
-                    if shuffle:
-                        batch_index = np.random.randint(0, data_length - batch_size)
+                if batch_index >= data_length:
+                    first_epoch_end = True
+                    batch_index = 0
 
-                    elif batch_index >= data_length:
-                        batch_index = 0
+                if self.order_by_length:
+                    if first_epoch_end and shuffle:
+                        batch_index = np.random.randint(0, data_length - batch_size + 1)
 
                     batch_data = data[batch_index:batch_index + batch_size]
 
                 else:
-                    if batch_index >= data_length:
-                        batch_index = 0
-
-                    if shuffle and batch_index == 0:
+                    if first_epoch_end and shuffle and batch_index == 0:
                         np.random.shuffle(indices)
 
                     batch_data = data[indices[batch_index:batch_index + batch_size]]
@@ -691,23 +704,24 @@ class Dataset():
                                                              method='sauvola',
                                                              invert=True)
 
-                mask_data = utils.batch_masking(batch_data=text_data if self.mask_by_text else image_data,
+                mask_data = utils.batch_masking(batch_data=text_data if self.mask_by_length else image_data,
                                                 max_shape=self.image_shape,
-                                                from_text=self.mask_by_text)
+                                                from_text=self.mask_by_length)
 
-                graph_data = utils.batch_graph(batch_size=batch_length,
-                                               num_chars=charset_length,
-                                               graph_data=self.graph_fonts,
-                                               graph_shape=self.tokenizer.graph_shape)
+                graph_data, graph_chars_data = utils.batch_graph(batch_size=batch_length,
+                                                                 num_chars=charset_length,
+                                                                 graph_data=self.graph_fonts,
+                                                                 graph_shape=self.tokenizer.graph_shape)
 
                 aug_text_data = text_data.copy()
                 aug_mask_data = mask_data.copy()
                 aug_image_data = image_data.copy()
                 aug_segmentation_data = segmentation_data.copy()
                 aug_graph_data = graph_data.copy()
+                aug_graph_chars_data = graph_chars_data.copy()
 
                 if batch_encoded:
-                    if augmentor:
+                    if first_epoch_end and augmentor:
                         aug_image_data = [
                             utils.resize_image(image=augmentor.augmentation(x, aug_image_data),
                                                target_shape=self.image_shape)
@@ -720,18 +734,19 @@ class Dataset():
 
                         aug_graph_data = augmentor.graph_augmentation(graph_data=aug_graph_data)
 
-                    if multigram_length:
-                        index = np.random.randint(0, multigram_length - batch_length)
+                    if first_epoch_end and multigram_length >= batch_length:
+                        index = np.random.randint(0, multigram_length - batch_length + 1)
                         aug_text_data = [x['text'] for x in multigrams[index:index + batch_length]]
 
                         aug_mask_data = utils.batch_masking(batch_data=aug_text_data,
                                                             max_shape=self.image_shape,
                                                             from_text=True)
+
                     else:
-                        aug_mask_data = aug_text_data if self.mask_by_text else aug_image_data
+                        aug_mask_data = aug_text_data if self.mask_by_length else aug_image_data
                         aug_mask_data = utils.batch_masking(batch_data=aug_mask_data,
                                                             max_shape=self.image_shape,
-                                                            from_text=self.mask_by_text)
+                                                            from_text=self.mask_by_length)
 
                     if batch_processing:
                         text_data, aug_text_data = batch_processing_sync(data=text_data,
@@ -764,12 +779,15 @@ class Dataset():
                                                                            batch_mode='graph',
                                                                            padding_shape=self.tokenizer.graph_shape)
 
+                else:
+                    graph_chars_data = [self.tokenizer.decode_text(x) for x in graph_chars_data]
+
                 x_data = [aug_image_data, aug_text_data, writer_data, aug_mask_data, aug_segmentation_data]
                 y_data = [image_data, text_data, writer_data, mask_data, segmentation_data]
 
                 if self.graph_fonts:
-                    x_data.extend(aug_graph_data)
-                    y_data.extend(graph_data)
+                    x_data.extend([*aug_graph_data, aug_graph_chars_data])
+                    y_data.extend([*graph_data, graph_chars_data])
 
                 yield tuple(x_data), tuple(y_data)
 

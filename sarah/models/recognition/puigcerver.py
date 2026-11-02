@@ -67,7 +67,9 @@ class RecognitionModel(BaseRecognitionModel):
 
         encoder = tf.keras.layers.Reshape(target_shape=(encoder.shape[1], encoder.shape[2] // 16, -1))(encoder)
 
-        self.encoder = tf.keras.Model(name='recognition_encoder', inputs=encoder_input, outputs=encoder)
+        self.encoder = tf.keras.Model(name='recognition_encoder',
+                                      inputs=encoder_input,
+                                      outputs=encoder)
 
         # decoder model
         decoder_input = tf.keras.Input(shape=encoder.shape[1:])

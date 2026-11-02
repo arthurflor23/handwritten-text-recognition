@@ -1,6 +1,6 @@
-# Handwritten Text Synthesis and Recognition
+# Handwritten Text Recognition
 
-The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a tutorial and a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
+The `pySarah` project provides a solution for Handwritten Text Recognition (HTR) using [Tensorflow](https://www.tensorflow.org/). It includes a set of tools for data processing, model training, testing, and inference. The HTR model can be trained on various datasets and supports different levels of recognition. The project also supports generative and language models that make up the workflow for handwriting synthesis and spelling correction.
 
 The project provides support for [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html#tracking), which enables better tracking and management of training and testing phases. MLflow allows logging and comparing experiments, tracking metrics, and storing trained models for reproducibility. The [MLflow Dashboard](https://mlflow.org/docs/latest/tracking.html#explore-runs-and-results) can be explored and experiments tracked with `mlflow ui`.
 
@@ -109,15 +109,14 @@ The project has several command-line parameters that can be used to customize it
 - `--text-level`: Text structure level (e.g., line).
 - `--image-shape`: Image dimensions (height, width, channels).
 - `--char-width`: Character width for image normalization.
-- `--mask-by-text`: Mask data by text length.
-- `--order-by-text`: Sort data by text length.
+- `--mask-by-length`: Mask data by text length.
+- `--order-by-length`: Sort data by text length.
 - `--training-ratio`: Training partition ratio.
 - `--validation-ratio`: Validation partition ratio.
 - `--test-ratio`: Test partition ratio.
 - `--illumination` : Apply illumination compensation.
 - `--binarization` : Apply binarization method.
 - `--lazy-mode`: Activate lazy loading.
-- `--enable-graph`: Enable prototype graph inputs.
 
 #### Augmentor
 
@@ -210,22 +209,6 @@ python sarah --source all-in-one --synthesis flor --training-ratio 1.0 --validat
 ```
 
 This command trains the Flor synthesis model on the combined source, using the full dataset for training with no validation or test partitions.
-
-## Tutorial Notebook
-
-A tutorial material is provided to help with getting started. It offers a step-by-step guide to exploring the main pipeline of the project.
-
-The tutorial is designed to be beginner-friendly and can be easily run on [Google Colab](https://research.google.com/colaboratory/), a cloud-based Jupyter notebook environment. It provides a hands-on experience of the project's features and demonstrates the usage of various parameters and functionalities.
-
-The tutorial covers:
-
-- The project's pipeline.
-- Setup of required dependencies and environment.
-- Exploration of different parameters.
-- Execution of data training and testing pipelines.
-- Insights applicable to specific context problems.
-
-The material is available in the [Tutorial Jupyter Notebook](https://github.com/arthurflor23/handwritten-text-recognition/blob/master/tutorial.ipynb) located in the project repository. The notebook instructions describe how to run the code and explore the features.
 
 ## References
 

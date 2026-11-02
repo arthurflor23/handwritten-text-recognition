@@ -16,6 +16,8 @@ def inference(args):
         A namespace object containing all the arguments required.
     """
 
+    Compose.setup_session(seed=args.seed)
+
     tokenizer, run_context = Compose.get_tokenizer(synthesis=args.synthesis,
                                                    synthesis_run_id=args.synthesis_run_id,
                                                    recognition=args.recognition,
@@ -44,14 +46,13 @@ def inference(args):
     dataset = Dataset(data=data,
                       image_shape=args.image_shape,
                       char_width=args.char_width,
-                      mask_by_text=args.mask_by_text,
+                      mask_by_length=args.mask_by_length,
                       illumination=args.illumination,
                       binarization=args.binarization,
                       lazy_mode=args.lazy_mode,
                       tokenizer=tokenizer,
                       input_path=args.input_path,
-                      fonts_path=args.fonts_path,
-                      seed=args.seed)
+                      fonts_path=args.fonts_path)
     print(dataset)
 
     compose = Compose(synthesis=args.synthesis,
@@ -63,8 +64,7 @@ def inference(args):
                       tokenizer=dataset.tokenizer,
                       experiment_name=args.experiment_name,
                       output_path=args.output_path,
-                      gpu=args.gpu,
-                      seed=args.seed)
+                      gpu=args.gpu)
     print(compose)
 
     compose.compile(learning_rate=args.learning_rate, run_context=run_context)

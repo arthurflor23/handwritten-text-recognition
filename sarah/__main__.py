@@ -6,8 +6,6 @@ import argparse
 sys.path.append(os.getcwd())
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-import pipelines  # noqa: E402
-
 
 if __name__ == '__main__':
     """
@@ -36,15 +34,14 @@ if __name__ == '__main__':
     parser.add_argument('--text-level', default='line', help='Text structure level')
     parser.add_argument('--image-shape', default=(64, 1024, 1), nargs=3, type=int, help='Image dimensions (h, w, c)')
     parser.add_argument('--char-width', default=None, type=int, help='Character width for image normalization')
-    parser.add_argument('--mask-by-text', default=False, action='store_true', help='Mask data by text length')
-    parser.add_argument('--order-by-text', default=False, action='store_true', help='Sort data by text length')
+    parser.add_argument('--mask-by-length', default=False, action='store_true', help='Mask data by text length')
+    parser.add_argument('--order-by-length', default=False, action='store_true', help='Sort data by text length')
     parser.add_argument('--training-ratio', default=None, help='Training partition ratio')
     parser.add_argument('--validation-ratio', default=None, help='Validation partition ratio')
     parser.add_argument('--test-ratio', default=None, help='Test partition ratio')
     parser.add_argument('--illumination', default=False, action='store_true', help='Apply illumination compensation')
     parser.add_argument('--binarization', default=None, help='Apply binarization method')
     parser.add_argument('--lazy-mode', default=False, action='store_true', help='Enable lazy loading')
-    parser.add_argument('--enable-graph', default=False, action='store_true', help='Enable prototype graph inputs')
 
     # augmentor
     parser.add_argument('--mixup', default=None, nargs='+', type=float, help='Mixup settings')
@@ -60,8 +57,8 @@ if __name__ == '__main__':
     parser.add_argument('--salt-and-pepper', default=None, nargs='+', type=float, help='Salt and pepper noise settings')
     parser.add_argument('--gaussian-noise', default=None, nargs='+', type=float, help='Gaussian noise settings')
     parser.add_argument('--gaussian-blur', default=None, nargs='+', type=float, help='Gaussian blur settings')
-    parser.add_argument('--graph-rotate', default=(0.99, 10), nargs='+', type=float, help='Graph rotation settings')
-    parser.add_argument('--graph-scale', default=(0.99, 10), nargs='+', type=float, help='Graph scaling settings')
+    parser.add_argument('--graph-rotate', default=(0.33, 10), nargs='+', type=float, help='Graph rotation settings')
+    parser.add_argument('--graph-scale', default=(0.66, 5), nargs='+', type=float, help='Graph scaling settings')
     parser.add_argument('--graph-noise', default=(0.33, 0.01), nargs='+', type=float, help='Graph noise settings')
     parser.add_argument('--disable-augmentation', default=False, action='store_true', help='Disable data augmentation')
 
@@ -73,7 +70,7 @@ if __name__ == '__main__':
     # training
     parser.add_argument('--training', default=False, action='store_true', help='Perform training pipeline')
     parser.add_argument('--training-step-factor', default=1, type=int, help='Factor for training steps')
-    parser.add_argument('--epochs', default=1000, type=int, help='Maximum number of epochs')
+    parser.add_argument('--epochs', default=10000, type=int, help='Maximum number of epochs')
     parser.add_argument('--batch-size', default=8, type=int, help='Batch size')
     parser.add_argument('--learning-rate', default=None, type=float, help='Learning rate')
     parser.add_argument('--plateau-factor', default=0.1, type=float, help='Learning rate reduction factor')
@@ -103,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=1, type=int, help='Verbosity level')
 
     args = parser.parse_args()
-    args.seed = secrets.randbelow(32) if args.seed is None else args.seed
+    args.seed = secrets.randbelow(256) if args.seed is None else args.seed
 
     # required
     if args.check or args.training or args.test:
@@ -123,6 +120,8 @@ if __name__ == '__main__':
         assert args.image, '--image must be defined'
 
     # pipelines
+    import pipelines  # noqa: E402
+
     if args.check:
         pipelines.check(args)
 
